@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI輔助公務處理流程優化案例</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* 自訂樣式 */
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: linear-gradient(to bottom right, #e0f7fa, #f1f8e9);
+            scroll-behavior: smooth;
+        }
+        /* 主題與目錄文字大小 */
+        .main-title { font-size: 1.95rem; } /* 正文1.3rem * 1.5 */
+        .subtitle { font-size: 1.17rem; } /* 主標題1.95rem * 0.6 */
+        p, li, td, th { font-size: 1rem; line-height: 1.75; }
+
+        /* 導航列樣式 */
+        .nav-button {
+            background-color: #2563eb; /* 藍色底 */
+            color: white;
+            padding: 0.5rem 1.5rem;
+            margin: 0.25rem;
+            border-radius: 9999px; /* 半圓形 */
+            font-size: 1.125rem; /* 字加大 */
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        .nav-button:hover, .nav-button.active {
+            background-color: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .nav-button.read {
+             background-color: #6d28d9; /* 已讀顏色: 紫色 */
+        }
+        .nav-button.read:hover, .nav-button.read.active {
+            background-color: #5b21b6;
+        }
+
+        /* 內容區塊動畫 */
+        .content-section {
+            display: none;
+            animation: fadeIn 0.8s;
+        }
+        .content-section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 可收合區塊 */
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.7s ease-out, padding 0.5s ease;
+            padding: 0 1.5rem;
+        }
+        
+        /* 提示詞區塊 */
+        .prompt-block {
+            border: 1px solid #90cdf4;
+            background-color: #f0f9ff;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            position: relative;
+        }
+        
+        /* 複製按鈕 */
+        .copy-btn {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background-color: #38bdf8;
+            color: white;
+            border: none;
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .copy-btn:hover {
+            background-color: #0ea5e9;
+        }
+
+        /* 應用程式標籤 */
+        .app-tag {
+            background-color: #ccefee; /* 淺藍綠色 */
+            color: #0d9488;
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: inline-block;
+            margin: 0.1rem;
+        }
+
+        /* 步驟編號 */
+        .step-number {
+            background-color: #38bdf8;
+            color: white;
+            border-radius: 50%;
+            width: 2rem;
+            height: 2rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+            margin-right: 0.75rem;
+        }
+
+        /* 回到頂端按鈕 */
+        #backToTopBtn {
+            display: none;
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 99;
+            border: none;
+            outline: none;
+            background-color: #0ea5e9;
+            color: white;
+            cursor: pointer;
+            padding: 1rem;
+            border-radius: 50%;
+            width: 4rem;
+            height: 4rem;
+            font-size: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+        /* 搜尋結果高亮 */
+        .highlight {
+            background-color: yellow;
+            font-weight: bold;
+        }
+        #searchResults li {
+            background-color: #ffffe0; /* 淺黃色背景 */
+            cursor: pointer;
+        }
+         #searchResults li:hover {
+            background-color: #fffacd;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            border: 1px solid #d1d5db;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        thead th {
+            background-color: #eff6ff;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        .collapsible-trigger .plus-minus-icon {
+            transition: transform 0.3s ease-in-out;
+        }
+        .collapsible-trigger.active .plus-minus-icon {
+            transform: rotate(135deg);
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-lg shadow-md fixed top-0 left-0 right-0 z-50 py-3 px-4 md:px-8">
+        <div class="container mx-auto flex flex-wrap justify-between items-center">
+            <div class="text-center w-full md:w-auto md:text-left mb-2 md:mb-0">
+                <h1 class="font-bold text-2xl md:text-3xl" style="color: #191970;">AI輔助公務處理流程優化案例</h1>
+            </div>
+            
+            <div class="w-full md:w-auto flex justify-center items-center space-x-2">
+                <input type="search" id="searchInput" placeholder="全站搜尋..." class="border-2 border-blue-300 bg-white h-10 px-5 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition w-48 md:w-64">
+                <button id="searchButton" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full transition">搜尋</button>
+            </div>
+        </div>
+        <!-- Search Results Dropdown -->
+        <div id="searchResultsContainer" class="relative">
+            <ul id="searchResults" class="absolute bg-white border rounded-lg mt-2 w-full max-h-60 overflow-y-auto shadow-lg hidden"></ul>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="sticky top-[100px] md:top-[76px] bg-white/90 backdrop-blur-lg z-40 py-3 shadow-sm">
+        <div class="container mx-auto flex justify-center">
+             <div class="overflow-x-auto whitespace-nowrap px-4">
+                <button class="nav-button" data-target="intro">前言</button>
+                <button class="nav-button" data-target="minutes">AI輔助會議紀錄</button>
+                <button class="nav-button" data-target="news">AI撰寫新聞稿</button>
+                <button class="nav-button" data-target="speech">AI撰寫致詞稿</button>
+                <button class="nav-button" data-target="compile">AI彙整文件</button>
+                <button class="nav-button" data-target="proofread">AI文稿校對</button>
+                <button class="nav-button" data-target="app">工程查核APP</button>
+                <button class="nav-button" data-target="software">應用程式</button>
+                <button class="nav-button" data-target="experience">實務經驗分享</button>
+                <button class="nav-button" data-target="conclusion">結語</button>
+                <button class="nav-button" data-target="appendix">附錄</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-4 md:p-8 mt-4">
+
+        <!-- Introduction Section -->
+        <section id="intro" class="content-section">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="main-title font-bold text-blue-800 border-b-2 border-blue-200 pb-2 mb-4">前言</h2>
+                <h3 class="subtitle font-semibold text-teal-700 mb-3">AI定義與本簡報簡要說明</h3>
+                <ul class="list-disc list-inside space-y-2 text-gray-700">
+                    <li><strong>人工智慧 (Artificial Intelligence, AI):</strong> 指讓機器模擬人類智慧的技術，使其能夠執行通常需要人類智慧的任務，例如學習、推理、理解語言、辨識圖形、決策、解決問題等。</li>
+                    <li><strong>生成式人工智慧 (Generative AI):</strong> 一種能夠根據輸入提示詞 (Prompt) 自動產生回應內容的人工智慧技術。這些內容不僅包括文字，還涵蓋圖形、音樂、影片、程式碼等多種媒體形式，例如ChatGPT及Claude。</li>
+                </ul>
+                <p class="mt-4"><strong>本簡報簡要說明如下:</strong></p>
+                <ol class="list-decimal list-inside space-y-2 mt-2 pl-4">
+                    <li><strong>AI輔助會議紀錄:</strong> 運用AI技術將錄音檔案轉換為文字，透過建立關鍵字詞庫、Excel巨集程式自動校正，並結合會議資料進行潤飾，產出完整專業的會議紀錄。</li>
+                    <li><strong>AI撰寫新聞稿:</strong> 運用Claude、ChatGPT等AI工具，依據明確寫作規格設定，採倒金字塔結構撰寫新聞稿，並針對民生影響、市政發展、政策解讀等不同角度產出內容。</li>
+                    <li><strong>AI撰寫致詞稿:</strong> 透過AI輔助撰寫致詞稿，依據場合背景、講話者資訊、聽眾分析等要素，設定致詞規格與風格要求，快速產出符合不同需求的專業致詞內容。</li>
+                    <li><strong>AI彙整文件:</strong> 運用AI技術進行文件彙整，包含重點摘要、問答題庫製作、SEO優化語言、簡報架構設計、資訊視覺化圖表及網頁可視化等多元應用。</li>
+                    <li><strong>AI文稿校對:</strong> 透過AI進行專業文稿校對，包含一般性校對、綜合規劃報告修正、法務部廉政署文件審查，以及去識別化處理等多層次校對服務。</li>
+                    <li><strong>工程查核APP:</strong> 結合AI技術開發工程查核應用，包含工地施工查核、橋梁檢測分析、營造安全促進、毎日安全循環及危險預警等智慧化工程管理功能。</li>
+                </ol>
+                <h3 class="subtitle font-semibold text-teal-700 mt-6 mb-3">2025年熱門AI工具功能與特色</h3>
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>聊天機器人</th>
+                                <th>公司</th>
+                                <th>主要功能與特色</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>NotebookLM</td>
+                                <td>美國 Google</td>
+                                <td>Google推出的AI研究助理,專精於文件摘要和分析。支援PDF、Google Docs等多種格式文件上傳,僅根據用戶提供的資料來源回答問題,避免幻覺現象。特別適合學術研究和長篇文獻整理。</td>
+                            </tr>
+                            <tr>
+                                <td>ChatGPT</td>
+                                <td>美國 OpenAI</td>
+                                <td>OpenAI的旗艦產品,具備多模態能力包含文字、語音、影像處理。SearchGPT網路搜尋功能、圖形庫管理、自訂GPT市集等。支援程式碼生成、創意寫作、翻譯等全方位任務。</td>
+                            </tr>
+                            <tr>
+                                <td>*Claude</td>
+                                <td>美國 Anthropic</td>
+                                <td>Anthropic開發的AI助理,以人性化對話和自然寫作風格著稱。擁有AI安全架構。新版 Claude 4系列在複雜推理和程式碼撰寫方面表現優異,特別適合深度分析工作。</td>
+                            </tr>
+                            <tr>
+                                <td>Gemini</td>
+                                <td>美國 Google</td>
+                                <td>Google的多模態AI模型,深度整合Google生態系統。支援影片上傳分析、即時網路搜尋、Google Workspace協作。在處理大型資料集任務方面表現出色,上下文達100萬tokens。Google Al Studio:適合開發者與AI創作者。在功能選項Generate Media的Gemini Speech Generation有文字轉語音。Veo 2及Imagen 3可生成高品質影像及影片。</td>
+                            </tr>
+                            <tr>
+                                <td>Perplexity / Grok</td>
+                                <td>美國 Perplexity / 美國 XAI</td>
+                                <td>AI驅動的研究助理,結合搜尋引擎與AI對話功能。提供即時網路資訊檢索並標註來源引用,支援多種AI模型選擇。特別適合事實查核、學術研究和資訊驗證工作。<br>xAI開發的AI聊天機器人,具備「叛逆個性」和幽默風格。整合X平台獲取即時社群媒體資料,在數學推理和科學領域表現優異。</td>
+                            </tr>
+                            <tr>
+                                <td>Felo</td>
+                                <td>日本 FeloInc.</td>
+                                <td>結合學習、翻譯與搜尋功能的AI工具。支援多語言處理、一鍵生成PowerPoint簡報和心智圖。提供結構化輸出和學術友善功能,整合文件閱讀、摘要、圖形生成等多合一服務。</td>
+                            </tr>
+                            <tr>
+                                <td>Microsoft Copilot</td>
+                                <td>美國 Microsoft</td>
+                                <td>微軟開發的AI助理,深度整合Microsoft 365生態系統。支援程式碼自動完成、多檔案編輯、代理模式等功能。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Meeting Minutes Section -->
+        <section id="minutes" class="content-section">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="main-title font-bold text-blue-800 border-b-2 border-blue-200 pb-2 mb-4">AI輔助會議紀錄</h2>
+                
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">會議錄音</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4">
+                        <p><strong>目的：</strong>為了確保會議紀錄的準確性和完整性，錄音功能能夠完整紀錄會議的討論過程，避免遺漏任何重要細節，更使得整理會議紀錄時能更加精確，不再需要完全依賴個人記憶或手寫筆記。</p>
+                        <p class="mt-2"><strong>應用程式：</strong><span class="app-tag">Google Play超級錄音器</span></p>
+                        <p class="mt-2"><strong>數位錄音筆：</strong>具藍牙功能錄音筆透過與手機配對後，將錄音檔分享至LINE、雲端硬碟或捷運局NAS等平台，方便檔案保存。</p>
+                    </div></div>
+                </div>
+
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">錄音檔處理</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4">
+                        <p><strong>應用程式：</strong><span class="app-tag">Audacity</span>是一款開源的跨平台音訊編輯與錄音軟體。</p>
+                        <ul class="list-disc list-inside mt-2 space-y-2">
+                            <li><strong>轉檔:</strong> 將錄音檔從一種格式轉換為另一種格式。<br><strong>原因:</strong> 為了方便後續的編輯處理，將wav與mp3互轉。</li>
+                            <li><strong>壓縮:</strong> 減小錄音檔案的大小。<br><strong>原因:</strong> 方便儲存與傳輸。壓縮檔可能會犧牲一些音質。</li>
+                            <li><strong>裁切:</strong> 移除錄音檔中不需要的部分。<br><strong>原因:</strong> 例如去除錄音開始前或結束後的無效錄音，或者只保留會議中的特定段落。</li>
+                            <li><strong>音量調整:</strong> 調整錄音檔的整體音量大小，以提高語音轉文字的辨識率。<br><strong>原因:</strong> 會議室的座位空間有限，加上部分與會者發言時未使用麥克風，這些因素都可能導致錄音音量過小。</li>
+                            <li><strong>降噪:</strong> 為了減少錄音環境中的雜音，例如工地背景的機具運轉聲和來往車輛的噪音等。<br><strong>原因:</strong> 提高錄音的清晰度，使人聲更突出，有助於語音轉文字的辨識率。</li>
+                            <li><strong>分離人聲Vocal和背景聲(下載Vocals):</strong> <span class="app-tag">Demucs Music Source Separation</span></li>
+                        </ul>
+                    </div></div>
+                </div>
+                
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">語音轉文字</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4">
+                       <p><strong>目的：</strong>為了製作會議紀錄，將錄音內容轉化為文字紀錄，方便日後編輯和保存內容。</p>
+                       <p class="mt-2"><strong>應用程式：</strong></p>
+                       <ol class="list-decimal list-inside mt-2 space-y-2 pl-4">
+                           <li><strong>NotebookLM:</strong> 直接上傳錄音檔案後，系統會利用自動語音辨識技術將語音轉換為文字，並自動添加標點符號，使文字更容易閱讀。支援的音訊格式包括WAV、MP3及 iPhone錄音的M4A。單一音訊檔案的上限為200MB，若檔案超過此限制，可先分割成多個檔案後再分別上傳。</li>
+                           <li><strong>Whisper-large-v3-turbo:</strong> 由OpenAI開發，是OpenAI Whisper系列模型中的一個優化版本，其主要目標是提高轉錄速度，但不具備自動添加標點符號的功能。辨識後若文字為簡體字，可複製到Word，並利用「繁簡轉換」功能將文字轉換為繁體字。(註:經常中斷轉錄)</li>
+                           <li><strong>數位錄音筆:</strong> 具藍牙功能錄音筆透過與手機配對後，將即時逐字稿文字檔分享至LINE、雲端硬碟或捷運局NAS等平台，方便檔案保存。</li>
+                       </ol>
+                    </div></div>
+                </div>
+                
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">建立關鍵字</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4">
+                       <p><strong>目的：</strong>由於語音辨識在處理專有名詞、工程術語及不常用詞彙時，較難達到高準確度，為了確保後續文字解讀與辨識的正確性，從會議資料來源檔案中透過AI提取關鍵字，是必要的前置作業。</p>
+                       <div class="prompt-block">
+                            <button class="copy-btn" title="複製提示詞">複製</button>
+                            <p><strong>提示詞：</strong>請根據文件內容，整理出300個關鍵字，優先挑選專有名詞、工程術語，以及罕見或不常用的詞彙。關鍵字請以「兩字詞」為主，並以頓號(、)分隔呈現。</p>
+                       </div>
+                    </div></div>
+                </div>
+
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">建立發音相近詞語</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4">
+                       <p><strong>目的：</strong>彙整從會議資料來源檔案中提取的關鍵字，經由AI判斷分析發音相同或相近的常用詞語，以利後續建立Excel專屬詞庫。</p>
+                       <div class="prompt-block">
+                            <button class="copy-btn" title="複製提示詞">複製</button>
+                            <p><strong>提示詞：</strong></p>
+                            <ol class="list-decimal list-inside space-y-1">
+                                <li>請依據以下詞語：「安衛、月會、局限、...」、各自列出20組與之發音相同或相近的常用詞語組合。</li>
+                                <li>每組詞語中的每個字，都需替換為一個發音相近且常見常用的字詞。</li>
+                                <li>請勿使用罕見、冷僻或不常用的文字。</li>
+                                <li>每組詞語請單獨列在一行，一行一詞，不需加序號或註解，組與組之間也請不要空行。</li>
+                                <li>結果請依照原詞語順序輸出，每個詞語底下緊接著列出20組變體。</li>
+                                <li>例如：安衛...(共列出20組)月會...(共列出20組)以此類推，直到「分級」為止。</li>
+                            </ol>
+                       </div>
+                    </div></div>
+                </div>
+
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">建立Excel詞庫</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4">
+                       <p><strong>目的：</strong>將AI分析彙整的詞語建立成Excel關鍵字校正表。以便在Word中執行巨集程式時，將自動根據這個校正表去修正語音轉文字稿中的錯誤，而建立的資料庫結構。</p>
+                       <p class="mt-2"><strong>應用程式：</strong><span class="app-tag">Excel</span></p>
+                       <p class="mt-2">Excel詞庫中，A欄位為發音相同或相近的常用詞語，B欄位為導正的關鍵字，爾後陸續自行擴充詞庫。</p>
+                    </div></div>
+                </div>
+                
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">撰寫巨集程式</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4">
+                        <p><strong>目的：</strong>VBA (Visual Basic for Applications)是一種由微軟開發的程式語言，內嵌於Microsoft Office 應用程式中(如Excel、Word、PowerPoint等)，主要用於自動化重複性工作、擴充Office功能，如函數和報告。VBA語法簡單，學習難度低，適合沒有程式設計經驗的初學者快速上手，並透過Claude及ChatGPT直接產生程式碼。</p>
+                        <p class="mt-2"><strong>應用程式：</strong><span class="app-tag">Claude</span>、<span class="app-tag">ChatGPT</span></p>
+                        <h4 class="font-semibold mt-4">範例1: 尋找目標取代文字</h4>
+                         <div class="prompt-block">
+                            <button class="copy-btn" title="複製提示詞">複製</button>
+                            <p><strong>提示詞：</strong>我會自行製作一個檔名為搜尋取代的Excel檔案，A欄為Word功能中的「尋找目標」，B欄為「取代為」的內容，VBA執行後，呼叫在D磁碟的搜尋取代.xlsx，執行一次後，即可完成批次處理。</p>
+                       </div>
+                        <h4 class="font-semibold mt-4">範例2: 完整格式化文件</h4>
+                         <div class="prompt-block">
+                            <button class="copy-btn" title="複製提示詞">複製</button>
+                            <p><strong>提示詞：</strong>建立一個完整的VBA程式碼，可以在MS Word中執行所有格式化和轉換任務: 將文字字型大小統一設為12點，但第一頁上方標題文字字型大小設為14點。設定段落格式為左右對齊，段前段後距離為0，固定行高16點。設定頁面四邊的邊界均為1.5公分。為所有表格加上框線，設定表格儲存格間距為0，表格第一列內容水平垂直置中且文字粗體字，第二列以下內容水平垂直靠左。中文文字之間的空格須去除。中文文字與數字之間的空格須去除。中文文字與英文之間的空格須去除。但英文單字間的空格無須去除。全部字型設定為微軟正黑體。</p>
+                       </div>
+                    </div></div>
+                </div>
+
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">建立Word巨集程式</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4">
+                       <p><strong>目的：</strong>建立巨集程式的主要目的是「自動化重複性或繁瑣的操作」，讓使用者能以一個指令或按鈕，快速執行一連串預先定義好的動作。這不僅可以節省時間、減少手動操作的錯誤，也能提升工作效率與精確度。</p>
+                       <p class="mt-2"><strong>應用程式：</strong><span class="app-tag">Word</span></p>
+                       <h4 class="font-semibold mt-4">新增巨集操作步驟</h4>
+                       <div class="space-y-3 mt-2">
+                            <div class="flex items-start"><span class="step-number">1</span><p>在Word中「檢視」→「巨集」→「檢視巨集」。</p></div>
+                            <div class="flex items-start"><span class="step-number">2</span><p>既有的巨集名稱「編輯」→「插入」→「模組」。</p></div>
+                            <div class="flex items-start"><span class="step-number">3</span><p>貼上VBA程式碼→「儲存」→「關閉」。</p></div>
+                            <div class="flex items-start"><span class="step-number">4</span><p>回到Word主視窗，從「檢視」→「巨集」→「檢視巨集」選「套用文件格式」→「執行」。</p></div>
+                       </div>
+                    </div></div>
+                </div>
+                
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">初步校正逐字稿</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4">
+                       <p><strong>目的：</strong>初步校正逐字稿是為了確保文字內容的準確性、通順性與可讀性，能忠實反映原始語音內容並符合實際應用。如會議紀錄逐字稿會產生語音辨識錯誤、專有名詞與術語辨識不足、語意不清、標點符號誤植與錯別字。</p>
+                       <p class="mt-2"><strong>執行巨集操作步驟：</strong>在Word中點選「檢視」→「巨集」→「檢視巨集」選擇巨集名稱「RepWithList」→「執行」。</p>
+                       <p class="mt-2"><strong>巨集運作原理說明：</strong>A欄為發音相同或相近的常用詞語。B欄為對應的關鍵字。將Excel檔案放置於D磁碟根目錄，檔案命名為「搜尋取代」。使用Word 開啟逐字稿原始檔。選擇巨集名稱「RepWithList」，然後點選「執行」。程式會自動讀取D磁碟中的「搜尋取代」 Excel檔案。依序搜尋欄中的文字目標。找到目標文字後，會以右側B欄的文字進行取代。執行一次後，即可完成批次處理。</p>
+                    </div></div>
+                </div>
+
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">潤飾逐字稿</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4">
+                       <p><strong>目的：</strong>潤飾逐字稿是指執行初步校正逐字稿後(稱為A文件)，仍有許多上下文無法理解及錯誤轉錄的文字，需要藉助原會議資料精確校正(稱為B文件)，對內容進行美化的過程，使內容更準確、流暢且易於理解，提升逐字稿的實用價值與閱讀體驗，正所謂乾淨的逐字稿。(備註:有會議資料的前提下，即使同仁不熟悉建立關鍵字、發音相近詞語、Excel詞庫、巨集程式(Excel或Word)或初步校正逐字稿等步驟，也應至少完成將會議資料與原始逐字稿合併後上傳校正的步驟。</p>
+                       <div class="prompt-block">
+                            <button class="copy-btn" title="複製提示詞">複製</button>
+                            <p><strong>提示詞：</strong></p>
+                            <ol class="list-decimal list-inside space-y-1">
+                                <li>「A」是需要修正的文件內容，語音逐字稿內容中可能存在許多口語化表達不精確、同音異義詞、贅詞重複、語意不清、標點符號分段不當、錯別字和可能錯誤轉錄等問題。</li>
+                                <li>「B」是參考文件，由「B」去修正「A」，進行精確的字詞校正，目的是提高逐字稿的準確性和可讀性，使其更能反映原始會議內容的精確意涵。</li>
+                                <li>輸出格式：直接呈現修正後的逐字稿全文，不標記或註明修改來源，整體結構與原始段落順序完全保留，不做任何刪減或重組，修正部分以粗體標示。</li>
+                            </ol>
+                       </div>
+                    </div></div>
+                </div>
+
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">會議紀錄提示詞範例</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4 space-y-4">
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例1：30項核心議題</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <p><strong>目的：</strong>將冗長的會議逐字稿，整理成有結構的核心議題，方便快速掌握會議重點。</p>
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong>你現在是臺北市政府捷運工程局資深會議紀錄承辦人員的角色，請將會議紀錄逐字稿，整理出30項核心議題及背景說明(加序號)，每項議題摘錄至少3項重要結論，每項議題約300字。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例2：表格形式呈現</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <p><strong>目的：</strong>使文件內容更容易理解與追蹤，透過欄位分類，能一目了然地掌握重點，避免文字堆疊造成混亂，方便查閱與後續追蹤。</p>
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong>你現在擔任臺北市政府捷運工程局資深會議紀錄承辦人員的角色，請將會議逐字稿整理為30項核心議題，並提供各議題的背景說明（按序號排列）。每項議題需摘錄至少3項重要結論，內容約300字，並以結構化的表格形式呈現，確保語句通順、邏輯嚴謹，能確實反映會議討論的重點與決議。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                         <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例3：SEO優化標題</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <p><strong>目的：</strong>搜尋引擎最佳化（Search Engine Optimization，SEO）是指透過優化網站內容，提升其在搜尋結果中的自然排名與曝光度，進而增加網站的能見度與流量。將SEO概念應用於會議紀錄或文件檔案時，主要是針對文字內容進行優化，將資料整理為明確的標題與段落結構，並分門別類地呈現資訊，同時也提升了文件的專業度與可讀性。</p>
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong>你現在擔任臺北市政府捷運工程局的資深會議紀錄承辦人員，請將會議逐字稿整理為30項最詳盡的重點項目，每項內容均需超過200字，並以繁體中文撰寫。為提升搜尋引擎最佳化（SEO），每項重點需搭配符合SEO原則的標題，標題應設計為引人注目、聳動且能吸引評審委員的注意，同時使用臺灣專業術語、日常用語、標點符號及表達方式，確保內容邏輯清晰、條理分明。重點項目應涵蓋會議討論的核心內容、背景說明及重要結論，針對評審委員的需求，精準呈現會議成果與決議，充分展現專業性與影響力。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例4：完整詳細的正式紀錄</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong><br>1. 請將會議內容整理為完整詳細的正式紀錄，包含以下項目：<br>2. 會議基本資訊：會議名稱、時間、地點、主持人、紀錄人、出席/列席人員（依單位分類，含職稱姓名）。<br>3. 報告事項：前次會議決議執行情形。<br>4. 討論事項：議題詳細說明、發言者完整意見（含職稱姓名）、技術性討論內容（含規範引用）、明確決議、負責單位及期限。<br>5. 專案議題：意外事故宣導及處理事項、交通維持計畫執行情形、工安科技降災技術討論、安全衛生議題討論、環境保護議題討論、環境影響評估議題討論、防颱防汛宣導及執行情形、門禁管理議題討論、高架作業議題討論、墜落防範議題討論、吊掛作業議題討論、物料管制議題討論。<br>6. 臨時動議及結論：臨時提出事項、會議重要結論。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例5：待辦事項分辦表</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong><br>1. 請依據本次會議紀錄逐字稿內容，製作詳細的待辦事項分辦表，作為各單位執行管控的依據，內容包含：<br>2. 所有重要決議和行動項目。<br>3. 指定每項任務的負責人或負責單位。<br>4. 可量化的完成標準，明確的截止期限，若尚未確定，請註明「待確認」。<br>5. 將相關任務項目分組標示，惟無須列優先等級。<br>6. 標示需要跨處室（或跨部門）協調的事項及明確的單位名稱。<br>7. 整理所有需要後續追蹤的議題。<br>8. 以結構化表格呈現。<br>9. 每項任務描述需具體且可執行。<br>10. 建立任務編號系統，便於追蹤。<br>11. 負責人需明確個人姓名或特定職稱。<br>12. 具體完成日期時間點或定期檢核頻率期限。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例6：Markdown格式於code block輸出</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <p><strong>Markdown：</strong>使用簡單的符號（#、##、###、-、*、1.、2.等）來標示文字格式，如標題、粗體、斜體、清單、連結和程式碼區塊等，方便快速撰寫結構化且格式清晰的文件，特別適合會議紀錄、筆記與技術文件的快速編輯與分享。</p>
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong>請將本會議紀錄全文的層級關係及所有節點文字完整呈現，務必保持內容完整，不得進行優化或精簡。請將內容轉換成Markdown格式，主標題及副標題皆使用深藍色並加粗，分支標題亦同，並將結果置於程式碼區塊中輸出。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例7：公文簽格式（主旨、說明、擬辦）</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong><br>1. 請以繁體中文整理並歸納本次會議紀錄，並依照公文格式擬具正式公文，內容須包含：受文者、發文日期、主旨、說明、擬辦、正本及副本。<br>2. 受文者：臺北市政府捷運工程局各工程處<br>3. 正本：臺北市政府捷運工程局各工程處<br>4. 副本：臺北市政府捷運工程局工務管理處<br>5. 主旨：檢陳本處114年○月○日安全衛生月會會議紀錄，陳請核示。<br>6. 說明：請歸納整理會議紀錄中至少20項重點事項，並以「一、」序號標示，每項重點需以段落區隔，且字數不少於50字。<br>7. 擬辦：請提出至少3項後續處理建議，亦以「一、」序號標示，段落區隔，每項建議字數不少於50字。<br>8. 請確保公文內容條理分明、語句流暢，符合正式公文格式與書寫規範。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例8：批判性思維</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <p><strong>批判性思維：</strong>是一種有目的且自律的反思性思考過程，可透過質疑、分析和推理，從經驗及反思中為依據做出合理且公正的判斷。將批判性思維運用於文件檔案彙整時，能幫助使用者以更嚴謹和有條理的方式處理資訊，確保內容的準確性與實用性。</p>
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong>請以批判性思維為核心，深入且全面地思考問題，理性分析各個層面，並從不同觀點及可能結果進行深入探討。請協助我全面理解該問題，並歸納整理出最詳細的60個完整重點項目。每個重點項目字數均需超過200字，且請以粗體字呈現，以便突出重點。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例9：審查委員角度</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <p><strong>目的：</strong>以評審委員專業、公正且嚴謹的態度，多角度評估並篩選資料，確保文件資訊可靠性且具優質專業水準，提供可信賴的資訊，以幫助長官決策與管理。</p>
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong>請以審查委員的專業角度，針對文件內容進行系統性分析與評估。請依序提出：內容品質診斷、具體改進建議、精進方案制定（含目標、步驟、成效）及落實機制，確保改進措施可行且有效提升整體品質。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例10：痛點分析精進方案</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <p><strong>目的：</strong>運用會議紀錄的痛點分析，是在找出討論的議案中遇到的困難與瓶頸，並針對這些問題提出具體的解決策略及行動方案。其目的是提升會議紀錄的品質與專業度，使會議成果能真正落實於後續行動。</p>
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong><br>1. 請扮演專業評審委員的角色，針對目標對象進行全面性的痛點分析與改進建議。請按照以下結構進行系統性評估：<br>2. 問題診斷：識別核心痛點及影響程度。<br>3. 改進建議：提出具體可行的解決措施。<br>4. 精進方案：制定重點強化計畫與成效指標。<br>5. 預期效益：評估改進成果與執行風險。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例11：時間軸分析</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <p><strong>目的：</strong>運用時間軸分析，能有效掌握時程脈絡與關鍵點，有助於理解事件的發展過程。根據時間軸分析結果圖表化，以視覺化的方式呈現，明確標示行動項目、責任分配與進度狀況，使後續工作有秩序的執行。</p>
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong><br>1. 請以繁體中文將本文件全文內容依時間順序進行整理，並以「時間軸」的形式圖表化呈現，具體要求如下：<br>2. 時間順序：明確標示每個重要事件或事項的發生時間，確保敘述條理清晰、時間先後順序明確。<br>3. 內容摘要：針對每個時間點，簡要說明事件或事項的核心內容與影響。<br>4. 圖表形式：以時間軸圖表（Timeline）橫式版面方式呈現，方便視覺化理解整體發展脈絡。<br>5. 結構清晰：時間軸應包含標題、時間點、事件描述，並可適當使用顏色或圖示強調重點。<br>6. 完整性：涵蓋文件中所有重要事件，避免遺漏關鍵資訊。<br>7. 請依上述要求整理並製作時間軸圖表（非互動式），方便後續閱讀與分析。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例12：SWOT分析</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong>請根據SWOT分析法（優勢Strengths、劣勢Weaknesses、機會Opportunities、威脅Threats），對本文件全文內容進行結構化且詳盡的分析表呈現。確保每個SWOT分類下的重點清晰明確，每個分類需列出3至5項具體要點，並充分反映核心內容。分析應邏輯嚴謹、表述精確。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例13：KPI分析</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong>請根據本文件內容的重點項目，系統性地制定合理且可達成的KPI（Key Performance Indicators,關鍵績效指標），並提供詳細的實施步驟與建議。確保每個KPI符合SMART原則（具體、可衡量、可達成、相關性、時限性），並明確列出行動計劃、負責部門、時間表及衡量指標。規劃應邏輯清晰，並具備可操作性與實際指導意義。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例14：PDCA分析</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong>請將文件內容以PDCA循環（計畫Plan、執行Do、檢查Check、行動Act）步驟，系統化且詳細地歸納重點項目。請確保每個PDCA階段的內容清楚明白，包含具體目標、行動方案、負責單位、時程規劃及預期成果，需邏輯清楚、結構完整，展現專業性與實務價值。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                        <div class="collapsible-container border-b border-gray-200 py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例15：FAB分析</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong>請將文件內容以FAB步驟（功能Features、優勢Advantages、效益Benefits）系統化且詳盡地歸納重點項目。確保每個FAB階段的內容清楚明確，涵蓋具體功能描述、優勢分析及預期效益，應邏輯嚴謹、結構完整，展現專業性與實務價值。</p>
+                                </div>
+                            </div></div>
+                        </div>
+                         <div class="collapsible-container py-2">
+                            <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                                <h4 class="font-semibold text-sky-700">範例16：工務會報格式</h4>
+                                <span class="plus-minus-icon text-xl font-light text-sky-700">+</span>
+                            </button>
+                            <div class="collapsible-content"><div class="pt-2">
+                                <div class="prompt-block">
+                                    <button class="copy-btn" title="複製提示詞">複製</button>
+                                    <p><strong>提示詞：</strong><br>1. 請將會議逐字稿檔案整理為正式會議紀錄，格式需符合以下之定型稿...<br>2. 臺北市政府捷運工程局第○○○次工務會報紀錄...<br>3. 時間：114年○月○○日...<br>4. 地點：本局14樓簡報室...<br>5. 主席：○○○副局長...<br>6. 紀錄：○○○工程司...<br>7. 出席人員：○○○、○○○...<br>8. 列席人員：○○○、○○○...<br>9. 壹、前次會議紀錄之確認：各單位確認無意見。<br>10. 貳、議題一（依會議紀錄內容調整議題一文字內容）<br>...（以下省略）</p>
+                                </div>
+                            </div></div>
+                        </div>
+                    </div></div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- News Section -->
+        <section id="news" class="content-section">
+             <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="main-title font-bold text-blue-800 border-b-2 border-blue-200 pb-2 mb-4">AI撰寫新聞稿</h2>
+                <p><strong>前言：</strong>傳統新聞稿撰寫往往耗時且繁複，內容往往需要反覆修改，隨著AI技術蓬勃發展，我們可透過精準的提示詞，在短時間內產出專業水準的優質新聞稿。掌握關鍵應用技巧，讓AI成為我們的有效輔助工具，有效解決長期以來的寫作痛点。</p>
+                <p class="mt-2"><strong>應用程式：</strong><span class="app-tag">Claude</span>, <span class="app-tag">ChatGPT新聞稿及知識文章幫手H</span>, <span class="app-tag">新聞稿寫手</span>, <span class="app-tag">SEO行銷文案</span>, <span class="app-tag">新聞稿撰寫機器人</span></p>
+
+                <div class="collapsible-container border-b border-gray-200 py-4 mt-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">應用技巧</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4">
+                        <h4 class="font-semibold mt-2">明確寫作規格</h4>
+                        <ul class="list-disc list-inside space-y-1 mt-2 pl-4">
+                            <li><strong>活動主題：</strong>動土、開工、隧道貫通及通車典禮、里程碑、圍籬調整、交維改道、路線調整、封閉路口、施工說明會、增設工程完工、經費調整、道路復舊、交通事故、管線事故等。</li>
+                            <li><strong>路線別：</strong>信義線東延段、萬大中和樹林一期、環狀線北環及南環、環状線東環段</li>
+                            <li><strong>角度定位：</strong>以記者的角度（民生影響、市政發展、政策解讀）</li>
+                            <li><strong>結構要求：</strong>採倒金字塔結構，四段落架構，全文控制在1000字內，各段落配置SEO小標題</li>
+                            <li><strong>內容標準：</strong>遵循人、事、時、地、物（5W1H）原則，搭配數據佐證，維持客觀中性語調</li>
+                        </ul>
+                        <h4 class="font-semibold mt-4">段落配置標準</h4>
+                         <ul class="list-disc list-inside space-y-1 mt-2 pl-4">
+                            <li><strong>第1段：</strong>內容訊息摘要，完整回答5W1H內容</li>
+                            <li><strong>第2段：</strong>重要細節深度展開，納入具體數據或專家觀點</li>
+                            <li><strong>第3段：</strong>背景脈絡深入分析，闡述對民眾及社會的實質影響</li>
+                            <li><strong>第4段：</strong>後續發展趨勢預測，提供具體可行建議</li>
+                        </ul>
+                    </div></div>
+                </div>
+
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">範例1：指定角色依序填入新聞稿訊息</h3>
+                         <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4 prompt-block">
+                        <button class="copy-btn" title="複製提示詞">複製</button>
+                        <p><strong>提示詞：</strong></p>
+                        <ol class="list-decimal list-inside space-y-2">
+                            <li>請扮演資深的記者，根據提供的具體資訊撰寫3份不同角度的新聞稿（民生影響角度、市政發展角度、政策解讀角度），每份新聞稿需符合SEO優化標題原則、控制在1000字以內、採用倒金字塔結構分為4個段落且每個段落皆須有SEO優化的段落標題，第1段落放置最重要核心訊息回答5W1H約150-200字。第2段落展開重要細節提供關鍵數據事實或引言約200-250字。第3段落說明背景脈絡分析對民眾社會影響約200-250字。第4段落提及後續發展措施並提供實用建議約150-200字），使用台灣日常用語表達避免過於口語化，針對一般民眾角度撰寫，語調客觀中性用詞精準，善用數據佐證貼近民眾關心議題，並提供具體可行建議。</li>
+                            <li>活動基本資料：...（以下省略）</li>
+                            <li>內容重點：...（以下省略）</li>
+                            <li>相關背景資料：...（以下省略）</li>
+                        </ol>
+                    </div></div>
+                </div>
+                
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">範例2：從官網新聞稿參考同議題背景資料，擬定新的新聞稿</h3>
+                         <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4 prompt-block">
+                        <button class="copy-btn" title="複製提示詞">複製</button>
+                        <p><strong>提示詞：</strong></p>
+                        <ol class="list-decimal list-inside space-y-2">
+                            <li>請參考附件之「A新聞稿」，分析其架構、寫作風格和表達方式，然後依據提供之「B背景資料」內容，按照相同的結構和語調撰寫3份不同角度的新聞稿。</li>
+                            <li>請特別注意：架構模仿、風格一致、內容替換、格式統一</li>
+                            <li>三種角度撰寫：一般民眾角度、市政發展角度、政策解讀角度</li>
+                            <li>SEO優化標題</li>
+                            <li>請依序提供：新聞稿1、新聞稿2、新聞稿3</li>
+                        </ol>
+                    </div></div>
+                </div>
+
+            </div>
+        </section>
+        
+        <!-- Speech Section -->
+        <section id="speech" class="content-section">
+             <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="main-title font-bold text-blue-800 border-b-2 border-blue-200 pb-2 mb-4">AI撰寫致詞稿</h2>
+                <p><strong>前言：</strong>以往撰寫致詞稿從構思架構到修飾用詞都須反覆斟酌，尤其面對不同場合與聽眾時，更需精確掌握語調與內容深度。透過AI技術搭配精準的提示詞設計，能夠快速因應各種場合需求調整內容，產出專業致詞稿。掌握這些關鍵應用技巧，不僅大幅縮短從構思到完稿的時間，更能有效引發聽眾共鳴。</p>
+                <p class="mt-2"><strong>應用程式：</strong><span class="app-tag">ChatGPT AI幕僚</span></p>
+
+                <div class="collapsible-container border-b border-gray-200 py-4 mt-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">應用技巧</h3>
+                        <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div><h4 class="font-bold text-lg text-blue-700">場合背景</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>活動性質...</li><li>活動主題...</li><li>舉辦時間...</li></ul></div>
+                        <div><h4 class="font-bold text-lg text-blue-700">講話者資訊</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>身份職位...</li><li>與聽眾關係...</li></ul></div>
+                        <div><h4 class="font-bold text-lg text-blue-700">聽眾分析</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>主要對象...</li><li>參與人數...</li><li>背景特質...</li></ul></div>
+                        <div><h4 class="font-bold text-lg text-blue-700">致詞規格</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>預計時間...</li><li>字數範圍...</li><li>語言形式...</li></ul></div>
+                        <div><h4 class="font-bold text-lg text-blue-700">重點內容</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>主要目的...</li><li>講座學經歷...</li><li>課程依據...</li><li>主要訊息...</li><li>情感基調...</li></ul></div>
+                        <div><h4 class="font-bold text-lg text-blue-700">風格要求</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>整體風格...</li><li>特殊需求...</li><li>幽默故事...</li></ul></div>
+                    </div></div>
+                </div>
+
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">範例1：角色扮演依序填入致詞稿訊息</h3>
+                         <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4 prompt-block">
+                        <button class="copy-btn" title="複製提示詞">複製</button>
+                        <p><strong>提示詞：</strong><br>1. 您是台灣頂尖的致詞稿專家...請撰寫3份「臺北市政府捷運工程局114年度捷運績優楷模」頒獎典禮致詞稿：<br>2. 場合：...<br>3. 講話者：...<br>4. 時間：...<br>5. 字數：...<br>6. 對象：...<br>7. 目的：...<br>8. 開場致意：...<br>9. 內容要求：...<br>10. 風格須使用台灣公務體系慣用語法：版本一：溫馨激勵型、版本二：專業權威型、版本三：親和鼓勵型</p>
+                    </div></div>
+                </div>
+                 <div class="collapsible-container border-b border-gray-200 py-4">
+                    <button class="collapsible-trigger w-full text-left flex justify-between items-center">
+                        <h3 class="subtitle font-semibold text-teal-700">範例2：參考背景資料，擬定新的致詞稿</h3>
+                         <span class="plus-minus-icon text-2xl font-light text-teal-700">+</span>
+                    </button>
+                    <div class="collapsible-content"><div class="pt-4 prompt-block">
+                        <button class="copy-btn" title="複製提示詞">複製</button>
+                        <p><strong>提示詞：</strong><br>1. 請參考附件之「A致詞稿」，分析其架構、寫作風格和表達方式，然後依據提供之「B背景資料」內容，按照相同的結構和語調撰寫3份不同角度的致詞稿。<br>2. 第一步：分析階段...<br>3. 第二步：內容整合...</p>
+                    </div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Compile Section -->
+        <section id="compile" class="content-section">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="main-title font-bold text-blue-800 border-b-2 border-blue-200 pb-2 mb-4">AI彙整文件</h2>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例1：彙整重點以表格呈現</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4 prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong><br>1. 請歸納出20個主題重點<br>2. 每個重點皆撰寫超過100字的說明<br>3. 每段說明以條列式區分重點<br>4. 使用粗體字標註關鍵字與術語<br>5. 以表格方式彙整重點（含序號、標題、詳細說明）</p></div></div>
+                </div>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例2：模擬問答題庫</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4 prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong><br>你是法務部廉政署透明晶質獎聘請的評審委員，請根據文件內容製作30題選擇題問答題庫...並以表格格式呈現：<br>【難度】...【覆蓋】...【題號】...【題目】...【選項】...【答案】...【解析】...</p></div></div>
+                </div>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例3：符合SEO及廉政語言</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4 prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong><br>1. 請擔任一位精通SEO優化及廉政審核的專家，依據提供的來源內容，轉換為30組獨立的重點項目。<br>2. 項目數量：總共呈現30組獨立的重點項目。<br>3. 標題格式：首句關鍵字切入、字數限制、吸引力、數據化呈現、一對一對應。<br>4. 說明內容格式：字數限制、語氣與規範。</p></div></div>
+                </div>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例4：簡報架構</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4 prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong><br>1. 請將以下文件整理成專業簡報格式...<br>2. 簡報架構：先提供完整的簡報章節架構...<br>3. 章節內容：每個章節至少包含4個重點項目...<br>4. 簡報結構建議：專案概述、執行過程、成果展示、問題與挑戰、結論與建議。<br>5. 格式要求：每頁內容不超過7個要點...</p></div></div>
+                </div>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例5：資訊視覺化圖表</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4"><p>從文件資料中進行分類與結構化的交叉分析，並運用AI技術將數據轉換為視覺化圖表。此方法能有效將複雜資訊以圖形化方式呈現，方便使用者快速理解趨勢與關聯性，亦適合將圖表運用於簡報。</p><div class="prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong><br>1. 請使用繁體中文分析以下數據資料，並製作資訊視覺化（Information Visualization）圖表...<br>2. 數據分析：深入解析數據，識別關鍵趨勢與核心資訊。<br>3. 圖表選擇：依據數據特性選用最適合的圖表類型...<br>4. 視覺呈現：製作專業綜合圖表...<br>5. 重點說明：闡述圖表的關鍵發現並提供清晰解讀。</p></div></div></div>
+                </div>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例6：網頁可視化</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4"><p>在網頁上以圖形化具互動性的的方式展示資料狀態，能讓使用者更直覺的理解整體架構與操作資訊。這種設計結合動態視覺效果與使用者互動。透過簡易的互動式網頁，使用者可以即時查看詳細內容、切換不同資料目錄，讓資訊呈現更生動且易於理解。</p><div class="prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong><br>1. 請製作一個交互式單頁的網頁可視化（Web Visualization）應用...<br>2. 核心架構與互動...<br>3. 導覽列與頁首設計...<br>4. 視覺風格與字體...<br>5. 內容呈現與格式...<br>6. 使用者體驗優化...<br>7. 響應式設計...</p></div></div></div>
+                </div>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例7：SVG專業知識圖表</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4"><p>SVG（Scalable Vector Graphics，可縮放向量圖形）是一種於XML的向量圖形格式，應用於專業知識圖表的製作與展示。利用生成之SVG圖檔匯入PowerPoint，可以快速建立符合專業需求且視覺效果優秀的知識圖表。</p><div class="prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong><br>1. 根據下面資料，設計1張SVG專業知識圖表全景圖...<br>2. 主題為【XXX】...<br>3. 目標觀眾是...<br>4. 資訊結構...<br>5. 視覺層次...<br>6. 配色設計...<br>7. 圖示風格...<br>8. 構圖與排版...<br>9. 風格要求...</p></div></div></div>
+                </div>
+                 <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例8：語音摘要</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4"><p>NotebookLM語音摘要是將使用者上傳的文件或資料，透過AI自動生成語音，類似Podcast對話形式的語音摘要，讓使用者能以聆聽的方式快速掌握內容重點。惟可能會出現內容不準確或音訊不流暢的情形。</p><div class="prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong>點選來源檔案，在對話框按「生成」圖示，即有兩位主持人深入探索對話之語音，可下載語音檔。</p></div></div></div>
+                </div>
+                 <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例9：心智圖</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4"><p>心智圖功能是透過視覺化的方式，將上傳的資料自動整理成結構清晰的大綱，並以線條連結各主題節點，幫助用戶快速掌握冗長文件的整體架構與關鍵主題。</p><p class="mt-2"><strong>markmap的心智圖功能：</strong></p><div class="prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong><br>1. 請將本文件全文層級關係及所有節點文字務必完整敘述，不可優化精簡，轉換成Markdown格式，主標題使用深藍色並加粗，副標題及分支標題皆使用深藍色並加粗，並將結果放在codeblock中輸出。<br>2. 將生成之程式碼複製，貼上心智圖markmap應用程式，即可自動繪製心智圖。</p></div><p class="mt-4"><strong>NotebookLM的心智圖功能：</strong></p><div class="prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong>點選來源檔案，在對話框按「心智圖」圖示，在記事框點選生成之心智圖檔案，可下載圖檔。</p></div></div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Proofread Section -->
+        <section id="proofread" class="content-section">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="main-title font-bold text-blue-800 border-b-2 border-blue-200 pb-2 mb-4">AI文稿校對</h2>
+                <p class="mb-4"><strong>目的：</strong>共同檢視多個版本的文件內容，進行引用來源、資料統計、錯別字、標點符號、語法、措辭及格式等項目的差異分析與校對，特別是在審查修訂版文件時，能有效掌握所有變更細節，提升審核工作的效率與準確性。</p>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例1：一般性校對</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4 prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong><br>1. 專業校對服務...<br>2. 修改建議表格化整理...<br>3. 多文件內容比對分析...<br>4. 獨特觀點與矛盾點檢視...<br>5. 綜合建議與總結...</p></div></div>
+                </div>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例2：修正綜合規劃報告</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4 prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong><br>1. 你是一位資深的捷運工程交通規劃領域的專業文稿校對師...<br>2. 具體事項如下：差異分析校對、文字基礎校對、專業內容驗證、變更項目說明、格式規範統整、專業表達優化。</p></div></div>
+                </div>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例3：法務部廉政署透明晶質獎</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4 prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong><br>1. 你是一位資深的政府廉政業務及公文書審查專家...<br>2. 具體事項如下：基礎文書校對、廉政內容驗證、評審標準檢核、表達效果優化。</p></div></div>
+                </div>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例4：去識別化</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4"><p>去識別化包括遮罩或替換機敏資料，如姓名、電話號碼、電子郵件、身份證號碼、出生年月日、單位名稱、部門名稱、金額、關鍵字（如捷運）等資訊，並以代碼替代、移除或修訂可識別個人身份的資料，使資料無法用來辨識個人身份，進而不受個人資料保護法規的限制。</p><div class="prompt-block"><button class="copy-btn" title="複製提示詞">複製</button><p><strong>提示詞：</strong>製作一個MS Word VBA程式碼，將幫助遮罩或替換敏感資料，符合個人資料保護法的去識別化要求，能有效移除可識別個人身份的資訊，讓資料無法用來辨識特定個人。</p></div></div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- App Section -->
+        <section id="app" class="content-section">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="main-title font-bold text-blue-800 border-b-2 border-blue-200 pb-2 mb-4">工程查核APP</h2>
+                 <p class="mb-4">上傳工作場所照片至ChatGPT後，系統自動整理工程查核缺失的改善對策及原因分析。針對橋梁檢測分析部份，系統計算橋況評估指標，協助掌握結構安全與維護需求。工地安衛稽查缺失照片自動評估職災類型與風險等級，提出所需防護設施建議，並推薦國內外科技減災技術案例。</p>
+                <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例1：工地施工查核</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4"><p>捷運工程施工查核是由政府成立專門查核小組，對捷運工程施工品質、進度及相關管理制度進行的查核機制，確保工程品質與安全符合標準，並透過查核紀錄與後續追蹤促使工程持續改進。</p><ul class="list-disc list-inside mt-2 space-y-2 pl-4"><li><strong>工程查核GPT：</strong>透過上傳現場照片，整理「工程查核缺失改善對策表」之缺失原因分析、矯正措施、缺失改善步驟及製作「工程施工查核改善對策及結果表」。</li><li><strong>作業中巡視：</strong>上傳作業中巡視之照片，自動分析「巡視結果」與「處理建議」。</li><li><strong>橋梁檢測GPT：</strong>上傳橋梁檢查照片，根據規範內容提供分析報告，包括檢測構件、損傷狀況描述、D.E.R.U分析評等及評估建議，可上傳更多圖片進行檢測分析及橋況評估指標計算（CI、PI、FI、OPI）。可要求協助製作「DERU檢測紀錄表」及「橋梁狀況評估報告草稿」。</li></ul></div></div>
+                </div>
+                 <div class="collapsible-container border-b border-gray-200 py-4">
+                     <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">範例2：工地安全管理</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                    <div class="collapsible-content"><div class="pt-4"><p>捷運工程安衛環保業務稽查作業係依據EMA2-50安全衛生及環境保護管理作業規定，對施工標實施工地平時安衛環保稽查作業，發現缺失時，將稽查結果函工程處督導追蹤與列管。</p><ul class="list-disc list-inside mt-2 space-y-2 pl-4"><li><strong>營造安全促進會：</strong>上傳工作場所照片，自動評估最可能發生的職災類型與風險描述，依法規要求需設置之防護設施以及進行「風險等級評估」，並推薦國、內外科技減災技術案例。</li><li><strong>每日安全循環：</strong>只需要上傳照片，自動產生「安全衛生巡視紀錄表」，包括可能的職災風險、應遵守的法規事項、可參考的減災科技與技巧。</li><li><strong>立即危險之虞不定期抽查：</strong>依上傳照片協助判定是否有立即發生危險之虞，若判定為有立即發生危險之虞，自動建立「○○災害檢查表格」及「不符合事項追蹤改善表」。</li></ul></div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Software Section -->
+        <section id="software" class="content-section">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="main-title font-bold text-blue-800 border-b-2 border-blue-200 pb-2 mb-4">應用程式</h2>
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr><th>大類別</th><th>子類別</th><th>工具/應用</th><th>案例/說明</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td rowspan="3">AI對話與生成</td><td>聊天機器人</td><td>NotebookLM, Claude, ChatGPT, Grok, Perplexity, Gemini, Felo, Copilot</td><td>提供對話式AI互動，回答問題或執行任務</td></tr>
+                            <tr><td>文字生成圖片</td><td>image generator, Stable Diffusion AI</td><td>根據文字描述生成圖片</td></tr>
+                            <tr><td>文字生成影片</td><td>Mootion</td><td>案例：【來源：📝臺大天氣團隊。生成：️熱帶擾動分析mootion】</td></tr>
+                            <tr><td rowspan="2">程式碼與向量圖形編輯</td><td>HTML程式碼編輯</td><td>Cursor, Notepad++</td><td>AI生成的「.html」檔案，可用編輯器修改並在瀏覽器檢視</td></tr>
+                            <tr><td>SVG向量圖形編輯</td><td>Inkscape</td><td>免費開源工具，用於編輯可縮放向量圖形（SVG）</td></tr>
+                            <tr><td rowspan="3">語音與音訊處理</td><td>語音轉文字</td><td>NotebookLM, whisper-large-v3-turbo, Video Transcription and Smart Summary</td><td>將語音轉換為文字內容</td></tr>
+                            <tr><td>分割錄音檔</td><td>Audio Cutter, Sugitora音声分割アプリ, 格式工廠</td><td>將錄音檔案分割為多段</td></tr>
+                            <tr><td>分離人聲與背景聲</td><td>Demucs Music Source Separation（v4）</td><td>下載分離後的人聲（Vocals）</td></tr>
+                            <tr><td>文字轉語音</td><td>TTSMaker</td><td>線上文字轉語音工具，可以播放或下載音訊檔案</td></tr>
+                            <tr><td rowspan="2">檔案轉換與下載</td><td>線上轉檔</td><td>Convert to MP3, AnyConv</td><td>將檔案轉換為MP3或其他格式</td></tr>
+                            <tr><td>YouTube下載影音/音效檔</td><td>cobal, vd6s</td><td>將YouTube影片下載為影音或音效檔案</td></tr>
+                            <tr><td rowspan="3">視覺化與圖表生成</td><td>心智圖</td><td>👍markmap, 心智圖生成助手, 自動製作心智圖GitMindAI, 👍AmyMind</td><td>將生成之程式碼複製，貼上心智圖markmap應用程式，即可自動繪製心智圖</td></tr>
+                            <tr><td>長條圖/圓餅圖/折線圖</td><td>圖表產生器</td><td>將數據轉換為長條圖、圓餅圖和折線圖</td></tr>
+                            <tr><td>簡報插圖</td><td>👍Napkin AI</td><td>Napkin AI將文字內容轉化為圖表類型，DOCX、PDF、PPTX檔案匯入，圖檔匯出成PNG、PDF、PPT格式</td></tr>
+                            <tr><td rowspan="3">圖片處理與編輯</td><td>移除圖片背景</td><td>Finegrain Object Cutter, RMBG-2.0 for background removal</td><td>移除圖片背景以獲得透明效果</td></tr>
+                            <tr><td>增強圖片解析度</td><td>Image Upscaler & Restoring, Image Upscaler</td><td>使畫質照片增強解析度</td></tr>
+                            <tr><td>臉部修復演算法</td><td>CodeFormer</td><td>👍專門用來修復人臉的強大演算法</td></tr>
+                            <tr><td rowspan="2">圖片換風格</td><td>圖片魔法師</td><td rowspan="2">將圖片轉換為不同風格（如卡通）</td></tr>
+                            <tr><td>大頭照轉換為卡通版本</td></tr>
+                            <tr><td rowspan="2">描述圖片生成文字</td><td>Art Style Explorer</td><td rowspan="2">根據圖片生成文字描述</td></tr>
+                            <tr><td>Art Engineer</td></tr>
+                            <tr><td rowspan="2">文字辨識與撰寫</td><td>光學文字辨識（OCR）</td><td>OCR:PDF-andimage-reader, Python</td><td>👍透過光學文字辨識技術，把圖片或掃描文件的文字擷取出來</td></tr>
+                            <tr><td>公文撰寫助手</td><td>公文助手（台灣版本）</td><td>適用於台灣的公文格式撰寫助手</td></tr>
+                            <tr><td rowspan="3">文化與專業分析</td><td>咖啡文化</td><td>咖啡小助手, 咖啡文化, 咖啡度</td><td>上傳咖啡豆照片，分析外觀、均勻度、瑕疵、烘焙程度及風味傾向</td></tr>
+                            <tr><td>品酒文化</td><td>日本酒ペアリングパル, 調酒小精靈, 紅酒情調小助手</td><td>根據圖片判斷酒類品牌、名稱、製造商、口味、飲用方式及食物搭配</td></tr>
+                            <tr><td>品茶文化</td><td>茶學大腦, 綠茶GPT, 茶葉博士, 問茶◎問茶</td><td>上傳茶葉照片，辨認品種、外觀品質、工藝特徵、病蟲害及沖泡建議</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Experience Section -->
+        <section id="experience" class="content-section">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="main-title font-bold text-blue-800 border-b-2 border-blue-200 pb-2 mb-4">實務經驗分享</h2>
+                <div class="space-y-6">
+                    <div class="collapsible-container border-b border-gray-200 py-4">
+                        <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">提示詞 (Prompt) 設計</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                        <div class="collapsible-content"><div class="pt-4"><ul class="list-disc list-inside mt-2 space-y-2">
+                           <li>提示詞是在與AI互動中能有效引導AI生成所需內容，經過設計和優化的提示詞更能達到預期結果。嘗試以不同的想法和角度與AI互動，或許能激發無限的可能性。因此，學會編寫提示詞是一項至關重要的技能。</li>
+                           <li>為避免使用大陸用語，提示詞前面可加註：「請使用繁體中文，以台灣學術界常用的專業術語和表達方式回答，並符合台灣的語言規範」。例如：信息vs資訊、軟件vs軟體、芯片vs晶片、短信vs簡訊、回車vsEnter鍵等詞彙。</li>
+                           <li>提示詞設計方法：清楚說明你想要的結果（如：重點摘要、生成表格），指定回答的風格（如：正式、口語），要求補充細節（如：詳細敘述、結構化分析）。若不知如何向AI提問，可先列出關鍵詞，再請AI幫你整理成流暢的提示詞。</li>
+                        </ul></div></div>
+                    </div>
+                     <div class="collapsible-container border-b border-gray-200 py-4">
+                        <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">會議錄音與逐字稿製作</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                        <div class="collapsible-content"><div class="pt-4"><ul class="list-disc list-inside mt-2 space-y-2">
+                            <li>使用數位錄音筆可顯著提升會議逐字稿製作效率。錄音檔可透過LINE、雲端硬碟或捷運局NAS等平台上傳，使用者需熟悉操作流程以利後續處理。</li>
+                            <li>戶外錄音檔案務必先進行降噪處理，以確保AI準確辨識語音內容。</li>
+                            <li>會議錄音過程中若有口誤（如將「CQ860」誤說為「CQ870」），AI會如實紀錄，無法自動修正，需承辦人員最終校對修正以確保準確性。</li>
+                            <li><strong>有會議資料前提下：</strong>若不熟悉建立關鍵字、近詞語、詞庫、巨集程式等以上流程者，至少應完成「AI輔助會議紀錄步驟」→「潤飾逐字稿」此步驟，依提示詞範例，合併會議資料與原始逐字稿由AI自動修正。</li>
+                            <li>會議資料與校正後逐字稿合併上傳，透過AI自動比對分析，生成的報告較僅依逐字稿更為完整。原因是會議過程中並非對所有議題資料逐字朗讀，若結合會議資料能有效提升報告的完整性。</li>
+                            <li><strong>沒有會議資料狀況下：</strong>當長官臨時指示製作會議紀錄且缺乏會議資料時，平時所建立的專屬關鍵字資料庫重要性便得以充分展現。</li>
+                        </ul></div></div>
+                    </div>
+                    <div class="collapsible-container border-b border-gray-200 py-4">
+                        <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">AI輔助工具與自動化</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                        <div class="collapsible-content"><div class="pt-4"><ul class="list-disc list-inside mt-2 space-y-2">
+                            <li><strong>自動化程式：</strong>可利用ChatGPT輔助撰寫，只要用簡單文字描述需求，AI（如Claude）能幫助寫巨集程式碼，實現Word、Excel、PowerPoint間一鍵作業。</li>
+                            <li><strong>公文優化：</strong>可請AI潤飾公文內容，使語氣更正式、條理清楚，避免口語化，符合公文格式要求。</li>
+                            <li><strong>推薦工具：</strong>Google NotebookLM特別適合處理契約書、計劃書、法規、規範、條款等海量文字資料，能針對指定內容產出結論，支援中文語音摘要、共同協作及即時同步編輯。</li>
+                            <li>NotebookLM僅依據用戶上傳資料回答，並標註引用段落，有效降低AI幻覺錯誤風險，適合海量文字資料分析與整理，並具錄音檔轉文字、YouTube影音轉文字、語音摘要Podcast及心智圖繪製功能。</li>
+                            <li><strong>語音翻譯：</strong>ChatGPT、Gemini及Grok具備語音對話即時互動功能，出國旅遊時可當翻譯機使用。</li>
+                        </ul></div></div>
+                    </div>
+                    <div class="collapsible-container border-b border-gray-200 py-4">
+                        <button class="collapsible-trigger w-full text-left flex justify-between items-center"><h3 class="subtitle font-semibold text-teal-700">AI使用限制與注意事項</h3><span class="plus-minus-icon text-2xl font-light text-teal-700">+</span></button>
+                        <div class="collapsible-content"><div class="pt-4"><ul class="list-disc list-inside mt-2 space-y-2">
+                            <li>免費版AI工具普遍有使用次數、頻率及輸入文字長度限制，解決方式包括申請多個Google帳號切換使用或交替採用多款AI工具。</li>
+                            <li>AI錯誤率仍偏高，僅能作為輔助參考工具，承辦人員需謹慎審核與驗證。</li>
+                            <li>同一提示詞在不同時間點詢問，回應內容可能不同，不同AI工具生成結果也存在差異。</li>
+                        </ul></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conclusion Section -->
+        <section id="conclusion" class="content-section">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="main-title font-bold text-blue-800 border-b-2 border-blue-200 pb-2 mb-4">結語</h2>
+                <ul class="list-disc list-inside space-y-3">
+                    <li>本次教育訓練透過實務操作與案例分析，探討AI技術在公務文書處理上應用的可行性。AI工具簡化了語音轉文字、會議紀錄詞語校正，並透過Excel、Word巨集功能自動化處理重複性作業。精確的提示詞設計是影響AI輸出品質的關鍵因素，而結合SEO原理進行文件結構優化，則能顯著改善文件的閱讀效果。這些技能減輕工作負擔，有助於建立標準化的公務處理流程。建議同仁將所學技能實際運用於日常業務中，並掌握AI技術的最新發展趨勢。</li>
+                    <li>曾幾何時，我們從按鍵手機走向智慧型手機，那是時代的轉變；今天，AI正如同當年的智慧型手機，悄悄改變世界。也許我們對新科技仍存有疑慮或陌生感，但未來AI的普及化已是不可逆的趨勢，讓我們共同學習並應用AI新技術。</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Appendix Section -->
+        <section id="appendix" class="content-section">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="main-title font-bold text-blue-800 border-b-2 border-blue-200 pb-2 mb-4">附錄：AI輔助公務處理流程優化案例關鍵字彙整表</h2>
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead><tr><th>序號</th><th>關鍵字</th><th>用途說明</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>AI</td><td>人工智慧（Artificial Intelligence，簡稱AI）指的是讓電腦或機器模擬人類智慧行為的技術，包括學習、推理、理解語言、辨識圖像、決策等能力</td></tr>
+                            <tr><td>2</td><td>Generative AI</td><td>生成式AI能根據輸入，自動產生各種內容的人工智慧技術</td></tr>
+                            <tr><td>3</td><td>Prompt</td><td>提示詞是與AI互動時輸入的指令，用於引導AI生成所需內容</td></tr>
+                            <tr><td>4</td><td>Markdown</td><td>輕量級標記語言，用於快速格式化文件</td></tr>
+                            <tr><td>5</td><td>VBA</td><td>Visual Basic for Applications，用於自動化Office應用程式操作的程式語言，主要用於自動化重複性工作</td></tr>
+                            <tr><td>6</td><td>SEO</td><td>Search Engine Optimization，搜尋引擎最佳化，提升文件能見度</td></tr>
+                            <tr><td>7</td><td>SVG</td><td>Scalable Vector Graphics，可縮放向量圖形，用於製作專業圖表</td></tr>
+                            <tr><td>8</td><td>Mind Map</td><td>心智圖是以視覺化方式呈現資料結構和關聯性的圖形工具</td></tr>
+                            <tr><td>9</td><td>OCR</td><td>Optical Character Recognition，光學文字辨識技術</td></tr>
+                            <tr><td>10</td><td>SWOT</td><td>優勢Strengths、劣勢Weaknesses、機會Opportunities、威脅Threats，是一種結合內部優劣勢與外部機會威脅的分析工具，幫助組織全面評估現況並制定有效策略</td></tr>
+                            <tr><td>11</td><td>PDCA</td><td>計畫Plan、執行Do、檢查Check、行動Act，是一種持續改進的管理循環工具，應用於品質管理與專案改進</td></tr>
+                            <tr><td>12</td><td>KPI</td><td>Key Performance Indicators，關鍵績效指標是企業用來衡量和管理績效的量化指標</td></tr>
+                            <tr><td>13</td><td>FAB</td><td>功能Features、優勢Advantages、效益Benefits分析法，強調價值，應用於產品簡報、方案推廣</td></tr>
+                            <tr><td>14</td><td>Timeline</td><td>按時間順序整理事件發展脈絡的分析方法</td></tr>
+                            <tr><td>15</td><td>Podcast</td><td>是一種數位音頻節目形式，結合了傳統廣播與數位技術。本簡報指的是以對話形式的語音摘要</td></tr>
+                            <tr><td>16</td><td>Information Visualization</td><td>資訊視覺化是將數據和資料轉換為圖表、圖形等視覺呈現方式</td></tr>
+                            <tr><td>17</td><td>Web Visualization</td><td>網頁可視化是將資料以互動式網頁形式呈現</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Back to Top Button -->
+    <button id="backToTopBtn" title="回到頂端">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const navButtons = document.querySelectorAll('.nav-button');
+        const contentSections = document.querySelectorAll('.content-section');
+        const backToTopBtn = document.getElementById('backToTopBtn');
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const searchResultsList = document.getElementById('searchResults');
+        const searchResultsContainer = document.getElementById('searchResultsContainer');
+        const copyButtons = document.querySelectorAll('.copy-btn');
+
+        function setupCollapsibles(context) {
+            const collapsibles = context.querySelectorAll('.collapsible-trigger');
+            collapsibles.forEach(collapsible => {
+                // Avoid re-attaching event listeners
+                if (collapsible.dataset.listenerAttached) return;
+                
+                collapsible.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    this.classList.toggle('active');
+                    const content = this.nextElementSibling;
+                    
+                    if (content.style.maxHeight) {
+                        // --- 正在收合 ---
+                        content.style.maxHeight = null;
+                        content.style.paddingTop = null;
+                        content.style.paddingBottom = null;
+                    } else {
+                        // --- 正在展開 ---
+                        content.style.paddingTop = "1rem";
+                        content.style.paddingBottom = "1rem";
+                        content.style.maxHeight = '10000px'; // Set a large enough fixed value
+                    }
+                });
+                 collapsible.dataset.listenerAttached = 'true';
+            });
+        }
+        
+        // --- LocalStorage for Read Status ---
+        let readSections = JSON.parse(localStorage.getItem('readSections_ai_app_full')) || [];
+
+        function updateReadButtons() {
+            readSections.forEach(sectionId => {
+                const btn = document.querySelector(`.nav-button[data-target="${sectionId}"]`);
+                if (btn) btn.classList.add('read');
+            });
+        }
+        
+        function markAsRead(sectionId) {
+            if (!readSections.includes(sectionId)) {
+                readSections.push(sectionId);
+                localStorage.setItem('readSections_ai_app_full', JSON.stringify(readSections));
+                const btn = document.querySelector(`.nav-button[data-target="${sectionId}"]`);
+                if (btn) btn.classList.add('read');
+            }
+        }
+
+        // --- Navigation Logic ---
+        function showSection(targetId, andScrollTo) {
+            contentSections.forEach(section => section.classList.remove('active'));
+            navButtons.forEach(button => button.classList.remove('active'));
+
+            const targetSection = document.getElementById(targetId);
+            const targetButton = document.querySelector(`.nav-button[data-target="${targetId}"]`);
+
+            if (targetSection && targetButton) {
+                targetSection.classList.add('active');
+                targetButton.classList.add('active');
+                markAsRead(targetId);
+                
+                if (!andScrollTo) {
+                    const headerHeight = document.querySelector('header').offsetHeight;
+                    const navHeight = document.querySelector('nav').offsetHeight;
+                    window.scrollTo({ top: headerHeight + navHeight - 140, behavior: 'smooth' });
+                }
+            }
+        }
+
+        navButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetId = button.getAttribute('data-target');
+                showSection(targetId);
+            });
+        });
+
+        // --- Back to Top Button Logic ---
+        window.onscroll = function () {
+            if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+                backToTopBtn.style.display = "flex";
+                 backToTopBtn.style.alignItems = "center";
+                backToTopBtn.style.justifyContent = "center";
+                backToTopBtn.style.opacity = "1";
+            } else {
+                 backToTopBtn.style.opacity = "0";
+                 setTimeout(() => {  backToTopBtn.style.display = "none"; }, 300);
+            }
+        };
+
+        backToTopBtn.addEventListener('click', () => window.scrollTo({top: 0, behavior: 'smooth'}) );
+        
+        // --- Search Logic ---
+        let highlightMark;
+        try {
+            if (CSS.highlights) {
+                highlightMark = new Highlight();
+                CSS.highlights.set("search-results", highlightMark);
+            }
+        } catch(e) {
+            console.error("CSS Custom Highlights not supported.", e);
+        }
+
+        function performSearch() {
+            const query = searchInput.value.trim();
+            clearHighlights();
+            searchResultsList.innerHTML = '';
+            
+            if (query.length < 1) {
+                searchResultsList.classList.add('hidden');
+                return;
+            }
+            
+            const results = [];
+            const queryLower = query.toLowerCase();
+            contentSections.forEach(section => {
+                 const treeWalker = document.createTreeWalker(section, NodeFilter.SHOW_TEXT, null, false);
+                 let currentNode;
+                 while(currentNode = treeWalker.nextNode()) {
+                     if (currentNode.textContent.trim() !== '') {
+                        const textLower = currentNode.textContent.toLowerCase();
+                        let matchIndex = textLower.indexOf(queryLower);
+                        if (matchIndex > -1) {
+                            results.push({
+                                text: currentNode.textContent,
+                                node: currentNode,
+                                index: matchIndex
+                            });
+                        }
+                     }
+                 }
+            });
+
+            if (results.length > 0) {
+                searchResultsList.classList.remove('hidden');
+                results.forEach(result => {
+                    // Highlight logic
+                    if (highlightMark) {
+                        const range = new Range();
+                        range.setStart(result.node, result.index);
+                        range.setEnd(result.node, result.index + query.length);
+                        highlightMark.add(range);
+                    } else {
+                        // Fallback will be handled via result rendering
+                    }
+                    
+                    // Create list item
+                    let contextSnippet = result.text.substring(Math.max(0, result.index - 25), result.index + query.length + 25);
+                    const li = document.createElement('li');
+                    li.className = 'p-3 border-b hover:bg-gray-100 text-sm';
+                    const regex = new RegExp(query, 'gi');
+                    li.innerHTML = `...${contextSnippet.replace(regex, `<mark class="highlight bg-yellow-300 p-0 m-0 rounded-sm">$&</mark>`)}...`;
+
+                    li.onclick = () => {
+                        let parentSection = result.node.parentElement.closest('.content-section');
+                        if (parentSection) {
+                            showSection(parentSection.id, true);
+                        }
+                        
+                        setTimeout(() => {
+                            const elementToScroll = result.node.parentElement;
+                            elementToScroll.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                             // Open parent collapsibles
+                            let current = elementToScroll.parentElement;
+                            while(current && !current.classList.contains('content-section')){
+                                if(current.classList.contains('collapsible-content')){
+                                    const trigger = current.previousElementSibling;
+                                    if(trigger && trigger.classList.contains('collapsible-trigger') && !trigger.classList.contains('active')){
+                                        trigger.click();
+                                    }
+                                }
+                                current = current.parentElement;
+                            }
+                        }, 100);
+                        searchResultsList.classList.add('hidden');
+                    };
+                    searchResultsList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.className = 'p-2';
+                li.textContent = '沒有找到結果';
+                searchResultsList.appendChild(li);
+                searchResultsList.classList.remove('hidden');
+            }
+        }
+
+        function clearHighlights() {
+            if (highlightMark) {
+                highlightMark.clear();
+            }
+            document.querySelectorAll('mark.highlight').forEach(mark => {
+                const parent = mark.parentNode;
+                parent.replaceChild(document.createTextNode(mark.textContent), mark);
+                parent.normalize();
+            });
+        }
+        
+        searchButton.addEventListener('click', performSearch);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+        
+        document.addEventListener('click', (event) => {
+            if (!searchResultsContainer.contains(event.target) && event.target !== searchInput) {
+                searchResultsList.classList.add('hidden');
+            }
+        });
+
+        // --- Copy to Clipboard Logic ---
+        copyButtons.forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const promptBlock = this.closest('.prompt-block');
+                const textToCopy = promptBlock.innerText.replace(/複製$/, "").trim();
+                
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(textToCopy).then(() => showCopySuccess(button))
+                    .catch(err => fallbackCopyText(textToCopy, button));
+                } else {
+                    fallbackCopyText(textToCopy, button);
+                }
+            });
+        });
+        
+        function fallbackCopyText(text, button) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed"; textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.focus(); textArea.select();
+            try {
+                if(document.execCommand('copy')) showCopySuccess(button);
+            } catch (err) {
+                alert('複製失敗!');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showCopySuccess(button) {
+            const originalText = button.innerHTML;
+            button.innerHTML = '已複製!';
+            button.style.backgroundColor = '#22c55e';
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.style.backgroundColor = '#38bdf8';
+            }, 2000);
+        }
+
+        // --- Initial State ---
+        updateReadButtons();
+        setupCollapsibles(document.body);
+        showSection('intro');
+    });
+    </script>
+</body>
+</html>
