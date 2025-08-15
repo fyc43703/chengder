@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>臺北市政府捷運工程局 品質管理系統程序書</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* 新的色彩配置 */
+            --matcha-green: #A3B899; /* 主要點綴色 */
+            --sakura-pink: #F5D1D4;   /* 懸停/次要點綴色 */
+            --grayish-blue: #B0C4DE;  /* 導航/中性色 */
+
+            --primary-color: var(--matcha-green);
+            --secondary-color: var(--sakura-pink);
+            --neutral-accent-color: var(--grayish-blue);
+
+            --background-gradient: linear-gradient(135deg, #f5f7fa 0%, #eef2f5 100%);
+            --text-color: #333;
+            --nav-text-color: #ffffff;
+            --header-title-color: #002b5c; /* 海軍藍 - 保持專業感 */
+            --border-color: #ddd;
+            --body-font-size: 1rem; /* 放大後的字體 */
+            --main-title-font-size: calc(var(--body-font-size) * 1.5);
+            --sub-title-font-size: calc(var(--main-title-font-size) * 0.6);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            font-size: var(--body-font-size);
+            line-height: 1.8;
+            color: var(--text-color);
+            background: var(--background-gradient);
+            padding-top: 150px;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+            padding: 10px 20px;
+            text-align: center;
+        }
+
+        .main-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--header-title-color);
+            margin-bottom: 10px;
+        }
+
+        .creator {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 0.75rem;
+            color: #666;
+        }
+        
+        nav {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        nav a {
+            padding: 8px 20px;
+            text-decoration: none;
+            color: var(--nav-text-color);
+            background-color: var(--neutral-accent-color); /* 淺灰藍 */
+            border-radius: 20px;
+            font-size: calc(var(--body-font-size) * 0.95);
+            font-weight: 500;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        nav a:hover {
+            background-color: var(--secondary-color); /* 櫻花粉 */
+            transform: translateY(-2px);
+        }
+
+        nav a.active {
+            background-color: var(--primary-color); /* 抹茶綠 */
+        }
+        
+        nav a.visited {
+            opacity: 0.9;
+        }
+
+        main {
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .content-block {
+            display: none;
+            animation: fadeIn 0.5s ease;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+            margin-bottom: 20px;
+        }
+
+        .content-block.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .content-block h2 {
+            font-size: var(--main-title-font-size);
+            font-weight: 700;
+            color: var(--header-title-color);
+            margin-top: 20px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--primary-color); /* 抹茶綠 */
+        }
+        .content-block h2:first-child {
+            margin-top: 0;
+        }
+
+        /* 步驟編號 */
+        ol {
+            padding-left: 45px;
+            counter-reset: step-counter;
+        }
+        ol > li {
+            position: relative;
+            margin-bottom: 12px;
+            list-style: none;
+        }
+        ol > li::before {
+            counter-increment: step-counter;
+            content: counter(step-counter);
+            position: absolute;
+            left: -45px;
+            top: 0;
+            width: 30px;
+            height: 30px;
+            background-color: var(--primary-color); /* 抹茶綠 */
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9em;
+        }
+
+        ul {
+            list-style-type: disc;
+            padding-left: 25px;
+        }
+        
+        ul ul {
+            list-style-type: circle;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+        
+        p {
+            margin-bottom: 1em;
+        }
+
+        a {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #fdfdfd;
+        }
+
+        #back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            z-index: 999;
+        }
+        #back-to-top.show {
+            display: block;
+            opacity: 1;
+        }
+
+        #progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 5px;
+            background-color: var(--primary-color);
+            width: 0%;
+            z-index: 1001;
+            transition: width 0.1s linear;
+        }
+
+        .search-container {
+            position: relative;
+            margin: 10px auto;
+            max-width: 400px;
+        }
+        #search-input {
+            width: 100%;
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+        .search-results-container {
+            position: absolute;
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .search-result-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .search-result-item:hover {
+            background-color: #f0f0f0;
+        }
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+        .search-result-item small {
+            color: #666;
+            display: block;
+            margin-top: 4px;
+        }
+        .highlight {
+            background-color: yellow;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding-top: 220px;
+            }
+            .main-title {
+                font-size: 1.2rem;
+            }
+            nav {
+                flex-direction: row;
+            }
+            nav a {
+                font-size: 0.9rem;
+                padding: 6px 12px;
+            }
+            .creator {
+                position: static;
+                margin-top: 5px;
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="progress-bar"></div>
+
+    <header>
+        <div class="creator">製作者：陳政德</div>
+        <h1 class="main-title">臺北市政府捷運工程局 品質管理系統程序書</h1>
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="全站搜尋...">
+            <div class="search-results-container" id="search-results"></div>
+        </div>
+        <nav>
+            <a href="#" data-target="content-1" class="nav-link">目的</a>
+            <a href="#" data-target="content-2" class="nav-link">範圍</a>
+            <a href="#" data-target="content-3" class="nav-link">法令依據</a>
+            <a href="#" data-target="content-4" class="nav-link">名詞定義</a>
+            <a href="#" data-target="content-5" class="nav-link">作業流程</a>
+            <a href="#" data-target="content-6" class="nav-link">作業說明</a>
+            <a href="#" data-target="content-7" class="nav-link">控制重點</a>
+            <a href="#" data-target="content-8" class="nav-link">使用書表</a>
+        </nav>
+    </header>
+
+    <main id="content-container">
+        
+        <div id="content-1" class="content-block">
+            <table>
+                <tr><th>編號</th><td>QSOP-HR001</td><th>制定單位</th><td>工務管理處</td><th>核定日期</th><td>113年12月18日</td><th>版次</th><td>05</td></tr>
+                <tr><th>項目名稱</th><td colspan="7">全局工地安全衛生競賽作業程序</td></tr>
+            </table>
+            <h2>1、目的</h2>
+            <div>
+                <p>促使工程處與所屬監造工務所之工程司及承攬施工廠商重視安全衛生作業,以樹立學習典範,提升整體職業安全衛生水準,並激發各級工程監督及執行工程司之榮譽感,減少職業災害,保障職場安全與健康,並達成捷運工地「勞工零傷亡暨零重大意外事故」之最高目標。</p>
+            </div>
+        </div>
+
+        <div id="content-2" class="content-block">
+            <h2>2、範圍</h2>
+            <div>
+                <p>本局及所屬各工程處、監造工務所與施工廠商及所有與捷運工程有關之人員。</p>
+            </div>
+        </div>
+
+        <div id="content-3" class="content-block">
+            <h2>3、法令依據及參考資料</h2>
+            <div>
+                <ol>
+                    <li>職業安全衛生相關法規</li>
+                    <li>本局契約(臺北市政府所屬各機關公共工程施工安全衛生須知、捷運工程局所屬各機關公共工程施工安全衛生須知、臺北市政府捷運工程局及所屬各工程處施工安全衛生須知補充說明、臺北市政府捷運工程局重大意外事故參考表)</li>
+                    <li>本局工務管理使用手冊(EMA2-50:安全衛生及環境保護、EMA2-51:緊急及意外事故處理作業)</li>
+                </ol>
+            </div>
+        </div>
+
+        <div id="content-4" class="content-block">
+            <h2>4、名詞定義</h2>
+            <div>
+                <p><strong>4.1 安全衛生競賽:</strong><br>
+                係針對本局各級監造單位及施工廠商執行工程契約中安全衛生規定之績效,評選出安全衛生管理作業優勝單位予以公開表揚之活動。競賽內容分工地平時績效、專案稽查績效、工地現場評審與意外事故扣分。</p>
+                <p><strong>4.2 工地平時績效:</strong><br>
+                依工務管理處平日對各施工標執行安全衛生稽查結果,各施工標每月之缺失率換算為平時績效分數。</p>
+                <p><strong>4.3 專案稽查績效:</strong><br>
+                依工務管理處定期對各工地安全衛生、環境維護及災害防救所進行之專案稽查及評比作業,將評比等級換算為績效分數,並列入競賽成績計算。</p>
+                <p><strong>4.4 工地現場評審:</strong><br>
+                依各競賽施工廠商工地現場之安全衛生設施及管理績效,由評審委員至現場以評分表考核評分併入本競賽成績之一。</p>
+                <p><strong>4.5 意外事故、部分停工、未主動通報、未參與競賽施工標事故於本次競賽成績總分扣分(分/件數),其原則如下(扣5分為上限,超過5分以5分計):</strong></p>
+                <ul>
+                    <li>重大或人員死亡事故(註4.5.1):工程處扣1分,監造工務所扣1.5分,施工標扣3分。</li>
+                    <li>人員重傷事故(註4.5.2):工程處扣0.5分,監造工務所扣1分,施工標扣1.5分。</li>
+                    <li>工地遭外單位部分停工者:施工標(註4.5.4)。</li>
+                    <li>未主動通報且經本局長官指示才補通報者事故:施工標扣0.5分。</li>
+                    <li>符合4.5.3之條件者:工程處扣0.5分。</li>
+                    <li>工地遭外單位部分停工未主動告知者:施工標扣1分。</li>
+                </ul>
+                <p><strong>4.5.1 重大意外事故:</strong> 指發生本局重大意外事故參考表中,因本局工程施工廠商施工造成之事故,且為工程處處長所判定者。</p>
+                <p><strong>4.5.2 重傷害:</strong> 指人員受傷害,致永久全失能或暫時全失能一日以上者。惟醫生之診斷證明書說明住院係為必要之檢查或觀察,而非開刀或治療所需,並可隨時上班繼續其正常工作者,不在此限,惟不得休假離開工作場所超過3日以上。</p>
+                <ul><li>死亡、重傷害:係為捷運工地安全衛生或交維設施不足而造成。</li></ul>
+                <p><strong>4.5.3 本年度未參與安全衛生競賽之施工標,若工區於全年競賽起迄日期間發生人員死亡、重大意外事故者(含工程處所轄之代辦工程施工標)。</strong></p>
+                <p><strong>4.5.4 若因發生職災而致工地遭勞檢單位部分停工者,不予扣分,其他部分停工者扣總分0.5分。</strong></p>
+                <p><strong>4.6 外單位獲獎於競賽成績總分加分(分/件數),其原則如下(加5分為上限,超過5分以5分計):</strong></p>
+                <ul>
+                    <li>全國性:工程處加0.5分,監造工務所加1分,施工標加1.5分。</li>
+                    <li>地方性:工程處不加分,監造工務所加0.5分,施工標加1分。</li>
+                    <li>提高金安獎、勞動安全獎及工安獎等與安全衛生直接相關獎項之加分:全國性各組總分再加2分,地方性各組總分再加1分。</li>
+                    <li>符合4.6.7之條件者:工程處加0.25分。</li>
+                </ul>
+                <p><strong>4.6.1 如本局榮獲環評獎項時,則依地方性或全國性獎項加計總分於工程處。</strong></p>
+                <p><strong>4.6.2 競賽總成績若超過95分者,以95分計算之。</strong></p>
+                <p><strong>4.6.3 納入加分之獎項:</strong></p>
+                <ul>
+                    <li>中央性獎項:勞動部職業安全衛生署「國家職業安全衛生獎」、勞動部職業安全衛生署「優良工程金安獎」、勞動部職業安全衛生署「推行職業安全衛生優良單位(含五星獎)」、公共工程委員會「公共工程金質獎」、環境部「環境影響評估追蹤考核」。</li>
+                    <li>地方性獎項:臺北市勞動安全獎(與職業安全衛生有關相關獎項)、新北市工安獎(與職業安全衛生有關相關獎項)、臺北市公共工程卓越獎、臺北市工安科技降災平安4年計畫、臺(新)北市圍籬綠美化、臺(新)北市環保優良工地(如:空氣污染防制、自主污染防制)、臺(新)北市清淨家園獎項、臺(新)北市營建工地5S潔淨運動獎項等,將施工安全納入評分項目者。</li>
+                    <li>若施工標榮獲該獎項最高榮譽者,各組再加0.5分。若榮獲非以上獎項時,該獎項評審標準之安衛、環保及防災合計評分權重大於20%(含)以上者,納入該年度加分獎項。</li>
+                </ul>
+                <p><strong>4.6.4 不予加分之獎項:</strong> 臺(新)北市環保優良工地(如:道路認養洗掃)、市政品質精進獎、金路獎、優良隧道工程獎、市府防災查核小組評鑑、財團(社團)法人、協會、學會、工會、基金會等單位頒發之獎項。</p>
+                <p><strong>4.6.5 當區段標施工廠商榮獲公共工程金質獎、金安獎等獎項時,其所屬之機電、水環子施工標若於本競賽評審起迄日期間之現場實際施工進度達60%以上者,其督導之機電及水環監造工務所亦獲得加分。</strong></p>
+                <p><strong>4.6.6 參與競賽之施工標榮獲外單位獎項之依據,以實際領到獎座或獎牌之日期為加分依據。</strong></p>
+                <p><strong>4.6.7 本年度未參與安全衛生競賽之施工標,若該標榮獲全國性獎項者(含工程處所轄之代辦工程施工標)。若該獎項屬最高榮譽者,再加0.25。</strong></p>
+                <p><strong>4.7 競賽單位:</strong><br>
+                依捷運工程監督組織劃分之競賽分組單位,分工程處、土木監造工務所、機電監造工務所、水環監造工務所、施工廠商等五個競賽組。</p>
+                <p><strong>4.8 主辦單位:</strong><br>
+                由工務管理處為安全衛生競賽之主辦單位。</p>
+                <p><strong>4.9 評審單位:</strong><br>
+                係由召集人、評審委員所組成,統籌各競賽單位安全衛生績效評審及績優管理人員提報之任務編組。</p>
+                <p><strong>4.10 召集人:</strong><br>
+                評審會委員之一,負責評審會之指導、協調、陳核及召開會議之業務,不參與評審工作,由總工程司擔任。</p>
+                <p><strong>4.11 副召集人:</strong><br>
+                評審會委員之一,協助召集人處理評審會之相關業務,不參與評審工作,由工務管理處處長擔任或派任。</p>
+                <ul><li><strong>4.11.1 領隊:</strong> 由工務管理處副處長擔任或派任,率領評審委員執行現場評審作業。</li></ul>
+                <p><strong>4.12 評審委員:</strong><br>
+                負責各競賽施工廠商及監造工務所之現場評審,由工務管理處遴選(施工管理課、品質保證課、材料試驗課及安衛防災課等各1員)同仁進行評分,並加入觀察員,以培訓新進同仁參與評審工作。</p>
+                <p><strong>4.13 現場評審表:</strong><br>
+                係依據施工廠商於施工中應遵守之契約規定及法規條款,條列成若干項之競賽標準,作為評定各競賽施工廠商於現場評量期間之安全衛生執行績效的一種表格。</p>
+                <p><strong>4.14 月績效配分:</strong><br>
+                由工務管理處依據安衛防災課每月稽查結果之缺失率,換算為平時績效分數。</p>
+                <p><strong>4.15 月淨績效配分:</strong><br>
+                月績效配分乘以各標月進度加權基數,為各施工廠商施工標月淨績效配分。</p>
+                <p><strong>4.16 進度加權基數:</strong><br>
+                按施工進度核配加權基數,其範圍自1.0至1.15。</p>
+                <p><strong>4.17 競賽施工廠商:</strong><br>
+                係指本局暨各工程處已發包之土木、建築等捷運主體工程(以區段標為原則,並納入屬本局代辦之捷運工程),於績效評審期間,其現場施工預估進度在5%至95%間,區段標參賽資格以當年度10月31日之PM(工務暨契約執行系統)施工進度為準,並經工程處提報後,提經賽前會議主席裁示後,列入本次競賽施工廠商。</p>
+                <p><strong>4.18 績效評審期間:</strong></p>
+                <ul>
+                    <li><strong>4.18.1</strong> 係指每年各競賽施工廠商及監造工務所接受安全衛生績效評審期間之起迄日期,起迄日如下:
+                    <ul>
+                        <li>起日:前一年12月1日。</li>
+                        <li>迄日:當年11月30日。</li>
+                    </ul></li>
+                    <li><strong>4.18.2 零傷亡暨零重大意外事故:</strong>
+                    各競賽施工廠商自開工日起至本競賽當年11月30日止計算之,若發生重傷、死亡或重大意外事故者,計算方式將由該發生事故之當日起歸零,重新計算。</li>
+                </ul>
+                <p><strong>4.19 現場評審期間:</strong><br>
+                預定每年11月起,各競賽施工廠商及監造工務所接受評審委員現場評審。</p>
+                <p><strong>4.20 賽前會議:</strong><br>
+                係召集人就競賽規則、競賽程序、任務指派、評審標準、行程安排及介面討論等事宜所召開之會議,出席人員應包含評審委員及安衛防災課課長。</p>
+                <p><strong>4.21 獎勵額度:</strong></p>
+                <ul>
+                    <li><strong>4.21.1 各競賽組榮獲特優者,予以頒發獎座。</strong>
+                    <ul>
+                        <li>榮獲特優表現優良之安衛小組主辦工程司、監造工務所安衛工程司及參與工地現場評審人員,由主辦單位辦理敘獎。</li>
+                        <li>優等以上之工務所及施工標廠商,請各工程處於安衛月會中進行表揚。</li>
+                        <li>優等以上之施工標廠商,函請其總公司予以敘獎勉勵。</li>
+                        <li>待改進者,請要求其提報檢討報告,並分析說明改善與精進作為。</li>
+                    </ul></li>
+                    <li><strong>4.21.2</strong> 年度參與競賽之機電、水環監造工務所若各少於4(不含)個監造工務所者,暫緩辦理機電、水環監造工務所組之競賽。</li>
+                    <li><strong>4.21.3</strong> 如於績效評審期間發生重大事故或一級人員死亡事故之施工廠商及監造工務所,則不予評等。</li>
+                    <li><strong>4.21.4</strong> 榮獲特優之施工標廠商安衛工程師及監造工務所安衛主辦工程司頒發獎座,由主辦單位簽報局長頒發獎座。獎勵額度如下:
+                    若參賽施工標6個(含)以上者,取特優並頒發獎座1座,參賽標5個(含)以下者,該年度暫緩辦理全局工地安全衛生競賽。各組總成績區分等級為特優、優等、甲等、符合及待改進等評比,每一等級之分數範圍說明如下:
+                    <ul>
+                        <li>特優:總分90分以上。</li>
+                        <li>優等:總分85分~89分。</li>
+                        <li>甲等:總分80分~84分。</li>
+                        <li>符合:總分70分~79分。</li>
+                        <li>待改進:總分69分以下。</li>
+                    </ul></li>
+                    <li><strong>4.21.5</strong> 若於三(含)年以上未曾發生如4.18.2零傷亡暨零重大意外事故之土建施工廠商者,將獲頒「零傷亡暨零重大意外事故」獎座。
+                    <ul>
+                        <li>連續3年:獲「零傷亡暨零重大意外事故」銅牌獎獎座。</li>
+                        <li>連續4年:獲「零傷亡暨零重大意外事故」銀牌獎獎座。</li>
+                        <li>連續5年:獲「零傷亡暨零重大意外事故」金牌獎獎座。</li>
+                        <li>連續6年:獲「零傷亡暨零重大意外事故」五星獎獎座。</li>
+                        <li>連續7年:獲「零傷亡暨零重大意外事故」三等六星獎獎座。</li>
+                        <li>連續8年:獲「零傷亡暨零重大意外事故」二等六星獎獎座。</li>
+                        <li>連續9年:獲「零傷亡暨零重大意外事故」一等六星獎獎座。</li>
+                        <li>連續10年:獲「零傷亡暨零重大意外事故」特等六星獎獎座。</li>
+                        <li>榮獲特等六星獎後,至竣工前不再另行頒發獎座。</li>
+                    </ul></li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="content-5" class="content-block">
+            <h2>5、作業流程圖</h2>
+            <div>
+                <p>無</p>
+            </div>
+        </div>
+        
+        <div id="content-6" class="content-block">
+            <h2>6、作業說明</h2>
+            <div>
+                <p><strong>6.1 作業流程: 無。</strong></p>
+                <p><strong>6.2 競賽施工廠商名冊之提送:</strong></p>
+                <ul><li><strong>6.2.1</strong> 主辦單位應函請各工程處按實提報「區段標現況調查表」。</li></ul>
+                <p><strong>6.3 評審日程表之擬定:</strong><br>主辦單位應於競賽開始前,擬訂各競賽施工廠商之預定評審日程表,並以書面通知各工程處及競賽施工廠商、監造工務所。</p>
+                <p><strong>6.4 賽前會議之召開:</strong><br>主辦單位應於競賽開始前,召集各評審委員,召開賽前會議(或併於局安衛月會)。</p>
+                <p><strong>6.5 競賽現場評審:</strong></p>
+                <ul>
+                    <li><strong>6.5.1</strong> 評審委員應持審慎客觀、超然之立場,隨隊獨立完成競賽評分工作。</li>
+                    <li><strong>6.5.2</strong> 評審委員應將各競賽施工廠商及監造工務所之得分記載於「工地安全衛生作業競賽現場評審表」上,並簽名負責。
+                    <ul>
+                        <li>工地安全衛生競賽現場評審表(甲表)為施工廠商使用。</li>
+                        <li>工地安全衛生競賽現場評審表(乙表)為監造工務所使用。</li>
+                    </ul></li>
+                    <li><strong>6.5.3</strong> 現場評審成績採全部評審委員評分總分之平均分數計算之。</li>
+                    <li><strong>6.5.4</strong> 為鼓勵科技創新與安全管理,凡年度工安科技應用績效卓越的施工廠商,將優先納入工地現場評審的加分項目,以加速推廣工安科技和人工智慧設備於施工現場的廣泛運用。</li>
+                </ul>
+                <p><strong>6.6 競賽成績之計算:</strong></p>
+                <ul>
+                    <li><strong>6.6.1 施工廠商競賽成績:</strong>
+                    <ul>
+                        <li>(1)累計各子施工標平時績效分數之平均=累計每月淨績效配分。</li>
+                        <li>(2)累計各子施工標專案稽查績效之平均=專案稽查績效之平均分數。</li>
+                        <li>(3)現場評審成績=採全部評審委員評分總分之平均分數計算之。</li>
+                        <li>(4)如4.5之扣分原則規定。</li>
+                        <li>(5)如4.6之加分原則規定。</li>
+                        <li>競賽成績=(1)×40%+(2)×30%+(3)×30%-(4)+(5)。</li>
+                    </ul></li>
+                    <li><strong>6.6.2 土木監造工務所競賽成績:</strong>
+                    <ul>
+                        <li>(1)監造工務所平時績效:為工務管理處平時至監造工務所考核績效之平均分數。</li>
+                        <li>(2)專案稽查績效=專案稽查績效之平均分數。</li>
+                        <li>(3)現場評審成績=採全部評審委員評分總分之平均分數計算之。</li>
+                        <li>(4)如4.5之扣分原則規定。</li>
+                        <li>(5)如4.6之加分原則規定。</li>
+                        <li>競賽成績=(1)×40%+(2)×30%+(3)×30%-(4)+(5)。</li>
+                    </ul></li>
+                    <li><strong>6.6.3 機電及水環監造工務所競賽成績:</strong>
+                    <ul>
+                        <li>(1)監造工務所平時績效:為工務管理處平時至監造工務所考核績效之平均分數。</li>
+                        <li>(2)現場評審成績=採全部評審委員評分總分之平均分數計算之。</li>
+                        <li>(3)如4.5之扣分原則規定。</li>
+                        <li>(4)如4.6之加分原則規定。</li>
+                        <li>競賽成績=(1)×60%+(2)×40%-(3)+(4)。</li>
+                    </ul></li>
+                    <li><strong>6.6.4 工程處競賽成績:</strong>
+                    <ul>
+                        <li>(1)所轄參與競賽監造工務所成績之平均分數。</li>
+                        <li>(2)工程處平時績效:為工務管理處平時至工程處考核績效之平均分數。</li>
+                        <li>(3)如4.5之扣分原則規定。</li>
+                        <li>(4)如4.6之加分原則規定。</li>
+                        <li>競賽成績=(1)×70%+(2)×30%-(3)+(4)。</li>
+                    </ul></li>
+                    <li><strong>6.6.5</strong> 參加競賽各組分項或總成績之計算,均採用小數點第一位四捨五入後取整數。</li>
+                </ul>
+                <p><strong>6.7 競賽成績冊之核定:</strong><br>主辦單位應於競賽完成後,將各競賽施工廠商、監造工務所及工程處之成績,簽陳局長核定。</p>
+                <p><strong>6.8 頒獎:</strong></p>
+                <ul>
+                    <li><strong>6.8.1</strong> 主辦單位應將競賽優勝單位名冊及頒獎日期,發函通知各受獎單位派人員出席頒獎典禮,頒獎典禮擬於局務會議中舉辦。</li>
+                    <li><strong>6.8.2</strong> 主辦單位應將各競賽優勝單位於頒獎典禮中頒發獎座。</li>
+                </ul>
+                <p><strong>6.9 安全衛生競賽各優勝施工廠商得獲本局推薦參加各項優良安衛或環保單位之選拔。</strong></p>
+            </div>
+        </div>
+
+        <div id="content-7" class="content-block">
+            <h2>7、控制重點</h2>
+            <div>
+                <ol>
+                    <li>競賽施工廠商名冊之提送。</li>
+                    <li>評審日程表之擬定。</li>
+                    <li>賽前會議之召開。</li>
+                    <li>競賽現場評審。</li>
+                    <li>競賽成績之計算。</li>
+                    <li>競賽成績冊之核定及頒獎。</li>
+                </ol>
+            </div>
+        </div>
+
+        <div id="content-8" class="content-block">
+            <h2>8、使用書表</h2>
+            <div>
+                <ol>
+                    <li>區段標現況調查表 (FP01-HR001-03)</li>
+                    <li>區段標現場評審表(甲表) (FP02-HR001-03)</li>
+                    <li>區工程處 監造工務所現場評審表(乙表) (FP03-HR001-03)</li>
+                    <li>區段標現場評審成績統計表(甲表) (FP04-HR001-02)</li>
+                    <li>土木監造工務所現場評審成績統計表(乙表)(FP05-HR001-02)</li>
+                    <li>區段標專案稽查績效成績統計表 (FP06-HR001-02)</li>
+                    <li>區段標意外事故扣分統計表 (FP07-HR001-02)</li>
+                    <li>區段標工地遭部分停工統計表 (FP08-HR001-02)</li>
+                    <li>區段標月缺失率統計表 (FP09-HR001-02)</li>
+                    <li>區段標月績效配分計算表 (FP10-HR001-02)</li>
+                    <li>區段標月施工進度統計表 (FP11-HR001-02)</li>
+                    <li>區段標月加權基數統計表 (FP12-HR001-02)</li>
+                    <li>區段標平時績效成績統計表 (FP13-HR001-02)</li>
+                    <li>區段標競賽成績統計表 (FP14-HR001-02)</li>
+                    <li>土木監造工務所平時績效統計表 (FP15-HR001-02)</li>
+                    <li>土木監造工務所競賽成績統計表 (FP16-HR001-02)</li>
+                    <li>工程處平時績效統計表 (FP17-HR001-02)</li>
+                    <li>工程處競賽成績統計表 (FP18-HR001-02)</li>
+                    <li>成績結果總表 (FP19-HR001-02)</li>
+                    <li>各組成績排名總表 (FP20-HR001-02)</li>
+                    <li>獲外單位獎項統計表 (FP21-HR001-02)</li>
+                    <li>機電及水環監造工務所平時績效統計表 (FP22-HR001-02)</li>
+                    <li>機電及水環監造工務所現場評審成績統計表 (FP23-HR001-02)</li>
+                    <li>機電及水環監造工務所競賽成績統計表 (FP24-HR001-02)</li>
+                </ol>
+            </div>
+        </div>
+
+    </main>
+    
+    <button id="back-to-top" title="回到頂端">▲</button>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const state = {
+            searchIndex: []
+        };
+    
+        function initializeApp() {
+            convertUrlsToLinks(document.getElementById('content-container'));
+            setupNavigation();
+            buildSearchIndex();
+            setupSearch();
+            setupBackToTopButton();
+            setupProgressBar();
+    
+            const firstNavLink = document.querySelector('.nav-link');
+            if(firstNavLink) {
+                firstNavLink.click();
+            }
+        }
+    
+        function convertUrlsToLinks(container) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+            let nodesToProcess = [];
+    
+            while(walker.nextNode()) {
+                nodesToProcess.push(walker.currentNode);
+            }
+    
+            nodesToProcess.forEach(node => {
+                if (node.parentElement.tagName === 'A') return;
+                
+                const text = node.nodeValue;
+                if (urlRegex.test(text)) {
+                    const fragment = document.createDocumentFragment();
+                    let lastIndex = 0;
+                    text.replace(urlRegex, (match, url, offset) => {
+                        if (offset > lastIndex) {
+                            fragment.appendChild(document.createTextNode(text.substring(lastIndex, offset)));
+                        }
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.textContent = url;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        fragment.appendChild(a);
+                        lastIndex = offset + match.length;
+                    });
+    
+                    if (lastIndex < text.length) {
+                        fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+                    }
+                    node.parentNode.replaceChild(fragment, node);
+                }
+            });
+        }
+    
+        function setupNavigation() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const contentBlocks = document.querySelectorAll('.content-block');
+    
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('data-target');
+                    
+                    contentBlocks.forEach(block => {
+                        block.classList.remove('active');
+                    });
+                    
+                    const targetBlock = document.getElementById(targetId);
+                    if (targetBlock) {
+                        targetBlock.classList.add('active');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+    
+                    navLinks.forEach(nav => nav.classList.remove('active'));
+                    link.classList.add('active');
+                    link.classList.add('visited');
+                });
+            });
+        }
+    
+        function buildSearchIndex() {
+            const contentBlocks = document.querySelectorAll('.content-block');
+            state.searchIndex = [];
+            contentBlocks.forEach(block => {
+                const contentText = block.textContent.trim();
+                const navLink = document.querySelector(`.nav-link[data-target="${block.id}"]`);
+                const title = navLink ? navLink.textContent.trim() : '無標題';
+
+                state.searchIndex.push({
+                    id: block.id,
+                    title: title,
+                    content: contentText,
+                });
+            });
+        }
+    
+        function setupSearch() {
+            const searchInput = document.getElementById('search-input');
+            const searchResults = document.getElementById('search-results');
+    
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim().toLowerCase();
+                if (query.length < 1) {
+                    searchResults.style.display = 'none';
+                    clearAllHighlights();
+                    return;
+                }
+    
+                const results = state.searchIndex.filter(item => 
+                    item.title.toLowerCase().includes(query) || 
+                    item.content.toLowerCase().includes(query)
+                ).map(item => {
+                    // 尋找內容中的匹配片段
+                    const contentIndex = item.content.toLowerCase().indexOf(query);
+                    let snippet = item.content.substring(0, 70) + '...'; // 預設摘要
+                    if (contentIndex > -1) {
+                        const start = Math.max(0, contentIndex - 20);
+                        snippet = '...' + item.content.substring(start, contentIndex + 50) + '...';
+                    }
+                    return { ...item, snippet };
+                });
+    
+                searchResults.innerHTML = '';
+                if (results.length > 0) {
+                    results.forEach(item => {
+                        const resultItem = document.createElement('div');
+                        resultItem.className = 'search-result-item';
+                        resultItem.innerHTML = `<strong>${item.title}</strong><small>${item.snippet}</small>`;
+                        resultItem.addEventListener('click', () => {
+                            navigateToSearchResult(item.id, query);
+                            searchInput.value = '';
+                            searchResults.style.display = 'none';
+                        });
+                        searchResults.appendChild(resultItem);
+                    });
+                    searchResults.style.display = 'block';
+                } else {
+                    searchResults.style.display = 'none';
+                }
+            });
+    
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-container')) {
+                    searchResults.style.display = 'none';
+                }
+            });
+        }
+    
+        function navigateToSearchResult(blockId, query) {
+            document.querySelector(`.nav-link[data-target="${blockId}"]`).click();
+            
+            const targetBlock = document.getElementById(blockId);
+            if (!targetBlock) return;
+
+            setTimeout(() => {
+                clearAllHighlights();
+                highlightText(targetBlock, query);
+                const firstHighlight = targetBlock.querySelector('.highlight');
+                if (firstHighlight) {
+                     firstHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        }
+    
+        function clearAllHighlights() {
+            const highlighted = document.querySelectorAll('.highlight');
+            highlighted.forEach(span => {
+                const parent = span.parentNode;
+                parent.replaceChild(document.createTextNode(span.textContent), span);
+                parent.normalize();
+            });
+        }
+    
+        function highlightText(element, query) {
+            if (!element) return;
+            const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+            
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            const nodesToProcess = [];
+            while(node = walker.nextNode()) {
+                if(node.nodeValue.match(regex)) {
+                    nodesToProcess.push(node);
+                }
+            }
+    
+            nodesToProcess.forEach(node => {
+                const text = node.nodeValue;
+                const fragment = document.createDocumentFragment();
+                let lastIndex = 0;
+                text.replace(regex, (match, offset) => {
+                    if (offset > lastIndex) {
+                        fragment.appendChild(document.createTextNode(text.substring(lastIndex, offset)));
+                    }
+                    const span = document.createElement('span');
+                    span.className = 'highlight';
+                    span.textContent = match;
+                    fragment.appendChild(span);
+                    lastIndex = offset + match.length;
+                });
+                if(lastIndex < text.length) {
+                    fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+                }
+                if (node.parentNode) {
+                    node.parentNode.replaceChild(fragment, node);
+                }
+            });
+        }
+    
+        function setupBackToTopButton() {
+            const backToTopButton = document.getElementById('back-to-top');
+            window.addEventListener('scroll', () => {
+                if (window.pageYOffset > 300) {
+                    backToTopButton.classList.add('show');
+                } else {
+                    backToTopButton.classList.remove('show');
+                }
+            });
+            backToTopButton.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
+    
+        function setupProgressBar() {
+            const progressBar = document.getElementById('progress-bar');
+            window.addEventListener('scroll', () => {
+                const scrollTop = document.documentElement.scrollTop;
+                const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const scrolled = (scrollTop / scrollHeight) * 100;
+                progressBar.style.width = scrolled + '%';
+            });
+        }
+    
+        initializeApp();
+    });
+    </script>
+</body>
+</html>
