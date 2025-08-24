@@ -1,3 +1,56 @@
+好的，這是一個很好的版面設計想法，可以讓資訊架構更清晰，使用者更容易導覽。我將根據您的要求，完全保留原始資料內容，並將網頁改為「頂部主導航 + 左側次導航 + 右側內容區」的結構。
+
+以下是修改後的完整 HTML 檔案。您可以直接複製全部程式碼，並儲存為一個 .html 檔案來查看效果。
+
+主要變更說明：
+
+HTML 結構調整：
+
+原本的 <main> 標籤被一個新的 <div class="main-container"> 取代。
+
+在這個容器內，新增了左側邊欄 <aside id="left-sidebar"></aside> 和右側內容區 <div id="right-content"></div>。
+
+原始的 <section> 內容被移至一個隱藏的 <div id="data-source" style="display: none;"> 中，作為動態載入內容的資料來源。
+
+CSS 樣式更新：
+
+增加了 Flexbox 佈局來實現兩欄式設計 (.main-container)。
+
+為左側邊欄 (#left-sidebar) 和其連結 (#left-sidebar a) 添加了新的樣式，包括選中時的 active 狀態。
+
+為右側內容區 (#right-content) 設置了樣式，確保內容能正常顯示並滾動。
+
+在 @media 查詢中加入了響應式設計，當螢幕寬度小於 992px 時，左側邊欄會移動到內容區的上方，變為單欄佈局。
+
+JavaScript 邏輯重構：
+
+核心邏輯變更：現在點擊頂部導航連結時，JavaScript 會：
+
+找到對應的資料來源 (<section>)。
+
+動態地在左側邊欄中生成該區段所有的次項目連結 (原本的 collapsible-header)。
+
+自動觸發點擊左側邊欄的第一個連結，以載入預設內容。
+
+次導航點擊：點擊左側邊欄的連結時，會將對應的內容 (原本的 collapsible-content) 顯示在右側內容區。
+
+搜尋功能更新：搜尋功能的點擊事件被完全重寫，現在它會：
+
+觸發對應的頂部主導航點擊。
+
+等待左側邊欄生成後，找到並觸發對應的次導航連結點擊。
+
+將內容載入右側，滾動到視圖中並高亮關鍵字。
+
+初始化：頁面載入後，會自動觸發第一個主導航的點擊事件，完成頁面的初始內容載入。
+
+修改後的完整程式碼
+code
+Html
+download
+content_copy
+expand_less
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -199,108 +252,85 @@
             box-shadow: 0 4px 12px rgba(0, 82, 155, 0.3);
             transform: translateY(-2px);
         }
-        
-        .nav-links a.read {
-            background: #e9ecef;
-            color: #6c757d;
-        }
-        
-        .nav-links a.read.active {
-             background-color: var(--logo-blue);
-             color: white;
-        }
 
-        main {
-            max-width: 960px;
+        /* NEW LAYOUT STYLES */
+        .main-container {
+            display: flex;
+            max-width: 1200px;
             margin: 2rem auto;
             padding: 0 1rem;
+            gap: 2rem;
         }
-
-        .content-section {
-            display: none;
-            animation: fadeIn 0.5s ease-in-out;
+        
+        #left-sidebar {
+            flex: 0 0 280px;
+            background-color: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 45, 86, 0.07);
+            border: 1px solid var(--border-color);
+            align-self: flex-start; /* Keep sidebar from stretching */
         }
-
-        .content-section.active {
+        
+        #left-sidebar a {
             display: block;
+            padding: 0.75rem 1rem;
+            color: var(--header-text-color);
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            transition: background-color 0.2s, color 0.2s;
+            border-left: 4px solid transparent;
+        }
+        
+        #left-sidebar a:hover {
+            background-color: #e9ecef;
+        }
+        
+        #left-sidebar a.active {
+            background-color: #e7f5ff;
+            color: var(--logo-blue);
+            font-weight: 700;
+            border-left: 4px solid var(--logo-blue);
+        }
+
+        #right-content {
+            flex: 1;
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 45, 86, 0.07);
+            border: 1px solid var(--border-color);
+            animation: fadeIn 0.5s ease-in-out;
         }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
-        .collapsible {
-            margin-bottom: 1.5rem;
-            border-radius: 8px;
-            overflow: hidden;
-            background-color: #fff;
-            box-shadow: 0 2px 8px rgba(0, 45, 86, 0.07);
-            border: 1px solid var(--border-color);
-        }
 
-        .collapsible-header {
-            background-color: #fff;
-            padding: 1rem 1.5rem;
-            cursor: pointer;
+        /* Styles for content within the right panel */
+        #right-content h2 {
             font-size: 1.5rem;
             font-weight: 700;
             color: var(--header-text-color);
-            transition: background-color 0.3s ease;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .collapsible-header.read {
-            color: var(--light-blue);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--logo-blue);
         }
 
-        .collapsible-header:hover {
-            background-color: #f7f9fa;
-        }
-        
-        .collapsible-header::after {
-            content: '▼';
-            font-size: 0.9rem;
-            transition: transform 0.3s ease;
-            color: var(--logo-blue);
-        }
-
-        .collapsible-header.active::after {
-            transform: rotate(180deg);
-        }
-
-        .collapsible-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s ease-out;
-            padding: 0 1.5rem;
-        }
-        
-        .collapsible-content-inner {
-            padding: 1.5rem 0;
-            border-top: 1px solid #f1f3f5;
-        }
-
-        .collapsible-content.scrollable {
-            overflow-y: auto;
-            transition: max-height 0.4s ease-out, padding 0.4s ease-out;
-        }
-
-        .collapsible-content ul {
+        #right-content ul {
             list-style-type: none;
             padding-left: 1rem;
         }
 
-        .collapsible-content li {
+        #right-content li {
             margin-bottom: 0.75rem;
             padding-left: 1.5rem;
             position: relative;
         }
         
-        .collapsible-content li::before {
+        #right-content li::before {
             content: '•';
             color: var(--logo-blue);
             position: absolute;
@@ -309,11 +339,11 @@
             font-weight: bold;
         }
         
-        .collapsible-content ul ul li::before {
+        #right-content ul ul li::before {
             content: '○';
         }
         
-        .collapsible-content ul ul ul li::before {
+        #right-content ul ul ul li::before {
             content: '■';
         }
 
@@ -327,7 +357,6 @@
             color: var(--header-text-color);
         }
 
-        /* Rule to make all strong tags green */
         strong {
             color: var(--bold-green-color);
         }
@@ -346,33 +375,8 @@
             font-weight: 500;
         }
 
-        .prompt-block {
-            border: 1px solid var(--border-color);
-            border-left: 5px solid var(--logo-blue);
-            border-radius: 5px;
-            padding: 1rem;
-            margin: 1rem 0;
-            background-color: #fafafa;
-            position: relative;
-        }
+        /* END NEW LAYOUT STYLES */
 
-        .copy-button {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: #f0f0f0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            padding: 5px 10px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: background-color 0.2s;
-        }
-
-        .copy-button:hover {
-            background-color: #e0e0e0;
-        }
-        
         #back-to-top {
             position: fixed;
             bottom: 20px;
@@ -398,6 +402,16 @@
 
         #back-to-top:hover {
             transform: scale(1.1);
+        }
+        
+        @media (max-width: 992px) {
+            .main-container {
+                flex-direction: column;
+            }
+            #left-sidebar {
+                flex-basis: auto;
+                width: 100%;
+            }
         }
 
         @media (max-width: 768px) {
@@ -448,19 +462,6 @@
                 font-size: 1rem;
                 padding: 8px 15px;
             }
-
-            .collapsible-header {
-                font-size: 1.25rem;
-                padding: 0.8rem 1rem;
-            }
-            
-            .collapsible-content {
-                padding: 0 1rem;
-            }
-
-            .collapsible-content-inner {
-                padding: 1rem 0;
-            }
         }
     </style>
 </head>
@@ -494,8 +495,13 @@
         </div>
     </header>
 
-    <main>
-        <section id="section-1" class="content-section active">
+    <div class="main-container">
+        <aside id="left-sidebar"></aside>
+        <div id="right-content"></div>
+    </div>
+    
+    <div id="data-source" style="display: none;">
+        <section id="section-1">
             <div class="collapsible">
                 <div class="collapsible-header">會議目的與背景</div>
                 <div class="collapsible-content">
@@ -516,7 +522,7 @@
             </div>
         </section>
 
-        <section id="section-2" class="content-section">
+        <section id="section-2">
             <div class="collapsible">
                  <div class="collapsible-header">道路復舊進度與挑戰</div>
                  <div class="collapsible-content">
@@ -667,7 +673,7 @@
             </div>
         </section>
 
-        <section id="section-3" class="content-section">
+        <section id="section-3">
             <div class="collapsible">
                 <div class="collapsible-header">第一區工程處 (負責 LG06 站至明挖覆蓋段)</div>
                 <div class="collapsible-content">
@@ -743,7 +749,7 @@
             </div>
         </section>
 
-        <section id="section-4" class="content-section">
+        <section id="section-4">
             <div class="collapsible">
                 <div class="collapsible-header">主要瓶頸與相互影響</div>
                 <div class="collapsible-content">
@@ -788,7 +794,7 @@
             </div>
         </section>
 
-        <section id="section-5" class="content-section">
+        <section id="section-5">
             <div class="collapsible">
                 <div class="collapsible-header">總結</div>
                 <div class="collapsible-content">
@@ -813,137 +819,170 @@
                 </div>
             </div>
         </section>
-    </main>
-    
+    </div>
+
     <button id="back-to-top" title="回到頂端">▲</button>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        
-        function convertUrlsToLinks(startNode) {
-            const urlRegex = /(https?:\/\/[^\s<>"'()]+)/g;
-            const walker = document.createTreeWalker(
-                startNode,
-                NodeFilter.SHOW_TEXT,
-                {
-                    acceptNode: function(node) {
-                        if (node.parentNode.nodeName === 'SCRIPT' || 
-                            node.parentNode.nodeName === 'STYLE' ||
-                            node.parentNode.nodeName === 'A') {
-                            return NodeFilter.FILTER_REJECT;
-                        }
-                        if (urlRegex.test(node.nodeValue)) {
-                            return NodeFilter.FILTER_ACCEPT;
-                        }
-                        return NodeFilter.FILTER_SKIP;
-                    }
-                }
-            );
-
-            let nodes = [];
-            while (walker.nextNode()) nodes.push(walker.currentNode);
-
-            nodes.forEach(node => {
-                const text = node.nodeValue;
-                const fragment = document.createDocumentFragment();
-                let lastIndex = 0;
-
-                text.replace(urlRegex, (match, url, offset) => {
-                    if (offset > lastIndex) {
-                        fragment.appendChild(document.createTextNode(text.substring(lastIndex, offset)));
-                    }
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.textContent = url;
-                    a.target = '_blank';
-                    a.rel = 'noopener noreferrer';
-                    fragment.appendChild(a);
-                    lastIndex = offset + match.length;
-                });
-
-                if (lastIndex < text.length) {
-                    fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
-                }
-
-                node.parentNode.replaceChild(fragment, node);
-            });
-        }
-
-        const mainContent = document.querySelector('main');
-        if (mainContent) {
-            convertUrlsToLinks(mainContent);
-        }
 
         const navLinks = document.querySelectorAll('.nav-links a');
-        const contentSections = document.querySelectorAll('.content-section');
-        const collapsibleHeaders = document.querySelectorAll('.collapsible-header');
+        const leftSidebar = document.getElementById('left-sidebar');
+        const rightContent = document.getElementById('right-content');
+        const dataSource = document.getElementById('data-source');
         const backToTopButton = document.getElementById('back-to-top');
         const progressBar = document.getElementById('progress-bar');
         const searchBox = document.getElementById('search-box');
         const searchResultsContainer = document.getElementById('search-results');
         let searchableContent = [];
 
-        navLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                
-                navLinks.forEach(l => l.classList.remove('active'));
-                contentSections.forEach(s => s.classList.remove('active'));
-
-                link.classList.add('active');
-                link.classList.add('read');
-                const target = document.querySelector(link.getAttribute('href'));
-                if (target) {
-                    target.classList.add('active');
-                }
-            });
-        });
-
-        collapsibleHeaders.forEach(header => {
-            header.addEventListener('click', () => {
-                header.classList.toggle('active');
-                header.classList.add('read');
-                const content = header.nextElementSibling;
-                
-                if (content.style.maxHeight) {
-                    content.style.maxHeight = null;
-                } else {
-                    content.style.maxHeight = content.scrollHeight + "px";
-                    if (content.scrollHeight > window.innerHeight * 0.7) {
-                       content.style.maxHeight = '70vh';
-                       content.classList.add('scrollable');
-                    } else {
-                       content.classList.remove('scrollable');
+        function convertAllUrlsToLinks() {
+            const contentSections = dataSource.querySelectorAll('section');
+            contentSections.forEach(section => {
+                 const urlRegex = /(https?:\/\/[^\s<>"'()]+)/g;
+                 const walker = document.createTreeWalker(
+                    section,
+                    NodeFilter.SHOW_TEXT,
+                    {
+                        acceptNode: function(node) {
+                            if (node.parentNode.nodeName === 'SCRIPT' || 
+                                node.parentNode.nodeName === 'STYLE' ||
+                                node.parentNode.nodeName === 'A') {
+                                return NodeFilter.FILTER_REJECT;
+                            }
+                            if (urlRegex.test(node.nodeValue)) {
+                                return NodeFilter.FILTER_ACCEPT;
+                            }
+                            return NodeFilter.FILTER_SKIP;
+                        }
                     }
-                }
+                );
+
+                let nodes = [];
+                while (walker.nextNode()) nodes.push(walker.currentNode);
+
+                nodes.forEach(node => {
+                    const text = node.nodeValue;
+                    const fragment = document.createDocumentFragment();
+                    let lastIndex = 0;
+
+                    text.replace(urlRegex, (match, url, offset) => {
+                        if (offset > lastIndex) {
+                            fragment.appendChild(document.createTextNode(text.substring(lastIndex, offset)));
+                        }
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.textContent = url;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        fragment.appendChild(a);
+                        lastIndex = offset + match.length;
+                    });
+
+                    if (lastIndex < text.length) {
+                        fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+                    }
+                    node.parentNode.replaceChild(fragment, node);
+                });
+            });
+        }
+        
+        function populateSidebarAndContent(sectionId, targetSubItemId = null) {
+            const section = dataSource.querySelector(sectionId);
+            if (!section) return;
+
+            leftSidebar.innerHTML = ''; // Clear sidebar
+            const collapsibles = section.querySelectorAll('.collapsible');
+            
+            collapsibles.forEach((collapsible, index) => {
+                const header = collapsible.querySelector('.collapsible-header');
+                const contentInner = collapsible.querySelector('.collapsible-content-inner');
+                
+                // Assign a unique ID for referencing
+                const subItemId = `${sectionId.substring(1)}-sub-${index}`;
+                header.id = subItemId + '-header';
+                contentInner.id = subItemId + '-content';
+
+                const link = document.createElement('a');
+                link.href = `#${subItemId}`;
+                link.textContent = header.textContent.trim();
+                link.dataset.contentId = contentInner.id;
+                link.dataset.headerId = header.id;
+
+                link.addEventListener('click', e => {
+                    e.preventDefault();
+                    
+                    // Update sidebar active state
+                    const currentActive = leftSidebar.querySelector('a.active');
+                    if(currentActive) currentActive.classList.remove('active');
+                    link.classList.add('active');
+                    
+                    // Update right content
+                    const contentToShow = document.getElementById(link.dataset.contentId);
+                    if(contentToShow) {
+                        // Add header to the content
+                        rightContent.innerHTML = `<h2>${link.textContent}</h2>` + contentToShow.innerHTML;
+                        rightContent.scrollTop = 0;
+                    }
+                });
+                
+                leftSidebar.appendChild(link);
+            });
+            
+            // Activate the correct sub-item
+            let itemToActivate;
+            if (targetSubItemId) {
+                itemToActivate = leftSidebar.querySelector(`a[data-header-id="${targetSubItemId}"]`);
+            }
+            // If no target or target not found, activate the first one
+            if (!itemToActivate) {
+                itemToActivate = leftSidebar.querySelector('a');
+            }
+
+            if(itemToActivate) {
+                itemToActivate.click();
+            } else {
+                 rightContent.innerHTML = '<h2>此區段無內容</h2>';
+            }
+        }
+        
+        navLinks.forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                navLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                
+                const targetSectionId = link.getAttribute('href');
+                populateSidebarAndContent(targetSectionId);
             });
         });
-        
+
         function buildSearchIndex() {
             searchableContent = [];
-            document.querySelectorAll('.collapsible-header').forEach((header, index) => {
-                const title = header.textContent.replace(/▼|▲/g, '').trim();
+            dataSource.querySelectorAll('.collapsible-header').forEach((header, index) => {
+                const title = header.textContent.trim();
                 const contentElement = header.nextElementSibling.querySelector('.collapsible-content-inner');
                 const content = contentElement ? contentElement.innerText : '';
-                const sectionId = header.closest('.content-section').id;
+                const sectionId = header.closest('section').id;
                 
                 searchableContent.push({
                     id: `collapsible-${index}`,
                     title: title,
                     content: content,
                     sectionId: sectionId,
-                    element: header
+                    headerId: header.id // The unique ID we assigned earlier
                 });
-                header.dataset.collapsibleId = `collapsible-${index}`;
             });
         }
         
         function clearAllHighlights() {
-            const highlighted = document.querySelectorAll('.highlight');
+            const highlighted = rightContent.querySelectorAll('.highlight');
             highlighted.forEach(span => {
                 const parent = span.parentNode;
-                parent.replaceChild(document.createTextNode(span.textContent), span);
-                parent.normalize();
+                if(parent) {
+                    parent.replaceChild(document.createTextNode(span.textContent), span);
+                    parent.normalize();
+                }
             });
         }
         
@@ -970,7 +1009,9 @@
                  while (tempDiv.firstChild) {
                     fragment.appendChild(tempDiv.firstChild);
                  }
-                 textNode.parentNode.replaceChild(fragment, textNode);
+                 if(textNode.parentNode) {
+                    textNode.parentNode.replaceChild(fragment, textNode);
+                 }
             });
         }
         
@@ -993,7 +1034,6 @@
                 results.forEach(result => {
                     const a = document.createElement('a');
                     a.href = `#${result.sectionId}`;
-                    a.dataset.targetCollapsible = result.element.dataset.collapsibleId;
                     
                     const titleNode = document.createElement('strong');
                     titleNode.textContent = result.title;
@@ -1009,23 +1049,31 @@
                     a.addEventListener('click', (event) => {
                         event.preventDefault();
                         
+                        // 1. Click the main nav link
                         const targetNavLink = document.querySelector(`.nav-links a[href="#${result.sectionId}"]`);
-                        if (targetNavLink) targetNavLink.click();
-                        
-                        setTimeout(() => {
-                            clearAllHighlights();
-                            const targetHeader = result.element;
-                            if (!targetHeader.classList.contains('active')) {
-                                targetHeader.click();
+                        if (targetNavLink) {
+                            if (!targetNavLink.classList.contains('active')) {
+                                targetNavLink.click();
                             }
-                            targetHeader.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            
-                            setTimeout(() => {
-                                highlightText(targetHeader, query);
-                                highlightText(targetHeader.nextElementSibling, query);
-                            }, 400);
-
-                        }, 100);
+                        }
+                        
+                        // 2. Click the corresponding sidebar link
+                        setTimeout(() => {
+                            const targetSidebarLink = leftSidebar.querySelector(`a[data-header-id="${result.headerId}"]`);
+                            if (targetSidebarLink) {
+                                targetSidebarLink.click();
+                                
+                                // 3. Highlight the text
+                                setTimeout(() => {
+                                    clearAllHighlights();
+                                    highlightText(rightContent, query);
+                                    const firstHighlight = rightContent.querySelector('.highlight');
+                                    if(firstHighlight) {
+                                        firstHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    }
+                                }, 100);
+                            }
+                        }, 50); // Small delay to ensure sidebar is populated
 
                         searchResultsContainer.style.display = 'none';
                         searchBox.value = '';
@@ -1065,11 +1113,12 @@
         });
 
         function initializeApp() {
-            const firstHeader = document.querySelector('#section-1 .collapsible-header');
-            if (firstHeader) {
-                firstHeader.click();
+            convertAllUrlsToLinks();
+            // Trigger the first navigation link to populate the initial view
+            const firstNavLink = document.querySelector('.nav-links a');
+            if (firstNavLink) {
+                populateSidebarAndContent(firstNavLink.getAttribute('href'));
             }
-            
             buildSearchIndex();
         }
 
