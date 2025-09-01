@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全能 PDF 工具箱 - 合併、分割、轉換、文字擷取</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.min.js"></script>
+    <script src='https://unpkg.com/tesseract.js@5.0.0/dist/tesseract.min.js'></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        .feature-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .feature-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .file-list-item { background-color: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; cursor: move; }
+        .file-list-item.dragging { opacity: 0.5; background-color: #e0f2fe; }
+        .close-btn { cursor: pointer; }
+        .view { display: none; }
+        .view.active { display: block; }
+        
+        #ocr-uploader { display: flex; flex-direction: column; align-items: center; padding: 20px; border: 2px dashed #007bff; border-radius: 8px; cursor: pointer; background-color: #f8f9fa; }
+        #ocr-uploader:hover { background-color: #e9ecef; }
+        #ocr-pdf-input { display: none; }
+        #ocr-status { margin-top: 20px; font-weight: bold; color: #555; text-align: center; min-height: 50px; padding: 10px; background-color: #eef; border-radius: 5px; }
+        #ocr-result { white-space: pre-wrap; word-wrap: break-word; background-color: #f8f9fa; border: 1px solid #ddd; padding: 15px; min-height: 200px; border-radius: 5px; max-height: 500px; overflow-y: auto; margin-top: 1rem; }
+        
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-600">全能 PDF 工具箱</h1>
+            <p class="text-gray-600 mt-2">合併、分割、轉換、文字擷取 (OCR)，一站式解決方案。</p>
+        </header>
+
+        <div id="home-view" class="view active">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div onclick="showView('merge-pdf-view')" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
+                    <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <div><h2 class="text-xl font-semibold">PDF 合併</h2><p class="text-gray-500">將多個 PDF 合併成一個。</p></div>
+                </div>
+                <div onclick="showView('split-pdf-view')" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
+                    <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-7 7m7-7l-7-7"></path></svg>
+                    <div><h2 class="text-xl font-semibold">PDF 分割</h2><p class="text-gray-500">將 PDF 拆分成多個檔案。</p></div>
+                </div>
+                <div onclick="showView('pdf-to-image-view')" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
+                     <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z"></path></svg>
+                     <div><h2 class="text-xl font-semibold">PDF 轉圖片</h2><p class="text-gray-500">將 PDF 每一頁存成圖片。</p></div>
+                </div>
+                <div onclick="showView('image-to-pdf-view')" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
+                    <svg class="w-12 h-12 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <div><h2 class="text-xl font-semibold">圖片轉 PDF</h2><p class="text-gray-500">將單張圖片轉換為 PDF。</p></div>
+                </div>
+                <div onclick="showView('images-to-pdf-view')" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
+                    <svg class="w-12 h-12 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-1a6 6 0 00-5.197-5.975M15 21H9"></path></svg>
+                    <div><h2 class="text-xl font-semibold">多圖轉 PDF</h2><p class="text-gray-500">將多張圖片合併成一個 PDF。</p></div>
+                </div>
+                <div onclick="showView('ocr-pdf-view')" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
+                    <svg class="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    <div><h2 class="text-xl font-semibold">PDF 文字擷取</h2><p class="text-gray-500">從 PDF 辨識並提取文字 (OCR)。</p></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="feature-views-container" class="mt-8">
+            <div id="merge-pdf-view" class="view">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4">PDF 合併</h2>
+                    <p class="text-gray-600 mb-4">選擇多個 PDF 檔案，按住並拖曳檔案以調整合併順序。</p>
+                    <input type="file" id="merge-pdf-files" accept=".pdf" multiple class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-4"/>
+                    <div id="merge-pdf-list" class="min-h-[100px] bg-gray-50 p-2 rounded-md border"></div>
+                    <div class="mt-6 flex items-center space-x-4">
+                        <button id="merge-pdf-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始合併</button>
+                        <button onclick="showView('home-view')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">返回主頁</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="split-pdf-view" class="view">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4">PDF 分割</h2>
+                    <p class="text-gray-600 mb-4">選擇一個 PDF 檔案進行分割。</p>
+                    <input type="file" id="split-pdf-file" accept=".pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 mb-4"/>
+                    <div id="split-pdf-info" class="mb-4 text-center p-2 bg-gray-50 rounded"></div>
+                    <div id="split-options" class="hidden">
+                        <h3 class="font-semibold mb-2">分割模式</h3>
+                        <div class="space-y-2">
+                            <label class="flex items-center"><input type="radio" name="split-mode" value="all" class="mr-2" checked> 分割成單頁 PDF</label>
+                            <label class="flex items-center"><input type="radio" name="split-mode" value="range" class="mr-2"> 按範圍提取</label>
+                        </div>
+                        <div id="split-range-input" class="mt-2 hidden">
+                            <input type="text" id="split-page-range" placeholder="例如: 1-5, 8, 10-12" class="w-full p-2 border rounded-md">
+                        </div>
+                    </div>
+                    <div class="mt-6 flex items-center space-x-4">
+                        <button id="split-pdf-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始分割</button>
+                        <button onclick="showView('home-view')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">返回主頁</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pdf-to-image-view" class="view">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4">PDF 轉圖片</h2>
+                    <p class="text-gray-600 mb-4">選擇一個 PDF 檔案，設定解析度和格式後，將其轉換為圖片壓縮檔 (ZIP)。</p>
+                    <input type="file" id="pdf-to-image-file" accept=".pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 mb-4"/>
+                    <div id="pdf-to-image-info" class="mb-4 text-center p-2 bg-gray-50 rounded">請選擇檔案</div>
+                    <div id="pdf-to-image-options" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="image-resolution" class="block text-sm font-medium text-gray-700">圖片解析度 (DPI)</label>
+                            <select id="image-resolution" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="150">標準 (150 DPI)</option>
+                                <option value="300" selected>高 (300 DPI)</option>
+                                <option value="600">印刷 (600 DPI)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="image-format" class="block text-sm font-medium text-gray-700">圖片格式</label>
+                            <select id="image-format" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="image/jpeg">JPG</option>
+                                <option value="image/png">PNG</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex items-center space-x-4">
+                        <button id="pdf-to-image-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始轉換</button>
+                        <button onclick="showView('home-view')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">返回主頁</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="image-to-pdf-view" class="view">
+                 <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4">圖片轉 PDF</h2>
+                    <p class="text-gray-600 mb-4">選擇一張圖片（JPG, PNG, WEBP等）轉換為 PDF。</p>
+                    <input type="file" id="image-file" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 mb-4"/>
+                    <div class="my-4 text-center">
+                        <img id="image-preview" src="" class="max-w-full max-h-48 mx-auto hidden rounded-md shadow-sm">
+                    </div>
+                    <div id="image-options" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="image-page-size" class="block text-sm font-medium text-gray-700">頁面大小</label>
+                            <select id="image-page-size" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option>A4</option>
+                                <option>Letter</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="image-orientation" class="block text-sm font-medium text-gray-700">頁面方向</label>
+                            <select id="image-orientation" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="portrait">直向 (Portrait)</option>
+                                <option value="landscape">橫向 (Landscape)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex items-center space-x-4">
+                        <button id="image-to-pdf-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>轉換為 PDF</button>
+                        <button onclick="showView('home-view')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">返回主頁</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="images-to-pdf-view" class="view">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4">多圖轉 PDF</h2>
+                    <p class="text-gray-600 mb-4">選擇多張圖片（JPG, PNG, WEBP等），按住並拖曳以排序，然後合併成一個 PDF。</p>
+                    <input type="file" id="images-files" accept="image/*" multiple class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100 mb-4"/>
+                    <div id="images-list" class="min-h-[100px] bg-gray-50 p-2 rounded-md border grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="images-page-size" class="block text-sm font-medium text-gray-700">頁面大小</label>
+                            <select id="images-page-size" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option>A4</option>
+                                <option>Letter</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="images-orientation" class="block text-sm font-medium text-gray-700">頁面方向</label>
+                            <select id="images-orientation" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="portrait">直向 (Portrait)</option>
+                                <option value="landscape">橫向 (Landscape)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex items-center space-x-4">
+                        <button id="images-to-pdf-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>合併並轉換</button>
+                        <button onclick="showView('home-view')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">返回主頁</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="ocr-pdf-view" class="view">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4">PDF 文字擷取 (OCR)</h2>
+                    <p class="text-gray-600 mb-4">直接在您的瀏覽器中分析 PDF 檔案，自動判斷並提取文字。您的檔案不會上傳到任何伺服器。</p>
+                    <label for="ocr-pdf-input" id="ocr-uploader">
+                        <span>點擊此處或拖曳 PDF 檔案到這裡</span>
+                    </label>
+                    <input type="file" id="ocr-pdf-input" accept=".pdf">
+                    <div id="ocr-status">請選擇一個 PDF 檔案開始處理...</div>
+                    <pre id="ocr-result">尚未處理檔案。</pre>
+                     <div class="mt-6 flex items-center space-x-4">
+                        <button onclick="showView('home-view')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">返回主頁</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl text-center max-w-sm w-full">
+            <div id="modal-content">
+                </div>
+        </div>
+    </div>
+
+<script>
+    // === 全局變數與函式 ===
+    const { PDFDocument, rgb, StandardFonts, PageSizes } = PDFLib;
+    const views = document.querySelectorAll('.view');
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modal-content');
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`;
+
+    function showView(viewId) {
+        views.forEach(view => view.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+        document.querySelectorAll('input[type="file"]').forEach(input => input.value = '');
+        document.getElementById('merge-pdf-list').innerHTML = '';
+        document.getElementById('split-pdf-info').innerHTML = '';
+        document.getElementById('split-options').classList.add('hidden');
+        document.getElementById('image-preview').classList.add('hidden');
+        document.getElementById('image-options').classList.add('hidden');
+        document.getElementById('images-list').innerHTML = '';
+        document.querySelectorAll('button[id$="-btn"]').forEach(btn => btn.disabled = true);
+        document.getElementById('ocr-status').innerHTML = '請選擇一個 PDF 檔案開始處理...';
+        document.getElementById('ocr-result').textContent = '尚未處理檔案。';
+        document.getElementById('pdf-to-image-info').textContent = '請選擇檔案';
+        document.getElementById('pdf-to-image-options').classList.add('hidden');
+        document.getElementById('pdf-to-image-btn').disabled = true;
+    }
+
+    function showModal(content) { modalContent.innerHTML = content; modal.classList.remove('hidden'); }
+    function hideModal() { modal.classList.add('hidden'); }
+    
+    function downloadFile(blob, filename) {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    }
+    
+    function readFileAsArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // [新增] 輔助函式：將任何圖片檔案轉換為 PNG 的 ArrayBuffer
+    function convertImageToPngArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    canvas.toBlob(blob => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            resolve(reader.result);
+                        };
+                        reader.onerror = reject;
+                        reader.readAsArrayBuffer(blob);
+                    }, 'image/png');
+                };
+                img.onerror = reject;
+                img.src = event.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function setupDragAndDrop(container) { /* ... 內容不變 ... */ }
+
+    // === PDF 合併功能 ===
+    // ... 內容不變 ...
+
+    // === PDF 分割功能 ===
+    // ... 內容不變 ...
+
+    // === 圖片轉 PDF 功能 (已修正) ===
+    const imageInput = document.getElementById('image-file');
+    const imagePreview = document.getElementById('image-preview');
+    const imageOptions = document.getElementById('image-options');
+    const imageToPdfBtn = document.getElementById('image-to-pdf-btn');
+    imageInput.addEventListener('change', async () => {
+        if (!imageInput.files.length) return;
+        const file = imageInput.files[0];
+        const dataUrl = await readFileAsDataURL(file);
+        imagePreview.src = dataUrl;
+        imagePreview.classList.remove('hidden');
+        imageOptions.classList.remove('hidden');
+        imageToPdfBtn.disabled = false;
+    });
+    imageToPdfBtn.addEventListener('click', async () => {
+        showModal('<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div><p class="mt-4">正在轉換為 PDF...</p>');
+        try {
+            const file = imageInput.files[0];
+            // [修正] 使用新的轉換函式，無論原始格式為何，都轉成 PNG ArrayBuffer
+            const imageBytes = await convertImageToPngArrayBuffer(file);
+            
+            const pdfDoc = await PDFDocument.create();
+            // [修正] 現在我們確定得到的是 PNG，所以直接使用 embedPng
+            const image = await pdfDoc.embedPng(imageBytes);
+            
+            const pageSizeName = document.getElementById('image-page-size').value;
+            const orientation = document.getElementById('image-orientation').value;
+            let pageSize = PageSizes[pageSizeName];
+            if (orientation === 'landscape') { pageSize = [pageSize[1], pageSize[0]]; }
+            const page = pdfDoc.addPage(pageSize);
+            const { width, height } = image.scaleToFit(page.getWidth(), page.getHeight());
+            page.drawImage(image, { x: page.getWidth() / 2 - width / 2, y: page.getHeight() / 2 - height / 2, width, height });
+            const pdfBytes = await pdfDoc.save();
+            window.lastBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+            showModal(`<h3 class="text-xl font-bold text-green-600 mb-4">轉換成功！</h3><p>圖片已成功轉換為 PDF。</p><div class="mt-6"><button onclick="downloadFile(window.lastBlob, 'image.pdf')" class="bg-purple-500 text-white font-bold py-2 px-4 rounded-lg w-full">下載 PDF</button><button onclick="hideModal()" class="mt-2 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg w-full">關閉</button></div>`);
+        } catch (error) {
+            console.error(error);
+            showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>處理時發生錯誤。</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+        }
+    });
+
+    // === 多圖轉 PDF 功能 (已修正) ===
+    const imagesInput = document.getElementById('images-files');
+    const imagesList = document.getElementById('images-list');
+    const imagesToPdfBtn = document.getElementById('images-to-pdf-btn');
+    imagesInput.addEventListener('change', async () => { /* ... 內容不變 ... */ });
+    setupDragAndDrop(imagesList);
+    imagesToPdfBtn.addEventListener('click', async () => {
+        showModal('<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto"></div><p class="mt-4">正在合併圖片並轉換...</p>');
+        try {
+            const pdfDoc = await PDFDocument.create();
+            const fileItems = [...imagesList.querySelectorAll('.draggable')];
+            const pageSizeName = document.getElementById('images-page-size').value;
+            const orientation = document.getElementById('images-orientation').value;
+            let pageSize = PageSizes[pageSizeName];
+            if (orientation === 'landscape') { pageSize = [pageSize[1], pageSize[0]]; }
+            for (const item of fileItems) {
+                const fileName = item.dataset.name;
+                const file = Array.from(imagesInput.files).find(f => f.name === fileName);
+
+                // [修正] 同樣使用新的轉換函式處理每一張圖檔
+                const imageBytes = await convertImageToPngArrayBuffer(file);
+                const image = await pdfDoc.embedPng(imageBytes);
+
+                const page = pdfDoc.addPage(pageSize);
+                const { width, height } = image.scaleToFit(page.getWidth(), page.getHeight());
+                page.drawImage(image, { x: page.getWidth() / 2 - width / 2, y: page.getHeight() / 2 - height / 2, width, height });
+            }
+            const pdfBytes = await pdfDoc.save();
+            window.lastBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+            showModal(`<h3 class="text-xl font-bold text-green-600 mb-4">轉換成功！</h3><p>圖片已成功合併並轉換為 PDF。</p><div class="mt-6"><button onclick="downloadFile(window.lastBlob, 'images_merged.pdf')" class="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg w-full">下載 PDF</button><button onclick="hideModal()" class="mt-2 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg w-full">關閉</button></div>`);
+        } catch (error) {
+            console.error(error);
+            showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>處理時發生錯誤。</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+        }
+    });
+
+    // === PDF 文字擷取 (OCR) 功能 ===
+    // ... 內容不變 ...
+    
+    // === PDF 轉圖片功能 ===
+    // ... 內容不變 ...
+
+    // === 通用移除檔案函式 ===
+    // ... 內容不變 ...
+
+    // --- 以下為貼上省略的程式碼 ---
+    function setupDragAndDrop(container) {
+        let draggingElement = null;
+        container.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('draggable')) {
+                draggingElement = e.target;
+                setTimeout(() => e.target.classList.add('dragging'), 0);
+            }
+        });
+        container.addEventListener('dragend', () => {
+            if (draggingElement) {
+                draggingElement.classList.remove('dragging');
+                draggingElement = null;
+            }
+        });
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(container, e.clientY);
+            if (afterElement == null) {
+                container.appendChild(draggingElement);
+            } else {
+                container.insertBefore(draggingElement, afterElement);
+            }
+        });
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.draggable:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+    }
+    const mergePdfInput = document.getElementById('merge-pdf-files');
+    const mergePdfList = document.getElementById('merge-pdf-list');
+    const mergePdfBtn = document.getElementById('merge-pdf-btn');
+    mergePdfInput.addEventListener('change', () => {
+        mergePdfList.innerHTML = '';
+        Array.from(mergePdfInput.files).forEach(file => {
+            const listItem = document.createElement('div');
+            listItem.className = 'file-list-item draggable';
+            listItem.draggable = true;
+            listItem.dataset.name = file.name;
+            listItem.innerHTML = `<span class="truncate">${file.name}</span><span class="close-btn text-red-500 font-bold" onclick="removeFile(this, 'merge-pdf-files')">✖</span>`;
+            mergePdfList.appendChild(listItem);
+        });
+        mergePdfBtn.disabled = mergePdfInput.files.length < 2;
+    });
+    setupDragAndDrop(mergePdfList);
+    mergePdfBtn.addEventListener('click', async () => {
+        showModal('<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div><p class="mt-4">正在合併 PDF，請稍候...</p>');
+        try {
+            const mergedPdf = await PDFDocument.create();
+            const fileItems = [...mergePdfList.querySelectorAll('.file-list-item')];
+            for (const item of fileItems) {
+                const fileName = item.dataset.name;
+                const file = Array.from(mergePdfInput.files).find(f => f.name === fileName);
+                const pdfBytes = await readFileAsArrayBuffer(file);
+                const pdf = await PDFDocument.load(pdfBytes);
+                const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                copiedPages.forEach(page => mergedPdf.addPage(page));
+            }
+            const mergedPdfBytes = await mergedPdf.save();
+            const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+            window.lastBlob = blob;
+            showModal(`<h3 class="text-xl font-bold text-green-600 mb-4">合併成功！</h3><p>您的 PDF 檔案已準備就緒。</p><div class="mt-6"><button onclick="downloadFile(window.lastBlob, 'merged.pdf')" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg w-full">下載合併後的 PDF</button><button onclick="hideModal()" class="mt-2 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg w-full">關閉</button></div>`);
+        } catch (error) {
+            console.error(error);
+            showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">合併失敗</h3><p>處理時發生錯誤，請檢查您的檔案是否損毀。</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+        }
+    });
+    const splitPdfInput = document.getElementById('split-pdf-file');
+    const splitPdfInfo = document.getElementById('split-pdf-info');
+    const splitOptions = document.getElementById('split-options');
+    const splitPdfBtn = document.getElementById('split-pdf-btn');
+    const splitRangeInput = document.getElementById('split-range-input');
+    document.querySelectorAll('input[name="split-mode"]').forEach(radio => radio.addEventListener('change', (e) => { splitRangeInput.classList.toggle('hidden', e.target.value !== 'range'); }));
+    splitPdfInput.addEventListener('change', async () => {
+        if (!splitPdfInput.files.length) return;
+        const file = splitPdfInput.files[0];
+        splitPdfInfo.textContent = `已選擇：${file.name}`;
+        splitPdfBtn.disabled = true;
+        try {
+            const pdfBytes = await readFileAsArrayBuffer(file);
+            const pdf = await PDFDocument.load(pdfBytes);
+            splitPdfInfo.textContent = `已選擇：${file.name} (共 ${pdf.getPageCount()} 頁)`;
+            splitOptions.classList.remove('hidden');
+            splitPdfBtn.disabled = false;
+        } catch (e) {
+            splitPdfInfo.textContent = '無法讀取此 PDF 檔案。';
+            splitOptions.classList.add('hidden');
+        }
+    });
+    splitPdfBtn.addEventListener('click', async () => {
+        const mode = document.querySelector('input[name="split-mode"]:checked').value;
+        const file = splitPdfInput.files[0];
+        showModal('<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div><p class="mt-4">正在分割 PDF，請稍候...</p>');
+        try {
+            const pdfBytes = await readFileAsArrayBuffer(file);
+            const pdf = await PDFDocument.load(pdfBytes);
+            const totalPages = pdf.getPageCount();
+            if (mode === 'all') {
+                const zip = new JSZip();
+                for (let i = 0; i < totalPages; i++) {
+                    const newPdf = await PDFDocument.create();
+                    const [copiedPage] = await newPdf.copyPages(pdf, [i]);
+                    newPdf.addPage(copiedPage);
+                    const newPdfBytes = await newPdf.save();
+                    zip.file(`page_${i + 1}.pdf`, newPdfBytes);
+                }
+                const zipBlob = await zip.generateAsync({ type: "blob" });
+                window.lastBlob = zipBlob;
+                showModal(`<h3 class="text-xl font-bold text-green-600 mb-4">分割成功！</h3><p>已將 PDF 分割為 ${totalPages} 個檔案，並壓縮成 ZIP。</p><div class="mt-6"><button onclick="downloadFile(window.lastBlob, 'split_pages.zip')" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg w-full">下載 ZIP 檔案</button><button onclick="hideModal()" class="mt-2 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg w-full">關閉</button></div>`);
+            } else if (mode === 'range') {
+                const rangeText = document.getElementById('split-page-range').value;
+                const pagesToExtract = [];
+                rangeText.split(',').forEach(part => {
+                    if (part.includes('-')) {
+                        const [start, end] = part.split('-').map(Number);
+                        for (let i = start; i <= end; i++) { pagesToExtract.push(i - 1); }
+                    } else { pagesToExtract.push(Number(part) - 1); }
+                });
+                const validPages = pagesToExtract.filter(p => p >= 0 && p < totalPages);
+                const uniquePages = [...new Set(validPages)].sort((a, b) => a - b);
+                if (uniquePages.length === 0) throw new Error("無效的頁碼範圍。");
+                const newPdf = await PDFDocument.create();
+                const copiedPages = await newPdf.copyPages(pdf, uniquePages);
+                copiedPages.forEach(page => newPdf.addPage(page));
+                const newPdfBytes = await newPdf.save();
+                window.lastBlob = new Blob([newPdfBytes], { type: 'application/pdf' });
+                showModal(`<h3 class="text-xl font-bold text-green-600 mb-4">提取成功！</h3><p>已成功提取 ${uniquePages.length} 頁。</p><div class="mt-6"><button onclick="downloadFile(window.lastBlob, 'extracted_pages.pdf')" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg w-full">下載 PDF</button><button onclick="hideModal()" class="mt-2 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg w-full">關閉</button></div>`);
+            }
+        } catch (error) {
+            console.error(error);
+            showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">分割失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+        }
+    });
+    imagesInput.addEventListener('change', async () => {
+        imagesList.innerHTML = '';
+        for (const file of Array.from(imagesInput.files)) {
+            const dataUrl = await readFileAsDataURL(file);
+            const listItem = document.createElement('div');
+            listItem.className = 'draggable relative p-2 border rounded-md group';
+            listItem.draggable = true;
+            listItem.dataset.name = file.name;
+            listItem.innerHTML = `<img src="${dataUrl}" class="w-full h-24 object-cover rounded-md"/><div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><span class="text-white text-xs truncate px-1">${file.name}</span></div><span class="close-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold" onclick="removeFile(this, 'images-files')">✖</span>`;
+            imagesList.appendChild(listItem);
+        }
+        imagesToPdfBtn.disabled = imagesInput.files.length === 0;
+    });
+    const ocrPdfInput = document.getElementById('ocr-pdf-input');
+    const ocrStatusDiv = document.getElementById('ocr-status');
+    const ocrResultDiv = document.getElementById('ocr-result');
+    ocrPdfInput.addEventListener('change', handleOcrFileSelect);
+    async function handleOcrFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file || file.type !== 'application/pdf') { ocrStatusDiv.textContent = '錯誤：請選擇一個 PDF 檔案！'; return; }
+        ocrStatusDiv.innerHTML = '正在讀取檔案...<div class="loader"></div>';
+        ocrResultDiv.textContent = '';
+        try {
+            const fileReader = new FileReader();
+            fileReader.onload = async function() { await processOcrPdf(new Uint8Array(this.result)); };
+            fileReader.readAsArrayBuffer(file);
+        } catch (error) {
+            console.error('檔案讀取錯誤:', error);
+            ocrStatusDiv.textContent = `發生錯誤：${error.message}`;
+        }
+    }
+    async function processOcrPdf(pdfData) {
+        let fullText = '';
+        ocrStatusDiv.innerHTML = '正在載入 PDF...<div class="loader"></div>';
+        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+        const numPages = pdf.numPages;
+        for (let i = 1; i <= numPages; i++) {
+            ocrStatusDiv.innerHTML = `正在處理第 ${i} / ${numPages} 頁...<div class="loader"></div>`;
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            if (pageText.trim().length > 50) {
+                ocrStatusDiv.textContent = `第 ${i} / ${numPages} 頁：直接擷取文字成功。`;
+                fullText += pageText;
+            } else {
+                ocrStatusDiv.innerHTML = `第 ${i} / ${numPages} 頁：偵測為圖片，正在啟動 OCR...<div class="loader"></div>`;
+                const viewport = page.getViewport({ scale: 2.0 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                const { data: { text } } = await Tesseract.recognize(canvas.toDataURL(), 'chi_tra+eng', { logger: m => { if (m.status === 'recognizing text') ocrStatusDiv.innerHTML = `第 ${i} / ${numPages} 頁：OCR 辨識中... ${Math.round(m.progress * 100)}%<div class="loader"></div>`; } });
+                fullText += text;
+            }
+            fullText += `\n\n--- 第 ${i} 頁結束 ---\n\n`;
+            ocrResultDiv.textContent = fullText;
+        }
+        ocrStatusDiv.textContent = `處理完成！共 ${numPages} 頁。`;
+    }
+    const pdfToImageInput = document.getElementById('pdf-to-image-file');
+    const pdfToImageInfo = document.getElementById('pdf-to-image-info');
+    const pdfToImageOptions = document.getElementById('pdf-to-image-options');
+    const pdfToImageBtn = document.getElementById('pdf-to-image-btn');
+    pdfToImageInput.addEventListener('change', async () => {
+        if (!pdfToImageInput.files.length) return;
+        const file = pdfToImageInput.files[0];
+        pdfToImageInfo.textContent = `已選擇：${file.name}`;
+        pdfToImageBtn.disabled = true;
+        try {
+            const pdfBytes = await readFileAsArrayBuffer(file);
+            const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+            pdfToImageInfo.textContent = `已選擇：${file.name} (共 ${pdf.numPages} 頁)`;
+            pdfToImageOptions.classList.remove('hidden');
+            pdfToImageBtn.disabled = false;
+        } catch (e) {
+            pdfToImageInfo.textContent = '無法讀取此 PDF 檔案。';
+            pdfToImageOptions.classList.add('hidden');
+        }
+    });
+    pdfToImageBtn.addEventListener('click', async () => {
+        const file = pdfToImageInput.files[0];
+        if (!file) return;
+        const resolution = document.getElementById('image-resolution').value;
+        const format = document.getElementById('image-format').value;
+        const fileExtension = format === 'image/jpeg' ? 'jpg' : 'png';
+        showModal(`<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div><p id="modal-progress" class="mt-4">準備開始轉換...</p>`);
+        try {
+            const pdfBytes = await readFileAsArrayBuffer(file);
+            const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+            const numPages = pdf.numPages;
+            const zip = new JSZip();
+            for (let i = 1; i <= numPages; i++) {
+                document.getElementById('modal-progress').textContent = `正在轉換第 ${i} / ${numPages} 頁...`;
+                const page = await pdf.getPage(i);
+                const scale = resolution / 72;
+                const viewport = page.getViewport({ scale: scale });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, format, 0.9));
+                zip.file(`page_${i}.${fileExtension}`, blob);
+            }
+            const zipBlob = await zip.generateAsync({ type: "blob" });
+            window.lastBlob = zipBlob;
+            showModal(`<h3 class="text-xl font-bold text-green-600 mb-4">轉換成功！</h3><p>已將 ${numPages} 頁 PDF 轉換為圖片，並壓縮成 ZIP。</p><div class="mt-6"><button onclick="downloadFile(window.lastBlob, 'converted_images.zip')" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg w-full">下載 ZIP 檔案</button><button onclick="hideModal()" class="mt-2 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg w-full">關閉</button></div>`);
+        } catch (error) {
+            console.error(error);
+            showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+        }
+    });
+    function removeFile(element, inputId) {
+        const itemToRemove = element.closest('.draggable') || element.closest('.file-list-item');
+        itemToRemove.remove();
+        const input = document.getElementById(inputId);
+        const listId = inputId.replace('-files', '-list').replace('-file', '-list');
+        const list = document.getElementById(listId);
+        const btnId = inputId.replace('-files', '-btn').replace('-file', '-btn');
+        const btn = document.getElementById(btnId);
+        const remainingItems = list.children.length;
+        if (inputId === 'merge-pdf-files') {
+            btn.disabled = remainingItems < 2;
+        } else {
+            btn.disabled = remainingItems < 1;
+        }
+    }
+</script>
+</body>
+</html>
