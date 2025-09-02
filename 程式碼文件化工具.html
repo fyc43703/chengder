@@ -114,6 +114,7 @@
                             <select id="output_format" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
                                 <option value="pdf">PDF (.pdf)</option>
                                 <option value="png">圖形檔 (.png)</option>
+                                <option value="html">HTML (.html)</option>
                             </select>
                         </div>
                         <div id="orientation_controls" class="mb-4">
@@ -199,10 +200,35 @@
         }
 
         /**
-         * 準備用於渲染的 HTML 內容
-         * @returns {string} - 準備好的 HTML 字串
+         * 從程式碼中提取檔名
+         * @returns {string} - 檔案名稱 (不含副檔名)
          */
-        function prepareContentForRender() {
+        function getFileName() {
+            const code = codeInput.value;
+            const codeType = codeTypeSelect.value;
+
+            if (codeType === 'html') {
+                try {
+                    // 使用正規表示式來安全地提取 title 內容
+                    const match = code.match(/<title>(.*?)<\/title>/i);
+                    if (match && match[1]) {
+                        // 清理檔名，移除不適用的字元
+                        return match[1].trim().replace(/[\\/:*?"<>|]/g, '') || 'output';
+                    }
+                } catch (e) {
+                    console.error('解析 title 失敗:', e);
+                    return 'output';
+                }
+            }
+            // 對於其他類型的程式碼，或找不到 title 時，返回預設名稱
+            return 'output';
+        }
+
+        /**
+         * 準備用於渲染的 HTML 內容
+         * @returns {Promise<string>} - 準備好的 HTML 字串
+         */
+        async function prepareContentForRender() {
             const code = codeInput.value;
             const codeType = codeTypeSelect.value;
             const highlightableLanguages = ['python', 'javascript', 'css', 'sql', 'java', 'cpp', 'typescript', 'markdown'];
@@ -216,8 +242,15 @@
                     return `<div class="hljs-container"><pre><code class="hljs">${highlightedCode}</code></pre></div>`;
                 }
             } else if (codeType === 'mermaid') {
-                // 對於 Mermaid，返回帶有 class 的 div，以便後續渲染
-                return `<div class="mermaid">${code}</div>`;
+                // 對於 Mermaid，先渲染它並返回渲染後的 SVG 字串
+                try {
+                    const { svg } = await mermaid.render('mermaid-graph', code);
+                    return svg;
+                } catch (error) {
+                    console.error('Mermaid 渲染失敗:', error);
+                    alert('Mermaid 語法錯誤，無法渲染圖表。');
+                    throw new Error('Mermaid rendering failed');
+                }
             }
             // 對於 HTML 和 SVG，直接返回原始碼
             return code;
@@ -228,27 +261,19 @@
          */
         async function convertToPdf() {
             toggleLoader(true);
-            const contentHtml = prepareContentForRender();
-            renderContainer.innerHTML = contentHtml;
-            
-            // 如果是 Mermaid，先渲染它
-            if (codeTypeSelect.value === 'mermaid') {
-                const mermaidDiv = renderContainer.querySelector('.mermaid');
-                if (mermaidDiv) {
-                    await mermaid.run({ nodes: [mermaidDiv] });
-                }
-            }
-
-            const originalWidth = renderContainer.style.width;
-            const orientation = pdfOrientationSelect.value;
-            
-            const resolutionValue = parseInt(pdfResolutionSelect.value, 10);
-            const scale = resolutionValue === 1 ? 2 : (resolutionValue === 2 ? 3 : 4);
-
-            const customScale = parseInt(pdfScaleInput.value, 10) / 100.0;
-            renderContainer.style.width = orientation === 'l' ? '297mm' : '210mm';
-
             try {
+                const contentHtml = await prepareContentForRender();
+                renderContainer.innerHTML = contentHtml;
+
+                const originalWidth = renderContainer.style.width;
+                const orientation = pdfOrientationSelect.value;
+                
+                const resolutionValue = parseInt(pdfResolutionSelect.value, 10);
+                const scale = resolutionValue === 1 ? 2 : (resolutionValue === 2 ? 3 : 4);
+
+                const customScale = parseInt(pdfScaleInput.value, 10) / 100.0;
+                renderContainer.style.width = orientation === 'l' ? '297mm' : '210mm';
+
                 const { jsPDF } = window.jspdf;
                 const canvas = await html2canvas(renderContainer, {
                     scale: scale,
@@ -290,14 +315,15 @@
                     heightLeft -= pdfHeight;
                 }
                 
-                pdf.save('output.pdf');
-
+                const fileName = getFileName();
+                pdf.save(`${fileName}.pdf`);
             } catch (error) {
                 console.error("PDF 生成失敗:", error);
-                alert("抱歉，生成 PDF 時發生錯誤。");
+                if (error.message !== 'Mermaid rendering failed') {
+                   alert("抱歉，生成 PDF 時發生錯誤。");
+                }
             } finally {
                 renderContainer.innerHTML = '';
-                renderContainer.style.width = originalWidth;
                 toggleLoader(false);
             }
         }
@@ -307,22 +333,14 @@
          */
         async function convertToPng() {
             toggleLoader(true);
-            const contentHtml = prepareContentForRender();
-            renderContainer.innerHTML = contentHtml;
-            
-            // 如果是 Mermaid，先渲染它
-            if (codeTypeSelect.value === 'mermaid') {
-                const mermaidDiv = renderContainer.querySelector('.mermaid');
-                if (mermaidDiv) {
-                    await mermaid.run({ nodes: [mermaidDiv] });
-                }
-            }
-            
-            const originalWidth = renderContainer.style.width;
-            const orientation = pngOrientationSelect.value;
-            renderContainer.style.width = orientation === 'l' ? '297mm' : '210mm';
-
             try {
+                const contentHtml = await prepareContentForRender();
+                renderContainer.innerHTML = contentHtml;
+                
+                const originalWidth = renderContainer.style.width;
+                const orientation = pngOrientationSelect.value;
+                renderContainer.style.width = orientation === 'l' ? '297mm' : '210mm';
+
                 const scale = parseInt(pngResolutionSelect.value, 10);
                 const canvas = await html2canvas(renderContainer, { 
                     scale: scale, 
@@ -335,17 +353,69 @@
                 
                 const a = document.createElement('a');
                 a.href = imgData;
-                a.download = 'output.png';
+                const fileName = getFileName();
+                a.download = `${fileName}.png`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-
             } catch (error) {
                 console.error("PNG 生成失敗:", error);
-                alert("抱歉，生成圖形檔時發生錯誤。");
+                if (error.message !== 'Mermaid rendering failed') {
+                    alert("抱歉，生成圖形檔時發生錯誤。");
+                }
             } finally {
                 renderContainer.innerHTML = '';
-                renderContainer.style.width = originalWidth;
+                toggleLoader(false);
+            }
+        }
+
+        /**
+         * 將內容轉換為可下載的 HTML 檔案
+         */
+        async function convertToHtml() {
+            toggleLoader(true);
+            try {
+                const contentHtml = await prepareContentForRender();
+                // 創建一個完整的 HTML 文件結構
+                const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${getFileName()}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/gruvbox-light.min.css">
+    <style>
+        body { font-family: sans-serif; padding: 2rem; }
+        .hljs-container {
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            background-color: #F9F5F1;
+            border: 1px solid #D7CCC8;
+        }
+    </style>
+</head>
+<body>
+    ${contentHtml}
+</body>
+</html>`;
+
+                const blob = new Blob([fullHtml], { type: 'text/html' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                const fileName = getFileName();
+                a.download = `${fileName}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+
+            } catch (error) {
+                 console.error("HTML 生成失敗:", error);
+                 if (error.message !== 'Mermaid rendering failed') {
+                    alert("抱歉，生成 HTML 時發生錯誤。");
+                 }
+            } finally {
                 toggleLoader(false);
             }
         }
@@ -373,6 +443,9 @@
                     break;
                 case 'png':
                     convertToPng();
+                    break;
+                case 'html':
+                    convertToHtml();
                     break;
                 default:
                     alert('無效的格式');
