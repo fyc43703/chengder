@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>程式碼文件化工具</title>
+    <!-- 引入 Tailwind CSS 以美化介面 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+    <!-- 引入 highlight.js 用於程式碼語法高亮 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/gruvbox-light.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- 載入額外的程式語言高亮腳本 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/markdown.min.js"></script>
+    <!-- 引入 jspdf 和 html2canvas 用於 PDF 生成 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- 引入 Mermaid.js 用於渲染圖表 -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        // 自訂卓越雜誌木質調風格的 Tailwind 色彩
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'wood-bg': '#FBF9F6',      // 亞麻白背景
+                        'wood-panel': '#F1ECE5',   // 暖米色面板
+                        'wood-text': '#5D4037',    // 胡桃木色文字
+                        'wood-subtle': '#A1887F',  // 灰褐色次要文字
+                        'wood-border': '#D7CCC8', // 淺褐色邊框
+                        'wood-accent': '#8D6E63',  // 沉穩木質強調色
+                        'wood-accent-hover': '#6D4C41', // 深木色按鈕懸停
+                    },
+                    fontFamily: {
+                        'sans': ['Noto Sans JP', 'sans-serif'],
+                        'serif': ['Noto Serif JP', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 自訂 highlight.js 的容器樣式以匹配新主題 */
+        .hljs-container {
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            background-color: #F9F5F1;
+            border: 1px solid #D7CCC8;
+        }
+        /* 調整選單樣式 */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%238D6E63' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+    </style>
+</head>
+<body class="bg-wood-bg text-wood-text font-sans flex flex-col items-center min-h-screen p-4">
+
+    <div class="w-full max-w-7xl">
+        <!-- 標題區域 -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold font-serif text-wood-text">程式碼文件化工具</h1>
+            <p class="text-wood-subtle mt-2">將您的程式碼，轉換為專業、簡潔的文件格式。</p>
+            <p class="text-wood-subtle mt-4 text-sm">製作者：陳政德</p>
+        </header>
+
+        <!-- 主體內容：左右佈局 -->
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- 左側：程式碼輸入區 -->
+            <div class="bg-wood-panel p-6 rounded-lg flex flex-col">
+                <h2 class="text-2xl font-serif font-semibold mb-4 border-b border-wood-border pb-2">1. 輸入程式碼</h2>
+                <div class="flex items-center mb-4">
+                    <label for="code_type" class="mr-3 text-wood-text">程式碼類型:</label>
+                    <select id="code_type" class="bg-wood-bg text-wood-text rounded px-3 py-1.5 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                        <option value="html">HTML</option>
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="css">CSS</option>
+                        <option value="sql">SQL</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="markdown">Markdown</option>
+                        <option value="svg">SVG</option>
+                        <option value="mermaid">Mermaid</option>
+                    </select>
+                </div>
+                <textarea id="code_input" class="w-full h-96 flex-grow bg-white text-gray-800 p-4 rounded-md font-mono text-sm border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent" placeholder="在此貼上您的程式碼..."></textarea>
+            </div>
+
+            <!-- 右側：輸出與控制區 -->
+            <div class="bg-wood-panel p-6 rounded-lg flex flex-col justify-between">
+                <div>
+                    <h2 class="text-2xl font-serif font-semibold mb-4 border-b border-wood-border pb-2">2. 選擇輸出</h2>
+                    <div class="space-y-6">
+                        <div>
+                            <label for="output_format" class="block mb-2 text-wood-text">選擇轉換格式:</label>
+                            <select id="output_format" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                                <option value="pdf">PDF (.pdf)</option>
+                                <option value="png">圖形檔 (.png)</option>
+                            </select>
+                        </div>
+                        <div id="orientation_controls" class="mb-4">
+                            <label for="pdf_orientation" class="block mb-2 text-wood-text">PDF 方向:</label>
+                            <select id="pdf_orientation" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                                <option value="p">直式 (Portrait)</option>
+                                <option value="l">橫式 (Landscape)</option>
+                            </select>
+                            <label for="pdf_resolution" class="block mt-4 mb-2 text-wood-text">PDF 解析度:</label>
+                            <select id="pdf_resolution" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                                <option value="1">標準</option>
+                                <option value="2" selected>高解析度</option>
+                                <option value="4">超高解析度</option>
+                            </select>
+                            <label for="pdf_scale" class="block mt-4 mb-2 text-wood-text">縮放比例 (%):</label>
+                            <input type="number" id="pdf_scale" value="100" min="10" max="200" step="1" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                        </div>
+                        <div id="resolution_controls" class="mb-4 hidden">
+                            <label for="png_resolution" class="block mb-2 text-wood-text">PNG 解析度:</label>
+                            <select id="png_resolution" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                                <option value="1">標準 (1x)</option>
+                                <option value="2" selected>高解析度 (2x)</option>
+                                <option value="4">超高解析度 (4x)</option>
+                            </select>
+                            <label for="png_orientation" class="block mt-4 mb-2 text-wood-text">PNG 方向:</label>
+                            <select id="png_orientation" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                                <option value="p">直式 (Portrait)</option>
+                                <option value="l">橫式 (Landscape)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <button id="convert_btn" class="w-full bg-wood-accent hover:bg-wood-accent-hover text-white font-bold py-3 px-4 rounded-md text-lg transition duration-300">
+                        🚀 開始轉換並下載
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 用於 PDF/SVG 渲染的隱藏容器 -->
+    <div id="render-container" class="fixed top-0 -z-10 bg-white text-black p-8" style="width: 210mm; left: -9999px;"></div>
+    
+    <!-- 載入動畫 -->
+    <div id="loader" class="hidden fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+        <div class="text-center">
+            <svg class="animate-spin h-10 w-10 text-wood-accent mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="O 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-4 text-lg text-wood-text">正在處理中，請稍候...</p>
+        </div>
+    </div>
+
+    <script>
+        // 初始化 Mermaid
+        mermaid.initialize({ startOnLoad: false });
+
+        // 獲取 DOM 元素
+        const codeInput = document.getElementById('code_input');
+        const codeTypeSelect = document.getElementById('code_type');
+        const outputFormatSelect = document.getElementById('output_format');
+        const convertBtn = document.getElementById('convert_btn');
+        const renderContainer = document.getElementById('render-container');
+        const loader = document.getElementById('loader');
+        const pdfOrientationSelect = document.getElementById('pdf_orientation');
+        const pdfResolutionSelect = document.getElementById('pdf_resolution');
+        const pdfScaleInput = document.getElementById('pdf_scale');
+        const orientationControls = document.getElementById('orientation_controls');
+        const pngResolutionSelect = document.getElementById('png_resolution');
+        const resolutionControls = document.getElementById('resolution_controls');
+        const pngOrientationSelect = document.getElementById('png_orientation');
+
+        // --- 功能實現 ---
+
+        /**
+         * 顯示/隱藏載入動畫
+         * @param {boolean} show - 是否顯示
+         */
+        function toggleLoader(show) {
+            loader.classList.toggle('hidden', !show);
+        }
+
+        /**
+         * 準備用於渲染的 HTML 內容
+         * @returns {string} - 準備好的 HTML 字串
+         */
+        function prepareContentForRender() {
+            const code = codeInput.value;
+            const codeType = codeTypeSelect.value;
+            const highlightableLanguages = ['python', 'javascript', 'css', 'sql', 'java', 'cpp', 'typescript', 'markdown'];
+            
+            if (highlightableLanguages.includes(codeType)) {
+                 if (hljs.getLanguage(codeType)) {
+                    const highlightedCode = hljs.highlight(code, { language: codeType }).value;
+                    return `<div class="hljs-container"><pre><code class="language-${codeType} hljs">${highlightedCode}</code></pre></div>`;
+                } else {
+                    const highlightedCode = hljs.highlightAuto(code).value;
+                    return `<div class="hljs-container"><pre><code class="hljs">${highlightedCode}</code></pre></div>`;
+                }
+            } else if (codeType === 'mermaid') {
+                // 對於 Mermaid，返回帶有 class 的 div，以便後續渲染
+                return `<div class="mermaid">${code}</div>`;
+            }
+            // 對於 HTML 和 SVG，直接返回原始碼
+            return code;
+        }
+
+        /**
+         * 將內容轉換為 PDF (支援多頁)
+         */
+        async function convertToPdf() {
+            toggleLoader(true);
+            const contentHtml = prepareContentForRender();
+            renderContainer.innerHTML = contentHtml;
+            
+            // 如果是 Mermaid，先渲染它
+            if (codeTypeSelect.value === 'mermaid') {
+                const mermaidDiv = renderContainer.querySelector('.mermaid');
+                if (mermaidDiv) {
+                    await mermaid.run({ nodes: [mermaidDiv] });
+                }
+            }
+
+            const originalWidth = renderContainer.style.width;
+            const orientation = pdfOrientationSelect.value;
+            
+            const resolutionValue = parseInt(pdfResolutionSelect.value, 10);
+            const scale = resolutionValue === 1 ? 2 : (resolutionValue === 2 ? 3 : 4);
+
+            const customScale = parseInt(pdfScaleInput.value, 10) / 100.0;
+            renderContainer.style.width = orientation === 'l' ? '297mm' : '210mm';
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const canvas = await html2canvas(renderContainer, {
+                    scale: scale,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    windowWidth: renderContainer.scrollWidth,
+                    windowHeight: renderContainer.scrollHeight
+                });
+                
+                const imgData = canvas.toDataURL('image/jpeg', 0.92);
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                
+                const pdf = new jsPDF({
+                    orientation: orientation,
+                    unit: 'pt',
+                    format: 'a4'
+                });
+
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                
+                const ratio = pdfWidth / imgWidth;
+                const scaledImgHeight = imgHeight * ratio;
+
+                const finalImgWidth = pdfWidth * customScale;
+                const finalImgHeight = scaledImgHeight * customScale;
+
+                let heightLeft = finalImgHeight;
+                let position = 0;
+                
+                pdf.addImage(imgData, 'JPEG', 0, position, finalImgWidth, finalImgHeight);
+                heightLeft -= pdfHeight;
+
+                while (heightLeft > 0) {
+                    position = heightLeft - finalImgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'JPEG', 0, position, finalImgWidth, finalImgHeight);
+                    heightLeft -= pdfHeight;
+                }
+                
+                pdf.save('output.pdf');
+
+            } catch (error) {
+                console.error("PDF 生成失敗:", error);
+                alert("抱歉，生成 PDF 時發生錯誤。");
+            } finally {
+                renderContainer.innerHTML = '';
+                renderContainer.style.width = originalWidth;
+                toggleLoader(false);
+            }
+        }
+        
+        /**
+         * 將內容轉換為 PNG 圖形檔
+         */
+        async function convertToPng() {
+            toggleLoader(true);
+            const contentHtml = prepareContentForRender();
+            renderContainer.innerHTML = contentHtml;
+            
+            // 如果是 Mermaid，先渲染它
+            if (codeTypeSelect.value === 'mermaid') {
+                const mermaidDiv = renderContainer.querySelector('.mermaid');
+                if (mermaidDiv) {
+                    await mermaid.run({ nodes: [mermaidDiv] });
+                }
+            }
+            
+            const originalWidth = renderContainer.style.width;
+            const orientation = pngOrientationSelect.value;
+            renderContainer.style.width = orientation === 'l' ? '297mm' : '210mm';
+
+            try {
+                const scale = parseInt(pngResolutionSelect.value, 10);
+                const canvas = await html2canvas(renderContainer, { 
+                    scale: scale, 
+                    useCORS: true,
+                    backgroundColor: null,
+                    windowWidth: renderContainer.scrollWidth,
+                    windowHeight: renderContainer.scrollHeight
+                });
+                const imgData = canvas.toDataURL('image/png');
+                
+                const a = document.createElement('a');
+                a.href = imgData;
+                a.download = 'output.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+            } catch (error) {
+                console.error("PNG 生成失敗:", error);
+                alert("抱歉，生成圖形檔時發生錯誤。");
+            } finally {
+                renderContainer.innerHTML = '';
+                renderContainer.style.width = originalWidth;
+                toggleLoader(false);
+            }
+        }
+        
+        /**
+         * 根據選擇的格式更新顯示的控制選項
+         */
+        function updateControlsVisibility() {
+            const selectedFormat = outputFormatSelect.value;
+            orientationControls.classList.toggle('hidden', selectedFormat !== 'pdf');
+            resolutionControls.classList.toggle('hidden', selectedFormat !== 'png');
+        }
+
+        // --- 事件監聽 ---
+        convertBtn.addEventListener('click', () => {
+            if (!codeInput.value.trim()) {
+                alert("請先輸入一些程式碼！");
+                return;
+            }
+
+            const format = outputFormatSelect.value;
+            switch (format) {
+                case 'pdf':
+                    convertToPdf();
+                    break;
+                case 'png':
+                    convertToPng();
+                    break;
+                default:
+                    alert('無效的格式');
+            }
+        });
+
+        outputFormatSelect.addEventListener('change', updateControlsVisibility);
+
+        // 初始化時根據預設選項決定顯示哪個控制選項
+        updateControlsVisibility();
+
+    </script>
+</body>
+</html>
+
