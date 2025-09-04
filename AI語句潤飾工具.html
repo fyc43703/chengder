@@ -111,7 +111,7 @@
                     <h2 class="text-sm font-medium text-[#6d4c41]">優化結果：</h2>
                     <button id="copyButton" class="flex items-center gap-1 text-sm bg-[#d7ccc8]/70 hover:bg-[#bcaaa4]/70 text-[#6d4c41] font-medium py-1 px-3 rounded-lg transition duration-200">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        <span>複製</span>
+                        <span>複製優化後文字</span>
                     </button>
                 </div>
                 <div id="outputText" class="w-full h-96 p-4 bg-[#f1f8f7]/90 border border-[#a1887f]/80 rounded-lg text-[#4e342e] whitespace-pre-wrap overflow-y-auto"></div>
@@ -157,7 +157,15 @@
         }
 
         function copyToClipboard() {
-            const plainText = outputText.textContent;
+            // 建立 outputText 的一個暫時性複製品來處理文字
+            const clone = outputText.cloneNode(true);
+            // 在複製品中找出所有被標記為移除的元素
+            const removedElements = clone.querySelectorAll('.diff-removed');
+            // 將這些元素從複製品中移除
+            removedElements.forEach(el => el.remove());
+            // 取得清理過後的純文字內容
+            const plainText = clone.textContent;
+
             if (plainText) {
                 const tempTextArea = document.createElement('textarea');
                 tempTextArea.value = plainText;
@@ -215,7 +223,7 @@
             // !!! 安全警告 !!!
             // 將 API 金鑰直接寫在前端是非常不安全的，任何人都可以看到並盜用。
             // 在正式環境中，您應該透過後端伺-服器來呼叫 API。
-            const apiKey = "AIzaSyD1eAmZ-gOlU9VG-06ClJVXg21e4OE17Nc"; // <-- 在此處貼上您的 API 金鑰 (僅供測試)
+            const apiKey = "AIzaSyD1eAmZ-gOlU9VG-06ClJVXg21e4OE17Nc; // <-- 在此處貼上您的 API 金鑰 (僅供測試)
             const modelName = "gemini-1.5-flash-latest";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
