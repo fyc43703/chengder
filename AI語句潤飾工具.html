@@ -122,181 +122,183 @@
     </div>
 
     <script>
-        const polishButton = document.getElementById('polishButton');
-        const clearButton = document.getElementById('clearButton');
-        const copyButton = document.getElementById('copyButton');
-        const inputText = document.getElementById('inputText');
-        const outputText = document.getElementById('outputText');
-        const polishStyleSelect = document.getElementById('polishStyle');
-        const inputCharCount = document.getElementById('inputCharCount');
-        const outputCharCount = document.getElementById('outputCharCount');
-        const clearInputButton = document.getElementById('clearInputButton');
+        document.addEventListener('DOMContentLoaded', () => {
+            const polishButton = document.getElementById('polishButton');
+            const clearButton = document.getElementById('clearButton');
+            const copyButton = document.getElementById('copyButton');
+            const inputText = document.getElementById('inputText');
+            const outputText = document.getElementById('outputText');
+            const polishStyleSelect = document.getElementById('polishStyle');
+            const inputCharCount = document.getElementById('inputCharCount');
+            const outputCharCount = document.getElementById('outputCharCount');
+            const clearInputButton = document.getElementById('clearInputButton');
 
-        // --- Event Listeners ---
-        polishButton.addEventListener('click', polishSentence);
-        clearButton.addEventListener('click', clearContent);
-        copyButton.addEventListener('click', copyToClipboard);
-        inputText.addEventListener('input', () => updateCharCount(inputText, inputCharCount));
-        clearInputButton.addEventListener('click', () => {
-            inputText.value = '';
-            updateCharCount(inputText, inputCharCount);
-            inputText.focus();
-        });
+            // --- Event Listeners ---
+            polishButton.addEventListener('click', polishSentence);
+            clearButton.addEventListener('click', clearContent);
+            copyButton.addEventListener('click', copyToClipboard);
+            inputText.addEventListener('input', () => updateCharCount(inputText, inputCharCount));
+            clearInputButton.addEventListener('click', () => {
+                inputText.value = '';
+                updateCharCount(inputText, inputCharCount);
+                inputText.focus();
+            });
 
 
-        function updateCharCount(inputElement, countElement) {
-            const count = inputElement.value.length;
-            countElement.textContent = `字數：${count}`;
-        }
-
-        function clearContent() {
-            inputText.value = '';
-            outputText.innerHTML = '';
-            updateCharCount(inputText, inputCharCount);
-            updateCharCount({value: ''}, outputCharCount); // Reset output count
-        }
-
-        function copyToClipboard() {
-            // 建立 outputText 的一個暫時性複製品來處理文字
-            const clone = outputText.cloneNode(true);
-            // 在複製品中找出所有被標記為移除的元素
-            const removedElements = clone.querySelectorAll('.diff-removed');
-            // 將這些元素從複製品中移除
-            removedElements.forEach(el => el.remove());
-            // 取得清理過後的純文字內容
-            const plainText = clone.textContent;
-
-            if (plainText) {
-                const tempTextArea = document.createElement('textarea');
-                tempTextArea.value = plainText;
-                document.body.appendChild(tempTextArea);
-                tempTextArea.select();
-                try {
-                    document.execCommand('copy');
-                    const originalButtonHTML = copyButton.innerHTML;
-                    copyButton.innerHTML = `<span>已複製！</span>`;
-                    setTimeout(() => {
-                        copyButton.innerHTML = originalButtonHTML;
-                    }, 2000);
-                } catch (err) {
-                    console.error('無法複製文字: ', err);
-                }
-                document.body.removeChild(tempTextArea);
-            }
-        }
-
-        async function polishSentence() {
-            const originalText = inputText.value.trim();
-            if (!originalText) {
-                outputText.textContent = '請先輸入您想要潤飾的句子。';
-                return;
+            function updateCharCount(inputElement, countElement) {
+                const count = inputElement.value.length;
+                countElement.textContent = `字數：${count}`;
             }
 
-            // --- Show loading indicator ---
-            outputText.innerHTML = '<div class="flex justify-center items-center h-full"><div class="lds-dual-ring"></div></div>';
-            polishButton.disabled = true;
-            clearButton.disabled = true;
-            copyButton.disabled = true;
-            polishButton.classList.add('opacity-50', 'cursor-not-allowed');
-            clearButton.classList.add('opacity-50', 'cursor-not-allowed');
-
-            const formattingInstruction = " 你的任務是比較原文和優化後的文字，並產生一個能精確顯示差異的 HTML。請嚴格遵循以下規則：1. **未變動的文字**必須保持原樣，不加任何 HTML 標籤。 2. **從原文中刪除的文字**，必須用 `<del>` 標籤包圍。 3. **在新文中增加的文字**，必須用 `<ins>` 標籤包圍。 你的輸出必須是單一的 HTML 字串，不包含任何額外解釋。例如，若原文是「今天天氣很好」，優化後是「今天天氣真好！」，你的輸出就必須是「今天天氣<del>很</del><ins>真</ins>好<ins>！</ins>」。";
-
-            const stylePrompts = {
-                general: "你是一位專業的中文寫作專家，請將以下句子潤飾得更通順、精煉，同時完整保留原始語意。",
-                professional: "你是一位資深的商業與學術編輯，請將以下文字改寫得非常專業、正式、客觀，適用於報告或論文，同時完整保留原始語意。",
-                casual: "你是一位社群文案高手，請將以下句子改寫得更口語化、活潑、有吸引力，適合用在部落格或社群媒體，同時完整保留原始語意。",
-                concise: "你是一位精煉的文字編輯，請將以下句子縮短，用最少的字表達核心意思，移除贅字，同時完整保留原始語意。",
-                grammar: "你是一位嚴謹的校稿員，請只修正以下句子中的錯別字、標點符號和語法錯誤，不要改變句意或風格。",
-                official_document: "你是一位精通政府公文寫作的專家，請將以下文字改寫成符合公文用語規範的正式書面語，確保用詞精確、語氣莊重，同時完整保留原始語意。",
-                humorous: "你是一位幽默大師，請將以下句子改寫得輕鬆、有趣、甚至帶點諷刺，但要保留核心意思。",
-                poetic: "你是一位詩人，請將以下文字改寫得充滿詩意、意象優美、文字典雅，同時保留原始語意。",
-                news: "你是一位資深記者，請將以下文字改寫成客觀、中立、精確的新聞報導風格，同時完整保留原始語意。",
-                classical: "你是一位精通古文的學者，請將以下文字改寫成簡潔典雅的文言文風格，同時完整保留原始語意。"
-            };
-
-            const selectedStyle = polishStyleSelect.value;
-            const systemPrompt = `${stylePrompts[selectedStyle]} ${formattingInstruction} 請直接提供優化後的版本，不需要任何額外解釋。請使用繁體中文回答。`;
-            const userQuery = originalText;
-            
-            // --- API 金鑰和端點 ---
-            // !!! 安全警告 !!!
-            // 將 API 金鑰直接寫在前端是非常不安全的，任何人都可以看到並盜用。
-            // 在正式環境中，您應該透過後端伺-服器來呼叫 API。
-            const apiKey = "AIzaSyD1eAmZ-gOlU9VG-06ClJVXg21e4OE17Nc; // <-- 在此處貼上您的 API 金鑰 (僅供測試)
-            const modelName = "gemini-1.5-flash-latest";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-            if (!apiKey) {
-                outputText.textContent = "錯誤：尚未設定 API 金鑰。請在程式碼中填入您的 Google AI API 金鑰。";
-                polishButton.disabled = false;
-                clearButton.disabled = false;
-                copyButton.disabled = false;
-                polishButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                clearButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                return;
+            function clearContent() {
+                inputText.value = '';
+                outputText.innerHTML = '';
+                updateCharCount(inputText, inputCharCount);
+                updateCharCount({value: ''}, outputCharCount); // Reset output count
             }
 
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: {
-                    parts: [{ text: systemPrompt }]
-                },
-                safetySettings: [
-                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                ]
-            };
+            function copyToClipboard() {
+                // 建立 outputText 的一個暫時性複製品來處理文字
+                const clone = outputText.cloneNode(true);
+                // 在複製品中找出所有被標記為移除的元素
+                const removedElements = clone.querySelectorAll('.diff-removed');
+                // 將這些元素從複製品中移除
+                removedElements.forEach(el => el.remove());
+                // 取得清理過後的純文字內容
+                const plainText = clone.textContent;
 
-            try {
-                let response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`請求失敗，狀態碼：${response.status}. 詳情: ${errorText}`);
-                }
-
-                const result = await response.json();
-                const candidate = result.candidates?.[0];
-
-                if (candidate && candidate.content?.parts?.[0]?.text) {
-                    if (candidate.finishReason === 'SAFETY') {
-                        outputText.textContent = '抱歉，您的輸入內容可能違反了使用政策，無法處理。請修改後再試。';
-                    } else {
-                        const polishedTextWithHtml = candidate.content.parts[0].text;
-                        const cleanedHtml = polishedTextWithHtml.replace(/^```html\n?/, '').replace(/```$/, '').trim();
-                        const finalHtml = cleanedHtml.replace(/<ins>/g, '<span class="diff-added">')
-                                                     .replace(/<\/ins>/g, '</span>')
-                                                     .replace(/<del>/g, '<span class="diff-removed">')
-                                                     .replace(/<\/del>/g, '</span>');
-                        outputText.innerHTML = finalHtml;
-                        updateCharCount({value: outputText.textContent}, outputCharCount);
+                if (plainText) {
+                    const tempTextArea = document.createElement('textarea');
+                    tempTextArea.value = plainText;
+                    document.body.appendChild(tempTextArea);
+                    tempTextArea.select();
+                    try {
+                        document.execCommand('copy');
+                        const originalButtonHTML = copyButton.innerHTML;
+                        copyButton.innerHTML = `<span>已複製！</span>`;
+                        setTimeout(() => {
+                            copyButton.innerHTML = originalButtonHTML;
+                        }, 2000);
+                    } catch (err) {
+                        console.error('無法複製文字: ', err);
                     }
-                } else {
-                    outputText.textContent = '抱歉，無法生成結果。請檢查您的輸入或稍後再試。';
-                    console.error('Unexpected API response structure:', result);
+                    document.body.removeChild(tempTextArea);
+                }
+            }
+
+            async function polishSentence() {
+                const originalText = inputText.value.trim();
+                if (!originalText) {
+                    outputText.textContent = '請先輸入您想要潤飾的句子。';
+                    return;
                 }
 
-            } catch (error) {
-                console.error('Error:', error);
-                outputText.textContent = '發生錯誤，請稍後再試。\n' + error.message;
-            } finally {
-                polishButton.disabled = false;
-                clearButton.disabled = false;
-                copyButton.disabled = false;
-                polishButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                clearButton.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-        }
+                // --- Show loading indicator ---
+                outputText.innerHTML = '<div class="flex justify-center items-center h-full"><div class="lds-dual-ring"></div></div>';
+                polishButton.disabled = true;
+                clearButton.disabled = true;
+                copyButton.disabled = true;
+                polishButton.classList.add('opacity-50', 'cursor-not-allowed');
+                clearButton.classList.add('opacity-50', 'cursor-not-allowed');
 
-        // Initialize char count
-        updateCharCount(inputText, inputCharCount);
+                const formattingInstruction = " 你的任務是比較原文和優化後的文字，並產生一個能精確顯示差異的 HTML。請嚴格遵循以下規則：1. **未變動的文字**必須保持原樣，不加任何 HTML 標籤。 2. **從原文中刪除的文字**，必須用 `<del>` 標籤包圍。 3. **在新文中增加的文字**，必須用 `<ins>` 標籤包圍。 你的輸出必須是單一的 HTML 字串，不包含任何額外解釋。例如，若原文是「今天天氣很好」，優化後是「今天天氣真好！」，你的輸出就必須是「今天天氣<del>很</del><ins>真</ins>好<ins>！</ins>」。";
+
+                const stylePrompts = {
+                    general: "你是一位專業的中文寫作專家，請將以下句子潤飾得更通順、精煉，同時完整保留原始語意。",
+                    professional: "你是一位資深的商業與學術編輯，請將以下文字改寫得非常專業、正式、客觀，適用於報告或論文，同時完整保留原始語意。",
+                    casual: "你是一位社群文案高手，請將以下句子改寫得更口語化、活潑、有吸引力，適合用在部落格或社群媒體，同時完整保留原始語意。",
+                    concise: "你是一位精煉的文字編輯，請將以下句子縮短，用最少的字表達核心意思，移除贅字，同時完整保留原始語意。",
+                    grammar: "你是一位嚴謹的校稿員，請只修正以下句子中的錯別字、標點符號和語法錯誤，不要改變句意或風格。",
+                    official_document: "你是一位精通政府公文寫作的專家，請將以下文字改寫成符合公文用語規範的正式書面語，確保用詞精確、語氣莊重，同時完整保留原始語意。",
+                    humorous: "你是一位幽默大師，請將以下句子改寫得輕鬆、有趣、甚至帶點諷刺，但要保留核心意思。",
+                    poetic: "你是一位詩人，請將以下文字改寫得充滿詩意、意象優美、文字典雅，同時保留原始語意。",
+                    news: "你是一位資深記者，請將以下文字改寫成客觀、中立、精確的新聞報導風格，同時完整保留原始語意。",
+                    classical: "你是一位精通古文的學者，請將以下文字改寫成簡潔典雅的文言文風格，同時完整保留原始語意。"
+                };
+
+                const selectedStyle = polishStyleSelect.value;
+                const systemPrompt = `${stylePrompts[selectedStyle]} ${formattingInstruction} 請直接提供優化後的版本，不需要任何額外解釋。請使用繁體中文回答。`;
+                const userQuery = originalText;
+                
+                // --- API 金鑰和端點 ---
+                // !!! 安全警告 !!!
+                // 將 API 金鑰直接寫在前端是非常不安全的，任何人都可以看到並盜用。
+                // 在正式環境中，您應該透過後端伺-服器來呼叫 API。
+                const apiKey = "AIzaSyD1eAmZ-gOlU9VG-06ClJVXg21e4OE17Nc"; // <-- 在此處貼上您的 API 金鑰 (僅供測試)
+                const modelName = "gemini-1.5-flash-latest";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+                if (!apiKey) {
+                    outputText.textContent = "錯誤：尚未設定 API 金鑰。請在程式碼中填入您的 Google AI API 金鑰。";
+                    polishButton.disabled = false;
+                    clearButton.disabled = false;
+                    copyButton.disabled = false;
+                    polishButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    clearButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    return;
+                }
+
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                    safetySettings: [
+                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                    ]
+                };
+
+                try {
+                    let response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`請求失敗，狀態碼：${response.status}. 詳情: ${errorText}`);
+                    }
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        if (candidate.finishReason === 'SAFETY') {
+                            outputText.textContent = '抱歉，您的輸入內容可能違反了使用政策，無法處理。請修改後再試。';
+                        } else {
+                            const polishedTextWithHtml = candidate.content.parts[0].text;
+                            const cleanedHtml = polishedTextWithHtml.replace(/^```html\n?/, '').replace(/```$/, '').trim();
+                            const finalHtml = cleanedHtml.replace(/<ins>/g, '<span class="diff-added">')
+                                                         .replace(/<\/ins>/g, '</span>')
+                                                         .replace(/<del>/g, '<span class="diff-removed">')
+                                                         .replace(/<\/del>/g, '</span>');
+                            outputText.innerHTML = finalHtml;
+                            updateCharCount({value: outputText.textContent}, outputCharCount);
+                        }
+                    } else {
+                        outputText.textContent = '抱歉，無法生成結果。請檢查您的輸入或稍後再試。';
+                        console.error('Unexpected API response structure:', result);
+                    }
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    outputText.textContent = '發生錯誤，請稍後再試。\n' + error.message;
+                } finally {
+                    polishButton.disabled = false;
+                    clearButton.disabled = false;
+                    copyButton.disabled = false;
+                    polishButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    clearButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+
+            // Initialize char count
+            updateCharCount(inputText, inputCharCount);
+        });
     </script>
 </body>
 </html>
