@@ -1,463 +1,431 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>程式碼文件化工具</title>
-    <!-- 引入 Tailwind CSS 以美化介面 -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
-    <!-- 引入 highlight.js 用於程式碼語法高亮 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/gruvbox-light.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <!-- 載入額外的程式語言高亮腳本 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/markdown.min.js"></script>
-    <!-- 引入 jspdf 和 html2canvas 用於 PDF 生成 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- 引入 Mermaid.js 用於渲染圖表 -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-    <script>
-        // 自訂卓越雜誌木質調風格的 Tailwind 色彩
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'wood-bg': '#FBF9F6',      // 亞麻白背景
-                        'wood-panel': '#F1ECE5',   // 暖米色面板
-                        'wood-text': '#5D4037',    // 胡桃木色文字
-                        'wood-subtle': '#A1887F',  // 灰褐色次要文字
-                        'wood-border': '#D7CCC8', // 淺褐色邊框
-                        'wood-accent': '#8D6E63',  // 沉穩木質強調色
-                        'wood-accent-hover': '#6D4C41', // 深木色按鈕懸停
-                    },
-                    fontFamily: {
-                        'sans': ['Noto Sans JP', 'sans-serif'],
-                        'serif': ['Noto Serif JP', 'serif'],
-                    }
-                }
-            }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>程式碼文件化工具</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/gruvbox-light.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/markdown.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'wood-bg':'#FBF9F6','wood-panel':'#F1ECE5','wood-text':'#5D4037',
+            'wood-subtle':'#A1887F','wood-border':'#D7CCC8',
+            'wood-accent':'#8D6E63','wood-accent-hover':'#6D4C41',
+          },
+          fontFamily:{'sans':['Noto Sans JP','sans-serif'],'serif':['Noto Serif JP','serif']}
         }
-    </script>
-    <style>
-        /* 自訂 highlight.js 的容器樣式以匹配新主題 */
-        .hljs-container {
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            overflow-x: auto;
-            background-color: #F9F5F1;
-            border: 1px solid #D7CCC8;
-        }
-        /* 調整選單樣式 */
-        select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%238D6E63' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 0.5rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            padding-right: 2.5rem;
-        }
-    </style>
+      }
+    }
+  </script>
+  <style>
+    .hljs-container{padding:1.5rem;border-radius:.5rem;overflow-x:auto;background:#F9F5F1;border:1px solid #D7CCC8;line-height:1.6}
+    .text-highlight{background:linear-gradient(180deg,transparent 25%,#FFE082 25%,#FFE082 75%,transparent 75%);padding:0 2px;margin:0;line-height:inherit;display:inline;box-decoration-break:clone;-webkit-box-decoration-break:clone;font-weight:500;border-radius:2px}
+    .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#FFE082 25%,#FFE082 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;line-height:inherit;display:inline;box-decoration-break:clone;-webkit-box-decoration-break:clone;font-weight:500;border-radius:2px}
+    .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFCDD2 25%,#FFCDD2 75%,transparent 75%);padding:0 2px;margin:0;line-height:inherit;display:inline;box-decoration-break:clone;-webkit-box-decoration-break:clone;font-weight:500;border-radius:2px;color:#C62828}
+    .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#C8E6C9 25%,#C8E6C9 75%,transparent 75%);padding:0 2px;margin:0;line-height:inherit;display:inline;box-decoration-break:clone;-webkit-box-decoration-break:clone;font-weight:500;border-radius:2px;color:#2E7D32}
+    select{appearance:none;background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%238D6E63' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");background-position:right .5rem center;background-repeat:no-repeat;background-size:1.5em 1.5em;padding-right:2.5rem}
+    .code-preview{max-height:500px;overflow-y:auto;border:2px solid #D7CCC8;border-radius:8px;background:#fff}
+    .code-preview::-webkit-scrollbar{width:8px}.code-preview::-webkit-scrollbar-track{background:#F1ECE5;border-radius:4px}.code-preview::-webkit-scrollbar-thumb{background:#8D6E63;border-radius:4px}.code-preview::-webkit-scrollbar-thumb:hover{background:#6D4C41}
+    textarea{transition:all .3s ease} textarea:focus{box-shadow:0 0 0 3px rgba(141,110,99,.1);border-color:#8D6E63}
+    .btn-primary{background:linear-gradient(135deg,#8D6E63,#6D4C41);transition:all .3s ease;box-shadow:0 4px 6px rgba(0,0,0,.1)}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 12px rgba(0,0,0,.15)}
+    .loader-backdrop{backdrop-filter:blur(4px);background:rgba(251,249,246,.8)}
+    /* 新增：iframe 做為沙箱預覽，避免樣式外溢 */
+    .preview-frame{width:100%;height:70vh;background:#fff;border:2px solid #D7CCC8;border-radius:10px}
+    @media (max-width:768px){.grid-responsive{grid-template-columns:1fr}.mobile-stack{flex-direction:column}.preview-frame{height:60vh}}
+  </style>
 </head>
 <body class="bg-wood-bg text-wood-text font-sans flex flex-col items-center min-h-screen p-4">
 
-    <div class="w-full max-w-7xl">
-        <!-- 標題區域 -->
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold font-serif text-wood-text">程式碼文件化工具</h1>
-            <p class="text-wood-subtle mt-2">將您的程式碼，轉換為專業、簡潔的文件格式。</p>
-            <p class="text-wood-subtle mt-4 text-sm">製作者：陳政德</p>
-        </header>
+  <!-- 改用較小字級，而不是 transform scale，避免文字底色錯位 -->
+  <div id="app" class="w-full max-w-6xl text-[15px] md:text-base">
+    <header class="text-center mb-6">
+      <h1 class="text-4xl font-bold font-serif text-wood-text mb-2">程式碼文件化工具</h1>
+      <p class="text-wood-subtle text-base">將您的程式碼，轉換為專業、簡潔的文件格式。</p>
+      <!-- （依前次需求，已移除「✨ 已修正文字背景對齊問題」提示） -->
+    </header>
 
-        <!-- 主體內容：左右佈局 -->
-        <main class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <!-- 左側：程式碼輸入區 -->
-            <div class="bg-wood-panel p-6 rounded-lg flex flex-col">
-                <h2 class="text-2xl font-serif font-semibold mb-4 border-b border-wood-border pb-2">1. 輸入程式碼</h2>
-                <div class="flex items-center mb-4">
-                    <label for="code_type" class="mr-3 text-wood-text">程式碼類型:</label>
-                    <select id="code_type" class="bg-wood-bg text-wood-text rounded px-3 py-1.5 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
-                        <option value="html">HTML</option>
-                        <option value="python">Python</option>
-                        <option value="javascript">JavaScript</option>
-                        <option value="css">CSS</option>
-                        <option value="sql">SQL</option>
-                        <option value="java">Java</option>
-                        <option value="cpp">C++</option>
-                        <option value="typescript">TypeScript</option>
-                        <option value="markdown">Markdown</option>
-                        <option value="svg">SVG</option>
-                        <option value="mermaid">Mermaid</option>
-                    </select>
-                </div>
-                <textarea id="code_input" class="w-full h-96 flex-grow bg-white text-gray-800 p-4 rounded-md font-mono text-sm border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent" placeholder="在此貼上您的程式碼..."></textarea>
-            </div>
-
-            <!-- 右側：輸出與控制區 -->
-            <div class="bg-wood-panel p-6 rounded-lg flex flex-col justify-between">
-                <div>
-                    <h2 class="text-2xl font-serif font-semibold mb-4 border-b border-wood-border pb-2">2. 選擇輸出</h2>
-                    <div class="space-y-6">
-                        <div>
-                            <label for="output_format" class="block mb-2 text-wood-text">選擇轉換格式:</label>
-                            <select id="output_format" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
-                                <option value="pdf">PDF (.pdf)</option>
-                                <option value="png">圖形檔 (.png)</option>
-                                <option value="html">HTML (.html)</option>
-                            </select>
-                        </div>
-                        <div id="orientation_controls" class="mb-4">
-                            <label for="pdf_orientation" class="block mb-2 text-wood-text">PDF 方向:</label>
-                            <select id="pdf_orientation" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
-                                <option value="p">直式 (Portrait)</option>
-                                <option value="l">橫式 (Landscape)</option>
-                            </select>
-                            <label for="pdf_resolution" class="block mt-4 mb-2 text-wood-text">PDF 解析度:</label>
-                            <select id="pdf_resolution" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
-                                <option value="1">標準</option>
-                                <option value="2" selected>高解析度</option>
-                                <option value="4">超高解析度</option>
-                            </select>
-                            <label for="pdf_scale" class="block mt-4 mb-2 text-wood-text">縮放比例 (%):</label>
-                            <input type="number" id="pdf_scale" value="100" min="10" max="200" step="1" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
-                        </div>
-                        <div id="resolution_controls" class="mb-4 hidden">
-                            <label for="png_resolution" class="block mb-2 text-wood-text">PNG 解析度:</label>
-                            <select id="png_resolution" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
-                                <option value="1">標準 (1x)</option>
-                                <option value="2" selected>高解析度 (2x)</option>
-                                <option value="4">超高解析度 (4x)</option>
-                            </select>
-                            <label for="png_orientation" class="block mt-4 mb-2 text-wood-text">PNG 方向:</label>
-                            <select id="png_orientation" class="w-full bg-wood-bg text-wood-text rounded px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
-                                <option value="p">直式 (Portrait)</option>
-                                <option value="l">橫式 (Landscape)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-8">
-                    <button id="convert_btn" class="w-full bg-wood-accent hover:bg-wood-accent-hover text-white font-bold py-3 px-4 rounded-md text-lg transition duration-300">
-                        🚀 開始轉換並下載
-                    </button>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- 用於 PDF/SVG 渲染的隱藏容器 -->
-    <div id="render-container" class="fixed top-0 -z-10 bg-white text-black p-8" style="width: 210mm; left: -9999px;"></div>
-    
-    <!-- 載入動畫 -->
-    <div id="loader" class="hidden fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
-        <div class="text-center">
-            <svg class="animate-spin h-10 w-10 text-wood-accent mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="O 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p class="mt-4 text-lg text-wood-text">正在處理中，請稍候...</p>
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-5 grid-responsive">
+      <!-- 左側 -->
+      <div class="bg-wood-panel p-5 rounded-lg flex flex-col shadow-lg">
+        <h2 class="text-2xl font-serif font-semibold mb-3 border-b border-wood-border pb-2">📝 輸入程式碼</h2>
+        <div class="flex items-center mb-3 mobile-stack">
+          <label for="code_type" class="mr-3 text-wood-text font-medium">程式碼類型:</label>
+          <select id="code_type" class="bg-wood-bg text-wood-text rounded-md px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent flex-1 lg:flex-none">
+            <option value="html">HTML</option><option value="python">Python</option><option value="javascript">JavaScript</option>
+            <option value="css">CSS</option><option value="sql">SQL</option><option value="java">Java</option><option value="cpp">C++</option>
+            <option value="typescript">TypeScript</option><option value="markdown">Markdown</option><option value="svg">SVG</option><option value="mermaid">Mermaid</option>
+          </select>
         </div>
+
+        <div class="flex-grow relative">
+          <textarea id="code_input" class="w-full h-80 bg-white text-gray-800 p-4 rounded-md font-mono text-sm border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent resize-none" placeholder="在此貼上您的程式碼..." spellcheck="false"></textarea>
+          <div class="absolute bottom-2 right-2 text-xs text-wood-subtle bg-wood-bg px-2 py-1 rounded"><span id="char_count">0</span> 字元</div>
+        </div>
+
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button onclick="insertSample('html')" class="px-3 py-1 text-xs bg-wood-accent text-white rounded hover:bg-wood-accent-hover">插入 HTML 範例</button>
+          <button onclick="insertSample('python')" class="px-3 py-1 text-xs bg-wood-accent text-white rounded hover:bg-wood-accent-hover">插入 Python 範例</button>
+          <button onclick="insertSample('mermaid')" class="px-3 py-1 text-xs bg-wood-accent text-white rounded hover:bg-wood-accent-hover">插入 Mermaid 範例</button>
+        </div>
+      </div>
+
+      <!-- 右側 -->
+      <div class="bg-wood-panel p-5 rounded-lg flex flex-col justify-between shadow-lg">
+        <div>
+          <h2 class="text-2xl font-serif font-semibold mb-3 border-b border-wood-border pb-2">⚙️ 轉換設定</h2>
+          <div class="space-y-5">
+            <div>
+              <label for="output_format" class="block mb-2 text-wood-text font-medium">選擇轉換格式:</label>
+              <select id="output_format" class="w-full bg-wood-bg text-wood-text rounded-md px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                <option value="pdf">📄 PDF (.pdf)</option><option value="png">🖼️ 圖形檔 (.png)</option><option value="html">🌐 HTML (.html)</option>
+              </select>
+            </div>
+
+            <div id="pdf_controls" class="space-y-4">
+              <div>
+                <label for="pdf_orientation" class="block mb-2 text-wood-text font-medium">PDF 方向:</label>
+                <select id="pdf_orientation" class="w-full bg-wood-bg text-wood-text rounded-md px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                  <option value="p">📄 直式 (Portrait)</option><option value="l">📋 橫式 (Landscape)</option>
+                </select>
+              </div>
+              <div>
+                <label for="pdf_resolution" class="block mb-2 text-wood-text font-medium">PDF 解析度:</label>
+                <select id="pdf_resolution" class="w-full bg-wood-bg text-wood-text rounded-md px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                  <option value="1">標準品質</option><option value="2" selected>高解析度 ⭐</option><option value="4">超高解析度</option>
+                </select>
+              </div>
+              <div>
+                <label for="pdf_scale" class="block mb-2 text-wood-text font-medium">縮放比例: <span id="scale_display">100%</span></label>
+                <div class="flex items-center space-x-3">
+                  <span class="text-xs text-wood-subtle">50%</span>
+                  <input type="range" id="pdf_scale" value="100" min="50" max="200" step="5" class="flex-1 accent-wood-accent">
+                  <span class="text-xs text-wood-subtle">200%</span>
+                </div>
+              </div>
+            </div>
+
+            <div id="png_controls" class="space-y-4 hidden">
+              <div>
+                <label for="png_resolution" class="block mb-2 text-wood-text font-medium">PNG 解析度:</label>
+                <select id="png_resolution" class="w-full bg-wood-bg text-wood-text rounded-md px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                  <option value="1">標準 (1x)</option><option value="2" selected>高解析度 (2x) ⭐</option><option value="4">超高解析度 (4x)</option>
+                </select>
+              </div>
+              <div>
+                <label for="png_orientation" class="block mb-2 text-wood-text font-medium">PNG 方向:</label>
+                <select id="png_orientation" class="w-full bg-wood-bg text-wood-text rounded-md px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent">
+                  <option value="p">📄 直式 (Portrait)</option><option value="l">📋 橫式 (Landscape)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 轉換 / 預覽 / 列印 -->
+        <div class="mt-6 space-y-2">
+          <button id="convert_btn" class="w-full btn-primary text-white font-bold py-3 px-6 rounded-lg text-lg">🚀 開始轉換並下載</button>
+          <div class="flex gap-2">
+            <button id="preview_btn" class="flex-1 bg-wood-subtle hover:bg-wood-text text-white font-medium py-2 px-4 rounded-lg text-sm">👁️ 預覽效果</button>
+            <button id="print_preview_btn" title="列印預覽效果" class="w-12 bg-wood-subtle hover:bg-wood-text text-white font-medium rounded-lg text-sm flex items-center justify-center">🖨️</button>
+          </div>
+        </div>
+
+        <div id="progress_container" class="hidden mt-4">
+          <div class="w-full bg-wood-border rounded-full h-2"><div id="progress_bar" class="bg-wood-accent h-2 rounded-full transition-all" style="width:0%"></div></div>
+          <p class="text-sm text-wood-subtle mt-2 text-center" id="progress_text">準備中...</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- 預覽：改為 iframe（樣式不會外溢） -->
+    <section id="preview_section" class="hidden mt-6">
+      <div class="bg-wood-panel p-5 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-serif font-semibold mb-3 border-b border-wood-border pb-2">👁️ 預覽效果</h2>
+        <iframe id="preview_iframe" class="preview-frame"></iframe>
+      </div>
+    </section>
+  </div>
+
+  <!-- 隱藏渲染容器（PDF/PNG用） -->
+  <div id="render-container" class="fixed top-0 -z-10 bg-white text-black p-8" style="width:210mm; left:-9999px;"></div>
+
+  <!-- 載入動畫 -->
+  <div id="loader" class="hidden fixed inset-0 loader-backdrop flex items-center justify-center z-50">
+    <div class="bg-white p-8 rounded-lg shadow-2xl text-center max-w-sm mx-4">
+      <div class="flex justify-center mb-4">
+        <svg class="animate-spin h-12 w-12 text-wood-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+      <p class="text-lg text-wood-text font-medium mb-2" id="loader_title">正在處理中...</p>
+      <p class="text-sm text-wood-subtle" id="loader_subtitle">請稍候，這可能需要幾秒鐘</p>
     </div>
+  </div>
 
-    <script>
-        // 初始化 Mermaid
-        mermaid.initialize({ startOnLoad: false });
+  <script>
+    mermaid.initialize({startOnLoad:false, theme:'base', themeVariables:{primaryColor:'#F1ECE5',primaryTextColor:'#5D4037',primaryBorderColor:'#8D6E63',lineColor:'#A1887F'}});
+    const codeInput=document.getElementById('code_input');
+    const codeTypeSelect=document.getElementById('code_type');
+    const outputFormatSelect=document.getElementById('output_format');
+    const convertBtn=document.getElementById('convert_btn');
+    const previewBtn=document.getElementById('preview_btn');
+    const printPreviewBtn=document.getElementById('print_preview_btn');
+    const renderContainer=document.getElementById('render-container');
+    const loader=document.getElementById('loader');
+    const loaderTitle=document.getElementById('loader_title');
+    const loaderSubtitle=document.getElementById('loader_subtitle');
+    const pdfControls=document.getElementById('pdf_controls');
+    const pngControls=document.getElementById('png_controls');
+    const charCount=document.getElementById('char_count');
+    const scaleDisplay=document.getElementById('scale_display');
+    const pdfScale=document.getElementById('pdf_scale');
+    const progressContainer=document.getElementById('progress_container');
+    const progressBar=document.getElementById('progress_bar');
+    const progressText=document.getElementById('progress_text');
+    const previewSection=document.getElementById('preview_section');
+    const previewIframe=document.getElementById('preview_iframe');
 
-        // 獲取 DOM 元素
-        const codeInput = document.getElementById('code_input');
-        const codeTypeSelect = document.getElementById('code_type');
-        const outputFormatSelect = document.getElementById('output_format');
-        const convertBtn = document.getElementById('convert_btn');
-        const renderContainer = document.getElementById('render-container');
-        const loader = document.getElementById('loader');
-        const pdfOrientationSelect = document.getElementById('pdf_orientation');
-        const pdfResolutionSelect = document.getElementById('pdf_resolution');
-        const pdfScaleInput = document.getElementById('pdf_scale');
-        const orientationControls = document.getElementById('orientation_controls');
-        const pngResolutionSelect = document.getElementById('png_resolution');
-        const resolutionControls = document.getElementById('resolution_controls');
-        const pngOrientationSelect = document.getElementById('png_orientation');
+    const sampleCodes={
+      html:`<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="UTF-8"><title>我的網頁</title>
+<style>body{background:#fff;margin:0;font-family:'Noto Sans JP',sans-serif}</style></head>
+<body><h1>歡迎來到我的網站</h1><p>這是一個<span class="text-highlight">範例段落</span>。</p></body></html>`,
+      python:`def fibonacci(n):
+    if n <= 1:
+        return n
+    else:
+        return fibonacci(n-1) + fibonacci(n-2)
+for i in range(10):
+    print(f"F({i}) = {fibonacci(i)}")`,
+      mermaid:`graph TD
+    A[開始] --> B{是否有資料?}
+    B -->|是| C[處理資料]
+    B -->|否| D[顯示錯誤]
+    C --> E[儲存結果]
+    E --> F[結束]
+    D --> F`
+    };
 
-        // --- 功能實現 ---
+    function toggleLoader(show,title='正在處理中...',subtitle='請稍候，這可能需要幾秒鐘'){
+      loader.classList.toggle('hidden',!show);
+      if(show){loaderTitle.textContent=title;loaderSubtitle.textContent=subtitle;}
+    }
+    function showProgress(p,t){progressContainer.classList.remove('hidden');progressBar.style.width=p+'%';progressText.textContent=t;}
+    function hideProgress(){progressContainer.classList.add('hidden');progressBar.style.width='0%';}
+    function updateCharCount(){charCount.textContent=codeInput.value.length.toLocaleString();}
 
-        /**
-         * 顯示/隱藏載入動畫
-         * @param {boolean} show - 是否顯示
-         */
-        function toggleLoader(show) {
-            loader.classList.toggle('hidden', !show);
-        }
+    function insertSample(type){ if(sampleCodes[type]){ codeInput.value=sampleCodes[type]; codeTypeSelect.value=type; updateCharCount(); } }
 
-        /**
-         * 從程式碼中提取檔名
-         * @returns {string} - 檔案名稱 (不含副檔名)
-         */
-        function getFileName() {
-            const code = codeInput.value;
-            const codeType = codeTypeSelect.value;
+    function getFileName(){
+      const code=codeInput.value, type=codeTypeSelect.value;
+      if(type==='html'){ const m=code.match(/<title>(.*?)<\/title>/i); if(m && m[1]) return m[1].trim().replace(/[\\/:*?"<>|]/g,'')||'code_output'; }
+      const ts=new Date().toISOString().slice(0,16).replace(/[-:T]/g,'');
+      return `code_${type}_${ts}`;
+    }
 
-            if (codeType === 'html') {
-                try {
-                    // 使用正規表示式來安全地提取 title 內容
-                    const match = code.match(/<title>(.*?)<\/title>/i);
-                    if (match && match[1]) {
-                        // 清理檔名，移除不適用的字元
-                        return match[1].trim().replace(/[\\/:*?"<>|]/g, '') || 'output';
-                    }
-                } catch (e) {
-                    console.error('解析 title 失敗:', e);
-                    return 'output';
-                }
-            }
-            // 對於其他類型的程式碼，或找不到 title 時，返回預設名稱
-            return 'output';
-        }
+    // 產生用在 iframe/列印 的共同 <head>（含文字底色樣式，避免錯位）
+    function buildHeadHTML(titleText='預覽'){
+      return `
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${titleText}</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/gruvbox-light.min.css">
+<style>
+  html,body{margin:0;padding:24px;background:#FFFFFF;color:#5D4037;font-family:'Noto Sans JP',sans-serif;line-height:1.6}
+  .hljs-container{padding:1.5rem;border-radius:.5rem;overflow-x:auto;background:#F9F5F1;border:1px solid #D7CCC8}
+  .text-highlight{background:linear-gradient(180deg,transparent 25%,#FFE082 25%,#FFE082 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+  .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#FFE082 25%,#FFE082 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+  .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFCDD2 25%,#FFCDD2 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#C62828}
+  .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#C8E6C9 25%,#C8E6C9 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#2E7D32}
+</style>`;
+    }
 
-        /**
-         * 準備用於渲染的 HTML 內容
-         * @returns {Promise<string>} - 準備好的 HTML 字串
-         */
-        async function prepareContentForRender() {
-            const code = codeInput.value;
-            const codeType = codeTypeSelect.value;
-            const highlightableLanguages = ['python', 'javascript', 'css', 'sql', 'java', 'cpp', 'typescript', 'markdown'];
-            
-            if (highlightableLanguages.includes(codeType)) {
-                 if (hljs.getLanguage(codeType)) {
-                    const highlightedCode = hljs.highlight(code, { language: codeType }).value;
-                    return `<div class="hljs-container"><pre><code class="language-${codeType} hljs">${highlightedCode}</code></pre></div>`;
-                } else {
-                    const highlightedCode = hljs.highlightAuto(code).value;
-                    return `<div class="hljs-container"><pre><code class="hljs">${highlightedCode}</code></pre></div>`;
-                }
-            } else if (codeType === 'mermaid') {
-                // 對於 Mermaid，先渲染它並返回渲染後的 SVG 字串
-                try {
-                    const { svg } = await mermaid.render('mermaid-graph', code);
-                    return svg;
-                } catch (error) {
-                    console.error('Mermaid 渲染失敗:', error);
-                    alert('Mermaid 語法錯誤，無法渲染圖表。');
-                    throw new Error('Mermaid rendering failed');
-                }
-            }
-            // 對於 HTML 和 SVG，直接返回原始碼
-            return code;
-        }
+    async function prepareContentForRender(){
+      const code=codeInput.value, type=codeTypeSelect.value;
+      const highlightable=['python','javascript','css','sql','java','cpp','typescript','markdown'];
+      if(highlightable.includes(type)){
+        const highlighted=hljs.getLanguage(type)?hljs.highlight(code,{language:type}).value:hljs.highlightAuto(code).value;
+        return `<div class="hljs-container"><pre><code class="language-${type} hljs">${highlighted}</code></pre></div>`;
+      }else if(type==='mermaid'){
+        const { svg } = await mermaid.render('mermaid-graph-'+Date.now(), code);
+        return `<div class="text-center p-4">${svg}</div>`;
+      }
+      // HTML / SVG 原樣輸出
+      return code;
+    }
 
-        /**
-         * 將內容轉換為 PDF (支援多頁)
-         */
-        async function convertToPdf() {
-            toggleLoader(true);
-            try {
-                const contentHtml = await prepareContentForRender();
-                renderContainer.innerHTML = contentHtml;
+    // 把內容寫進 iframe（沙箱化，避免外溢）
+    async function writePreview(contentHtml){
+      const doc=previewIframe.contentDocument || previewIframe.contentWindow.document;
+      doc.open();
+      doc.write(`<!DOCTYPE html><html lang="zh-Hant"><head>${buildHeadHTML('預覽')}</head><body>${contentHtml}</body></html>`);
+      doc.close();
+    }
 
-                const originalWidth = renderContainer.style.width;
-                const orientation = pdfOrientationSelect.value;
-                
-                const resolutionValue = parseInt(pdfResolutionSelect.value, 10);
-                const scale = resolutionValue === 1 ? 2 : (resolutionValue === 2 ? 3 : 4);
+    async function showPreview(){
+      try{
+        toggleLoader(true,'正在生成預覽...','渲染程式碼內容');
+        const contentHtml=await prepareContentForRender();
+        await writePreview(contentHtml);
+        previewSection.classList.remove('hidden');
+        previewSection.scrollIntoView({behavior:'smooth'});
+      }catch(e){ alert(e.message||'無法生成預覽'); }
+      finally{ toggleLoader(false); }
+    }
 
-                const customScale = parseInt(pdfScaleInput.value, 10) / 100.0;
-                renderContainer.style.width = orientation === 'l' ? '297mm' : '210mm';
+    // 列印預覽（以新視窗打開同樣的沙箱文件）
+    async function printPreview(){
+      try{
+        const contentHtml=await prepareContentForRender();
+        const printWin=window.open('','_blank');
+        printWin.document.open();
+        printWin.document.write(`<!DOCTYPE html><html lang="zh-Hant"><head>${buildHeadHTML(getFileName()+'_preview')}<style>@page{margin:16mm}</style></head><body>${contentHtml}<script>window.onload=function(){setTimeout(function(){window.print();window.close();},50)}<\/script></body></html>`);
+        printWin.document.close();
+        // 同步更新右側 iframe
+        await writePreview(contentHtml);
+        previewSection.classList.remove('hidden');
+      }catch(e){ alert(e.message||'列印預覽失敗'); }
+    }
 
-                const { jsPDF } = window.jspdf;
-                const canvas = await html2canvas(renderContainer, {
-                    scale: scale,
-                    useCORS: true,
-                    backgroundColor: '#ffffff',
-                    windowWidth: renderContainer.scrollWidth,
-                    windowHeight: renderContainer.scrollHeight
-                });
-                
-                const imgData = canvas.toDataURL('image/jpeg', 0.92);
-                const imgWidth = canvas.width;
-                const imgHeight = canvas.height;
-                
-                const pdf = new jsPDF({
-                    orientation: orientation,
-                    unit: 'pt',
-                    format: 'a4'
-                });
+    async function convertToPdf(){
+      try{
+        showProgress(10,'準備 PDF 內容...');
+        const contentHtml=await prepareContentForRender();
+        renderContainer.innerHTML=contentHtml;
+        showProgress(30,'設定 PDF 參數...');
+        const orientation=document.getElementById('pdf_orientation').value;
+        const res=parseInt(document.getElementById('pdf_resolution').value,10);
+        const scale=res===1?2:(res===2?3:4);
+        const customScale=parseInt(document.getElementById('pdf_scale').value,10)/100;
+        renderContainer.style.width=orientation==='l'?'297mm':'210mm';
+        showProgress(50,'渲染頁面...');
+        const { jsPDF }=window.jspdf;
+        const canvas=await html2canvas(renderContainer,{scale,useCORS:true,backgroundColor:'#fff',windowWidth:renderContainer.scrollWidth,windowHeight:renderContainer.scrollHeight,logging:false});
+        showProgress(75,'生成 PDF...');
+        const imgData=canvas.toDataURL('image/jpeg',0.95);
+        const pdf=new jsPDF({orientation,unit:'pt',format:'a4'});
+        const pdfW=pdf.internal.pageSize.getWidth(), pdfH=pdf.internal.pageSize.getHeight();
+        const ratio=pdfW/canvas.width, imgH=canvas.height*ratio;
+        const finalW=pdfW*customScale, finalH=imgH*customScale;
+        let left=finalH; let pos=0;
+        pdf.addImage(imgData,'JPEG',0,pos,finalW,finalH); left-=pdfH;
+        while(left>0){ pos=left-finalH; pdf.addPage(); pdf.addImage(imgData,'JPEG',0,pos,finalW,finalH); left-=pdfH; }
+        showProgress(95,'準備下載...'); pdf.save(`${getFileName()}.pdf`);
+        showProgress(100,'完成！'); setTimeout(()=>hideProgress(),1000);
+      }catch(e){ alert(e.message||'生成 PDF 時發生錯誤'); hideProgress(); }
+      finally{ renderContainer.innerHTML=''; toggleLoader(false); }
+    }
 
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = pdf.internal.pageSize.getHeight();
-                
-                const ratio = pdfWidth / imgWidth;
-                const scaledImgHeight = imgHeight * ratio;
+    async function convertToPng(){
+      try{
+        showProgress(10,'準備圖像內容...');
+        const contentHtml=await prepareContentForRender();
+        renderContainer.innerHTML=contentHtml;
+        showProgress(30,'設定圖像參數...');
+        const orientation=document.getElementById('png_orientation').value;
+        const scale=parseInt(document.getElementById('png_resolution').value,10);
+        renderContainer.style.width=orientation==='l'?'297mm':'210mm';
+        showProgress(60,'渲染圖像...');
+        const canvas=await html2canvas(renderContainer,{scale,useCORS:true,backgroundColor:'#fff',windowWidth:renderContainer.scrollWidth,windowHeight:renderContainer.scrollHeight,logging:false});
+        showProgress(85,'生成 PNG...');
+        const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download=`${getFileName()}.png`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        showProgress(100,'完成！'); setTimeout(()=>hideProgress(),1000);
+      }catch(e){ alert(e.message||'生成 PNG 時發生錯誤'); hideProgress(); }
+      finally{ renderContainer.innerHTML=''; toggleLoader(false); }
+    }
 
-                const finalImgWidth = pdfWidth * customScale;
-                const finalImgHeight = scaledImgHeight * customScale;
+    async function convertToHtml(){
+      try{
+        showProgress(20,'準備 HTML 內容...');
+        const contentHtml=await prepareContentForRender();
+        showProgress(50,'生成完整 HTML...');
+        const fullHtml=`<!DOCTYPE html><html lang="zh-Hant"><head>${buildHeadHTML(getFileName())}</head><body><div style="max-width:1200px;margin:0 auto">${contentHtml}</div></body></html>`;
+        showProgress(80,'準備下載...');
+        const blob=new Blob([fullHtml],{type:'text/html;charset=utf-8'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${getFileName()}.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+        showProgress(100,'完成！'); setTimeout(()=>hideProgress(),1000);
+      }catch(e){ alert(e.message||'生成 HTML 時發生錯誤'); hideProgress(); }
+      finally{ toggleLoader(false); }
+    }
 
-                let heightLeft = finalImgHeight;
-                let position = 0;
-                
-                pdf.addImage(imgData, 'JPEG', 0, position, finalImgWidth, finalImgHeight);
-                heightLeft -= pdfHeight;
+    function updateControlsVisibility(){ const f=outputFormatSelect.value; pdfControls.classList.toggle('hidden',f!=='pdf'); pngControls.classList.toggle('hidden',f!=='png'); }
+    function updateScaleDisplay(){ scaleDisplay.textContent=pdfScale.value+'%'; }
+    function validateInput(){ if(!codeInput.value.trim()){ alert('❌ 請先輸入一些程式碼內容！'); codeInput.focus(); return false; } return true; }
 
-                while (heightLeft > 0) {
-                    position = heightLeft - finalImgHeight;
-                    pdf.addPage();
-                    pdf.addImage(imgData, 'JPEG', 0, position, finalImgWidth, finalImgHeight);
-                    heightLeft -= pdfHeight;
-                }
-                
-                const fileName = getFileName();
-                pdf.save(`${fileName}.pdf`);
-            } catch (error) {
-                console.error("PDF 生成失敗:", error);
-                if (error.message !== 'Mermaid rendering failed') {
-                   alert("抱歉，生成 PDF 時發生錯誤。");
-                }
-            } finally {
-                renderContainer.innerHTML = '';
-                toggleLoader(false);
-            }
-        }
-        
-        /**
-         * 將內容轉換為 PNG 圖形檔
-         */
-        async function convertToPng() {
-            toggleLoader(true);
-            try {
-                const contentHtml = await prepareContentForRender();
-                renderContainer.innerHTML = contentHtml;
-                
-                const originalWidth = renderContainer.style.width;
-                const orientation = pngOrientationSelect.value;
-                renderContainer.style.width = orientation === 'l' ? '297mm' : '210mm';
+    convertBtn.addEventListener('click', async ()=>{
+      if(!validateInput())return;
+      toggleLoader(true,'開始處理...','正在準備轉換程序');
+      try{ const f=outputFormatSelect.value;
+        if(f==='pdf') await convertToPdf();
+        else if(f==='png') await convertToPng();
+        else if(f==='html') await convertToHtml();
+        else throw new Error('無效的輸出格式');
+      }catch(e){ alert(e.message||'轉換過程中發生錯誤，請重試。'); hideProgress(); toggleLoader(false); }
+    });
 
-                const scale = parseInt(pngResolutionSelect.value, 10);
-                const canvas = await html2canvas(renderContainer, { 
-                    scale: scale, 
-                    useCORS: true,
-                    backgroundColor: null,
-                    windowWidth: renderContainer.scrollWidth,
-                    windowHeight: renderContainer.scrollHeight
-                });
-                const imgData = canvas.toDataURL('image/png');
-                
-                const a = document.createElement('a');
-                a.href = imgData;
-                const fileName = getFileName();
-                a.download = `${fileName}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            } catch (error) {
-                console.error("PNG 生成失敗:", error);
-                if (error.message !== 'Mermaid rendering failed') {
-                    alert("抱歉，生成圖形檔時發生錯誤。");
-                }
-            } finally {
-                renderContainer.innerHTML = '';
-                toggleLoader(false);
-            }
-        }
+    previewBtn.addEventListener('click', ()=>{ if(!validateInput())return; showPreview(); });
+    printPreviewBtn.addEventListener('click', ()=>{ if(!validateInput())return; printPreview(); });
 
-        /**
-         * 將內容轉換為可下載的 HTML 檔案
-         */
-        async function convertToHtml() {
-            toggleLoader(true);
-            try {
-                const contentHtml = await prepareContentForRender();
-                // 創建一個完整的 HTML 文件結構
-                const fullHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${getFileName()}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/gruvbox-light.min.css">
-    <style>
-        body { font-family: sans-serif; padding: 2rem; }
-        .hljs-container {
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            overflow-x: auto;
-            background-color: #F9F5F1;
-            border: 1px solid #D7CCC8;
-        }
-    </style>
-</head>
-<body>
-    ${contentHtml}
-</body>
-</html>`;
+    outputFormatSelect.addEventListener('change', updateControlsVisibility);
+    pdfScale.addEventListener('input', updateScaleDisplay);
+    codeInput.addEventListener('input', updateCharCount);
 
-                const blob = new Blob([fullHtml], { type: 'text/html' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                const fileName = getFileName();
-                a.download = `${fileName}.html`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(a.href);
+    codeTypeSelect.addEventListener('change', ()=>{
+      const ph={html:'在此貼上您的 HTML 程式碼...',python:'在此貼上您的 Python 程式碼...',javascript:'在此貼上您的 JavaScript 程式碼...',css:'在此貼上您的 CSS 樣式...',sql:'在此貼上您的 SQL 查詢...',java:'在此貼上您的 Java 程式碼...',cpp:'在此貼上您的 C++ 程式碼...',typescript:'在此貼上您的 TypeScript 程式碼...',markdown:'在此貼上您的 Markdown 文件...',svg:'在此貼上您的 SVG 程式碼...',mermaid:'在此貼上您的 Mermaid 圖表語法...'}; 
+      codeInput.placeholder=ph[codeTypeSelect.value]||'在此貼上您的程式碼...';
+    });
 
-            } catch (error) {
-                 console.error("HTML 生成失敗:", error);
-                 if (error.message !== 'Mermaid rendering failed') {
-                    alert("抱歉，生成 HTML 時發生錯誤。");
-                 }
-            } finally {
-                toggleLoader(false);
-            }
-        }
-        
-        /**
-         * 根據選擇的格式更新顯示的控制選項
-         */
-        function updateControlsVisibility() {
-            const selectedFormat = outputFormatSelect.value;
-            orientationControls.classList.toggle('hidden', selectedFormat !== 'pdf');
-            resolutionControls.classList.toggle('hidden', selectedFormat !== 'png');
-        }
+    document.addEventListener('keydown', e=>{
+      if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();convertBtn.click();}
+      if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='P'){e.preventDefault();previewBtn.click();}
+    });
 
-        // --- 事件監聽 ---
-        convertBtn.addEventListener('click', () => {
-            if (!codeInput.value.trim()) {
-                alert("請先輸入一些程式碼！");
-                return;
-            }
+    codeInput.addEventListener('dragover', e=>{e.preventDefault();codeInput.classList.add('border-wood-accent','bg-wood-panel');});
+    codeInput.addEventListener('dragleave', e=>{e.preventDefault();codeInput.classList.remove('border-wood-accent','bg-wood-panel');});
+    codeInput.addEventListener('drop', e=>{
+      e.preventDefault();codeInput.classList.remove('border-wood-accent','bg-wood-panel');
+      const files=e.dataTransfer.files; if(files.length>0){ const file=files[0]; const reader=new FileReader();
+        reader.onload=ev=>{ codeInput.value=ev.target.result; updateCharCount();
+          const ext=file.name.split('.').pop().toLowerCase();
+          const map={html:'html',htm:'html',py:'python',js:'javascript',css:'css',sql:'sql',java:'java',cpp:'cpp',cxx:'cpp',cc:'cpp',ts:'typescript',md:'markdown',markdown:'markdown',svg:'svg',mmd:'mermaid'};
+          if(map[ext]){ codeTypeSelect.value=map[ext]; codeTypeSelect.dispatchEvent(new Event('change')); }
+        };
+        reader.readAsText(file);
+      }
+    });
 
-            const format = outputFormatSelect.value;
-            switch (format) {
-                case 'pdf':
-                    convertToPdf();
-                    break;
-                case 'png':
-                    convertToPng();
-                    break;
-                case 'html':
-                    convertToHtml();
-                    break;
-                default:
-                    alert('無效的格式');
-            }
-        });
+    // 初始化
+    updateControlsVisibility(); updateCharCount(); updateScaleDisplay();
 
-        outputFormatSelect.addEventListener('change', updateControlsVisibility);
+    // 快速鍵提示（維持原設計）
+    setTimeout(()=>{
+      const t=document.createElement('div');
+      t.className='fixed bottom-4 right-4 bg-wood-panel p-3 rounded-lg shadow-lg text-xs text-wood-subtle max-w-xs';
+      t.innerHTML='<div class="font-medium mb-1">💡 快速鍵提示</div><div>Ctrl+Enter: 開始轉換</div><div>Ctrl+Shift+P: 預覽效果</div><div>支援拖放文件到輸入區</div>';
+      document.body.appendChild(t); setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),300)},5000);
+    },2000);
 
-        // 初始化時根據預設選項決定顯示哪個控制選項
-        updateControlsVisibility();
-
-    </script>
+    window.insertSample=insertSample;
+  </script>
 </body>
 </html>
-
