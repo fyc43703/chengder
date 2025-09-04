@@ -29,6 +29,11 @@
             'wood-bg':'#FBF9F6','wood-panel':'#F1ECE5','wood-text':'#5D4037',
             'wood-subtle':'#A1887F','wood-border':'#D7CCC8',
             'wood-accent':'#8D6E63','wood-accent-hover':'#6D4C41',
+            // 新增按鈕顏色
+            'torii-red': '#C1392B',
+            'torii-red-hover': '#A53125',
+            'dark-green': '#1B4332',
+            'dark-green-hover': '#0B2018',
           },
           fontFamily:{'sans':['Noto Sans JP','sans-serif'],'serif':['Noto Serif JP','serif']}
         }
@@ -45,12 +50,10 @@
     .code-preview{max-height:500px;overflow-y:auto;border:2px solid #D7CCC8;border-radius:8px;background:#fff}
     .code-preview::-webkit-scrollbar{width:8px}.code-preview::-webkit-scrollbar-track{background:#F1ECE5;border-radius:4px}.code-preview::-webkit-scrollbar-thumb{background:#8D6E63;border-radius:4px}.code-preview::-webkit-scrollbar-thumb:hover{background:#6D4C41}
     textarea{transition:all .3s ease} textarea:focus{box-shadow:0 0 0 3px rgba(141,110,99,.1);border-color:#8D6E63}
-    .btn-primary{background:linear-gradient(135deg,#8D6E63,#6D4C41);transition:all .3s ease;box-shadow:0 4px 6px rgba(0,0,0,.1)}
-    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 12px rgba(0,0,0,.15)}
     .loader-backdrop{backdrop-filter:blur(4px);background:rgba(251,249,246,.8)}
-    /* 新增：iframe 做為沙箱預覽，避免樣式外溢 */
-    .preview-frame{width:100%;height:70vh;background:#fff;border:2px solid #D7CCC8;border-radius:10px}
-    @media (max-width:768px){.grid-responsive{grid-template-columns:1fr}.mobile-stack{flex-direction:column}.preview-frame{height:60vh}}
+    /* iframe 做為沙箱預覽，避免樣式外溢 */
+    .preview-frame{width:100%;background:#fff;border:2px solid #D7CCC8;border-radius:10px} /* Removed fixed height */
+    @media (max-width:768px){.grid-responsive{grid-template-columns:1fr}.mobile-stack{flex-direction:column}}
   </style>
 </head>
 <body class="bg-wood-bg text-wood-text font-sans flex flex-col items-center min-h-screen p-4">
@@ -61,21 +64,22 @@
       <h1 class="text-4xl font-bold font-serif text-wood-text mb-2">程式碼文件化工具</h1>
       <p class="text-wood-subtle text-base">將您的程式碼，轉換為專業、簡潔的文件格式。</p>
       <p class="text-wood-subtle text-base">注意：若PDF或圖形檔轉換過程導致文字與背景顏色不相符，請以預覽效果圖示進行列印。</p>
-      <p class="text-wood-subtle text-base">製作者：陳政德。</p>      
-      <!-- （依前次需求，已移除「✨ 已修正文字背景對齊問題」提示） -->
+      <p class="text-wood-subtle text-base">製作者：陳政德</p>      
     </header>
 
     <main class="grid grid-cols-1 lg:grid-cols-2 gap-5 grid-responsive">
       <!-- 左側 -->
       <div class="bg-wood-panel p-5 rounded-lg flex flex-col shadow-lg">
         <h2 class="text-2xl font-serif font-semibold mb-3 border-b border-wood-border pb-2">📝 輸入程式碼</h2>
-        <div class="flex items-center mb-3 mobile-stack">
-          <label for="code_type" class="mr-3 text-wood-text font-medium">程式碼類型:</label>
-          <select id="code_type" class="bg-wood-bg text-wood-text rounded-md px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent flex-1 lg:flex-none">
+        <!-- 1. 新增清除按鈕 -->
+        <div class="flex items-center gap-2 mb-3 mobile-stack">
+          <label for="code_type" class="mr-1 text-wood-text font-medium whitespace-nowrap">程式碼類型:</label>
+          <select id="code_type" class="bg-wood-bg text-wood-text rounded-md px-3 py-2 border border-wood-border focus:outline-none focus:ring-2 focus:ring-wood-accent flex-grow">
             <option value="html">HTML</option><option value="python">Python</option><option value="javascript">JavaScript</option>
             <option value="css">CSS</option><option value="sql">SQL</option><option value="java">Java</option><option value="cpp">C++</option>
             <option value="typescript">TypeScript</option><option value="markdown">Markdown</option><option value="svg">SVG</option><option value="mermaid">Mermaid</option>
           </select>
+          <button id="clear_btn" class="w-full sm:w-auto px-4 py-2 text-sm bg-wood-subtle text-white rounded-md hover:bg-wood-text transition-colors duration-300">清除</button>
         </div>
 
         <div class="flex-grow relative">
@@ -143,11 +147,23 @@
         </div>
 
         <!-- 轉換 / 預覽 / 列印 -->
-        <div class="mt-6 space-y-2">
-          <button id="convert_btn" class="w-full btn-primary text-white font-bold py-3 px-6 rounded-lg text-lg">🚀 開始轉換並下載</button>
+        <div class="mt-6 space-y-3">
+          <button id="convert_btn" class="w-full bg-torii-red hover:bg-torii-red-hover transition-all ease-in-out duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-white font-bold py-3 px-6 rounded-lg text-lg">🚀 開始轉換並下載</button>
           <div class="flex gap-2">
-            <button id="preview_btn" class="flex-1 bg-wood-subtle hover:bg-wood-text text-white font-medium py-2 px-4 rounded-lg text-sm">👁️ 預覽效果</button>
-            <button id="print_preview_btn" title="列印預覽效果" class="w-12 bg-wood-subtle hover:bg-wood-text text-white font-medium rounded-lg text-sm flex items-center justify-center">🖨️</button>
+            <button id="preview_btn" class="flex-1 bg-dark-green hover:bg-dark-green-hover text-white font-bold py-2 px-4 rounded-lg text-lg transition-colors duration-300">👁️ 預覽效果</button>
+            <button id="print_preview_btn" title="列印原始預覽" class="w-16 bg-wood-subtle hover:bg-wood-text text-white font-medium rounded-lg flex items-center justify-center transition-colors duration-300">
+              <svg viewBox="0 0 24 24" class="w-10 h-10">
+                  <path fill="#CFD8DC" d="M19,8H5c-1.66,0-3,1.34-3,3v6h4v4h12v-4h4v-6C22,9.34,20.66,8,19,8z"/>
+                  <path fill="#90A4AE" d="M18,3H6C5.45,3,5,3.45,5,4v4h14V4C19,3.45,18.55,3,18,3z"/>
+                  <path fill="#FFFFFF" d="M18,14H6c-0.55,0-1,0.45-1,1v5a1,1 0 001,1h12a1,1 0 001-1v-5C19,14.45,18.55,14,18,14z"/>
+                  <g>
+                    <rect x="8" y="16" fill="#81D4FA" width="8" height="1.5" rx="0.75"/>
+                    <rect x="8" y="19" fill="#B3E5FC" width="6" height="1.5" rx="0.75"/>
+                  </g>
+                  <circle fill="#81C784" cx="17" cy="5.5" r="1"/>
+                  <path fill="#546E7A" d="M18,12h-5c-0.55,0-1-0.45-1-1s0.45-1,1-1h5c0.55,0,1,0.45,1,1S18.55,12,18,12z"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -206,6 +222,7 @@
     const progressText=document.getElementById('progress_text');
     const previewSection=document.getElementById('preview_section');
     const previewIframe=document.getElementById('preview_iframe');
+    const clearBtn = document.getElementById('clear_btn');
 
     const sampleCodes={
       html:`<!DOCTYPE html>
@@ -276,20 +293,34 @@ for i in range(10):
       return code;
     }
 
-    // 把內容寫進 iframe（沙箱化，避免外溢）
-    async function writePreview(contentHtml){
-      const doc=previewIframe.contentDocument || previewIframe.contentWindow.document;
-      doc.open();
-      doc.write(`<!DOCTYPE html><html lang="zh-Hant"><head>${buildHeadHTML('預覽')}</head><body>${contentHtml}</body></html>`);
-      doc.close();
+    // 把內容寫進 iframe（沙箱化，避免外溢），並自動調整高度
+    async function writePreview(contentHtml) {
+        return new Promise((resolve) => {
+            const iframe = previewIframe;
+            iframe.onload = () => {
+                setTimeout(() => {
+                    const body = iframe.contentWindow.document.body;
+                    const html = iframe.contentWindow.document.documentElement;
+                    const height = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight);
+                    iframe.style.height = (height + 20) + 'px'; // 加一點緩衝空間
+                    resolve();
+                }, 150);
+            };
+
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.open();
+            doc.write(`<!DOCTYPE html><html lang="zh-Hant"><head>${buildHeadHTML('預覽')}</head><body>${contentHtml}</body></html>`);
+            doc.close();
+        });
     }
 
     async function showPreview(){
       try{
         toggleLoader(true,'正在生成預覽...','渲染程式碼內容');
         const contentHtml=await prepareContentForRender();
-        await writePreview(contentHtml);
+        // 修正：先顯示區塊，再寫入內容，避免 iframe 載入問題
         previewSection.classList.remove('hidden');
+        await writePreview(contentHtml);
         previewSection.scrollIntoView({behavior:'smooth'});
       }catch(e){ alert(e.message||'無法生成預覽'); }
       finally{ toggleLoader(false); }
@@ -301,11 +332,12 @@ for i in range(10):
         const contentHtml=await prepareContentForRender();
         const printWin=window.open('','_blank');
         printWin.document.open();
-        printWin.document.write(`<!DOCTYPE html><html lang="zh-Hant"><head>${buildHeadHTML(getFileName()+'_preview')}<style>@page{margin:16mm}</style></head><body>${contentHtml}<script>window.onload=function(){setTimeout(function(){window.print();window.close();},50)}<\/script></body></html>`);
+        printWin.document.write(`<!DOCTYPE html><html lang="zh-Hant"><head>${buildHeadHTML(getFileName()+'_preview')}<style>@page{margin:16mm}</style></head><body>${contentHtml}<script>window.onload=function(){setTimeout(function(){window.print();window.close();},100)}<\/script></body></html>`);
         printWin.document.close();
         // 同步更新右側 iframe
-        await writePreview(contentHtml);
+        // 修正：先顯示區塊，再寫入內容
         previewSection.classList.remove('hidden');
+        await writePreview(contentHtml);
       }catch(e){ alert(e.message||'列印預覽失敗'); }
     }
 
@@ -388,6 +420,12 @@ for i in range(10):
     previewBtn.addEventListener('click', ()=>{ if(!validateInput())return; showPreview(); });
     printPreviewBtn.addEventListener('click', ()=>{ if(!validateInput())return; printPreview(); });
 
+    clearBtn.addEventListener('click', () => {
+        codeInput.value = '';
+        updateCharCount();
+        codeInput.focus();
+    });
+
     outputFormatSelect.addEventListener('change', updateControlsVisibility);
     pdfScale.addEventListener('input', updateScaleDisplay);
     codeInput.addEventListener('input', updateCharCount);
@@ -419,10 +457,10 @@ for i in range(10):
     // 初始化
     updateControlsVisibility(); updateCharCount(); updateScaleDisplay();
 
-    // 快速鍵提示（維持原設計）
+    // 快速鍵提示
     setTimeout(()=>{
       const t=document.createElement('div');
-      t.className='fixed bottom-4 right-4 bg-wood-panel p-3 rounded-lg shadow-lg text-xs text-wood-subtle max-w-xs';
+      t.className='fixed bottom-4 right-4 bg-wood-panel p-3 rounded-lg shadow-lg text-xs text-wood-subtle max-w-xs transition-opacity duration-300';
       t.innerHTML='<div class="font-medium mb-1">💡 快速鍵提示</div><div>Ctrl+Enter: 開始轉換</div><div>Ctrl+Shift+P: 預覽效果</div><div>支援拖放文件到輸入區</div>';
       document.body.appendChild(t); setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),300)},5000);
     },2000);
