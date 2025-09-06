@@ -7,8 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- 引入更粗的字重以模仿 Logo 字體 -->
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+  <!-- 修正：更換為繁體中文字型 -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
   <!-- 乾淨、專業的程式碼高亮主題 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -20,6 +20,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/markdown.min.js"></script>
+  <!-- 修正：加入 DOMPurify 函式庫以解決 jsPDF 的依賴問題 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.8/purify.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
@@ -27,7 +29,7 @@
     tailwind.config = {
       theme: {
         extend: {
-          // 全新的「紀伊國屋」配色方案
+          // 全新的配色方案
           colors: {
             'kino-blue': '#00338D',
             'kino-blue-hover': '#00225E',
@@ -37,7 +39,7 @@
             'kino-subtle': '#6C757D',
             'kino-border': '#DEE2E6',
           },
-          fontFamily:{'sans':['Noto Sans JP','sans-serif'],'serif':['Noto Serif JP','serif']}
+          fontFamily:{'sans':['Noto Sans TC','sans-serif'],'serif':['Noto Serif JP','serif']}
         }
       }
     }
@@ -211,6 +213,63 @@
     // 更新 Mermaid 圖表的主題顏色
     mermaid.initialize({startOnLoad:false, theme:'base', themeVariables:{primaryColor:'#FFFFFF',primaryTextColor:'#212529',primaryBorderColor:'#00338D',lineColor:'#6C757D'}});
     
+    // 將所有用於匯出的樣式（包含內嵌字型）集中管理，確保預覽與匯出成品一致
+    const EXPORT_STYLES = `
+      /* 修正：為所有字重提供獨立的 @font-face 規則，徹底解決粗體失效問題 */
+      /* Noto Sans TC - Regular 400 */
+      @font-face {
+        font-family: 'Noto Sans TC';
+        font-style: normal;
+        font-weight: 400;
+        src: url(https://fonts.gstatic.com/s/notosanstc/v36/-nF7OG829Oofr2wohFbTp9i9_wQSbS7u.woff2) format('woff2');
+      }
+      /* Noto Sans TC - Bold 700 */
+       @font-face {
+        font-family: 'Noto Sans TC';
+        font-style: normal;
+        font-weight: 700;
+        src: url(https://fonts.gstatic.com/s/notosanstc/v36/-nF7OG829Oofr2wohFbTp9i9_wQScS-u.woff2) format('woff2');
+      }
+      /* Noto Sans TC - Black 900 */
+      @font-face {
+        font-family: 'Noto Sans TC';
+        font-style: normal;
+        font-weight: 900;
+        src: url(https://fonts.gstatic.com/s/notosanstc/v36/-nF7OG829Oofr2wohFbTp9i9_wQSfS2u.woff2) format('woff2');
+      }
+      /* Noto Serif JP - Regular 400 */
+      @font-face {
+        font-family: 'Noto Serif JP';
+        font-style: normal;
+        font-weight: 400;
+        src: url(https://fonts.gstatic.com/s/notoserifjp/v22/ros-t_3Vt6eP4dYpMSwPa7s2zP9K2YTy8w.woff2) format('woff2');
+      }
+      /* Noto Serif JP - Bold 700 */
+      @font-face {
+        font-family: 'Noto Serif JP';
+        font-style: normal;
+        font-weight: 700;
+        src: url(https://fonts.gstatic.com/s/notoserifjp/v22/ros-t_3Vt6eP4dYpMSwPa7s2zP9K2YTy8w.woff2) format('woff2');
+      }
+
+      /* General Styles */
+      html,body{margin:0;padding:24px;background:#FFFFFF;color:#212529;font-family:'Noto Sans TC','sans-serif';line-height:1.6;font-size:16px}
+      h1,h2,h3,h4,h5,h6,b,strong {font-weight: 700;}
+      h1{font-family:'Noto Sans TC';font-weight:900;}
+      h2,h3,h4,h5,h6{font-family:'Noto Serif JP';}
+
+      /* Explicit list styles for consistent rendering in html2canvas */
+      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; }
+      ul { list-style-type: disc; }
+      ol { list-style-type: decimal; }
+      li { display: list-item; }
+      .hljs-container{padding:1.5rem;border-radius:.5rem;overflow-x:auto;background:#F8F9FA;border:1px solid #DEE2E6}
+      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3C5E5 25%,#B3C5E5 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3C5E5 25%,#B3C5E5 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#F8D7DA 25%,#F8D7DA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#721C24}
+      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
+    `;
+
     const codeInput=document.getElementById('code_input');
     const codeTypeSelect=document.getElementById('code_type');
     const outputFormatSelect=document.getElementById('output_format');
@@ -278,14 +337,7 @@ for i in range(10):
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${titleText}</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
-<style>
-  html,body{margin:0;padding:24px;background:#FFFFFF;color:#212529;font-family:'Noto Sans JP',sans-serif;line-height:1.6}
-  .hljs-container{padding:1.5rem;border-radius:.5rem;overflow-x:auto;background:#F8F9FA;border:1px solid #DEE2E6}
-  .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3C5E5 25%,#B3C5E5 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-  .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3C5E5 25%,#B3C5E5 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-  .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#F8D7DA 25%,#F8D7DA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#721C24}
-  .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
-</style>`;
+<style>${EXPORT_STYLES}</style>`;
     }
 
     async function prepareContentForRender(){
@@ -344,40 +396,89 @@ for i in range(10):
       }catch(e){ alert(e.message||'列印預覽失敗'); }
     }
 
+    // 統一使用 html2canvas 進行渲染，並採取更嚴格的字體載入策略
     async function convertToPdf(){
       try{
         showProgress(10,'準備 PDF 內容...');
         const contentHtml=await prepareContentForRender();
-        renderContainer.innerHTML=contentHtml;
+        const fullRenderHtml = `<!DOCTYPE html><html><head><style>${EXPORT_STYLES}</style></head><body>${contentHtml}</body></html>`;
+        renderContainer.innerHTML = fullRenderHtml;
+
+        await document.fonts.ready;
+        await new Promise(resolve => setTimeout(resolve, 300));
+
         showProgress(30,'設定 PDF 參數...');
         const orientation=document.getElementById('pdf_orientation').value;
         const res=parseInt(document.getElementById('pdf_resolution').value,10);
-        const scale=res===1?2:(res===2?3:4);
+        // 調整解析度以獲得更好品質
+        const scale = res * 1.5; 
         const customScale=parseInt(document.getElementById('pdf_scale').value,10)/100;
+        
         renderContainer.style.width=orientation==='l'?'297mm':'210mm';
+
         showProgress(50,'渲染頁面...');
-        const { jsPDF }=window.jspdf;
-        const canvas=await html2canvas(renderContainer,{scale,useCORS:true,backgroundColor:'#fff',windowWidth:renderContainer.scrollWidth,windowHeight:renderContainer.scrollHeight,logging:false});
+        const canvas=await html2canvas(renderContainer,{
+            scale: scale,
+            useCORS:true,
+            backgroundColor:'#fff',
+            windowWidth:renderContainer.scrollWidth,
+            windowHeight:renderContainer.scrollHeight,
+            logging:false
+        });
+        
         showProgress(75,'生成 PDF...');
-        const imgData=canvas.toDataURL('image/jpeg',0.95);
+        const imgData=canvas.toDataURL('image/jpeg', 0.95);
+        const { jsPDF } = window.jspdf;
         const pdf=new jsPDF({orientation,unit:'pt',format:'a4'});
-        const pdfW=pdf.internal.pageSize.getWidth(), pdfH=pdf.internal.pageSize.getHeight();
-        const ratio=pdfW/canvas.width, imgH=canvas.height*ratio;
-        const finalW=pdfW*customScale, finalH=imgH*customScale;
-        let left=finalH; let pos=0;
-        pdf.addImage(imgData,'JPEG',0,pos,finalW,finalH); left-=pdfH;
-        while(left>0){ pos=left-finalH; pdf.addPage(); pdf.addImage(imgData,'JPEG',0,pos,finalW,finalH); left-=pdfH; }
-        showProgress(95,'準備下載...'); pdf.save(`${getFileName()}.pdf`);
-        showProgress(100,'完成！'); setTimeout(()=>hideProgress(),1000);
-      }catch(e){ alert(e.message||'生成 PDF 時發生錯誤'); hideProgress(); }
-      finally{ renderContainer.innerHTML=''; toggleLoader(false); }
+        const pdfW=pdf.internal.pageSize.getWidth();
+        const pdfH=pdf.internal.pageSize.getHeight();
+        const ratio=canvas.width/canvas.height;
+        let imgW=pdfW;
+        let imgH=pdfW/ratio;
+
+        // 處理長圖片分頁
+        let heightLeft = imgH;
+        let position = 0;
+        pdf.addImage(imgData,'JPEG',0,position,imgW,imgH);
+        heightLeft -= pdfH;
+
+        while (heightLeft > 0) {
+          position = heightLeft - imgH;
+          pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
+          heightLeft -= pdfH;
+        }
+
+        showProgress(95,'準備下載...'); 
+        pdf.save(`${getFileName()}.pdf`);
+        
+        showProgress(100,'完成！'); 
+        setTimeout(()=>hideProgress(),1000);
+
+      }catch(e){ 
+        console.error(e);
+        alert(e.message||'生成 PDF 時發生錯誤'); 
+        hideProgress(); 
+      }
+      finally{ 
+        renderContainer.innerHTML=''; 
+        toggleLoader(false); 
+      }
     }
 
     async function convertToPng(){
       try{
         showProgress(10,'準備圖像內容...');
         const contentHtml=await prepareContentForRender();
-        renderContainer.innerHTML=contentHtml;
+        // 建立包含內嵌樣式的完整 HTML 內容來渲染，確保字體正確
+        const fullRenderHtml = `<!DOCTYPE html><html><head><style>${EXPORT_STYLES}</style></head><body>${contentHtml}</body></html>`;
+        renderContainer.innerHTML = fullRenderHtml;
+
+        // 修正：明確等待字型載入完成，解決 PNG 亂碼問題
+        await document.fonts.ready;
+        // 再給予一個短暫的延遲，確保渲染穩定
+        await new Promise(resolve => setTimeout(resolve, 200));
+
         showProgress(30,'設定圖像參數...');
         const orientation=document.getElementById('png_orientation').value;
         const scale=parseInt(document.getElementById('png_resolution').value,10);
@@ -412,7 +513,7 @@ for i in range(10):
     convertBtn.addEventListener('click', async ()=>{
       if(!validateInput())return;
       toggleLoader(true,'開始處理...','正在準備轉換程序');
-      try{ const f=outputFormat.value;
+      try{ const f=outputFormatSelect.value;
         if(f==='pdf') await convertToPdf();
         else if(f==='png') await convertToPng();
         else if(f==='html') await convertToHtml();
@@ -470,4 +571,11 @@ for i in range(10):
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
 
