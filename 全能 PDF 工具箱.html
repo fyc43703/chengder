@@ -7,82 +7,254 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.min.js"></script>
     <script src='https://unpkg.com/tesseract.js@5.0.0/dist/tesseract.min.js'></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        .feature-card { transition: transform 0.2s, box-shadow 0.2s; }
-        .feature-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-        .file-list-item { background-color: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; cursor: move; }
-        .file-list-item.dragging { opacity: 0.5; background-color: #e0f2fe; }
-        .close-btn { cursor: pointer; }
+
+        :root {
+            --wood-texture-bg: url('https://www.transparenttextures.com/patterns/wood-pattern.png') #4a3728;
+            --header-color: #8a3b29;
+            --text-primary: #3e2723;
+            --text-secondary: #6d4c41;
+            --text-on-dark: #e3dcd2;
+            --card-bg: #fffbf2;
+            --card-shadow: rgba(46, 34, 27, 0.2);
+            --border-color: #dcd3c1;
+            --disabled-bg: #c9c1b3;
+            
+            /* Feature colors (rich, natural tones) */
+            --color-merge: #b71c1c;      /* Deep Red */
+            --color-split: #1b5e20;      /* Forest Green */
+            --color-pdf-to-image: #e65100; /* Amber */
+            --color-image-to-pdf: #311b92; /* Deep Indigo */
+            --color-images-to-pdf: #f57f17; /* Strong Yellow */
+            --color-ocr: #004d40;        /* Dark Teal */
+            --color-compress: #33691e;   /* Dark Lime */
+            --color-rotate: #bf360c;     /* Deep Orange */
+            --color-page-numbers: #4a148c;/* Deep Purple */
+            --color-back: #5d4037;       /* Brown for back button */
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: var(--wood-texture-bg);
+            color: var(--text-on-dark);
+        }
+        
+        /* Header */
+        header h1 {
+            color: var(--text-on-dark) !important;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+        }
+        header p {
+            color: var(--text-on-dark) !important;
+        }
+
+        /* Feature Cards on Home Screen */
+        .feature-card {
+            background-color: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px var(--card-shadow), 0 2px 4px -1px var(--card-shadow);
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px var(--card-shadow), 0 4px 6px -2px var(--card-shadow);
+            border-color: var(--header-color);
+        }
+
+        .feature-card h2 {
+            color: var(--text-primary);
+        }
+
+        .feature-card p {
+            color: var(--text-secondary) !important;
+        }
+
+        /* Change icon colors */
+        [data-view="merge-pdf-view"] svg { color: var(--color-merge); }
+        [data-view="split-pdf-view"] svg { color: var(--color-split); }
+        [data-view="pdf-to-image-view"] svg { color: var(--color-pdf-to-image); }
+        [data-view="image-to-pdf-view"] svg { color: var(--color-image-to-pdf); }
+        [data-view="images-to-pdf-view"] svg { color: var(--color-images-to-pdf); }
+        [data-view="ocr-pdf-view"] svg { color: var(--color-ocr); }
+        [data-view="compress-pdf-view"] svg { color: var(--color-compress); }
+        [data-view="rotate-pdf-view"] svg { color: var(--color-rotate); }
+        [data-view="add-page-numbers-view"] svg { color: var(--color-page-numbers); }
+
+        /* Tool View Styling */
+        .view > .bg-white { /* More specific selector for tool view panels */
+            background-color: var(--card-bg) !important;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        .view h2 { color: var(--header-color); }
+        .view p, .view label { color: var(--text-secondary); }
+        .view h3, .view strong { color: var(--text-primary) !important; }
+        .view input[type="text"], .view input[type="number"], .view select {
+            background-color: #fff;
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+        .view input:focus, .view select:focus {
+            --tw-ring-color: var(--header-color) !important;
+            border-color: var(--header-color) !important;
+        }
+
+        /* Button Styling */
+        button { transition: background-color 0.2s; }
+        button:disabled {
+            background-color: var(--disabled-bg) !important;
+            cursor: not-allowed;
+            color: var(--text-secondary);
+        }
+
+        /* Back Button */
+        [id^="back-to-home-"] { background-color: var(--color-back) !important; }
+        [id^="back-to-home-"]:hover { background-color: #4e342e !important; }
+
+        /* Action Buttons */
+        #merge-pdf-btn { background-color: var(--color-merge) !important; color: white; }
+        #merge-pdf-btn:hover { background-color: #7f0000 !important; }
+        #split-pdf-btn { background-color: var(--color-split) !important; color: white; }
+        #split-pdf-btn:hover { background-color: #003300 !important; }
+        #pdf-to-image-btn { background-color: var(--color-pdf-to-image) !important; color: white; }
+        #pdf-to-image-btn:hover { background-color: #c44300 !important; }
+        #image-to-pdf-btn { background-color: var(--color-image-to-pdf) !important; color: white; }
+        #image-to-pdf-btn:hover { background-color: #200d6e !important; }
+        #images-to-pdf-btn { background-color: var(--color-images-to-pdf) !important; color: white; }
+        #images-to-pdf-btn:hover { background-color: #c96c00 !important; }
+        #ocr-pdf-view label[for="ocr-pdf-input"] { background-color: var(--color-ocr) !important; color: white !important; }
+        #ocr-pdf-view label[for="ocr-pdf-input"]:hover { background-color: #00251a !important; }
+        #download-ocr-btn { background-color: #1565c0 !important; color: white; } /* A contrasting blue for download */
+        #compress-pdf-btn { background-color: var(--color-compress) !important; color: white; }
+        #compress-pdf-btn:hover { background-color: #1b5e20 !important; }
+        #rotate-pdf-btn { background-color: var(--color-rotate) !important; color: white; }
+        #rotate-pdf-btn:hover { background-color: #a92a00 !important; }
+        #add-page-numbers-btn { background-color: var(--color-page-numbers) !important; color: white; }
+        #add-page-numbers-btn:hover { background-color: #38006b !important; }
+
+        /* File Input Buttons */
+        input[type="file"]::file-selector-button { transition: background-color 0.2s; }
+        #merge-pdf-files::file-selector-button { background-color: #fdecea !important; color: var(--color-merge) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #split-pdf-file::file-selector-button { background-color: #e8f5e9 !important; color: var(--color-split) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #pdf-to-image-file::file-selector-button { background-color: #fff3e0 !important; color: var(--color-pdf-to-image) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #image-file::file-selector-button { background-color: #ede7f6 !important; color: var(--color-image-to-pdf) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #images-files::file-selector-button { background-color: #fffde7 !important; color: var(--color-images-to-pdf) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #compress-pdf-file::file-selector-button { background-color: #f1f8e9 !important; color: var(--color-compress) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #rotate-pdf-file::file-selector-button { background-color: #fbe9e7 !important; color: var(--color-rotate) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #add-page-numbers-file::file-selector-button { background-color: #f3e5f5 !important; color: var(--color-page-numbers) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+
+        /* File Lists and Drop Areas */
+        .file-list-item, #images-list .draggable {
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .file-list-item.dragging {
+            opacity: 0.7;
+            background-color: #f5f0e1;
+        }
+        .min-h-\[100px\] {
+            background-color: #f5f0e1;
+            border: 2px dashed var(--border-color);
+        }
+        .bg-gray-50 {
+             background-color: #f5f0e1 !important;
+        }
+        
+        #ocr-result {
+            background-color: #f5f0e1 !important;
+            border-color: var(--border-color) !important;
+        }
+        .close-btn { cursor: pointer; color: var(--color-merge) !important; }
+        
+        /* Modal */
+        #modal > div {
+            background-color: var(--card-bg);
+            color: var(--text-primary);
+        }
+        #modal h3 { color: var(--accent-green); }
+
+        /* Loader */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--header-color);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Base structural styles */
         .view { display: none; }
         .view.active { display: block; }
-        
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="text-gray-800">
     <div id="app-container">
         <div class="container mx-auto p-4 md:p-8 max-w-4xl">
             <header class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-blue-600">全能PDF工具箱</h1>
-                <p class="text-m text-gray-600 mt-5 font-semibold">合併、分割、轉換、文字擷取、壓縮、旋轉、加頁碼</p>
-                <p class="text-sm text-gray-600 mt-1">所有處理過程均在瀏覽器端完成，確保您的資料安全與隱私</p>
-                <p class="text-sm text-gray-600 mt-5">製作者：陳政德</p>
+                <h1 class="text-3xl font-bold">全能PDF工具箱</h1>
+                <p class="text-xl mt-1 font-semibold">合併、分割、轉換、文字擷取、壓縮、旋轉、加頁碼</p>
+                <p class="text-sm mt-1">所有處理過程均在瀏覽器端完成，確保您的資料安全與隱私</p>
+                <p class="text-sm text-sm mt-1">製作者：陳政德</p>
             </header>
 
             <div id="home-view" class="view active">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <!-- Row 1 -->
-                    <div data-view="merge-pdf-view" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
-                        <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <div><h2 class="text-xl font-semibold">PDF合併</h2><p class="text-gray-500">將多個PDF合併成一個檔案。</p></div>
+                    <div data-view="merge-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <div><h2 class="text-xl font-semibold">PDF合併</h2><p>將多個PDF合併成一個檔案。</p></div>
                     </div>
-                    <div data-view="split-pdf-view" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
-                        <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-7 7m7-7l-7-7"></path></svg>
-                        <div><h2 class="text-xl font-semibold">PDF分割</h2><p class="text-gray-500">將PDF拆分成多個檔案。</p></div>
+                    <div data-view="split-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-7 7m7-7l-7-7"></path></svg>
+                        <div><h2 class="text-xl font-semibold">PDF分割</h2><p>將PDF拆分成多個檔案。</p></div>
                     </div>
-                    <div data-view="pdf-to-image-view" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
-                         <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z"></path></svg>
-                         <div><h2 class="text-xl font-semibold">PDF轉圖片</h2><p class="text-gray-500">將PDF每一頁存成圖片(JPG, PNG)。</p></div>
+                    <div data-view="pdf-to-image-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                         <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z"></path></svg>
+                         <div><h2 class="text-xl font-semibold">PDF轉圖片</h2><p>將PDF每一頁存成圖片(JPG, PNG)。</p></div>
                     </div>
                     <!-- Row 2 -->
-                    <div data-view="image-to-pdf-view" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
-                        <svg class="w-12 h-12 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <div><h2 class="text-xl font-semibold">圖片轉PDF</h2><p class="text-gray-500">將單張圖片轉換為PDF。</p></div>
+                    <div data-view="image-to-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <div><h2 class="text-xl font-semibold">圖片轉PDF</h2><p>將單張圖片轉換為PDF。</p></div>
                     </div>
-                    <div data-view="images-to-pdf-view" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
-                        <svg class="w-12 h-12 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-1a6 6 0 00-5.197-5.975M15 21H9"></path></svg>
-                        <div><h2 class="text-xl font-semibold">多圖轉PDF</h2><p class="text-gray-500">將多張圖片合併成一個PDF。</p></div>
+                    <div data-view="images-to-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-1a6 6 0 00-5.197-5.975M15 21H9"></path></svg>
+                        <div><h2 class="text-xl font-semibold">多圖轉PDF</h2><p>將多張圖片合併成一個PDF。</p></div>
                     </div>
-                    <div data-view="ocr-pdf-view" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
-                        <svg class="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                        <div><h2 class="text-xl font-semibold">PDF文字擷取</h2><p class="text-gray-500">從PDF辨識並擷取文字(OCR)。</p></div>
+                    <div data-view="ocr-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        <div><h2 class="text-xl font-semibold">PDF文字擷取</h2><p>從PDF辨識並擷取文字(OCR)。</p></div>
                     </div>
                     <!-- Row 3 -->
-                    <div data-view="compress-pdf-view" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
-                        <svg class="w-12 h-12 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <div data-view="compress-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5M15 15l5.25 5.25" />
                         </svg>
-                        <div><h2 class="text-xl font-semibold">壓縮PDF</h2><p class="text-gray-500">減小PDF檔案的大小，調整壓縮品質。</p></div>
+                        <div><h2 class="text-xl font-semibold">壓縮PDF</h2><p>減小PDF檔案大小，保留文字選取功能。</p></div>
                     </div>
-                    <div data-view="rotate-pdf-view" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
-                        <svg class="w-12 h-12 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <div data-view="rotate-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.774 4.774zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 13.5l3 3m0 0l3-3m-3 3v-6" />
                         </svg>
-                        <div><h2 class="text-xl font-semibold">旋轉PDF</h2><p class="text-gray-500">批量旋轉PDF，一鍵設定全頁面旋轉角度。</p></div>
+                        <div><h2 class="text-xl font-semibold">旋轉PDF</h2><p>批量旋轉PDF，一鍵設定全頁面旋轉角度。</p></div>
                     </div>
-                     <div data-view="add-page-numbers-view" class="feature-card bg-white p-6 rounded-lg shadow-md cursor-pointer flex items-center space-x-4">
-                        <svg class="w-12 h-12 text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                     <div data-view="add-page-numbers-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                         </svg>
-                        <div><h2 class="text-xl font-semibold">PDF加頁碼</h2><p class="text-gray-500">將PDF插入頁碼，選擇位置、大小及格式。</p></div>
+                        <div><h2 class="text-xl font-semibold">PDF加頁碼</h2><p>將PDF插入頁碼，選擇位置、大小及格式。</p></div>
                     </div>
                 </div>
             </div>
@@ -93,12 +265,12 @@
                 <div id="merge-pdf-view" class="view">
                     <div class="bg-white p-6 rounded-lg shadow-lg">
                         <h2 class="text-2xl font-bold mb-4">PDF 合併</h2>
-                        <p class="text-gray-600 mb-4">必須一次選擇多個 PDF 檔案，按住並拖曳檔案以調整合併順序。</p>
-                        <input type="file" id="merge-pdf-files" accept=".pdf" multiple class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-4"/>
-                        <div id="merge-pdf-list" class="min-h-[100px] bg-gray-50 p-2 rounded-md border"></div>
+                        <p class="mb-4">必須一次選擇多個 PDF 檔案，按住並拖曳檔案以調整合併順序。</p>
+                        <input type="file" id="merge-pdf-files" accept=".pdf" multiple class="block w-full text-sm mb-4"/>
+                        <div id="merge-pdf-list" class="min-h-[100px] p-2 rounded-md border"></div>
                         <div class="mt-6 flex items-center justify-between">
-                            <button id="merge-pdf-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始合併</button>
-                            <button id="back-to-home-1" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                            <button id="merge-pdf-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始合併</button>
+                            <button id="back-to-home-1" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
                                 <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
                                 <span>返回主頁</span>
                             </button>
@@ -109,8 +281,8 @@
                 <div id="split-pdf-view" class="view">
                     <div class="bg-white p-6 rounded-lg shadow-lg">
                         <h2 class="text-2xl font-bold mb-4">PDF 分割</h2>
-                        <p class="text-gray-600 mb-4">選擇一個 PDF 檔案進行分割。</p>
-                        <input type="file" id="split-pdf-file" accept=".pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 mb-4"/>
+                        <p class="mb-4">選擇一個 PDF 檔案進行分割。</p>
+                        <input type="file" id="split-pdf-file" accept=".pdf" class="block w-full text-sm mb-4"/>
                         <div id="split-pdf-info" class="mb-4 text-center p-2 bg-gray-50 rounded">請選擇檔案</div>
                         <div id="split-options" class="hidden">
                             <h3 class="font-semibold mb-2">分割模式</h3>
@@ -123,8 +295,8 @@
                             </div>
                         </div>
                         <div class="mt-6 flex items-center justify-between">
-                            <button id="split-pdf-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始分割</button>
-                            <button id="back-to-home-2" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                            <button id="split-pdf-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始分割</button>
+                            <button id="back-to-home-2" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
                                 <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
                                 <span>返回主頁</span>
                             </button>
@@ -135,29 +307,29 @@
                 <div id="pdf-to-image-view" class="view">
                      <div class="bg-white p-6 rounded-lg shadow-lg">
                          <h2 class="text-2xl font-bold mb-4">PDF 轉圖片</h2>
-                         <p class="text-gray-600 mb-4">選擇一個 PDF 檔案，設定解析度和格式後，將其轉換為圖片壓縮檔 (ZIP)。</p>
-                         <input type="file" id="pdf-to-image-file" accept=".pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 mb-4"/>
+                         <p class="mb-4">選擇一個 PDF 檔案，設定解析度和格式後，將其轉換為圖片壓縮檔 (ZIP)。</p>
+                         <input type="file" id="pdf-to-image-file" accept=".pdf" class="block w-full text-sm mb-4"/>
                          <div id="pdf-to-image-info" class="mb-4 text-center p-2 bg-gray-50 rounded">請選擇檔案</div>
                          <div id="pdf-to-image-options" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
                              <div>
-                                 <label for="image-resolution" class="block text-sm font-medium text-gray-700">圖片解析度 (DPI)</label>
-                                 <select id="image-resolution" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                 <label for="image-resolution" class="block text-sm font-medium">圖片解析度 (DPI)</label>
+                                 <select id="image-resolution" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none sm:text-sm">
                                      <option value="150">標準 (150 DPI)</option>
                                      <option value="300" selected>高 (300 DPI)</option>
                                      <option value="600">印刷 (600 DPI)</option>
                                  </select>
                              </div>
                              <div>
-                                 <label for="image-format" class="block text-sm font-medium text-gray-700">圖片格式</label>
-                                 <select id="image-format" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                 <label for="image-format" class="block text-sm font-medium">圖片格式</label>
+                                 <select id="image-format" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none sm:text-sm">
                                      <option value="image/jpeg">JPG</option>
                                      <option value="image/png">PNG</option>
                                  </select>
                              </div>
                          </div>
                          <div class="mt-6 flex items-center justify-between">
-                             <button id="pdf-to-image-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始轉換</button>
-                             <button id="back-to-home-3" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                             <button id="pdf-to-image-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始轉換</button>
+                             <button id="back-to-home-3" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
                                  <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
                                  <span>返回主頁</span>
                              </button>
@@ -168,30 +340,30 @@
                 <div id="image-to-pdf-view" class="view">
                        <div class="bg-white p-6 rounded-lg shadow-lg">
                          <h2 class="text-2xl font-bold mb-4">圖片轉 PDF</h2>
-                         <p class="text-gray-600 mb-4">選擇一張圖片（JPG, PNG, WEBP等）轉換為 PDF。</p>
-                         <input type="file" id="image-file" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 mb-4"/>
+                         <p class="mb-4">選擇一張圖片（JPG, PNG, WEBP等）轉換為 PDF。</p>
+                         <input type="file" id="image-file" accept="image/*" class="block w-full text-sm mb-4"/>
                          <div class="my-4 text-center">
                              <img id="image-preview" src="" class="max-w-full max-h-48 mx-auto hidden rounded-md shadow-sm">
                          </div>
                          <div id="image-options" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
                              <div>
-                                 <label for="image-page-size" class="block text-sm font-medium text-gray-700">頁面大小</label>
-                                 <select id="image-page-size" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                 <label for="image-page-size" class="block text-sm font-medium">頁面大小</label>
+                                 <select id="image-page-size" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none sm:text-sm">
                                      <option>A4</option>
                                      <option>Letter</option>
                                  </select>
                              </div>
                              <div>
-                                 <label for="image-orientation" class="block text-sm font-medium text-gray-700">頁面方向</label>
-                                 <select id="image-orientation" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                 <label for="image-orientation" class="block text-sm font-medium">頁面方向</label>
+                                 <select id="image-orientation" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none sm:text-sm">
                                      <option value="portrait">直向 (Portrait)</option>
                                      <option value="landscape">橫向 (Landscape)</option>
                                  </select>
                              </div>
                          </div>
                          <div class="mt-6 flex items-center justify-between">
-                             <button id="image-to-pdf-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>轉換為 PDF</button>
-                             <button id="back-to-home-4" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                             <button id="image-to-pdf-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>轉換為 PDF</button>
+                             <button id="back-to-home-4" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
                                  <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
                                  <span>返回主頁</span>
                              </button>
@@ -202,28 +374,28 @@
                 <div id="images-to-pdf-view" class="view">
                     <div class="bg-white p-6 rounded-lg shadow-lg">
                         <h2 class="text-2xl font-bold mb-4">多圖轉 PDF</h2>
-                        <p class="text-gray-600 mb-4">必須一次選擇多張圖片（JPG, PNG, WEBP等），按住並拖曳以排序，然後合併成一個 PDF。</p>
-                        <input type="file" id="images-files" accept="image/*" multiple class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100 mb-4"/>
-                        <div id="images-list" class="min-h-[100px] bg-gray-50 p-2 rounded-md border grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                        <p class="mb-4">必須一次選擇多張圖片（JPG, PNG, WEBP等），按住並拖曳以排序，然後合併成一個 PDF。</p>
+                        <input type="file" id="images-files" accept="image/*" multiple class="block w-full text-sm mb-4"/>
+                        <div id="images-list" class="min-h-[100px] p-2 rounded-md border grid grid-cols-2 md:grid-cols-4 gap-4"></div>
                         <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label for="images-page-size" class="block text-sm font-medium text-gray-700">頁面大小</label>
-                                <select id="images-page-size" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <label for="images-page-size" class="block text-sm font-medium">頁面大小</label>
+                                <select id="images-page-size" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none sm:text-sm">
                                     <option>A4</option>
                                     <option>Letter</option>
                                 </select>
                             </div>
                             <div>
-                                <label for="images-orientation" class="block text-sm font-medium text-gray-700">頁面方向</label>
-                                <select id="images-orientation" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <label for="images-orientation" class="block text-sm font-medium">頁面方向</label>
+                                <select id="images-orientation" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none sm:text-sm">
                                     <option value="portrait">直向 (Portrait)</option>
                                     <option value="landscape">橫向 (Landscape)</option>
                                 </select>
                             </div>
                         </div>
                         <div class="mt-6 flex items-center justify-between">
-                            <button id="images-to-pdf-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>合併並轉換</button>
-                            <button id="back-to-home-5" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                            <button id="images-to-pdf-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>合併並轉換</button>
+                            <button id="back-to-home-5" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
                                 <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
                                 <span>返回主頁</span>
                             </button>
@@ -234,20 +406,20 @@
                 <div id="ocr-pdf-view" class="view">
                     <div class="bg-white p-6 rounded-lg shadow-lg">
                         <h2 class="text-2xl font-bold mb-4">PDF 文字擷取 (OCR)</h2>
-                        <p class="text-gray-600 mb-4">直接在您的瀏覽器中分析 PDF 檔案，自動判斷並提取文字。您的檔案不會上傳到任何伺服器。</p>
+                        <p class="mb-4">★文字擷取過程中，畫面持續顯示「轉圈圈」動畫，表示系統無法處理此檔案。</p>
                         <div class="text-center mb-4">
-                            <label for="ocr-pdf-input" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg cursor-pointer inline-block transition-colors duration-200">
+                            <label for="ocr-pdf-input" class="text-white font-bold py-3 px-6 rounded-lg cursor-pointer inline-block transition-colors duration-200">
                                 點擊此處或拖曳 PDF 檔案到這裡
                             </label>
                             <input type="file" id="ocr-pdf-input" accept=".pdf" class="hidden">
                         </div>
                         <div id="ocr-status-container" class="flex items-center justify-start p-3 bg-gray-100 rounded-lg mb-4">
                             <div id="ocr-status" class="text-gray-700">請選擇一個 PDF 檔案開始處理...</div>
-                            <button id="download-ocr-btn" class="hidden bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg ml-4">下載為文字檔</button>
+                            <button id="download-ocr-btn" class="hidden text-white font-bold py-2 px-4 rounded-lg ml-4">下載為文字檔</button>
                         </div>
                         <pre id="ocr-result" class="w-full bg-gray-50 border border-gray-300 rounded-md p-4 min-h-[200px] max-h-[500px] overflow-y-auto whitespace-pre-wrap break-words">尚未處理檔案。</pre>
                         <div class="mt-6 flex justify-end">
-                            <button id="back-to-home-6" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                            <button id="back-to-home-6" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
                                 <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
                                 <span>返回主頁</span>
                             </button>
@@ -259,23 +431,23 @@
                 <div id="compress-pdf-view" class="view">
                     <div class="bg-white p-6 rounded-lg shadow-lg">
                         <h2 class="text-2xl font-bold mb-4">壓縮 PDF</h2>
-                        <p class="text-gray-600 mb-2">選擇一個 PDF 檔案，調整壓縮品質以減小檔案大小。
-                        </p><strong class="text-orange-600">1.壓縮過程會將每一頁轉換為圖片，原始文字將無法選取。</strong>
-                    </p><strong class="text-orange-600 mt-13">2.解決方法：開啟壓縮後的PDF檔案，點選「列印」，選擇「另存為PDF」並儲存，原始文字即可選取。</strong>
-                        <input type="file" id="compress-pdf-file" accept=".pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 mb-4"/>
+                        <p class="mb-4">
+                           此方法會大幅壓縮頁面中的圖片以減小檔案大小，同時會疊加一層<strong class="text-green-600">隱形的文字層</strong>，讓您的文件在壓縮後依然可以<strong class="text-green-600">搜尋與複製文字</strong>。
+                        </p>
+                        <input type="file" id="compress-pdf-file" accept=".pdf" class="block w-full text-sm mb-4"/>
                         <div id="compress-pdf-info" class="mb-4 text-center p-2 bg-gray-50 rounded">請選擇檔案</div>
                         
                         <div id="compress-options" class="hidden mt-4">
-                            <label for="compress-ratio" class="block text-m font-bold text-blue-700">壓縮品質 (品質越低，檔案越小)</label>
+                            <label for="compress-ratio" class="block text-m font-bold">圖片壓縮品質 (品質越低，檔案越小)</label>
                             <div class="flex items-center space-x-4 mt-2">
-                                <input type="range" id="compress-ratio" min="10" max="90" value="70" step="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                                <span id="compress-ratio-value" class="font-semibold text-teal-600 w-12 text-center">70%</span>
+                                <input type="range" id="compress-ratio" min="10" max="100" value="70" step="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <span id="compress-ratio-value" class="font-semibold w-12 text-center">70%</span>
                             </div>
                         </div>
 
                         <div class="mt-6 flex items-center justify-between">
-                            <button id="compress-pdf-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始壓縮</button>
-                            <button id="back-to-home-7" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                            <button id="compress-pdf-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始壓縮</button>
+                            <button id="back-to-home-7" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
                                 <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
                                 <span>返回主頁</span>
                             </button>
@@ -286,20 +458,20 @@
                 <div id="rotate-pdf-view" class="view">
                     <div class="bg-white p-6 rounded-lg shadow-lg">
                         <h2 class="text-2xl font-bold mb-4">旋轉 PDF</h2>
-                        <p class="text-gray-600 mb-4">選擇一個 PDF 檔案，並設定所有頁面的旋轉角度。</p>
-                        <input type="file" id="rotate-pdf-file" accept=".pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 mb-4"/>
+                        <p class="mb-4">選擇一個 PDF 檔案，並設定所有頁面的旋轉角度。</p>
+                        <input type="file" id="rotate-pdf-file" accept=".pdf" class="block w-full text-sm mb-4"/>
                         <div id="rotate-pdf-info" class="mb-4 text-center p-2 bg-gray-50 rounded">請選擇檔案</div>
                         <div id="rotate-options" class="hidden">
-                            <label for="rotate-angle" class="block text-sm font-medium text-gray-700">旋轉角度</label>
-                            <select id="rotate-angle" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <label for="rotate-angle" class="block text-sm font-medium">旋轉角度</label>
+                            <select id="rotate-angle" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none sm:text-sm">
                                 <option value="90">90° (順時針)</option>
                                 <option value="180">180°</option>
                                 <option value="270">270° (逆時針)</option>
                             </select>
                         </div>
                         <div class="mt-6 flex items-center justify-between">
-                            <button id="rotate-pdf-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始旋轉</button>
-                            <button id="back-to-home-8" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                            <button id="rotate-pdf-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始旋轉</button>
+                            <button id="back-to-home-8" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
                                 <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
                                 <span>返回主頁</span>
                             </button>
@@ -310,13 +482,13 @@
                 <div id="add-page-numbers-view" class="view">
                     <div class="bg-white p-6 rounded-lg shadow-lg">
                         <h2 class="text-2xl font-bold mb-4">PDF 加頁碼</h2>
-                        <p class="text-gray-600 mb-4">為您的 PDF 文件添加頁碼。使用 <code>{page}</code> 代表目前頁碼，<code>{total}</code> 代表總頁數。</p>
-                        <input type="file" id="add-page-numbers-file" accept=".pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 mb-4"/>
+                        <p class="mb-4">為您的 PDF 文件添加頁碼。使用 <code>{page}</code> 代表目前頁碼，<code>{total}</code> 代表總頁數。</p>
+                        <input type="file" id="add-page-numbers-file" accept=".pdf" class="block w-full text-sm mb-4"/>
                         <div id="add-page-numbers-info" class="mb-4 text-center p-2 bg-gray-50 rounded">請選擇檔案</div>
                         <div id="add-page-numbers-options" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label for="page-number-position" class="block text-sm font-medium text-gray-700">頁碼位置</label>
-                                <select id="page-number-position" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm">
+                                <label for="page-number-position" class="block text-sm font-medium">頁碼位置</label>
+                                <select id="page-number-position" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm">
                                     <option value="bottom-center">頁尾置中</option>
                                     <option value="bottom-right">頁尾靠右</option>
                                     <option value="bottom-left">頁尾靠左</option>
@@ -326,21 +498,21 @@
                                 </select>
                             </div>
                             <div>
-                                <label for="page-number-size" class="block text-sm font-medium text-gray-700">字體大小</label>
+                                <label for="page-number-size" class="block text-sm font-medium">字體大小</label>
                                 <input type="number" id="page-number-size" value="12" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
                             </div>
                             <div>
-                                <label for="page-number-format" class="block text-sm font-medium text-gray-700">頁碼格式</label>
+                                <label for="page-number-format" class="block text-sm font-medium">頁碼格式</label>
                                 <input type="text" id="page-number-format" value="{page} / {total}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
                             </div>
                             <div>
-                                <label for="page-number-range" class="block text-sm font-medium text-gray-700">套用頁碼範圍 (可留白)</label>
+                                <label for="page-number-range" class="block text-sm font-medium">套用頁碼範圍 (可留白)</label>
                                 <input type="text" id="page-number-range" placeholder="例如: 2-10, 15" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
                             </div>
                         </div>
                         <div class="mt-6 flex items-center justify-between">
-                            <button id="add-page-numbers-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>加上頁碼</button>
-                            <button id="back-to-home-9" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                            <button id="add-page-numbers-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>加上頁碼</button>
+                            <button id="back-to-home-9" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
                                 <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
                                 <span>返回主頁</span>
                             </button>
@@ -353,7 +525,7 @@
     </div>
 
     <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-white p-8 rounded-lg shadow-xl text-center max-w-sm w-full">
+        <div class="p-8 rounded-lg shadow-xl text-center max-w-sm w-full">
             <div id="modal-content"></div>
         </div>
     </div>
@@ -361,7 +533,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    const requiredLibs = ['PDFLib', 'JSZip', 'pdfjsLib', 'Tesseract'];
+    const requiredLibs = ['PDFLib', 'JSZip', 'pdfjsLib', 'Tesseract', 'fontkit'];
     const missingLibs = requiredLibs.filter(lib => typeof window[lib] === 'undefined');
 
     if (missingLibs.length > 0) {
@@ -377,8 +549,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalContent = document.getElementById('modal-content');
 
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`;
+    
+    let customFontBytes = null;
 
-    // --- Core Functions ---
     function showView(viewId) {
         views.forEach(view => view.classList.remove('active'));
         const targetView = document.getElementById(viewId);
@@ -414,7 +587,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (element) uiElements[id](element);
         });
 
-        // Disable all action buttons
         const actionButtons = [
             'merge-pdf-btn', 'split-pdf-btn', 'pdf-to-image-btn', 
             'image-to-pdf-btn', 'images-to-pdf-btn', 'compress-pdf-btn', 
@@ -427,10 +599,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showModal(content) { modalContent.innerHTML = content; modal.classList.remove('hidden'); }
-    // Make hideModal global so it can be called from onclick in HTML
     window.hideModal = function() { modal.classList.add('hidden'); }
 
-    // --- Navigation Setup ---
     document.querySelectorAll('.feature-card').forEach(card => {
         card.addEventListener('click', () => {
             const viewId = card.getAttribute('data-view');
@@ -440,11 +610,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     
-    // Setup for all "Back to Home" buttons
     document.querySelectorAll('[id^="back-to-home-"]').forEach(button => {
         button.addEventListener('click', () => showView('home-view'));
     });
-
 
     function downloadFile(blob, filename) {
         const link = document.createElement('a');
@@ -456,12 +624,12 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(link.href);
     }
     
-    function showDownloadModal(title, message, btnText, blob, filename, btnColorClass) {
+    function showDownloadModal(title, message, btnText, blob, filename, btnColor) {
         const modalHTML = `
-            <h3 class="text-xl font-bold text-green-600 mb-4">${title}</h3>
+            <h3 class="text-xl font-bold mb-4">${title}</h3>
             <p class="text-left">${message}</p>
             <div class="mt-6">
-                <button id="modal-download-btn" class="${btnColorClass} text-white font-bold py-2 px-4 rounded-lg w-full">下載</button>
+                <button id="modal-download-btn" style="background-color: ${btnColor};" class="text-white font-bold py-2 px-4 rounded-lg w-full">${btnText}</button>
                 <button onclick="hideModal()" class="mt-2 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg w-full">關閉</button>
             </div>`;
         
@@ -521,7 +689,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Make removeFile global for onclick in dynamically generated HTML
     window.removeFile = function(element, inputId) {
         const itemToRemove = element.closest('.draggable, .file-list-item');
         if (itemToRemove) itemToRemove.remove();
@@ -540,7 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- PDF 合併模組 ---
+    // --- PDF Modules ---
     const mergePdfInput = document.getElementById('merge-pdf-files');
     const mergePdfList = document.getElementById('merge-pdf-list');
     const mergePdfBtn = document.getElementById('merge-pdf-btn');
@@ -549,10 +716,10 @@ document.addEventListener('DOMContentLoaded', () => {
             mergePdfList.innerHTML = '';
             Array.from(mergePdfInput.files).forEach(file => {
                 const listItem = document.createElement('div');
-                listItem.className = 'file-list-item draggable';
+                listItem.className = 'file-list-item draggable p-3 mb-2 flex items-center justify-between cursor-move';
                 listItem.draggable = true;
                 listItem.dataset.name = file.name;
-                listItem.innerHTML = `<span class="truncate">${file.name}</span><span class="close-btn text-red-500 font-bold" onclick="removeFile(this, 'merge-pdf-files')">✖</span>`;
+                listItem.innerHTML = `<span class="truncate">${file.name}</span><span class="close-btn font-bold" onclick="removeFile(this, 'merge-pdf-files')">✖</span>`;
                 mergePdfList.appendChild(listItem);
             });
             mergePdfBtn.disabled = mergePdfInput.files.length < 2;
@@ -572,7 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const mergedPdfBytes = await mergedPdf.save();
                 const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
-                showDownloadModal('合併成功！', '檔案已準備就緒。', '下載 PDF', blob, 'merged.pdf', 'bg-blue-500 hover:bg-blue-600');
+                showDownloadModal('合併成功！', '檔案已準備就緒。', '下載 PDF', blob, 'merged.pdf', 'var(--color-merge)');
             } catch (error) {
                 console.error("合併失敗:", error);
                 showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">合併失敗</h3><p>處理時發生錯誤。</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
@@ -581,7 +748,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setupDragAndDrop(mergePdfList);
     }
     
-    // --- PDF 分割模組 ---
     const splitPdfInput = document.getElementById('split-pdf-file');
     const splitPdfBtn = document.getElementById('split-pdf-btn');
     if(splitPdfInput) {
@@ -618,7 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         zip.file(`page_${i + 1}.pdf`, await newPdf.save());
                     }
                     const blob = await zip.generateAsync({ type: "blob" });
-                    showDownloadModal('分割成功！', `已將 PDF 分割為 ${totalPages} 個檔案。`, '下載 ZIP', blob, 'split_pages.zip', 'bg-green-500 hover:bg-green-600');
+                    showDownloadModal('分割成功！', `已將 PDF 分割為 ${totalPages} 個檔案。`, '下載 ZIP', blob, 'split_pages.zip', 'var(--color-split)');
                 } else if (mode === 'range') {
                     const rangeText = document.getElementById('split-page-range').value;
                     const pagesToExtract = new Set();
@@ -636,7 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const copiedPages = await newPdf.copyPages(pdf, uniquePages);
                     copiedPages.forEach(page => newPdf.addPage(page));
                     const blob = new Blob([await newPdf.save()], { type: 'application/pdf' });
-                    showDownloadModal('提取成功！', `已成功提取 ${uniquePages.length} 頁。`, '下載 PDF', blob, 'extracted_pages.pdf', 'bg-green-500 hover:bg-green-600');
+                    showDownloadModal('提取成功！', `已成功提取 ${uniquePages.length} 頁。`, '下載 PDF', blob, 'extracted_pages.pdf', 'var(--color-split)');
                 }
              } catch (error) {
                 console.error("分割失敗:", error);
@@ -650,7 +816,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- PDF 轉圖片模組 ---
     const pdfToImageInput = document.getElementById('pdf-to-image-file');
     const pdfToImageBtn = document.getElementById('pdf-to-image-btn');
     if (pdfToImageInput) {
@@ -693,7 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     zip.file(`page_${i}.${ext}`, blob);
                 }
                 const blob = await zip.generateAsync({ type: "blob" });
-                showDownloadModal('轉換成功！', `已將 ${pdf.numPages} 頁轉換為圖片。`, '下載 ZIP', blob, 'converted_images.zip', 'bg-red-500 hover:bg-red-600');
+                showDownloadModal('轉換成功！', `已將 ${pdf.numPages} 頁轉換為圖片。`, '下載 ZIP', blob, 'converted_images.zip', 'var(--color-pdf-to-image)');
             } catch (error) {
                 console.error("PDF轉圖片失敗:", error);
                 showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
@@ -701,7 +866,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 圖片轉 PDF 模組 ---
     const imageInput = document.getElementById('image-file');
     const imageToPdfBtn = document.getElementById('image-to-pdf-btn');
     if (imageInput) {
@@ -724,7 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { width, height } = image.scaleToFit(page.getWidth(), page.getHeight());
                 page.drawImage(image, { x: (page.getWidth() - width) / 2, y: (page.getHeight() - height) / 2, width, height });
                 const blob = new Blob([await pdfDoc.save()], { type: 'application/pdf' });
-                showDownloadModal('轉換成功！', '圖片已成功轉換為 PDF。', '下載 PDF', blob, 'image.pdf', 'bg-purple-500 hover:bg-purple-600');
+                showDownloadModal('轉換成功！', '圖片已成功轉換為 PDF。', '下載 PDF', blob, 'image.pdf', 'var(--color-image-to-pdf)');
             } catch (error) {
                 console.error("圖片轉PDF失敗:", error);
                 showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>處理時發生錯誤。</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
@@ -732,7 +896,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 多圖轉 PDF 模組 ---
     const imagesInput = document.getElementById('images-files');
     const imagesToPdfBtn = document.getElementById('images-to-pdf-btn');
     const imagesList = document.getElementById('images-list');
@@ -766,7 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     page.drawImage(image, { x: (page.getWidth() - width) / 2, y: (page.getHeight() - height) / 2, width, height });
                 }
                 const blob = new Blob([await pdfDoc.save()], { type: 'application/pdf' });
-                showDownloadModal('轉換成功！', '圖片已成功合併為 PDF。', '下載 PDF', blob, 'images_merged.pdf', 'bg-yellow-500 hover:bg-yellow-600');
+                showDownloadModal('轉換成功！', '圖片已成功合併為 PDF。', '下載 PDF', blob, 'images_merged.pdf', 'var(--color-images-to-pdf)');
             } catch (error) {
                 console.error("多圖轉PDF失敗:", error);
                 showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>處理時發生錯誤。</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
@@ -775,7 +938,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setupDragAndDrop(imagesList);
     }
     
-    // --- OCR 模組 ---
     const ocrPdfInput = document.getElementById('ocr-pdf-input');
     if (ocrPdfInput) {
         ocrPdfInput.addEventListener('change', handleOcrFileSelect);
@@ -924,36 +1086,78 @@ document.addEventListener('DOMContentLoaded', () => {
             showModal(`<div class="loader mx-auto"></div><p id="modal-progress" class="mt-4">準備壓縮...</p>`);
 
             try {
+                if (!customFontBytes) {
+                    document.getElementById('modal-progress').textContent = `正在載入中文字體...`;
+                    
+                    const cssUrl = 'https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400&display=swap';
+                    const cssResponse = await fetch(cssUrl, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        }
+                    });
+                    const cssText = await cssResponse.text();
+                    
+                    const fontUrlMatch = cssText.match(/src: url\((.+?)\) format\('woff2'\)/);
+                    if (!fontUrlMatch || !fontUrlMatch[1]) {
+                        throw new Error('無法從 Google Fonts API 解析字型 URL。');
+                    }
+                    const fontUrl = fontUrlMatch[1];
+                    
+                    customFontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+                }
+
                 const quality = parseInt(compressRatioSlider.value) / 100;
                 const pdfBytes = await readFileAsArrayBuffer(file);
-                const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
                 
+                const pdfjsDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
                 const newPdfDoc = await PDFDocument.create();
 
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    document.getElementById('modal-progress').textContent = `正在處理第 ${i} / ${pdf.numPages} 頁...`;
+                newPdfDoc.registerFontkit(fontkit);
+
+                const customFont = await newPdfDoc.embedFont(customFontBytes);
+
+                for (let i = 1; i <= pdfjsDoc.numPages; i++) {
+                    document.getElementById('modal-progress').textContent = `正在處理第 ${i} / ${pdfjsDoc.numPages} 頁...`;
                     
-                    const page = await pdf.getPage(i);
-                    const viewport = page.getViewport({ scale: 1.5 }); // Use a reasonable scale
-                    
+                    const page = await pdfjsDoc.getPage(i);
+                    const viewport = page.getViewport({ scale: 1.5 });
+
                     const canvas = document.createElement('canvas');
                     canvas.height = viewport.height;
                     canvas.width = viewport.width;
                     const context = canvas.getContext('2d');
-                    
                     await page.render({ canvasContext: context, viewport: viewport }).promise;
                     
                     const jpgDataUrl = canvas.toDataURL('image/jpeg', quality);
                     const jpgBytes = await fetch(jpgDataUrl).then(res => res.arrayBuffer());
-
                     const jpgImage = await newPdfDoc.embedJpg(jpgBytes);
 
-                    const newPage = newPdfDoc.addPage([page.view[2], page.view[3]]); // Use original page size
+                    const { width, height } = page.getViewport({ scale: 1.0 });
+                    const newPage = newPdfDoc.addPage([width, height]);
+                    
                     newPage.drawImage(jpgImage, {
                         x: 0,
                         y: 0,
                         width: newPage.getWidth(),
                         height: newPage.getHeight(),
+                    });
+
+                    const textContent = await page.getTextContent();
+                    textContent.items.forEach(item => {
+                        const tx = item.transform;
+                        const textHeight = tx[3]; 
+                        
+                        const defaultViewport = page.getViewport({ scale: 1.0 });
+                        const y = defaultViewport.height - tx[5] - textHeight;
+
+                        newPage.drawText(item.str, {
+                            x: tx[4],
+                            y: y,
+                            font: customFont,
+                            size: textHeight,
+                            color: rgb(0, 0, 0),
+                            opacity: 0,
+                        });
                     });
                 }
                 
@@ -969,7 +1173,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     空間節省: ${reduction.toFixed(1)}%
                 `;
                 
-                showDownloadModal('壓縮成功！', message, '下載壓縮後的 PDF', blob, `compressed_${file.name}`, 'bg-teal-500 hover:bg-teal-600');
+                showDownloadModal('壓縮成功！', message, '下載壓縮後的 PDF', blob, `compressed_${file.name}`, 'var(--color-compress)');
             } catch (error) {
                 console.error("壓縮失敗:", error);
                 showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">壓縮失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
@@ -1019,11 +1223,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rotatedPdfBytes = await pdfDoc.save();
                 const blob = new Blob([rotatedPdfBytes], { type: 'application/pdf' });
                 
-                showDownloadModal('旋轉成功！', '所有頁面已成功旋轉。', '下載旋轉後的 PDF', blob, `rotated_${file.name}`, 'bg-orange-500 hover:bg-orange-600');
+                showDownloadModal('旋轉成功！', '所有頁面已成功旋轉。', '下載旋轉後的 PDF', blob, `rotated_${file.name}`, 'var(--color-rotate)');
 
             } catch (error) {
                 console.error("旋轉失敗:", error);
-                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">旋轉失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">壓縮失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
             }
         });
     }
@@ -1116,7 +1320,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const newPdfBytes = await pdfDoc.save();
                 const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
-                showDownloadModal('頁碼添加成功！', '已成功為您的 PDF 加上頁碼。', '下載 PDF', blob, `numbered_${file.name}`, 'bg-cyan-500 hover:bg-cyan-600');
+                showDownloadModal('頁碼添加成功！', '已成功為您的 PDF 加上頁碼。', '下載 PDF', blob, `numbered_${file.name}`, 'var(--color-page-numbers)');
 
             } catch (error) {
                 console.error("加頁碼失敗:", error);
@@ -1129,3 +1333,5 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+
+
