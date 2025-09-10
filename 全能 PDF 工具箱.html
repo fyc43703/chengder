@@ -37,6 +37,11 @@
             --color-rotate: #bf360c;     /* Deep Orange */
             --color-page-numbers: #4a148c;/* Deep Purple */
             --color-back: #5d4037;       /* Brown for back button */
+
+            /* New Feature Colors */
+            --color-edit: #1565c0;       /* Bright Blue */
+            --color-extract-images: #00695c; /* Dark Cyan */
+            --color-pdf-to-web: #8b5cf6; /* Violet */
         }
 
         body {
@@ -87,6 +92,9 @@
         [data-view="compress-pdf-view"] svg { color: var(--color-compress); }
         [data-view="rotate-pdf-view"] svg { color: var(--color-rotate); }
         [data-view="add-page-numbers-view"] svg { color: var(--color-page-numbers); }
+        [data-view="edit-pdf-view"] svg { color: var(--color-edit); }
+        [data-view="extract-images-view"] svg { color: var(--color-extract-images); }
+        [data-view="pdf-to-web-view"] svg { color: var(--color-pdf-to-web); }
 
         /* Tool View Styling */
         .view > .bg-white { /* More specific selector for tool view panels */
@@ -97,7 +105,7 @@
         .view h2 { color: var(--header-color); }
         .view p, .view label { color: var(--text-secondary); }
         .view h3, .view strong { color: var(--text-primary) !important; }
-        .view input[type="text"], .view input[type="number"], .view select {
+        .view input[type="text"], .view input[type="number"], .view input[type="url"], .view select, .view input[type="password"] {
             background-color: #fff;
             border-color: var(--border-color);
             color: var(--text-primary);
@@ -139,7 +147,13 @@
         #rotate-pdf-btn:hover { background-color: #a92a00 !important; }
         #add-page-numbers-btn { background-color: var(--color-page-numbers) !important; color: white; }
         #add-page-numbers-btn:hover { background-color: #38006b !important; }
-
+        #edit-pdf-btn { background-color: var(--color-edit) !important; color: white; }
+        #edit-pdf-btn:hover { background-color: #0d47a1 !important; }
+        #extract-images-btn { background-color: var(--color-extract-images) !important; color: white; }
+        #extract-images-btn:hover { background-color: #004d40 !important; }
+        #pdf-to-web-btn { background-color: var(--color-pdf-to-web) !important; color: white; }
+        #pdf-to-web-btn:hover { background-color: #7c3aed !important; }
+        
         /* File Input Buttons */
         input[type="file"]::file-selector-button { transition: background-color 0.2s; }
         #merge-pdf-files::file-selector-button { background-color: #fdecea !important; color: var(--color-merge) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
@@ -150,16 +164,20 @@
         #compress-pdf-file::file-selector-button { background-color: #f1f8e9 !important; color: var(--color-compress) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
         #rotate-pdf-file::file-selector-button { background-color: #fbe9e7 !important; color: var(--color-rotate) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
         #add-page-numbers-file::file-selector-button { background-color: #f3e5f5 !important; color: var(--color-page-numbers) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #edit-pdf-file::file-selector-button { background-color: #e3f2fd !important; color: var(--color-edit) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #extract-images-file::file-selector-button { background-color: #e0f2f1 !important; color: var(--color-extract-images) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #pdf-to-web-file::file-selector-button { background-color: #f5f3ff !important; color: var(--color-pdf-to-web) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
 
         /* File Lists and Drop Areas */
-        .file-list-item, #images-list .draggable {
+        .file-list-item, #images-list .draggable, #edit-pdf-pages .page-item {
             background-color: #fff;
             border: 1px solid var(--border-color);
             color: var(--text-primary);
         }
-        .file-list-item.dragging {
-            opacity: 0.7;
-            background-color: #f5f0e1;
+        .file-list-item.dragging, #images-list .draggable.dragging {
+            opacity: 0.5;
+            transform: rotate(3deg) scale(1.05);
+            box-shadow: 0 10px 15px -3px var(--card-shadow), 0 4px 6px -2px var(--card-shadow);
         }
         .min-h-\[100px\] {
             background-color: #f5f0e1;
@@ -175,6 +193,42 @@
         }
         .close-btn { cursor: pointer; color: var(--color-merge) !important; }
         
+        .page-item.marked-for-deletion {
+            opacity: 0.4;
+            border-color: var(--color-merge);
+            border-style: dashed;
+        }
+        .page-item.marked-for-deletion::after {
+            content: '已標記刪除';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--color-merge);
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+        .drag-placeholder {
+            width: 4px; 
+            background-color: #3b82f6; 
+            border-radius: 2px;
+            align-self: stretch; 
+            margin: 0 4px; 
+        }
+        .page-number-input {
+            width: 40px;
+            height: 24px;
+            text-align: center;
+            font-size: 14px;
+            border: 2px solid var(--color-edit);
+            border-radius: 4px;
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            z-index: 10;
+        }
+
         /* Modal */
         #modal > div {
             background-color: var(--card-bg);
@@ -200,17 +254,16 @@
 </head>
 <body class="text-gray-800">
     <div id="app-container">
-        <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <div class="container mx-auto p-4 md:p-8 max-w-5xl"> 
             <header class="text-center mb-8">
                 <h1 class="text-3xl font-bold">全能PDF工具箱</h1>
-                <p class="text-xl mt-1 font-semibold">合併、分割、轉換、文字擷取、壓縮、旋轉、加頁碼</p>
+                <p class="text-xl mt-1 font-semibold">合併、分割、轉換、文字擷取、壓縮、旋轉、加頁碼與更多功能</p>
                 <p class="text-sm mt-1">所有處理過程均在瀏覽器端完成，確保您的資料安全與隱私</p>
                 <p class="text-sm text-sm mt-1">製作者：陳政德</p>
             </header>
 
             <div id="home-view" class="view active">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Row 1 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div data-view="merge-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
                         <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         <div><h2 class="text-xl font-semibold">PDF合併</h2><p>將多個PDF合併成一個檔案。</p></div>
@@ -223,7 +276,6 @@
                          <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z"></path></svg>
                          <div><h2 class="text-xl font-semibold">PDF轉圖片</h2><p>將PDF每一頁存成圖片(JPG, PNG)。</p></div>
                     </div>
-                    <!-- Row 2 -->
                     <div data-view="image-to-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
                         <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                         <div><h2 class="text-xl font-semibold">圖片轉PDF</h2><p>將單張圖片轉換為PDF。</p></div>
@@ -236,7 +288,6 @@
                         <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                         <div><h2 class="text-xl font-semibold">PDF文字擷取</h2><p>從PDF檔擷取文字，但圖形無法辨識。</p></div>
                     </div>
-                    <!-- Row 3 -->
                     <div data-view="compress-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
                         <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5M15 15l5.25 5.25" />
@@ -250,11 +301,31 @@
                         </svg>
                         <div><h2 class="text-xl font-semibold">旋轉PDF</h2><p>批量旋轉PDF，一鍵設定全頁面旋轉角度。</p></div>
                     </div>
-                     <div data-view="add-page-numbers-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                    <div data-view="add-page-numbers-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
                         <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                         </svg>
                         <div><h2 class="text-xl font-semibold">PDF加頁碼</h2><p>將PDF插入頁碼，選擇位置、大小及格式。</p></div>
+                    </div>
+                    <div data-view="edit-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                        </svg>
+                        <div><h2 class="text-xl font-semibold">PDF 頁面管理</h2><p>可預覽、拖曳排序與刪除 PDF 中的頁面。</p></div>
+                    </div>
+                    <div data-view="extract-images-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9M20.25 20.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                        </svg>
+                        <div><h2 class="text-xl font-semibold">PDF 擷取圖片</h2><p>讀取 PDF 檔案中的所有圖片並打包下載。</p></div>
+                    </div>
+                    <!-- NEW: PDF to Web -->
+                    <div data-view="pdf-to-web-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-1.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h4.5" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 3H12V1.5m3.75 1.525c.14.053.275.118.404.195.21.128.398.28.567.457.17.176.315.37.44.585.124.214.228.444.299.688M13.5 3c.311 0 .614.022.912.064.298.042.587.103.865.182.277.08.544.177.802.29C17.34 3.78 18 4.65 18 5.667v.385m0 0a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
+                        </svg>
+                        <div><h2 class="text-xl font-semibold">PDF轉網頁</h2><p>將PDF的每一頁轉為圖片，並存成一個HTML網頁檔。</p></div>
                     </div>
                 </div>
             </div>
@@ -383,7 +454,7 @@
                                 <select id="images-page-size" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none sm:text-sm">
                                     <option>A4</option>
                                     <option>Letter</option>
-                                </select>
+                                 </select>
                             </div>
                             <div>
                                 <label for="images-orientation" class="block text-sm font-medium">頁面方向</label>
@@ -426,7 +497,6 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Compress PDF View -->
                 <div id="compress-pdf-view" class="view">
                     <div class="bg-white p-6 rounded-lg shadow-lg">
@@ -519,7 +589,76 @@
                         </div>
                     </div>
                 </div>
+                <!-- Edit PDF View -->
+                <div id="edit-pdf-view" class="view">
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h2 class="text-2xl font-bold mb-4">PDF 頁面管理</h2>
+                        <p class="mb-4">載入 PDF 後，拖曳頁面縮圖即可重新排序。當您拖曳時，一條<strong style="color: #3b82f6;">藍色垂直線</strong>將會精確指示插入位置。您也可以直接<strong class="text-green-600">點擊頁碼</strong>輸入目標位置來快速移動。</p>
+                        <input type="file" id="edit-pdf-file" accept=".pdf" class="block w-full text-sm mb-4"/>
+                        <div id="edit-pdf-info" class="mb-4 text-center p-2 bg-gray-50 rounded">請選擇檔案</div>
+                        <div id="edit-pdf-pages" class="min-h-[200px] p-4 rounded-md border grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-6"></div>
+                        <div class="mt-6 flex items-center justify-between">
+                            <button id="edit-pdf-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>儲存變更</button>
+                            <button id="back-to-home-10" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
+                                <span>返回主頁</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Extract Images from PDF View -->
+                <div id="extract-images-view" class="view">
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h2 class="text-2xl font-bold mb-4">PDF 擷取圖片</h2>
+                        <p class="mb-4">選擇一個 PDF 檔案，系統將會解析並提取其中所有的圖片，打包成一個 ZIP 壓縮檔。</p>
+                        <input type="file" id="extract-images-file" accept=".pdf" class="block w-full text-sm mb-4"/>
+                        <div id="extract-images-info" class="mb-4 text-center p-2 bg-gray-50 rounded">請選擇檔案</div>
+                        <div class="mt-6 flex items-center justify-between">
+                            <button id="extract-images-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始擷取</button>
+                            <button id="back-to-home-11" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
+                                <span>返回主頁</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- NEW: PDF to Web View -->
+                <div id="pdf-to-web-view" class="view">
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h2 class="text-2xl font-bold mb-4">PDF 轉網頁</h2>
+                        <p class="mb-4">選擇一個 PDF 檔案，系統會將每一頁轉換為圖片，並打包成一個 HTML 網頁檔。</p>
+                        <input type="file" id="pdf-to-web-file" accept=".pdf" class="block w-full text-sm mb-4"/>
+                        <div id="pdf-to-web-info" class="mb-4 text-center p-2 bg-gray-50 rounded">請選擇檔案</div>
+                        
+                        <div id="pdf-to-web-options" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="web-layout-mode" class="block text-sm font-medium">瀏覽模式</label>
+                                <select id="web-layout-mode" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm">
+                                    <option value="scroll">連續捲動頁面</option>
+                                    <option value="slideshow">單頁簡報模式</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="web-resolution" class="block text-sm font-medium">頁面寬度 (解析度)</label>
+                                <select id="web-resolution" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm">
+                                    <option value="800">800px (標準)</option>
+                                    <option value="1024">1024px (平板)</option>
+                                    <option value="1366">1366px (筆電)</option>
+                                    <option value="1920">1920px (FHD)</option>
+                                    <option value="375">375px (手機)</option>
+                                </select>
+                            </div>
+                        </div>
 
+                        <div class="mt-6 flex items-center justify-between">
+                            <button id="pdf-to-web-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>開始轉換</button>
+                            <button id="back-to-home-12" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
+                                <span>返回主頁</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -552,6 +691,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let customFontBytes = null;
 
+    function setupMainMenuNavigation() {
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.onclick = function() {
+                const viewId = this.getAttribute('data-view');
+                if (viewId) {
+                    showView(viewId);
+                }
+            };
+        });
+    }
+    
+    setupMainMenuNavigation();
+
     function showView(viewId) {
         views.forEach(view => view.classList.remove('active'));
         const targetView = document.getElementById(viewId);
@@ -580,6 +732,11 @@ document.addEventListener('DOMContentLoaded', () => {
             'rotate-options': el => el.classList.add('hidden'),
             'add-page-numbers-info': el => el.textContent = '請選擇檔案',
             'add-page-numbers-options': el => el.classList.add('hidden'),
+            'edit-pdf-info': el => el.textContent = '請選擇檔案',
+            'edit-pdf-pages': el => el.innerHTML = '',
+            'extract-images-info': el => el.textContent = '請選擇檔案',
+            'pdf-to-web-info': el => el.textContent = '請選擇檔案',
+            'pdf-to-web-options': el => el.classList.add('hidden'),
         };
 
         Object.keys(uiElements).forEach(id => {
@@ -590,7 +747,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const actionButtons = [
             'merge-pdf-btn', 'split-pdf-btn', 'pdf-to-image-btn', 
             'image-to-pdf-btn', 'images-to-pdf-btn', 'compress-pdf-btn', 
-            'rotate-pdf-btn', 'add-page-numbers-btn'
+            'rotate-pdf-btn', 'add-page-numbers-btn', 
+            'edit-pdf-btn', 'extract-images-btn', 'pdf-to-web-btn'
         ];
         actionButtons.forEach(btnId => {
             const btn = document.getElementById(btnId);
@@ -600,15 +758,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showModal(content) { modalContent.innerHTML = content; modal.classList.remove('hidden'); }
     window.hideModal = function() { modal.classList.add('hidden'); }
-
-    document.querySelectorAll('.feature-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const viewId = card.getAttribute('data-view');
-            if (viewId) {
-                showView(viewId);
-            }
-        });
-    });
     
     document.querySelectorAll('[id^="back-to-home-"]').forEach(button => {
         button.addEventListener('click', () => showView('home-view'));
@@ -688,6 +837,64 @@ document.addEventListener('DOMContentLoaded', () => {
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
     }
+
+    function setupPageEditorDragAndDrop(container) {
+        let draggingElement = null;
+        let placeholder = null;
+
+        container.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('page-item')) {
+                draggingElement = e.target;
+                
+                placeholder = document.createElement('div');
+                placeholder.className = 'drag-placeholder';
+
+                setTimeout(() => {
+                    draggingElement.style.display = 'none';
+                    container.insertBefore(placeholder, draggingElement);
+                }, 0);
+            }
+        });
+
+        container.addEventListener('dragend', () => {
+            if (draggingElement) {
+                draggingElement.style.display = '';
+                if (placeholder && placeholder.parentNode) {
+                    placeholder.parentNode.replaceChild(draggingElement, placeholder);
+                }
+                draggingElement = null;
+                placeholder = null;
+                renumberPageItems(container);
+            }
+        });
+
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (!draggingElement || !placeholder) return;
+
+            const afterElement = getDragAfterElement(container, e.clientX, e.clientY);
+            if (afterElement) {
+                container.insertBefore(placeholder, afterElement);
+            } else {
+                container.appendChild(placeholder);
+            }
+        });
+
+        function getDragAfterElement(container, x, y) {
+            const draggableElements = [...container.querySelectorAll('.page-item:not([style*="display: none"])')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offsetX = x - box.left - box.width / 2;
+                const offsetY = y - box.top - box.height / 2;
+
+                if (Math.abs(offsetY) < box.height / 2 && offsetX < 0 && offsetX > (closest.offsetX || Number.NEGATIVE_INFINITY)) {
+                    return { offsetX: offsetX, element: child };
+                } else {
+                    return closest;
+                }
+            }, {}).element;
+        }
+    }
     
     window.removeFile = function(element, inputId) {
         const itemToRemove = element.closest('.draggable, .file-list-item');
@@ -706,8 +913,69 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+    
+    function renumberPageItems(container) {
+        const items = container.querySelectorAll('.page-item');
+        items.forEach((item, index) => {
+            const pageNumberEl = item.querySelector('.page-number-text');
+            if (pageNumberEl) {
+                pageNumberEl.textContent = index + 1;
+            }
+        });
+    }
+
+    function handlePageNumberClick(event) {
+        const span = event.currentTarget;
+        const container = span.parentElement;
+        const currentItem = span.closest('.page-item');
+        const pageList = currentItem.parentElement;
+        const originalPageNum = span.textContent;
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'page-number-input';
+        input.value = originalPageNum;
+        input.min = 1;
+        input.max = pageList.querySelectorAll('.page-item').length;
+
+        container.innerHTML = '';
+        container.appendChild(input);
+        input.focus();
+        input.select();
+
+        const finishEditing = () => {
+            container.innerHTML = '';
+            container.appendChild(span);
+        };
+
+        input.addEventListener('blur', finishEditing);
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const newPageNum = parseInt(input.value, 10);
+                const allItems = [...pageList.querySelectorAll('.page-item')];
+                const totalPages = allItems.length;
+
+                if (!isNaN(newPageNum) && newPageNum >= 1 && newPageNum <= totalPages) {
+                    const targetItem = allItems[newPageNum - 1];
+                    pageList.removeChild(currentItem);
+                    if (newPageNum > originalPageNum) {
+                        pageList.insertBefore(currentItem, targetItem.nextSibling);
+                    } else {
+                        pageList.insertBefore(currentItem, targetItem);
+                    }
+                    renumberPageItems(pageList);
+                }
+                finishEditing();
+            } else if (e.key === 'Escape') {
+                finishEditing();
+            }
+        });
+    }
 
     // --- PDF Modules ---
+
     const mergePdfInput = document.getElementById('merge-pdf-files');
     const mergePdfList = document.getElementById('merge-pdf-list');
     const mergePdfBtn = document.getElementById('merge-pdf-btn');
@@ -1051,14 +1319,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- PDF 壓縮模組 ---
     const compressPdfInput = document.getElementById('compress-pdf-file');
     const compressPdfBtn = document.getElementById('compress-pdf-btn');
     const compressPdfInfo = document.getElementById('compress-pdf-info');
     const compressOptions = document.getElementById('compress-options');
     const compressRatioSlider = document.getElementById('compress-ratio');
     const compressRatioValue = document.getElementById('compress-ratio-value');
-
     if (compressPdfInput) {
         compressRatioSlider.addEventListener('input', (e) => {
             compressRatioValue.textContent = `${e.target.value}%`;
@@ -1181,12 +1447,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- PDF 旋轉模組 ---
     const rotatePdfInput = document.getElementById('rotate-pdf-file');
     const rotatePdfBtn = document.getElementById('rotate-pdf-btn');
     const rotatePdfInfo = document.getElementById('rotate-pdf-info');
     const rotateOptions = document.getElementById('rotate-options');
-
     if (rotatePdfInput) {
         rotatePdfInput.addEventListener('change', () => {
             if (!rotatePdfInput.files.length) {
@@ -1232,12 +1496,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- PDF 加頁碼模組 ---
     const addPageNumbersInput = document.getElementById('add-page-numbers-file');
     const addPageNumbersBtn = document.getElementById('add-page-numbers-btn');
     const addPageNumbersInfo = document.getElementById('add-page-numbers-info');
     const addPageNumbersOptions = document.getElementById('add-page-numbers-options');
-
     if (addPageNumbersInput) {
         addPageNumbersInput.addEventListener('change', () => {
             if (!addPageNumbersInput.files.length) {
@@ -1297,7 +1559,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (position.includes('bottom')) {
                         y = margin;
-                    } else { // top
+                    } else {
                         y = height - size - margin;
                     }
 
@@ -1305,17 +1567,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         x = width / 2 - textWidth / 2;
                     } else if (position.includes('right')) {
                         x = width - textWidth - margin;
-                    } else { // left
+                    } else {
                         x = margin;
                     }
 
-                    page.drawText(pageNumberText, {
-                        x,
-                        y,
-                        size,
-                        font,
-                        color: rgb(0, 0, 0),
-                    });
+                    page.drawText(pageNumberText, { x, y, size, font, color: rgb(0, 0, 0) });
                 });
 
                 const newPdfBytes = await pdfDoc.save();
@@ -1329,11 +1585,378 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const editPdfInput = document.getElementById('edit-pdf-file');
+    const editPdfBtn = document.getElementById('edit-pdf-btn');
+    const editPdfPagesContainer = document.getElementById('edit-pdf-pages');
+    if (editPdfInput) {
+        editPdfInput.addEventListener('change', async () => {
+            const file = editPdfInput.files[0];
+            if (!file) return;
+            
+            const editPdfInfo = document.getElementById('edit-pdf-info');
+            editPdfPagesContainer.innerHTML = '';
+            editPdfInfo.innerHTML = '<div class="loader inline-block mr-2"></div>正在載入頁面預覽...';
+            editPdfBtn.disabled = true;
+
+            try {
+                const pdfBytes = await readFileAsArrayBuffer(file);
+                const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+                editPdfInfo.textContent = `已載入 ${pdf.numPages} 頁。點擊頁面可標記/取消刪除。`;
+
+                const renderQueue = [];
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const pageItem = document.createElement('div');
+                    pageItem.className = 'page-item draggable relative p-2 border rounded-md cursor-pointer transition-opacity flex flex-col items-center justify-center';
+                    pageItem.draggable = true;
+                    pageItem.dataset.originalIndex = i - 1;
+
+                    const canvas = document.createElement('canvas');
+                    canvas.style.maxWidth = '100%';
+                    canvas.style.maxHeight = '180px';
+                    
+                    const pageNumberContainer = document.createElement('div');
+                    pageNumberContainer.className = 'absolute bottom-1 right-1';
+
+                    const pageNumberSpan = document.createElement('span');
+                    pageNumberSpan.className = 'page-number-text bg-black bg-opacity-50 text-white text-xs px-1.5 py-0.5 rounded cursor-pointer';
+                    pageNumberSpan.textContent = i;
+                    pageNumberSpan.addEventListener('click', handlePageNumberClick);
+                    
+                    pageNumberContainer.appendChild(pageNumberSpan);
+                    pageItem.appendChild(canvas);
+                    pageItem.appendChild(pageNumberContainer);
+                    editPdfPagesContainer.appendChild(pageItem);
+
+                    pageItem.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('page-number-text') && !e.target.classList.contains('page-number-input')) {
+                             pageItem.classList.toggle('marked-for-deletion');
+                        }
+                    });
+                    
+                    renderQueue.push(async () => {
+                        const page = await pdf.getPage(i);
+                        const viewport = page.getViewport({ scale: 1.0 });
+                        const scale = Math.min(150 / viewport.width, 180 / viewport.height);
+                        const scaledViewport = page.getViewport({ scale: scale });
+                        
+                        canvas.height = scaledViewport.height;
+                        canvas.width = scaledViewport.width;
+                        
+                        await page.render({ canvasContext: canvas.getContext('2d'), viewport: scaledViewport }).promise;
+                    });
+                }
+                
+                for (const renderFunc of renderQueue) {
+                    await renderFunc();
+                }
+
+                setupPageEditorDragAndDrop(editPdfPagesContainer);
+                editPdfBtn.disabled = false;
+            } catch(error) {
+                console.error('編輯器載入失敗:', error);
+                editPdfInfo.textContent = `錯誤：無法載入 PDF 預覽。`;
+            }
+        });
+
+        editPdfBtn.addEventListener('click', async () => {
+            const file = editPdfInput.files[0];
+            if (!file) return;
+            showModal(`<div class="loader mx-auto"></div><p class="mt-4">正在儲存變更...</p>`);
+
+            try {
+                const pageItems = [...editPdfPagesContainer.querySelectorAll('.page-item')];
+                const pagesToKeep = pageItems
+                    .filter(item => !item.classList.contains('marked-for-deletion'))
+                    .map(item => parseInt(item.dataset.originalIndex));
+
+                if (pagesToKeep.length === 0) {
+                     throw new Error('不能刪除所有頁面。請至少保留一頁。');
+                }
+
+                const pdfBytes = await readFileAsArrayBuffer(file);
+                const pdfDoc = await PDFDocument.load(pdfBytes);
+                
+                const newPdfDoc = await PDFDocument.create();
+                const copiedPages = await newPdfDoc.copyPages(pdfDoc, pagesToKeep);
+                copiedPages.forEach(page => newPdfDoc.addPage(page));
+
+                const newPdfBytes = await newPdfDoc.save();
+                const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
+                showDownloadModal('儲存成功！', '您的 PDF 已根據變更重新儲存。', '下載編輯後的 PDF', blob, `edited_${file.name}`, 'var(--color-edit)');
+            } catch(error) {
+                console.error("編輯儲存失敗:", error);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">儲存失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+            }
+        });
+    }
+
+    const extractImagesInput = document.getElementById('extract-images-file');
+    const extractImagesBtn = document.getElementById('extract-images-btn');
+    if (extractImagesInput) {
+        extractImagesInput.addEventListener('change', () => {
+            if (!extractImagesInput.files.length) {
+                document.getElementById('extract-images-info').textContent = '請選擇檔案';
+                extractImagesBtn.disabled = true;
+                return;
+            }
+            const file = extractImagesInput.files[0];
+            document.getElementById('extract-images-info').textContent = `已選擇：${file.name}`;
+            extractImagesBtn.disabled = false;
+        });
+
+        extractImagesBtn.addEventListener('click', async () => {
+            const file = extractImagesInput.files[0];
+            if (!file) return;
+            showModal(`<div class="loader mx-auto"></div><p id="modal-progress" class="mt-4">準備擷取圖片...</p>`);
+            
+            try {
+                const pdfBytes = await readFileAsArrayBuffer(file);
+                const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+                const zip = new JSZip();
+                let imageCount = 0;
+
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    document.getElementById('modal-progress').textContent = `正在掃描第 ${pageNum} / ${pdf.numPages} 頁...`;
+                    const page = await pdf.getPage(pageNum);
+                    const ops = await page.getOperatorList();
+                    
+                    for (let i = 0; i < ops.fnArray.length; i++) {
+                        if (ops.fnArray[i] === pdfjsLib.OPS.paintImageXObject) {
+                            try {
+                                const imageName = ops.argsArray[i][0];
+                                const imgData = await page.objs.get(imageName);
+
+                                if (!imgData || !imgData.data) {
+                                    console.warn(`Skipping image on page ${pageNum} as it contains no data.`);
+                                    continue;
+                                }
+                                
+                                let blob;
+                                let extension;
+                                const data = imgData.data;
+
+                                if (data[0] === 0xFF && data[1] === 0xD8) {
+                                    blob = new Blob([data], { type: 'image/jpeg' });
+                                    extension = 'jpg';
+                                } else {
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = imgData.width;
+                                    canvas.height = imgData.height;
+                                    const ctx = canvas.getContext('2d');
+                                    const imageData = ctx.createImageData(imgData.width, imgData.height);
+                                    
+                                    const numPixels = imgData.width * imgData.height;
+                                    const bytesPerPixel = data.length / numPixels;
+
+                                    if (bytesPerPixel === 1) { 
+                                        for (let p = 0; p < numPixels; p++) {
+                                            const g = data[p];
+                                            imageData.data[p * 4] = g;
+                                            imageData.data[p * 4 + 1] = g;
+                                            imageData.data[p * 4 + 2] = g;
+                                            imageData.data[p * 4 + 3] = 255;
+                                        }
+                                    } else if (bytesPerPixel === 3) { 
+                                        for (let p = 0; p < numPixels; p++) {
+                                            imageData.data[p * 4] = data[p * 3];
+                                            imageData.data[p * 4 + 1] = data[p * 3 + 1];
+                                            imageData.data[p * 4 + 2] = data[p * 3 + 2];
+                                            imageData.data[p * 4 + 3] = 255;
+                                        }
+                                    } else if (bytesPerPixel === 4) {
+                                        imageData.data.set(data);
+                                    } else {
+                                        console.warn(`Skipping image with unsupported bytes per pixel: ${bytesPerPixel}`);
+                                        continue;
+                                    }
+                                    
+                                    ctx.putImageData(imageData, 0, 0);
+                                    blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                                    extension = 'png';
+                                }
+                                
+                                if (blob) {
+                                    imageCount++;
+                                    zip.file(`page_${pageNum}_img_${imageCount}.${extension}`, blob);
+                                }
+
+                            } catch (e) {
+                                console.warn(`Skipping an image on page ${pageNum} due to a processing error:`, e);
+                            }
+                        }
+                    }
+                }
+
+                if (imageCount === 0) {
+                     throw new Error('在文件中找不到可擷取的圖片。可能是圖片格式不受支援。');
+                }
+
+                const zipBlob = await zip.generateAsync({ type: "blob" });
+                showDownloadModal('擷取成功！', `成功從 PDF 中擷取了 ${imageCount} 張圖片。`, '下載圖片 ZIP', zipBlob, `extracted_images_from_${file.name}.zip`, 'var(--color-extract-images)');
+
+            } catch (error) {
+                console.error("圖片擷取失敗:", error);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">擷取失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+            }
+        });
+    }
+
+    // --- PDF to Web Module (REVISED) ---
+    const pdfToWebInput = document.getElementById('pdf-to-web-file');
+    const pdfToWebBtn = document.getElementById('pdf-to-web-btn');
+    const pdfToWebInfo = document.getElementById('pdf-to-web-info');
+    const pdfToWebOptions = document.getElementById('pdf-to-web-options');
+
+    if(pdfToWebInput) {
+        pdfToWebInput.addEventListener('change', () => {
+            if (!pdfToWebInput.files.length) {
+                pdfToWebInfo.textContent = '請選擇檔案';
+                pdfToWebBtn.disabled = true;
+                pdfToWebOptions.classList.add('hidden');
+                return;
+            }
+            const file = pdfToWebInput.files[0];
+            pdfToWebInfo.textContent = `已選擇：${file.name}`;
+            pdfToWebBtn.disabled = false;
+            pdfToWebOptions.classList.remove('hidden');
+        });
+
+        pdfToWebBtn.addEventListener('click', async () => {
+            const file = pdfToWebInput.files[0];
+            if (!file) return;
+
+            const layoutMode = document.getElementById('web-layout-mode').value;
+            const resolution = document.getElementById('web-resolution').value;
+
+            showModal(`<div class="loader mx-auto"></div><p id="modal-progress" class="mt-4">準備轉換...</p>`);
+
+            try {
+                const pdfBytes = await readFileAsArrayBuffer(file);
+                const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+                const totalPages = pdf.numPages;
+                let bodyContent = '';
+                let finalHtml = '';
+
+                for (let i = 1; i <= totalPages; i++) {
+                     document.getElementById('modal-progress').textContent = `正在處理第 ${i} / ${totalPages} 頁...`;
+                     const page = await pdf.getPage(i);
+                     const viewport = page.getViewport({ scale: 2.0 }); // 高解析度
+                     const canvas = document.createElement('canvas');
+                     canvas.height = viewport.height;
+                     canvas.width = viewport.width;
+                     await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+                     const dataUrl = canvas.toDataURL('image/jpeg', 0.9); // 使用JPG以節省空間
+                     
+                     if (layoutMode === 'scroll') {
+                        bodyContent += `<img src="${dataUrl}" alt="Page ${i}" />\n`;
+                     } else { // slideshow
+                        bodyContent += `<div class="slide"><img src="${dataUrl}" alt="Page ${i}" /></div>\n`;
+                     }
+                }
+
+                if (layoutMode === 'scroll') {
+                    finalHtml = getScrollableHtml(file.name, bodyContent, resolution);
+                } else { // slideshow
+                    finalHtml = getSlideshowHtml(file.name, bodyContent, totalPages);
+                }
+
+                const blob = new Blob([finalHtml], { type: 'text/html' });
+                const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".html";
+                showDownloadModal('轉換成功！', '您的 PDF 已成功轉換為 HTML 檔案。', '下載 HTML', blob, newFileName, 'var(--color-pdf-to-web)');
+
+            } catch (error) {
+                 console.error("PDF轉網頁失敗:", error);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+            }
+        });
+    }
+
+    function getScrollableHtml(title, bodyContent, maxWidth) {
+        return `
+            <!DOCTYPE html>
+            <html lang="zh-Hant">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>${title}</title>
+                <style>
+                    body { margin: 0; background-color: #f0f0f0; display: flex; justify-content: center; }
+                    .container { max-width: ${maxWidth}px; }
+                    img { display: block; width: 100%; height: auto; margin-bottom: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    ${bodyContent}
+                </div>
+            </body>
+            </html>`;
+    }
+
+    function getSlideshowHtml(title, bodyContent, totalPages) {
+         return `
+            <!DOCTYPE html>
+            <html lang="zh-Hant">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>${title}</title>
+                <style>
+                    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #222; color: white; font-family: sans-serif; }
+                    .slideshow-container { position: relative; width: 100%; height: 100%; }
+                    .slide { display: none; width: 100%; height: 100%; text-align: center; }
+                    .slide.active { display: flex; align-items: center; justify-content: center; }
+                    .slide img { max-width: 100%; max-height: 100%; object-fit: contain; }
+                    .nav-btn { position: fixed; top: 50%; transform: translateY(-50%); background-color: rgba(0,0,0,0.3); color: white; border: none; font-size: 2rem; cursor: pointer; padding: 10px 15px; border-radius: 5px; z-index: 10; user-select: none; }
+                    .nav-btn:hover { background-color: rgba(0,0,0,0.6); }
+                    #prev-btn { left: 10px; }
+                    #next-btn { right: 10px; }
+                    #page-counter { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="slideshow-container">
+                    ${bodyContent}
+                </div>
+                <button id="prev-btn" class="nav-btn">&lt;</button>
+                <button id="next-btn" class="nav-btn">&gt;</button>
+                <div id="page-counter"></div>
+
+                <script>
+                    const slides = document.querySelectorAll('.slide');
+                    const prevBtn = document.getElementById('prev-btn');
+                    const nextBtn = document.getElementById('next-btn');
+                    const pageCounter = document.getElementById('page-counter');
+                    let currentSlide = 0;
+                    const totalSlides = ${totalPages};
+
+                    function showSlide(index) {
+                        slides.forEach(slide => slide.classList.remove('active'));
+                        slides[index].classList.add('active');
+                        pageCounter.textContent = \`\${index + 1} / \${totalSlides}\`;
+                    }
+
+                    prevBtn.addEventListener('click', () => {
+                        currentSlide = (currentSlide > 0) ? currentSlide - 1 : totalSlides - 1;
+                        showSlide(currentSlide);
+                    });
+
+                    nextBtn.addEventListener('click', () => {
+                        currentSlide = (currentSlide < totalSlides - 1) ? currentSlide + 1 : 0;
+                        showSlide(currentSlide);
+                    });
+                    
+                    document.addEventListener('keydown', (e) => {
+                        if (e.key === 'ArrowRight') nextBtn.click();
+                        if (e.key === 'ArrowLeft') prevBtn.click();
+                    });
+
+                    showSlide(0);
+                <\/script>
+            </body>
+            </html>`;
+    }
 });
 </script>
 </body>
 </html>
-
-
-
-
