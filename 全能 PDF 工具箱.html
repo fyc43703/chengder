@@ -11,6 +11,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.min.js"></script>
     <script src='https://unpkg.com/tesseract.js@5.0.0/dist/tesseract.min.js'></script>
+    <!-- New libraries for Word and Excel processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
@@ -36,12 +39,14 @@
             --color-compress: #33691e;   /* Dark Lime */
             --color-rotate: #bf360c;     /* Deep Orange */
             --color-page-numbers: #4a148c;/* Deep Purple */
-            --color-back: #5d4037;       /* Brown for back button */
-
-            /* New Feature Colors */
             --color-edit: #1565c0;       /* Bright Blue */
             --color-extract-images: #00695c; /* Dark Cyan */
             --color-pdf-to-web: #8b5cf6; /* Violet */
+            --color-back: #5d4037;       /* Brown for back button */
+            
+            /* New Office Feature Colors */
+            --color-word-to-pdf: #2b579a; /* Word Blue */
+            --color-excel-to-pdf: #217346; /* Excel Green */
         }
 
         body {
@@ -66,10 +71,11 @@
             border: 1px solid var(--border-color);
             box-shadow: 0 4px 6px -1px var(--card-shadow), 0 2px 4px -1px var(--card-shadow);
             transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+            transform: scale(0.9);
         }
 
         .feature-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-5px) scale(0.95);
             box-shadow: 0 10px 15px -3px var(--card-shadow), 0 4px 6px -2px var(--card-shadow);
             border-color: var(--header-color);
         }
@@ -95,6 +101,8 @@
         [data-view="edit-pdf-view"] svg { color: var(--color-edit); }
         [data-view="extract-images-view"] svg { color: var(--color-extract-images); }
         [data-view="pdf-to-web-view"] svg { color: var(--color-pdf-to-web); }
+        [data-view="word-to-pdf-view"] svg { color: var(--color-word-to-pdf); }
+        [data-view="excel-to-pdf-view"] svg { color: var(--color-excel-to-pdf); }
 
         /* Tool View Styling */
         .view > .bg-white { /* More specific selector for tool view panels */
@@ -103,7 +111,7 @@
             border: 1px solid var(--border-color);
         }
         .view h2 { color: var(--header-color); }
-        .view p, .view label { color: var(--text-secondary); }
+        .view p, .view label, .view li { color: var(--text-secondary); }
         .view h3, .view strong { color: var(--text-primary) !important; }
         .view input[type="text"], .view input[type="number"], .view input[type="url"], .view select, .view input[type="password"] {
             background-color: #fff;
@@ -153,6 +161,10 @@
         #extract-images-btn:hover { background-color: #004d40 !important; }
         #pdf-to-web-btn { background-color: var(--color-pdf-to-web) !important; color: white; }
         #pdf-to-web-btn:hover { background-color: #7c3aed !important; }
+        #word-to-pdf-btn { background-color: var(--color-word-to-pdf) !important; color: white; }
+        #word-to-pdf-btn:hover { background-color: #203f70 !important; }
+        #excel-to-pdf-btn { background-color: var(--color-excel-to-pdf) !important; color: white; }
+        #excel-to-pdf-btn:hover { background-color: #154e2f !important; }
         
         /* File Input Buttons */
         input[type="file"]::file-selector-button { transition: background-color 0.2s; }
@@ -167,6 +179,8 @@
         #edit-pdf-file::file-selector-button { background-color: #e3f2fd !important; color: var(--color-edit) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
         #extract-images-file::file-selector-button { background-color: #e0f2f1 !important; color: var(--color-extract-images) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
         #pdf-to-web-file::file-selector-button { background-color: #f5f3ff !important; color: var(--color-pdf-to-web) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #word-file-input::file-selector-button { background-color: #e6eef8 !important; color: var(--color-word-to-pdf) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
+        #excel-file-input::file-selector-button { background-color: #e2efe8 !important; color: var(--color-excel-to-pdf) !important; border-radius: 9999px; border-width: 0px; font-weight: 600; padding: 0.5rem 1rem; margin-right: 1rem;}
 
         /* File Lists and Drop Areas */
         .file-list-item, #images-list .draggable, #edit-pdf-pages .page-item {
@@ -234,7 +248,6 @@
             background-color: var(--card-bg);
             color: var(--text-primary);
         }
-        #modal h3 { color: var(--accent-green); }
 
         /* Loader */
         .loader {
@@ -254,8 +267,8 @@
 </head>
 <body class="text-gray-800">
     <div id="app-container">
-        <div class="container mx-auto p-4 md:p-8 max-w-5xl"> 
-            <header class="text-center mb-8">
+        <div class="w-[85%] mx-auto px-4 pb-4 pt-2 md:px-8 md:pb-8 md:pt-4"> 
+            <header class="text-center mb-4">
                 <h1 class="text-3xl font-bold">全能PDF工具箱</h1>
                 <p class="text-xl mt-1 font-semibold">合併、分割、轉換、擷取、壓縮、旋轉與更多功能</p>
                 <p class="text-sm mt-1">所有處理過程均在瀏覽器端完成，確保您的資料安全與隱私</p>
@@ -263,7 +276,7 @@
             </header>
 
             <div id="home-view" class="view active">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0">
                     <div data-view="merge-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
                         <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         <div><h2 class="text-xl font-semibold">PDF合併</h2><p>輕鬆將多個PDF檔案，快速合併為單一檔案</p></div>
@@ -319,13 +332,22 @@
                         </svg>
                         <div><h2 class="text-xl font-semibold">PDF擷取圖片</h2><p>自動選取PDF文件中的所有圖片，並提供打包下載服務</p></div>
                     </div>
-                    <!-- NEW: PDF to Web -->
                     <div data-view="pdf-to-web-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
                         <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-1.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h4.5" />
                           <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 3H12V1.5m3.75 1.525c.14.053.275.118.404.195.21.128.398.28.567.457.17.176.315.37.44.585.124.214.228.444.299.688M13.5 3c.311 0 .614.022.912.064.298.042.587.103.865.182.277.08.544.177.802.29C17.34 3.78 18 4.65 18 5.667v.385m0 0a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
                         </svg>
                         <div><h2 class="text-xl font-semibold">PDF轉網頁</h2><p>將PDF每頁轉換為圖片格式，整合為HTML網頁檔案</p></div>
+                    </div>
+                    <!-- NEW: Word to PDF -->
+                    <div data-view="word-to-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20ZM9.5 13.5H11.5V18H13.5V13.5H15.5L12.5 10.5L9.5 13.5Z"/></svg>
+                        <div><h2 class="text-xl font-semibold">Word轉PDF</h2><p>將DOCX轉為可列印網頁，再由您另存為PDF</p></div>
+                    </div>
+                    <!-- NEW: Excel to PDF -->
+                    <div data-view="excel-to-pdf-view" class="feature-card p-6 rounded-lg cursor-pointer flex items-center space-x-4">
+                        <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20ZM10 18H7V16H10V18ZM10 15H7V13H10V15ZM10 12H7V10H10V12ZM14 18H11V16H14V18ZM14 15H11V13H14V15ZM14 12H11V10H14V12Z"/></svg>
+                        <div><h2 class="text-xl font-semibold">Excel轉PDF</h2><p>將XLSX轉為可列印網頁，再由您另存為PDF</p></div>
                     </div>
                 </div>
             </div>
@@ -622,7 +644,7 @@
                         </div>
                     </div>
                 </div>
-                <!-- NEW: PDF to Web View -->
+                <!-- PDF to Web View -->
                 <div id="pdf-to-web-view" class="view">
                     <div class="bg-white p-6 rounded-lg shadow-lg">
                         <h2 class="text-2xl font-bold mb-4">PDF 轉網頁</h2>
@@ -659,6 +681,36 @@
                         </div>
                     </div>
                 </div>
+                <!-- Word to PDF View (REVISED) -->
+                <div id="word-to-pdf-view" class="view">
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h2 class="text-2xl font-bold mb-4">Word 轉 PDF</h2>
+                        <p class="mb-4">選擇一個 .docx 檔案。檔案將在新的分頁中以可列印的格式開啟，您可以從該頁面使用系統的列印功能（Ctrl+P）將其另存為 PDF。不支援舊版 .doc 檔案。</p>
+                        <input type="file" id="word-file-input" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="block w-full text-sm mb-4"/>
+                        <div class="mt-6 flex items-center justify-between">
+                            <button id="word-to-pdf-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>轉換並開啟列印</button>
+                            <button id="back-to-home-13" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
+                                <span>返回主頁</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Excel to PDF View (REVISED) -->
+                <div id="excel-to-pdf-view" class="view">
+                     <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h2 class="text-2xl font-bold mb-4">Excel 轉 PDF</h2>
+                        <p class="mb-4">選擇一個 .xlsx 檔案。每個工作表將被轉換為表格並在新分頁中開啟，您可以從該頁面使用系統的列印功能（Ctrl+P）將其另存為 PDF。不支援舊版 .xls 檔案。</p>
+                        <input type="file" id="excel-file-input" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="block w-full text-sm mb-4"/>
+                        <div class="mt-6 flex items-center justify-between">
+                            <button id="excel-to-pdf-btn" class="text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-300" disabled>轉換並開啟列印</button>
+                            <button id="back-to-home-14" class="text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
+                                <span>返回主頁</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -672,7 +724,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    const requiredLibs = ['PDFLib', 'JSZip', 'pdfjsLib', 'Tesseract', 'fontkit'];
+    const requiredLibs = ['PDFLib', 'JSZip', 'pdfjsLib', 'Tesseract', 'fontkit', 'mammoth', 'XLSX'];
     const missingLibs = requiredLibs.filter(lib => typeof window[lib] === 'undefined');
 
     if (missingLibs.length > 0) {
@@ -702,6 +754,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Initial setup
     setupMainMenuNavigation();
 
     function showView(viewId) {
@@ -748,7 +801,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'merge-pdf-btn', 'split-pdf-btn', 'pdf-to-image-btn', 
             'image-to-pdf-btn', 'images-to-pdf-btn', 'compress-pdf-btn', 
             'rotate-pdf-btn', 'add-page-numbers-btn', 
-            'edit-pdf-btn', 'extract-images-btn', 'pdf-to-web-btn'
+            'edit-pdf-btn', 'extract-images-btn', 'pdf-to-web-btn',
+            'word-to-pdf-btn', 'excel-to-pdf-btn'
         ];
         actionButtons.forEach(btnId => {
             const btn = document.getElementById(btnId);
@@ -762,7 +816,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[id^="back-to-home-"]').forEach(button => {
         button.addEventListener('click', () => showView('home-view'));
     });
-
+    
     function downloadFile(blob, filename) {
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
@@ -1801,12 +1855,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- PDF to Web Module (REVISED) ---
     const pdfToWebInput = document.getElementById('pdf-to-web-file');
     const pdfToWebBtn = document.getElementById('pdf-to-web-btn');
     const pdfToWebInfo = document.getElementById('pdf-to-web-info');
     const pdfToWebOptions = document.getElementById('pdf-to-web-options');
-
     if(pdfToWebInput) {
         pdfToWebInput.addEventListener('change', () => {
             if (!pdfToWebInput.files.length) {
@@ -1956,8 +2008,103 @@ document.addEventListener('DOMContentLoaded', () => {
             </body>
             </html>`;
     }
+
+    // --- NEW: Word to PDF Module ---
+    const wordFileInput = document.getElementById('word-file-input');
+    const wordToPdfBtn = document.getElementById('word-to-pdf-btn');
+
+    if (wordFileInput) {
+        wordFileInput.addEventListener('change', () => {
+            wordToPdfBtn.disabled = !wordFileInput.files.length;
+        });
+
+        wordToPdfBtn.addEventListener('click', async () => {
+            const file = wordFileInput.files[0];
+            if (!file) return;
+            showModal(`<div class="loader mx-auto"></div><p class="mt-4">正在轉換 Word 檔案...</p>`);
+            try {
+                const arrayBuffer = await readFileAsArrayBuffer(file);
+                const result = await mammoth.convertToHtml({ arrayBuffer });
+                printHtml(result.value, file.name);
+                hideModal();
+            } catch (error) {
+                console.error("Word 轉換失敗:", error);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${error.message || '無法處理此 Word 檔案。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+            }
+        });
+    }
+
+    // --- NEW: Excel to PDF Module ---
+    const excelFileInput = document.getElementById('excel-file-input');
+    const excelToPdfBtn = document.getElementById('excel-to-pdf-btn');
+
+    if (excelFileInput) {
+        excelFileInput.addEventListener('change', () => {
+            excelToPdfBtn.disabled = !excelFileInput.files.length;
+        });
+
+        excelToPdfBtn.addEventListener('click', async () => {
+            const file = excelFileInput.files[0];
+            if (!file) return;
+            showModal(`<div class="loader mx-auto"></div><p class="mt-4">正在轉換 Excel 檔案...</p>`);
+            try {
+                const data = await readFileAsArrayBuffer(file);
+                const workbook = XLSX.read(data, { type: 'array' });
+                let finalHtml = '';
+                workbook.SheetNames.forEach(sheetName => {
+                    finalHtml += `<h2>${sheetName}</h2>`;
+                    const worksheet = workbook.Sheets[sheetName];
+                    finalHtml += XLSX.utils.sheet_to_html(worksheet);
+                });
+                printHtml(finalHtml, file.name);
+                hideModal();
+            } catch (error) {
+                console.error("Excel 轉換失敗:", error);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${error.message || '無法處理此 Excel 檔案。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+            }
+        });
+    }
+
+    function printHtml(htmlContent, title) {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="zh-Hant">
+            <head>
+                <meta charset="UTF-8">
+                <title>列印預覽 - ${title}</title>
+                <style>
+                    body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; margin: 2rem; }
+                    table { border-collapse: collapse; width: 100%; margin-bottom: 2rem; page-break-inside: auto; }
+                    tr { page-break-inside: avoid; page-break-after: auto; }
+                    thead { display: table-header-group; }
+                    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+                    th { background-color: #f2f2f2; font-weight: bold; }
+                    h2 { border-bottom: 2px solid #666; padding-bottom: 5px; margin-top: 2rem; page-break-after: avoid; }
+                    @media print {
+                        @page { size: A4; margin: 15mm; }
+                        body { margin: 0; }
+                        h2 { color: #000; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${htmlContent}
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() { 
+                            window.print();
+                            // Due to browser security, we can't reliably close the window.
+                            // window.close();
+                        }, 500); // A small delay can help ensure content is fully rendered.
+                    }
+                <\/script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
 });
 </script>
 </body>
 </html>
-
