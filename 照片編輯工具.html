@@ -1,0 +1,793 @@
+<!DOCTYPE html><html lang="zh-Hant"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>照片編輯工具</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
+<style>
+      /* 修正：為所有字重提供獨立的 @font-face 規則，徹底解決粗體失效問題 */
+      /* Noto Sans TC - Regular 400 */
+      @font-face {
+        font-family: 'Noto Sans TC';
+        font-style: normal;
+        font-weight: 400;
+        src: url(https://fonts.gstatic.com/s/notosanstc/v36/-nF7OG829Oofr2wohFbTp9i9_wQSbS7u.woff2) format('woff2');
+      }
+      /* Noto Sans TC - Bold 700 */
+       @font-face {
+        font-family: 'Noto Sans TC';
+        font-style: normal;
+        font-weight: 700;
+        src: url(https://fonts.gstatic.com/s/notosanstc/v36/-nF7OG829Oofr2wohFbTp9i9_wQScS-u.woff2) format('woff2');
+      }
+      /* Noto Sans TC - Black 900 */
+      @font-face {
+        font-family: 'Noto Sans TC';
+        font-style: normal;
+        font-weight: 900;
+        src: url(https://fonts.gstatic.com/s/notosanstc/v36/-nF7OG829Oofr2wohFbTp9i9_wQSfS2u.woff2) format('woff2');
+      }
+      /* Noto Serif JP - Regular 400 */
+      @font-face {
+        font-family: 'Noto Serif JP';
+        font-style: normal;
+        font-weight: 400;
+        src: url(https://fonts.gstatic.com/s/notoserifjp/v22/ros-t_3Vt6eP4dYpMSwPa7s2zP9K2YTy8w.woff2) format('woff2');
+      }
+      /* Noto Serif JP - Bold 700 */
+      @font-face {
+        font-family: 'Noto Serif JP';
+        font-style: normal;
+        font-weight: 700;
+        src: url(https://fonts.gstatic.com/s/notoserifjp/v22/ros-t_3Vt6eP4dYpMSwPa7s2zP9K2YTy8w.woff2) format('woff2');
+      }
+
+      /* General Styles */
+      html,body{margin:0;padding:24px;background:#FFFFFF;color:#212529;font-family:'Noto Sans TC','sans-serif';line-height:1.6;font-size:15px}
+      h1,h2,h3,h4,h5,h6,b,strong {font-weight: 700;}
+      h1{font-family:'Noto Sans TC';font-weight:900;}
+      h2,h3,h4,h5,h6{font-family:'Noto Serif JP';}
+
+      /* Explicit list styles for consistent rendering in html2canvas */
+      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; }
+      ul { list-style-type: disc; }
+      ol { list-style-type: decimal; }
+      li { display: list-item; }
+      .hljs-container{padding:1.5rem;border-radius:.5rem;overflow-x:auto;background:#F8F9FA;border:1px solid #DEE2E6}
+      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3C5E5 25%,#B3C5E5 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3C5E5 25%,#B3C5E5 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#F8D7DA 25%,#F8D7DA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#721C24}
+      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
+    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>照片編輯工具</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font for clean typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9O6D+9uD5F3W3xLd3B1P4F2T5s3H5u9XyL5d3K5e9oB6v6S6F6L5s6E6Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Fabric.js for canvas-based image manipulation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            color: #1a202c; /* Dark text for contrast */
+        }
+        .container-card {
+            background-color: #ffffff; /* White card background */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .tool-panel {
+            background-color: #f8fafc; /* Light gray panel background */
+        }
+        .tool-button {
+            background-color: #e2e8f0; /* Light button background */
+            color: #4a5568; /* Dark text */
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .tool-button:hover {
+            background-color: #3b82f6; /* Blue hover color */
+            color: #fff;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+        }
+        .upload-btn {
+            background-color: #3b82f6; /* Blue as the slider color */
+            color: #fff;
+            font-weight: 700;
+        }
+        .upload-btn:hover {
+            background-color: #2563eb; /* Darker blue */
+        }
+        .tool-button.filter-btn:hover {
+            background-color: #6366f1; /* Indigo hover color for filters */
+        }
+        .tool-button.download-btn {
+            background-color: #10b981; /* Green for download */
+            color: #fff;
+        }
+        .tool-button.download-btn:hover {
+            background-color: #059669;
+        }
+        .tool-button.reset-btn {
+            background-color: #ef4444; /* Red for reset */
+            color: #fff;
+        }
+        .tool-button.reset-btn:hover {
+            background-color: #dc2626;
+        }
+        .tool-button.undo-btn {
+            background-color: #f59e0b; /* Amber for undo */
+            color: #fff;
+        }
+        .tool-button.undo-btn:hover {
+            background-color: #d97706;
+        }
+        .tool-slider-container {
+            background-color: #e2e8f0; /* Light background for sliders */
+            padding: 0.5rem; /* Reduced padding */
+            border-radius: 0.5rem;
+        }
+        /* Custom CSS for a better-looking slider */
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #cbd5e1;
+            border-radius: 9999px;
+            height: 8px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            margin-top: -4px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+        input[type="range"]:hover::-webkit-slider-thumb {
+            background: #2563eb;
+            transform: scale(1.1);
+        }
+        .panel-heading {
+            color: #3b82f6; /* Blue color for headings */
+        }
+        .slider-control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .slider-arrow-btn {
+            background-color: #cbd5e1;
+            color: #4a5568;
+            padding: 0.25rem;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .slider-arrow-btn:hover {
+            background-color: #a0aec0;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-start p-8 min-h-screen text-gray-800">
+
+    <!-- Title and Subtitle -->
+    <div class="w-full text-center mb-4">
+        <h1 class="text-3xl font-bold panel-heading">照片編輯工具</h1>
+        <p class="text-xs text-gray-600 mt-1">製作者：陳政德</p>
+    </div>
+
+    <!-- Main container for canvas and tools -->
+    <div class="flex flex-col md:flex-row w-full max-w-7xl gap-3 items-start">
+        
+        <!-- Main Canvas Area - top aligned -->
+        <div class="flex-1 w-full bg-white rounded-xl shadow-inner flex flex-col items-center justify-start p-2 overflow-hidden container-card">
+            <canvas id="photo-canvas" class="rounded-xl border-2 border-dashed border-gray-300 max-w-full max-h-[75vh]"></canvas>
+        </div>
+
+        <!-- Right Side Control Panel - No scrollbar, reduced gap and padding -->
+        <div class="w-full md:w-80 flex flex-col gap-2 p-2 rounded-xl container-card">
+            <!-- Basic Tools -->
+            <div>
+                <h2 class="text-base font-bold mb-1 panel-heading">基本工具</h2>
+                <!-- Reduced padding and gap -->
+                <div class="bg-white p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1">
+                    <div class="flex justify-between items-center gap-1">
+                        <label for="image-upload" class="cursor-pointer tool-button upload-btn py-2 px-3 rounded-xl shadow-sm text-sm font-bold w-1/2 text-center">
+                            <i class="fas fa-upload text-sm mr-1"></i> 選擇照片
+                        </label>
+                        <input type="file" id="image-upload" accept="image/*" class="hidden">
+                        <button id="undo-btn" class="tool-button undo-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="復原">
+                            <i class="fas fa-reply text-sm"></i>
+                        </button>
+                        <button id="reset-btn" class="tool-button reset-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="重設所有變更">
+                            <i class="fas fa-rotate-left text-sm"></i>
+                        </button>
+                    </div>
+                    <div class="slider-control-group">
+                        <label for="zoom-slider" class="block text-xs font-medium text-gray-600 flex-shrink-0">縮放</label>
+                        <button class="slider-arrow-btn" onclick="adjustSlider('zoom-slider', -0.05)">-</button>
+                        <input type="range" id="zoom-slider" min="0.1" max="3" value="1" step="0.05" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+                        <button class="slider-arrow-btn" onclick="adjustSlider('zoom-slider', 0.05)">+</button>
+                        <span id="zoom-value" class="text-xs text-gray-600 w-8 text-right">100%</span>
+                    </div>
+                    <div class="slider-control-group">
+                        <label for="rotate-slider" class="block text-xs font-medium text-gray-600 flex-shrink-0">旋轉</label>
+                        <button class="slider-arrow-btn" onclick="adjustSlider('rotate-slider', -1)">-</button>
+                        <input type="range" id="rotate-slider" min="-180" max="180" value="0" step="1" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+                        <button class="slider-arrow-btn" onclick="adjustSlider('rotate-slider', 1)">+</button>
+                        <span id="rotate-value" class="text-xs text-gray-600 w-8 text-right">0°</span>
+                    </div>
+                    <div class="flex justify-between gap-1">
+                        <button id="crop-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm w-full"><i class="fas fa-crop-simple text-sm mr-1"></i> 剪裁</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter & Effects -->
+            <div>
+                <h2 class="text-base font-bold mb-1 panel-heading">濾鏡與特效</h2>
+                <!-- Reduced padding and gap -->
+                <div class="bg-white p-1 rounded-lg shadow-sm tool-panel grid grid-cols-3 gap-1">
+                    <button id="landscape-btn" class="filter-btn tool-button py-1 px-3 rounded-xl shadow-sm text-sm">風景</button>
+                    <button id="food-btn" class="filter-btn tool-button py-1 px-3 rounded-xl shadow-sm text-sm">食物</button>
+                    <button id="clarity-btn" class="filter-btn tool-button py-1 px-3 rounded-xl shadow-sm text-sm">清晰</button>
+                    <button id="brighten-shadows-btn" class="filter-btn tool-button py-1 px-3 rounded-xl shadow-sm text-sm">陰影增亮</button>
+                    <button id="beauty-skin-btn" class="filter-btn tool-button py-1 px-3 rounded-xl shadow-sm text-sm">美肌</button>
+                    <button id="highlight-recovery-btn" class="filter-btn tool-button py-1 px-3 rounded-xl shadow-sm text-sm">亮部調暗</button>
+                </div>
+            </div>
+
+            <!-- Advanced Tools -->
+            <div>
+                <h2 class="text-base font-bold mb-1 panel-heading">進階工具</h2>
+                <!-- Reduced padding and gap -->
+                <div class="tool-slider-container p-1">
+                    <div class="slider-control-group">
+                        <label for="brightness-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">亮度</label>
+                        <button class="slider-arrow-btn" onclick="adjustSlider('brightness-slider', -0.01)">-</button>
+                        <input type="range" id="brightness-slider" min="-1" max="1" value="0" step="0.01" class="w-full">
+                        <button class="slider-arrow-btn" onclick="adjustSlider('brightness-slider', 0.01)">+</button>
+                    </div>
+                    <div class="slider-control-group">
+                        <label for="contrast-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">對比度</label>
+                        <button class="slider-arrow-btn" onclick="adjustSlider('contrast-slider', -0.01)">-</button>
+                        <input type="range" id="contrast-slider" min="-1" max="1" value="0" step="0.01" class="w-full">
+                        <button class="slider-arrow-btn" onclick="adjustSlider('contrast-slider', 0.01)">+</button>
+                    </div>
+                    <div class="slider-control-group">
+                        <label for="saturation-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">飽和度</label>
+                        <button class="slider-arrow-btn" onclick="adjustSlider('saturation-slider', -0.01)">-</button>
+                        <input type="range" id="saturation-slider" min="-1" max="1" value="0" step="0.01" class="w-full">
+                        <button class="slider-arrow-btn" onclick="adjustSlider('saturation-slider', 0.01)">+</button>
+                    </div>
+                    <div class="slider-control-group">
+                        <label for="sharpen-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">銳化</label>
+                        <button class="slider-arrow-btn" onclick="adjustSlider('sharpen-slider', -0.01)">-</button>
+                        <input type="range" id="sharpen-slider" min="0" max="1" value="0" step="0.01" class="w-full">
+                        <button class="slider-arrow-btn" onclick="adjustSlider('sharpen-slider', 0.01)">+</button>
+                    </div>
+                    <div class="slider-control-group">
+                        <label for="shadow-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">陰影</label>
+                        <button class="slider-arrow-btn" onclick="adjustSlider('shadow-slider', -0.01)">-</button>
+                        <input type="range" id="shadow-slider" min="0" max="1" value="0" step="0.01" class="w-full">
+                        <button class="slider-arrow-btn" onclick="adjustSlider('shadow-slider', 0.01)">+</button>
+                    </div>
+                    <div class="slider-control-group">
+                        <label for="gamma-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">Gamma 校正</label>
+                        <button class="slider-arrow-btn" onclick="adjustSlider('gamma-slider', -0.05)">-</button>
+                        <input type="range" id="gamma-slider" min="0.1" max="5" value="1" step="0.05" class="w-full">
+                        <button class="slider-arrow-btn" onclick="adjustSlider('gamma-slider', 0.05)">+</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Text & Download Tools -->
+            <div>
+                <h2 class="text-base font-bold mb-1 panel-heading">文字工具</h2>
+                <div class="bg-white p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1 mb-1">
+                    <button id="add-text-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm"><i class="fas fa-font text-sm mr-1"></i>加入文字</button>
+                    <div id="text-options" class="hidden flex flex-col gap-1">
+                        <label for="font-family" class="text-xs font-medium text-gray-600">字型</label>
+                        <select id="font-family" class="w-full p-1 rounded-md bg-gray-100 text-gray-800 border border-gray-300">
+                            <option value="Inter">預設</option>
+                            <option value="Arial">Arial</option>
+                            <option value="Noto Sans TC">思源黑體</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                        </select>
+                        <label for="font-size" class="text-xs font-medium text-gray-600">大小</label>
+                        <input type="range" id="font-size" min="10" max="100" value="30" class="w-full">
+                        <label for="font-color" class="text-xs font-medium text-gray-600">顏色</label>
+                        <input type="color" id="font-color" value="#000000" class="w-full h-8 bg-gray-100 border-none">
+                    </div>
+                </div>
+                
+                <h2 class="text-base font-bold mb-1 panel-heading">下載</h2>
+                <div class="bg-white p-1 rounded-lg shadow-sm tool-panel">
+                    <div class="flex gap-2 mb-2">
+                        <div class="w-1/2">
+                            <label for="download-format" class="block mb-1 text-xs font-bold text-gray-600">照片類型</label>
+                            <select id="download-format" class="w-full px-1 py-0.5 rounded-md bg-gray-100 text-gray-800 border border-gray-300 text-xs">
+                                <option value="png">PNG</option>
+                                <option value="jpeg">JPEG</option>
+                            </select>
+                        </div>
+                        <div class="w-1/2">
+                            <label for="download-resolution" class="block mb-1 text-xs font-bold text-gray-600">解析度</label>
+                            <select id="download-resolution" class="w-full px-1 py-0.5 rounded-md bg-gray-100 text-gray-800 border border-gray-300 text-xs">
+                                <option value="original">原始</option>
+                                <option value="1280x720">HD (1280x720)</option>
+                                <option value="1920x1080">Full HD (1920x1080)</option>
+                                <option value="2560x1440">2K (2560x1440)</option>
+                                <option value="3840x2160">4K (3840x2160)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="download-btn" class="tool-button download-btn w-full py-2 rounded-xl shadow-md"><i class="fas fa-download text-sm mr-1"></i>下載照片</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let canvas, img, originalImageSrc;
+        let croppingRect, isCropping = false;
+        let history = []; // To store states for undo functionality
+        let historyIndex = -1;
+
+        // Function to save the current canvas state to history
+        function saveState() {
+            const state = JSON.stringify(canvas.toJSON());
+            history = history.slice(0, historyIndex + 1); // Discard redo states
+            history.push(state);
+            historyIndex++;
+        }
+
+        // Function to undo the last action
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                const state = history[historyIndex];
+                canvas.loadFromJSON(state, () => {
+                    canvas.renderAll();
+                    updateSliders(); // Sync sliders with the restored state
+                });
+            }
+        }
+        
+        // Function to update sliders based on the current image state
+        function updateSliders() {
+            if (img) {
+                document.getElementById('zoom-slider').value = img.scaleX;
+                document.getElementById('zoom-value').innerText = `${Math.round(img.scaleX * 100)}%`;
+                document.getElementById('rotate-slider').value = img.angle;
+                document.getElementById('rotate-value').innerText = `${Math.round(img.angle)}°`;
+
+                // Update advanced tool sliders based on filters
+                let brightnessFilter = img.filters.find(f => f.type === 'Brightness');
+                let contrastFilter = img.filters.find(f => f.type === 'Contrast');
+                let saturationFilter = img.filters.find(f => f.type === 'Saturation');
+                let gammaFilter = img.filters.find(f => f.type === 'Gamma');
+
+                document.getElementById('brightness-slider').value = brightnessFilter ? brightnessFilter.brightness : 0;
+                document.getElementById('contrast-slider').value = contrastFilter ? contrastFilter.contrast : 0;
+                document.getElementById('saturation-slider').value = saturationFilter ? saturationFilter.saturation : 0;
+                document.getElementById('gamma-slider').value = gammaFilter ? gammaFilter.gamma[0] : 1;
+            }
+        }
+        
+        // Function to adjust slider value with arrow buttons
+        function adjustSlider(id, delta) {
+            const slider = document.getElementById(id);
+            let value = parseFloat(slider.value) + delta;
+            // Clamp the value within the min/max range
+            value = Math.min(Math.max(value, parseFloat(slider.min)), parseFloat(slider.max));
+            slider.value = value;
+            slider.dispatchEvent(new Event('input'));
+        }
+        window.adjustSlider = adjustSlider; // Make the function globally accessible
+
+        // Initialize the canvas on window load
+        window.onload = function() {
+            canvas = new fabric.Canvas('photo-canvas', {
+                width: 1024,
+                height: 768,
+                backgroundColor: '#ffffff' /* White canvas background */
+            });
+
+            // Adjust canvas size to fit container and maintain aspect ratio on resize
+            function resizeCanvas() {
+                const container = canvas.wrapperEl.parentNode;
+                const ratio = img ? img.width / img.height : 1.5;
+                let containerWidth = container.offsetWidth;
+                let containerHeight = container.offsetHeight;
+                const maxWidth = 1200;
+                const maxHeight = 700;
+                containerWidth = Math.min(containerWidth, maxWidth);
+                containerHeight = Math.min(containerHeight, maxHeight);
+                let newWidth, newHeight;
+                if (containerWidth / ratio < containerHeight) {
+                    newWidth = containerWidth;
+                    newHeight = newWidth / ratio;
+                } else {
+                    newHeight = containerHeight;
+                    newWidth = newHeight * ratio;
+                }
+                canvas.setDimensions({ width: newWidth, height: newHeight });
+                if (img) {
+                    const scale = Math.min(newWidth / img.width, newHeight / img.height);
+                    img.set({
+                        scaleX: scale,
+                        scaleY: scale,
+                        left: 0,
+                        top: 0
+                    });
+                    canvas.renderAll();
+                }
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // Set up event listeners for file input and buttons
+            document.getElementById('image-upload').addEventListener('change', handleImageUpload);
+            document.getElementById('zoom-slider').addEventListener('input', handleZoom);
+            document.getElementById('download-btn').addEventListener('click', handleDownload);
+            document.getElementById('add-text-btn').addEventListener('click', handleAddText);
+            document.getElementById('reset-btn').addEventListener('click', handleReset);
+            document.getElementById('undo-btn').addEventListener('click', undo); // New undo button
+            document.getElementById('crop-btn').addEventListener('click', handleCrop);
+            document.getElementById('rotate-slider').addEventListener('input', handleRotate);
+
+            // Set up filter button event listeners
+            document.getElementById('landscape-btn').addEventListener('click', () => applyFilter('landscape'));
+            document.getElementById('food-btn').addEventListener('click', () => applyFilter('food'));
+            document.getElementById('clarity-btn').addEventListener('click', () => applyFilter('clarity'));
+            document.getElementById('brighten-shadows-btn').addEventListener('click', () => applyFilter('brighten-shadows'));
+            document.getElementById('beauty-skin-btn').addEventListener('click', () => applyFilter('beauty-skin'));
+            document.getElementById('highlight-recovery-btn').addEventListener('click', () => applyFilter('highlight-recovery'));
+
+            // Set up slider event listeners for real-time adjustments
+            document.getElementById('brightness-slider').addEventListener('input', handleSliderChange);
+            document.getElementById('contrast-slider').addEventListener('input', handleSliderChange);
+            document.getElementById('saturation-slider').addEventListener('input', handleSliderChange);
+            document.getElementById('sharpen-slider').addEventListener('input', handleSliderChange);
+            document.getElementById('shadow-slider').addEventListener('input', handleSliderChange);
+            document.getElementById('gamma-slider').addEventListener('input', handleSliderChange); // New Gamma slider
+            
+            // Set up text tool event listeners
+            document.getElementById('font-family').addEventListener('change', updateTextOptions);
+            document.getElementById('font-size').addEventListener('input', updateTextOptions);
+            document.getElementById('font-color').addEventListener('input', updateTextOptions);
+            
+            canvas.on('object:modified', saveState);
+        };
+
+        // Handles the image file upload
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                originalImageSrc = event.target.result; /* Store original image data */
+                fabric.Image.fromURL(originalImageSrc, (oImg) => {
+                    canvas.clear();
+                    img = oImg;
+                    img.set({
+                        crossOrigin: 'anonymous',
+                        originX: 'center',
+                        originY: 'center',
+                        left: canvas.getCenter().left,
+                        top: canvas.getCenter().top
+                    });
+                    const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+                    img.scale(scale);
+                    canvas.add(img);
+                    canvas.renderAll();
+                    saveState();
+                }, { crossOrigin: 'anonymous' });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Handles the zoom slider functionality
+        function handleZoom(e) {
+            if (!img) {
+                return;
+            }
+            const scale = parseFloat(e.target.value);
+            /* Get the center of the image on the canvas */
+            const center = canvas.getCenter();
+            img.scaleX = scale;
+            img.scaleY = scale;
+            img.setCoords();
+            canvas.renderAll();
+            document.getElementById('zoom-value').innerText = `${Math.round(scale * 100)}%`;
+        }
+        
+        // Handles rotation of the main image object using a slider
+        function handleRotate(e) {
+            if (!img) {
+                return;
+            }
+            const angle = parseFloat(e.target.value);
+            /* Rotate the image around the canvas center */
+            const center = canvas.getCenter();
+            img.set({
+                originX: 'center',
+                originY: 'center',
+                left: center.left,
+                top: center.top,
+                angle: angle
+            });
+            canvas.renderAll();
+            document.getElementById('rotate-value').innerText = `${Math.round(angle)}°`;
+        }
+
+        // Handles cropping
+        function handleCrop() {
+            if (!img) {
+                return;
+            }
+            if (isCropping) {
+                /* Apply crop */
+                const cropWidth = croppingRect.getScaledWidth() / img.getScaledWidth() * img.width;
+                const cropHeight = croppingRect.getScaledHeight() / img.getScaledHeight() * img.height;
+                const cropX = (croppingRect.left - img.left) / img.getScaledWidth() * img.width;
+                const cropY = (croppingRect.top - img.top) / img.getScaledHeight() * img.height;
+
+                img.set({
+                    cropX: cropX,
+                    cropY: cropY,
+                    width: cropWidth,
+                    height: cropHeight
+                });
+                
+                canvas.remove(croppingRect);
+                isCropping = false;
+                canvas.renderAll();
+                saveState();
+            } else {
+                /* Start cropping */
+                isCropping = true;
+                croppingRect = new fabric.Rect({
+                    left: img.left,
+                    top: img.top,
+                    width: img.getScaledWidth(),
+                    height: img.getScaledHeight(),
+                    fill: 'rgba(0,0,0,0.3)',
+                    stroke: 'white',
+                    strokeWidth: 2,
+                    selectable: true,
+                    hasBorders: true,
+                    hasControls: true,
+                });
+                canvas.add(croppingRect);
+                canvas.bringToFront(croppingRect);
+                canvas.setActiveObject(croppingRect);
+            }
+        }
+
+        // Applies a specific filter to the main image object
+        function applyFilter(filterName) {
+            if (!img) {
+                return;
+            }
+
+            /* Clear all filters first to prevent stacking */
+            img.filters = [];
+            
+            switch (filterName) {
+                case 'clarity':
+                    img.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.15 }));
+                    img.filters.push(new fabric.Image.filters.Saturation({ saturation: 0.05 }));
+                    break;
+                case 'brighten-shadows':
+                    img.filters.push(new fabric.Image.filters.Gamma({
+                        gamma: [2.2, 2.2, 2.2] /* Adjusting the gamma curve to brighten shadows */
+                    }));
+                    break;
+                case 'beauty-skin':
+                    /* A simple blur to soften the image */
+                    img.filters.push(new fabric.Image.filters.Convolute({
+                        matrix: [ 1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9 ]
+                    }));
+                    break;
+                case 'landscape':
+                    /* Increase contrast and saturation for a more vibrant landscape */
+                    img.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.2 }));
+                    img.filters.push(new fabric.Image.filters.Saturation({ saturation: 0.2 }));
+                    break;
+                case 'food':
+                    /* Boost saturation and brightness to make food look more appetizing */
+                    img.filters.push(new fabric.Image.filters.Saturation({ saturation: 0.3 }));
+                    img.filters.push(new fabric.Image.filters.Brightness({ brightness: 0.1 }));
+                    break;
+                case 'highlight-recovery':
+                    /* Reduce brightness in highlights */
+                    img.filters.push(new fabric.Image.filters.Gamma({
+                        gamma: [0.8, 0.8, 0.8] // Lower gamma to compress highlights
+                    }));
+                    img.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.05 }));
+                    break;
+                default:
+                    break;
+            }
+            
+            img.applyFilters();
+            canvas.renderAll();
+            saveState();
+        }
+
+        // Handles slider changes for real-time image adjustments
+        function handleSliderChange() {
+            if (!img) {
+                return;
+            }
+
+            const brightness = parseFloat(document.getElementById('brightness-slider').value);
+            const contrast = parseFloat(document.getElementById('contrast-slider').value);
+            const saturation = parseFloat(document.getElementById('saturation-slider').value);
+            const sharpen = parseFloat(document.getElementById('sharpen-slider').value);
+            const shadow = parseFloat(document.getElementById('shadow-slider').value);
+            const gamma = parseFloat(document.getElementById('gamma-slider').value);
+
+            img.filters = [];
+
+            /* Add filters based on slider values */
+            if (brightness !== 0) {
+                img.filters.push(new fabric.Image.filters.Brightness({ brightness: brightness }));
+            }
+            if (contrast !== 0) {
+                img.filters.push(new fabric.Image.filters.Contrast({ contrast: contrast }));
+            }
+            if (saturation !== 0) {
+                img.filters.push(new fabric.Image.filters.Saturation({ saturation: saturation }));
+            }
+            if (sharpen > 0) {
+                img.filters.push(new fabric.Image.filters.Convolute({
+                    matrix: [0, -1, 0, -1, 5, -1, 0, -1, 0]
+                }));
+            }
+            if (shadow > 0) {
+                img.filters.push(new fabric.Image.filters.Brightness({ brightness: shadow * 0.2 }));
+                img.filters.push(new fabric.Image.filters.Contrast({ contrast: shadow * 0.1 }));
+            }
+            if (gamma !== 1) {
+                img.filters.push(new fabric.Image.filters.Gamma({ gamma: [gamma, gamma, gamma] }));
+            }
+
+            img.applyFilters();
+            canvas.renderAll();
+        }
+        
+        // Adds a text object to the canvas
+        function handleAddText() {
+            if (!img) {
+                return;
+            }
+            
+            /* Show text customization options */
+            document.getElementById('text-options').classList.remove('hidden');
+
+            const text = new fabric.IText('點擊並輸入文字', {
+                left: 50,
+                top: 50,
+                fontFamily: 'Inter',
+                fontSize: 30,
+                fill: '#000000',
+                editable: true,
+                hasControls: true,
+                hasBorders: true
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            canvas.renderAll();
+            saveState();
+        }
+
+        // Updates the active text object based on user selections
+        function updateTextOptions() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject && activeObject.type === 'i-text') {
+                activeObject.set({
+                    fontFamily: document.getElementById('font-family').value,
+                    fontSize: parseInt(document.getElementById('font-size').value, 10),
+                    fill: document.getElementById('font-color').value
+                });
+                canvas.renderAll();
+                saveState();
+            }
+        }
+
+        // Handles image download
+        function handleDownload() {
+            if (!img) {
+                return;
+            }
+            
+            const format = document.getElementById('download-format').value;
+            const resolution = document.getElementById('download-resolution').value;
+            let width, height;
+
+            if (resolution === 'original') {
+                width = img.width;
+                height = img.height;
+            } else {
+                [width, height] = resolution.split('x').map(Number);
+            }
+
+            const link = document.createElement('a');
+            
+            const dataURL = canvas.toDataURL({
+                format: format,
+                quality: 1.0,
+                multiplier: width / canvas.getWidth()
+            });
+            
+            link.href = dataURL;
+            link.download = `edited_photo_${resolution}.${format}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Resets all changes by reloading the original image
+        function handleReset() {
+            if (!originalImageSrc) {
+                return;
+            }
+            
+            fabric.Image.fromURL(originalImageSrc, (oImg) => {
+                canvas.clear();
+                img = oImg;
+                img.set({
+                    crossOrigin: 'anonymous',
+                    originX: 'center',
+                    originY: 'center',
+                    left: canvas.getCenter().left,
+                    top: canvas.getCenter().top
+                });
+                const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+                img.scale(scale);
+                canvas.add(img);
+                canvas.renderAll();
+                
+                /* Reset all sliders and text options */
+                document.getElementById('brightness-slider').value = 0;
+                document.getElementById('contrast-slider').value = 0;
+                document.getElementById('saturation-slider').value = 0;
+                document.getElementById('sharpen-slider').value = 0;
+                document.getElementById('shadow-slider').value = 0;
+                document.getElementById('gamma-slider').value = 1;
+                document.getElementById('zoom-slider').value = 1;
+                document.getElementById('rotate-slider').value = 0;
+                document.getElementById('zoom-value').innerText = `100%`;
+                document.getElementById('rotate-value').innerText = `0°`;
+                document.getElementById('text-options').classList.add('hidden');
+
+                // Clear history and save initial state
+                history = [];
+                historyIndex = -1;
+                saveState();
+            }, { crossOrigin: 'anonymous' });
+        }
+    </script>
+</body>
+</html>
+</div></body></html>
