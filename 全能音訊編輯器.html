@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>全能音訊編輯器</title>
+  <style>
+    :root{
+      --bg:#ECECEC;
+      --panel-bg:rgba(255,255,255,.9);
+      --stroke:rgba(0,0,0,.08);
+      --shadow:0 8px 30px rgba(0,0,0,.08);
+      --blue:#0A84FF;
+      --peach:#FF8C66;
+      --red:#FF605C; --yellow:#FFBD44; --green:#00CA4E;
+      --text:#1c1c1e; --muted:#6e6e73;
+      --card-radius:20px;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0; background:var(--bg); padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      color:var(--text);
+      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    }
+    .frame{max-width:1200px; margin:0 auto;}
+    .titlebar{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+    .dots{display:flex; gap:8px; align-items:center}
+    .dot{width:12px; height:12px; border-radius:50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);}
+    .dot.red{background:var(--red);} .dot.yellow{background:var(--yellow);} .dot.green{background:var(--green);}
+    .titles{text-align:center; flex-grow:1;}
+    .titles h1{margin:0; font-size:26px; font-weight:700;}
+    .titles h2{margin:2px 0 0; font-size:14px; font-weight:400; color:var(--muted);}
+    .author{font-size:13px; color:var(--muted); white-space:nowrap; margin-top: 4px;}
+    .glass{background:var(--panel-bg); border:1px solid var(--stroke); border-radius:var(--card-radius); backdrop-filter: saturate(160%) blur(22px); -webkit-backdrop-filter:saturate(160%) blur(22px); box-shadow:var(--shadow);}
+    .layout{display:grid; grid-template-columns: 360px 1fr; gap:18px; align-items: start;}
+    @media (max-width: 980px){.layout{grid-template-columns: 1fr;}}
+    .sidebar{display:flex; flex-direction:column; gap:12px;}
+    .panel{padding:18px;}
+    .panel h3{margin:0 0 12px; font-size:16px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.8px;}
+    .btn{appearance:none; border:none; border-radius:14px; padding:10px 14px; cursor:pointer; font-weight:600; box-shadow:0 1px 0 rgba(0,0,0,.04) inset; transition:.15s ease;}
+    .btn.primary{background:var(--blue); color:white;} .btn.primary:hover{filter:brightness(1.05);}
+    .btn.ghost{background:rgba(0,0,0,.04);} .btn.ghost:hover{background:rgba(0,0,0,.07);}
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #export.btn.primary { background: var(--peach); }
+    #export.btn.primary:hover { filter: brightness(1.08); }
+    .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px; justify-content: center;}
+    .stack{display:flex; flex-direction:column; gap:12px}
+    .slider{display:grid; grid-template-columns:110px 1fr 64px; align-items:center; gap:10px}
+    .slider input[type="range"]{width:100%}
+    .value{font-variant-numeric: tabular-nums; color:var(--muted);}
+    .input-group {display: flex; align-items: center; gap: 8px; margin-top: 8px;}
+    .input-group label { flex-shrink: 0; }
+    .input-group input[type="number"], .input-group input[type="text"] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--stroke); background: rgba(255,255,255,.5); font-family: monospace;}
+    .filedrop{border:2px dashed rgba(0,0,0,.12); border-radius:16px; padding:20px 16px; text-align:center; display: flex; flex-direction: column; align-items: center; gap: 12px;}
+    .grid{display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px}
+    @media (max-width: 600px){.grid{grid-template-columns:1fr}}
+    .seg{display:flex; gap:6px; background:rgba(0,0,0,.06); padding:6px; border-radius:12px}
+    .seg .format-btn { background: transparent; border: none; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 600; color: var(--muted); }
+    .seg .format-btn.active { background: white; color: var(--blue); box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+    canvas{width:100%; display:block; border-radius:14px; background:rgba(255,255,255,.65); border:1px solid var(--stroke)}
+    .badge{font-size:12px; color:var(--muted)}
+    .footer{margin-top:14px; display:flex; justify-content:space-between; align-items:center;}
+    .scope-container{ margin-top: 12px; grid-column: 1 / -1; }
+    #waveformContainer { position: relative; margin-bottom: 12px; }
+    .playhead { position: absolute; top: 0; left: 0; width: 3px; height: 100%; background-color: var(--red); pointer-events: none; transform: translateX(-1.5px); }
+    .selection-rect { position: absolute; top: 0; background-color: rgba(10, 132, 255, 0.3); border: 1px solid var(--blue); pointer-events: none; }
+    .time-container { margin-bottom: 12px; position: relative; }
+    #time-ruler { width: 100%; height: 20px; background: rgba(0,0,0,0.05); border-radius: 10px; cursor: pointer; position: relative; }
+    #time-indicator { position: absolute; top: 0; left: 0; width: 2px; height: 100%; background: var(--blue); transform: translateX(-1px); }
+    #time-hover-info { position: absolute; bottom: 100%; left: 0; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; display: none; }
+    #timeDisplay { font-size: 20px; font-weight: 500; text-align: center; color: var(--muted); letter-spacing: 1px; margin-top: 8px; font-variant-numeric: tabular-nums;}
+    .player-controls { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 12px 0 20px; padding: 12px; background: rgba(0,0,0,0.04); border-radius: 16px;}
+    .player-controls .slider-group { display: grid; grid-template-columns:1fr; gap:12px; width:100%; }
+    @media (min-width: 600px) { .player-controls .slider-group { grid-template-columns: repeat(3, 1fr); } }
+    .player-controls .slider { grid-template-columns: 70px 1fr 50px; gap: 8px; font-size: 13px; }
+    .player-controls .transport-group { display: flex; align-items: center; gap: 10px; }
+    .loop-controls { display: flex; gap: 10px; align-items: center; width: 100%; justify-content: center; }
+    .loop-controls .input-group input { width: 80px; text-align: center; }
+    .zoom-controls { display: flex; gap: 10px; justify-content: center; margin-top: 10px; grid-column: 1 / -1; }
+    #fileNameDisplay { text-align: center; margin-top: 8px; padding: 6px 8px; white-space: normal; word-break: break-all; font-size: 14px; font-weight: 700; color: var(--blue); border-radius: 8px; background: rgba(10, 132, 255, 0.1); min-height: 1.2em; }
+    #scope{ height: 100px; }
+    #loadingIndicator { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; gap: 10px; color: var(--muted); font-weight: 600; }
+    .spinner { width: 50px; height: 50px; border: 5px solid rgba(0,0,0,0.1); border-top-color: var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #exportStatus { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    #exportStatus .spinner {
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(10, 132, 255, 0.2);
+        border-top-color: var(--blue);
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="titlebar">
+      <div class="dots">
+        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+      </div>
+      <div class="titles">
+        <h1>全能音訊編輯器</h1>
+        <h2>輕鬆完成音訊剪輯、音量標準化、等化器調整與檔案分割</h2>
+        <div class="author">製作者：陳政德</div>
+      </div>
+      <div style="width: 70px; flex-shrink: 0;"></div> <!-- Spacer for balance -->
+    </div>
+
+    <div class="layout">
+      <!-- Left panels -->
+      <div class="sidebar">
+        <div class="panel glass stack">
+          <h3>匯入</h3>
+          <div class="filedrop" id="drop">
+            <label class="btn primary">
+              選擇檔案
+              <input id="file" type="file" accept="audio/*,.m4a,.ogg,.aac,.3gp" hidden>
+            </label>
+            <div class="badge">支援常見格式，如WAV, MP3, M4A, OGG等</div>
+          </div>
+          <div id="fileNameDisplay" title="尚未載入檔案">尚未載入檔案</div>
+          <div class="toolbar">
+             <button id="export" class="btn primary">💾 <span>匯出處理後音訊</span></button>
+          </div>
+        </div>
+
+        <div class="panel glass stack">
+            <h3>修復與編輯</h3>
+            <div class="toolbar" style="flex-direction: column; gap: 8px; align-items: stretch; margin-top:0;">
+              <button id="normalizeBtn" class="btn ghost">音量標準化 (-1 dBFS)</button>
+              <button id="trimBtn" class="btn ghost">裁剪 (保留選取)</button>
+              <button id="deleteBtn" class="btn ghost">刪除 (移除選取)</button>
+            </div>
+        </div>
+      </div>
+
+      <!-- Right main area -->
+      <div class="panel glass" id="mainRightPanel">
+        <h3>波形編輯與EQ</h3>
+        <div id="waveformContainer">
+            <canvas id="waveformCanvas"></canvas>
+            <div id="playhead" class="playhead" style="display: none;"></div>
+            <div id="selectionRect" class="selection-rect" style="display: none;"></div>
+        </div>
+        
+        <div class="time-container">
+            <div id="time-ruler">
+                <div id="time-indicator"></div>
+                <div id="time-hover-info">00:00.0</div>
+            </div>
+            <div id="timeDisplay">00:00.0 / 00:00.0</div>
+        </div>
+
+        <div class="player-controls">
+          <div class="transport-group">
+            <div class="seg">
+              <button id="play">▶︎</button>
+              <button id="pause">⏸</button>
+              <button id="stop">⏹</button>
+            </div>
+          </div>
+           <div class="loop-controls">
+                <div class="input-group">
+                    <label>開始:</label>
+                    <input type="text" id="loopStart" value="00:00.0">
+                </div>
+                <div class="input-group">
+                    <label>結束:</label>
+                    <input type="text" id="loopEnd" value="00:00.0">
+                </div>
+                <div class="input-group">
+                    <input type="checkbox" id="loopToggle" style="width: auto;">
+                    <label for="loopToggle">循環  ( 區段播放:範圍→句選循環→停止鍵→播放鍵 )                      
+                    </label>
+                </div>
+            </div>
+          <div class="slider-group">
+            <div class="slider">
+              <label>音量</label>
+              <input id="gain" type="range" min="0" max="2" step="0.01" value="1" />
+              <div class="value" id="gainV">1.00</div>
+            </div>
+            <div class="slider">
+              <label>聲道平衡</label>
+              <input id="pan" type="range" min="-1" max="1" step="0.01" value="0" />
+              <div class="value" id="panV">0.00</div>
+            </div>
+            <div class="slider">
+              <label>速度</label>
+              <input id="rate" type="range" min="0.5" max="2" step="0.01" value="1">
+              <div class="value" id="rateV">1.00x</div>
+            </div>
+             <div class="zoom-controls">
+                <button id="zoomInBtn" class="btn ghost">放大</button>
+                <button id="zoomOutBtn" class="btn ghost">縮小</button>
+                <button id="zoomAllBtn" class="btn ghost">顯示全部</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="slider"><label>低頻切除</label><input id="hp" type="range" min="20" max="500" step="1" value="80"><div class="value" id="hpV">80 Hz</div></div>
+          <div class="slider"><label>高頻切除</label><input id="lp" type="range" min="2000" max="20000" step="10" value="12000"><div class="value" id="lpV">12 kHz</div></div>
+          <div class="slider"><label>峰值頻率</label><input id="peakF" type="range" min="200" max="8000" step="1" value="2500"><div class="value" id="pfV">2500 Hz</div></div>
+          <div class="slider"><label>峰值增益</label><input id="peakG" type="range" min="-15" max="15" step="0.1" value="0"><div class="value" id="pgV">0 dB</div></div>
+          <div class="slider"><label>頻寬 (Q)</label><input id="peakQ" type="range" min="0.1" max="18" step="0.1" value="2"><div class="value" id="pqV">2.0</div></div>
+          <div class="slider"><label>動態EQ閾值</label><input id="deqThreshold" type="range" min="-100" max="0" step="1" value="-100"><div class="value" id="deqTV">-inf dB</div></div>
+          <div class="scope-container">
+              <canvas id="scope"></canvas>
+              <div class="footer">
+                <div class="badge">分析儀：即時頻譜</div>
+              </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXPORT PANEL (Initially Hidden) -->
+      <div class="panel glass stack" id="exportPanel" style="display: none;">
+          <h3>匯出設定</h3>
+          
+          <div class="slider">
+              <label>調整音量</label>
+              <input id="exportGain" type="range" min="0" max="2" step="0.01" value="1">
+              <div class="value" id="exportGainV">1.00</div>
+          </div>
+          
+          <div style="margin-top: 12px;">
+            <label>匯出的音訊格式</label>
+            <div class="seg" id="formatSelector" style="margin-top:4px; justify-content: center;">
+                <button class="format-btn active" data-format="wav">WAV</button>
+                <button class="format-btn" data-format="mp3">MP3</button>
+            </div>
+             <div class="badge" style="text-align: center; margin-top: 8px;">註：因瀏覽器技術限制，僅支援匯出WAV/MP3格式</div>
+          </div>
+
+          <div id="mp3Options" class="stack" style="display: none; margin-top: 12px; gap: 12px;">
+              <div class="slider">
+                  <label>MP3 位元率</label>
+                  <input id="mp3Bitrate" type="range" min="64" max="320" step="32" value="192">
+                  <div class="value" id="mp3BitrateV">192 kbps</div>
+              </div>
+              <div>
+                <label>聲道</label>
+                <div class="seg" id="channelSelector" style="margin-top:4px; justify-content: center;">
+                    <button class="format-btn active" data-channels="source">來源預設</button>
+                    <button class="format-btn" data-channels="mono">單聲道</button>
+                </div>
+              </div>
+          </div>
+          
+          <div style="margin-top: 12px;">
+            <label>分割檔案 (選填)</label>
+            <div class="input-group">
+                <label for="splitCount">平均分割為</label>
+                <input type="number" id="splitCount" min="1" placeholder="份數">
+                <label>份</label>
+            </div>
+          </div>
+          
+          <div id="exportStatus" class="badge" style="text-align: center; margin-top: 12px; display: none;">
+            <div class="spinner"></div>
+            <span id="exportStatusText">音訊處理中，請稍候...</span>
+          </div>
+
+          <div class="toolbar" style="margin-top: 24px; display:flex; justify-content:center; gap: 10px;">
+              <button id="saveFileBtn" class="btn primary" style="width: 33.33%;">另存新檔</button>
+              <button id="cancelExportBtn" class="btn ghost" style="width: 33.33%;">取消</button>
+          </div>
+      </div>
+      <a id="download" style="display:none"></a>
+    </div>
+    
+    <div id="loadingIndicator" style="display: none;">
+        <div class="spinner"></div>
+        <div>音訊載入中...</div>
+    </div>
+  </div>
+
+  <script>
+  // ===== Web Audio Setup =====
+  const AC = new (window.AudioContext || window.webkitAudioContext)();
+  
+  const preEffectNode = AC.createGain();
+  const gain = AC.createGain(), pan = AC.createStereoPanner(), analyser = AC.createAnalyser();
+  analyser.fftSize = 2048;
+  const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 80; hp.Q.value = 0.707;
+  const peak = AC.createBiquadFilter(); peak.type = 'peaking'; peak.frequency.value = 2500; peak.Q.value = 2;
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 12000; lp.Q.value = 0.707;
+  const deqCompressor = AC.createDynamicsCompressor(); deqCompressor.attack.value = 0.001; deqCompressor.release.value = 0.1;
+  const deqInvert = AC.createGain(); deqInvert.gain.value = -1;
+  const deqMakeUp = AC.createGain();
+
+  preEffectNode.connect(hp).connect(lp).connect(pan).connect(gain).connect(analyser).connect(AC.destination);
+  const deqChainInput = AC.createGain();
+  pan.connect(deqChainInput);
+  deqChainInput.connect(peak).connect(deqCompressor).connect(deqInvert).connect(deqMakeUp);
+  deqMakeUp.connect(gain);
+  
+  let audioBuffer = null, sourceNode = null;
+  let isPlaying = false, startTime = 0, pausedAt = 0, animationFrameId = null;
+  let loopStart = 0, loopEnd = 0, isLooping = false;
+  let zoom = 1; let viewOffset = 0;
+  let mp3EncoderWorker = null;
+
+  const $ = (id) => document.getElementById(id);
+  const setVal = (id, txt) => $(id).textContent = txt;
+  
+  const waveformCanvas = $('waveformCanvas'), waveformCtx = waveformCanvas.getContext('2d');
+  const playhead = $('playhead'), selectionRect = $('selectionRect');
+  let isDragging = false, selectionStart = 0, selectionEnd = 0;
+
+  async function loadFile(file) {
+    stop();
+    $('loadingIndicator').style.display = 'flex';
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      audioBuffer = await AC.decodeAudioData(arrayBuffer);
+      showFileInfo(file);
+      const duration = audioBuffer ? audioBuffer.duration : 0;
+      $('loopStart').value = formatTime(0);
+      $('loopEnd').value = formatTime(duration);
+      loopStart = 0;
+      loopEnd = duration;
+      updateTimeDisplay();
+      resetUI();
+      drawWaveform();
+    } catch (e) {
+      console.error("Error decoding audio file:", e);
+      audioBuffer = null;
+      $('fileNameDisplay').textContent = "檔案載入失敗";
+    } finally {
+        $('loadingIndicator').style.display = 'none';
+    }
+  }
+  
+  function showFileInfo(file) {
+      const fileName = file.name;
+      const fileSize = formatFileSize(file.size);
+      $('fileNameDisplay').textContent = `${fileName} (${fileSize})`;
+      $('fileNameDisplay').title = `${fileName} (${fileSize})`;
+  }
+  
+  function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  $('file').onchange = e => { if(e.target.files[0]) loadFile(e.target.files[0]); };
+  const drop = $('drop');
+  drop.ondragover = e => { e.preventDefault(); drop.style.borderColor = 'var(--blue)'; };
+  drop.ondragleave = () => drop.style.borderColor = '';
+  drop.ondrop = e => { e.preventDefault(); drop.style.borderColor = ''; if(e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); };
+
+  function play(startOffset = pausedAt) {
+    if (isPlaying || !audioBuffer) return;
+    if(isLooping && startOffset >= loopEnd) startOffset = loopStart;
+
+    sourceNode = AC.createBufferSource(); sourceNode.buffer = audioBuffer;
+    sourceNode.connect(preEffectNode); 
+    sourceNode.playbackRate.value = parseFloat($('rate').value);
+    if (isLooping) {
+        sourceNode.loop = true; sourceNode.loopStart = loopStart; sourceNode.loopEnd = loopEnd;
+    }
+    sourceNode.start(0, startOffset);
+    startTime = AC.currentTime - (startOffset / sourceNode.playbackRate.value);
+    pausedAt = 0; isPlaying = true; playhead.style.display = 'block';
+    updateLoop();
+    sourceNode.onended = () => { if (isPlaying && !isLooping) stop(); };
+  }
+
+  function pause() {
+    if (!isPlaying || !sourceNode) return;
+    pausedAt = (AC.currentTime - startTime) * sourceNode.playbackRate.value;
+    sourceNode.stop();
+    isPlaying = false; cancelAnimationFrame(animationFrameId);
+  }
+
+  function stop() {
+    if (sourceNode) { try { sourceNode.stop(0); } catch(e) {} sourceNode = null; }
+    isPlaying = false; pausedAt = isLooping ? loopStart : 0;
+    startTime = 0; cancelAnimationFrame(animationFrameId);
+    updateTimeDisplay(pausedAt); updatePlayhead();
+  }
+
+  $('play').onclick = () => { if (AC.state === 'suspended') { AC.resume().then(() => play(pausedAt)); } else { play(pausedAt); }};
+  $('pause').onclick = pause;
+  $('stop').onclick = stop;
+
+  function updateLoop() {
+    if (!isPlaying || !sourceNode) return;
+    let elapsed = (AC.currentTime - startTime) * sourceNode.playbackRate.value;
+    if(isLooping && elapsed >= loopEnd){
+        const loopDuration = loopEnd - loopStart;
+        elapsed = loopStart + ((elapsed - loopStart) % loopDuration);
+        startTime = AC.currentTime - (elapsed / sourceNode.playbackRate.value);
+    }
+    updateTimeDisplay(elapsed); updatePlayhead(elapsed);
+    animationFrameId = requestAnimationFrame(updateLoop);
+  }
+  
+  function formatTime(seconds) {
+    if (isNaN(seconds) || seconds < 0) return '00:00.0';
+    const min = Math.floor(seconds / 60), sec = Math.floor(seconds % 60), ms = Math.floor((seconds - Math.floor(seconds)) * 10);
+    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${ms}`;
+  }
+  function updateTimeDisplay(currentTime = pausedAt) {
+    const duration = audioBuffer ? audioBuffer.duration : 0;
+    $('timeDisplay').textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
+  }
+  
+  function resetUI() {
+    clearSelection();
+    updateTimeDisplay();
+    updatePlayhead();
+    zoom = 1;
+    viewOffset = 0;
+    const initialVolume = 0.2;
+    $('gain').value = initialVolume;
+    setVal('gainV', Number(initialVolume).toFixed(2));
+    gain.gain.value = initialVolume;
+  }
+  
+  const timeRuler = $('time-ruler'), timeHover = $('time-hover-info');
+  timeRuler.onmousemove = e => {
+    if(!audioBuffer) return;
+    const rect = timeRuler.getBoundingClientRect();
+    const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const hoverTime = percent * audioBuffer.duration;
+    timeHover.textContent = formatTime(hoverTime);
+    timeHover.style.left = `${percent * 100}%`;
+    timeHover.style.display = 'block';
+  };
+  timeRuler.onmouseleave = () => { timeHover.style.display = 'none'; };
+  timeRuler.onclick = e => {
+    if(!audioBuffer) return;
+    const rect = timeRuler.getBoundingClientRect();
+    const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const seekTime = percent * audioBuffer.duration;
+    const wasPlaying = isPlaying;
+    if (wasPlaying) pause();
+    pausedAt = seekTime;
+    updatePlayhead(); updateTimeDisplay();
+    if(wasPlaying) play();
+  };
+
+  function updatePlayhead() {
+      if (!audioBuffer) {
+          playhead.style.display = 'none';
+          return;
+      }
+      const currentTime = isPlaying ? ((AC.currentTime - startTime) * (sourceNode?.playbackRate.value || 1.0)) : pausedAt;
+      const duration = audioBuffer.duration;
+      const visibleStart = viewOffset;
+      const visibleDuration = duration / zoom;
+      const visibleEnd = visibleStart + visibleDuration;
+      $('time-indicator').style.left = `${(currentTime/duration) * 100}%`;
+      if (currentTime >= visibleStart && currentTime <= visibleEnd) {
+          playhead.style.display = 'block';
+          const percent = (currentTime - visibleStart) / visibleDuration;
+          playhead.style.left = `${percent * 100}%`;
+      } else {
+          playhead.style.display = 'none';
+      }
+  }
+
+  function drawWaveform() {
+      const canvas = waveformCanvas;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = canvas.clientWidth * dpr;
+      canvas.height = 100 * dpr;
+      const ctx = waveformCtx;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!audioBuffer) return;
+      ctx.scale(dpr, dpr);
+      const data = audioBuffer.getChannelData(0);
+      const totalSamples = data.length;
+      const visibleSamples = Math.floor(totalSamples / zoom);
+      const startSample = Math.floor(viewOffset * audioBuffer.sampleRate);
+      const step = Math.ceil(visibleSamples / canvas.clientWidth);
+      const amp = canvas.clientHeight / 2;
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(10, 132, 255, 0.6)';
+      ctx.beginPath();
+      for (let i = 0; i < canvas.clientWidth; i++) {
+          const sampleIdx = startSample + (i * step);
+          let min = 1.0; let max = -1.0;
+          for (let j = 0; j < step; j++) {
+              if (sampleIdx + j < totalSamples) {
+                  const datum = data[sampleIdx + j];
+                  if (datum < min) min = datum;
+                  if (datum > max) max = datum;
+              }
+          }
+          ctx.moveTo(i, (1 + min) * amp);
+          ctx.lineTo(i, (1 + max) * amp);
+      }
+      ctx.stroke();
+  }
+
+  function pxToSeconds(px) {
+    if (!audioBuffer) return 0;
+    const visibleDuration = audioBuffer.duration / zoom;
+    return viewOffset + (px / waveformCanvas.clientWidth) * visibleDuration;
+  }
+
+  waveformCanvas.onmousedown = e => {
+    if (!audioBuffer) return;
+    const rect = waveformCanvas.getBoundingClientRect(), startX = e.clientX - rect.left;
+    if (e.shiftKey) { 
+        isDragging = true; let lastX = e.clientX;
+        const onMouseMove = moveE => {
+            if (!isDragging) return;
+            const dx = moveE.clientX - lastX; lastX = moveE.clientX;
+            const deltaSeconds = (dx / waveformCanvas.clientWidth) * (audioBuffer.duration / zoom);
+            viewOffset = Math.max(0, Math.min(viewOffset - deltaSeconds, audioBuffer.duration - audioBuffer.duration / zoom));
+            drawWaveform(); updatePlayhead();
+        };
+        const onMouseUp = () => { isDragging = false; window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+        window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp); return;
+    }
+    isDragging = true;
+    selectionStart = pxToSeconds(startX);
+    selectionEnd = selectionStart;
+    selectionRect.style.left = `${startX}px`;
+    selectionRect.style.width = '0px';
+    selectionRect.style.display = 'block';
+    const onMouseMove = moveE => {
+        if (!isDragging) return;
+        const currentX = moveE.clientX - rect.left;
+        const left = Math.min(startX, currentX), width = Math.abs(currentX - startX);
+        selectionRect.style.left = `${left}px`;
+        selectionRect.style.width = `${width}px`;
+        selectionEnd = pxToSeconds(currentX);
+    };
+    const onMouseUp = () => {
+        isDragging = false;
+        if (selectionStart > selectionEnd) [selectionStart, selectionEnd] = [selectionEnd, selectionStart];
+        $('loopStart').value = formatTime(selectionStart);
+        $('loopEnd').value = formatTime(selectionEnd);
+        loopStart = selectionStart; loopEnd = selectionEnd;
+        window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp);
+    };
+    window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp);
+  };
+  
+  function clearSelection(){
+    selectionStart = 0; selectionEnd = 0;
+    if(audioBuffer){
+        $('loopStart').value = formatTime(0);
+        $('loopEnd').value = formatTime(audioBuffer.duration);
+    }
+    selectionRect.style.display = 'none';
+  }
+
+  $('zoomInBtn').onclick = () => {
+      if (!audioBuffer || zoom >= 256) return;
+      const centerTime = viewOffset + (audioBuffer.duration / zoom) / 2;
+      zoom *= 2;
+      viewOffset = centerTime - (audioBuffer.duration / zoom) / 2;
+      viewOffset = Math.max(0, Math.min(viewOffset, audioBuffer.duration - audioBuffer.duration / zoom));
+      drawWaveform(); updatePlayhead();
+  };
+  $('zoomOutBtn').onclick = () => {
+      if (!audioBuffer || zoom <= 1) return;
+      const centerTime = viewOffset + (audioBuffer.duration / zoom) / 2;
+      zoom /= 2;
+      viewOffset = centerTime - (audioBuffer.duration / zoom) / 2;
+      viewOffset = Math.max(0, Math.min(viewOffset, audioBuffer.duration - audioBuffer.duration / zoom));
+      drawWaveform(); updatePlayhead();
+  };
+  $('zoomAllBtn').onclick = () => {
+      if (!audioBuffer) return;
+      zoom = 1; viewOffset = 0;
+      drawWaveform(); updatePlayhead();
+  };
+
+  $('gain').oninput = e => { gain.gain.value = +e.target.value; setVal('gainV', Number(gain.gain.value).toFixed(2)); };
+  $('pan').oninput = e => { pan.pan.value = +e.target.value; setVal('panV', Number(pan.pan.value).toFixed(2)); };
+  $('rate').oninput = e => { const rateVal = +e.target.value; if(sourceNode) { sourceNode.playbackRate.value = rateVal; } setVal('rateV', `${Number(rateVal).toFixed(2)}x`); };
+  $('hp').oninput = e=>{ hp.frequency.value = +e.target.value; setVal('hpV', `${Math.round(hp.frequency.value)} Hz`); };
+  $('lp').oninput = e=>{ lp.frequency.value = +e.target.value; const d = lp.frequency.value >= 1000 ? (lp.frequency.value / 1000).toFixed(1) + ' kHz' : Math.round(lp.frequency.value) + ' Hz'; setVal('lpV', d); };
+  $('peakF').oninput = e=>{ peak.frequency.value = +e.target.value; setVal('pfV', `${Math.round(peak.frequency.value)} Hz`); };
+  $('peakG').oninput = e=>{ peak.gain.value = +e.target.value; setVal('pgV', `${Number(peak.gain.value).toFixed(1)} dB`); };
+  $('peakQ').oninput = e=>{ peak.Q.value = +e.target.value; setVal('pqV', Number(peak.Q.value).toFixed(1)); };
+  $('deqThreshold').oninput = e => {
+      const val = +e.target.value;
+      if (val > -100) {
+          deqCompressor.threshold.value = val; deqCompressor.ratio.value = 4;
+          deqMakeUp.gain.value = -val / 2;
+          deqChainInput.connect(peak);
+      } else {
+          try { deqChainInput.disconnect(peak); } catch(e) {}
+      }
+      setVal('deqTV', val > -100 ? `${val} dB` : `-inf dB`);
+  };
+
+  function updateBuffer(newBuffer) {
+      const wasPlaying = isPlaying; stop(); audioBuffer = newBuffer;
+      const duration = audioBuffer ? audioBuffer.duration : 0;
+      $('loopStart').value = formatTime(0); $('loopEnd').value = formatTime(duration);
+      loopStart = 0; loopEnd = duration;
+      updateTimeDisplay(); clearSelection();
+      drawWaveform();
+      if(wasPlaying) play();
+  }
+  $('normalizeBtn').onclick = () => {
+    if (!audioBuffer) return; let peak = 0;
+    for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+        const cd = audioBuffer.getChannelData(i);
+        for (let j = 0; j < cd.length; j++) peak = Math.max(peak, Math.abs(cd[j]));
+    }
+    const gainVal = 0.89125 / (peak || 1);
+    const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, audioBuffer.length, audioBuffer.sampleRate);
+    for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+        const oldData = audioBuffer.getChannelData(i), newData = newBuffer.getChannelData(i);
+        for (let j = 0; j < oldData.length; j++) newData[j] = oldData[j] * gainVal;
+    }
+    updateBuffer(newBuffer);
+  };
+  $('trimBtn').onclick = () => {
+    if (!audioBuffer || selectionEnd === selectionStart) return;
+    const start = Math.floor(selectionStart * audioBuffer.sampleRate), end = Math.floor(selectionEnd * audioBuffer.sampleRate), len = end - start;
+    const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, len, audioBuffer.sampleRate);
+    for (let i = 0; i < audioBuffer.numberOfChannels; i++) { newBuffer.getChannelData(i).set(audioBuffer.getChannelData(i).subarray(start, end)); }
+    updateBuffer(newBuffer);
+  };
+  $('deleteBtn').onclick = () => {
+    if (!audioBuffer || selectionEnd === selectionStart) return;
+    const start = Math.floor(selectionStart * audioBuffer.sampleRate), end = Math.floor(selectionEnd * audioBuffer.sampleRate);
+    const len = audioBuffer.length - (end - start);
+    const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, len, audioBuffer.sampleRate);
+    for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+      const oldData = audioBuffer.getChannelData(i), newData = newBuffer.getChannelData(i);
+      newData.set(oldData.subarray(0, start)); newData.set(oldData.subarray(end), start);
+    }
+    updateBuffer(newBuffer);
+  };
+
+  const scopeCanvas = $('scope'), scopeCtx = scopeCanvas.getContext('2d');
+  function drawScope(){
+    requestAnimationFrame(drawScope);
+    const W = scopeCanvas.width = scopeCanvas.clientWidth * devicePixelRatio, H = scopeCanvas.height = scopeCanvas.clientHeight * devicePixelRatio;
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(data);
+    scopeCtx.clearRect(0,0,W,H);
+    const bars = data.length, bw = W / bars;
+    for(let i=0;i<bars;i++){ const v = data[i]/255, h = v*H; scopeCtx.globalAlpha = .9; scopeCtx.fillStyle = '#0A84FF'; scopeCtx.fillRect(i*bw, H-h, bw*0.9, h); }
+  } drawScope();
+  
+  function parseTimeToSeconds(timeStr) {
+    const parts = String(timeStr).split(/[:.]/);
+    if(parts.length < 2) return 0;
+    return (parseInt(parts[0] || 0, 10) * 60) + parseInt(parts[1] || 0, 10) + (parseFloat(parts[2] || 0) / 10);
+  }
+  $('loopStart').onchange = () => { 
+    loopStart = parseTimeToSeconds($('loopStart').value);
+    if (!isPlaying) {
+        pausedAt = loopStart;
+        updatePlayhead();
+        updateTimeDisplay();
+    }
+  };
+  $('loopEnd').onchange = () => { loopEnd = parseTimeToSeconds($('loopEnd').value) || (audioBuffer ? audioBuffer.duration : 0); };
+  $('loopToggle').onchange = e => {
+      isLooping = e.target.checked;
+      if (isPlaying) {
+          const currentPlayTime = (AC.currentTime - startTime) * sourceNode.playbackRate.value;
+          pause(); play(currentPlayTime);
+      }
+  };
+
+  let selectedExportFormat = 'wav', selectedChannelMode = 'source';
+  const formatButtons = document.querySelectorAll('#formatSelector .format-btn');
+  formatButtons.forEach(b => b.onclick = () => { formatButtons.forEach(btn => btn.classList.remove('active')); b.classList.add('active'); selectedExportFormat = b.dataset.format; $('mp3Options').style.display = selectedExportFormat === 'mp3' ? 'flex' : 'none'; });
+  const channelButtons = document.querySelectorAll('#channelSelector .format-btn');
+  channelButtons.forEach(b => b.onclick = () => { channelButtons.forEach(btn => btn.classList.remove('active')); b.classList.add('active'); selectedChannelMode = b.dataset.channels; });
+  $('mp3Bitrate').oninput = e => setVal('mp3BitrateV', `${e.target.value} kbps`);
+  $('export').onclick = () => { if(!audioBuffer) { alert("請先載入音訊檔案"); return; } $('mainRightPanel').style.display = 'none'; $('exportPanel').style.display = 'flex'; };
+  $('cancelExportBtn').onclick = () => { $('exportPanel').style.display = 'none'; $('mainRightPanel').style.display = 'block'; };
+  $('exportGain').oninput = e => setVal('exportGainV', Number(e.target.value).toFixed(2));
+  
+  function bufferToWav(buffer) {
+    const numOfChan = buffer.numberOfChannels, length = buffer.length * numOfChan * 2 + 44, ab = new ArrayBuffer(length), view = new DataView(ab);
+    let offset = 0; const writeStr = (s) => { for (let i = 0; i < s.length; i++) view.setUint8(offset++, s.charCodeAt(i)); };
+    writeStr('RIFF'); view.setUint32(offset, 36 + buffer.length * numOfChan * 2, true); offset += 4;
+    writeStr('WAVE'); writeStr('fmt '); view.setUint32(offset, 16, true); offset += 4; view.setUint16(offset, 1, true); offset += 2; view.setUint16(offset, numOfChan, true); offset += 2;
+    view.setUint32(offset, buffer.sampleRate, true); offset += 4; view.setUint32(offset, buffer.sampleRate * numOfChan * 2, true); offset += 4;
+    view.setUint16(offset, numOfChan * 2, true); offset += 2; view.setUint16(offset, 16, true); offset += 2;
+    writeStr('data'); view.setUint32(offset, buffer.length * numOfChan * 2, true); offset += 4;
+    for (let ch = 0; ch < numOfChan; ch++) {
+        const chanData = buffer.getChannelData(ch);
+        for (let i = 0; i < buffer.length; i++) {
+            let s = Math.max(-1, Math.min(1, chanData[i]));
+            view.setInt16(offset + (i * numOfChan + ch) * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        }
+    }
+    return new Blob([view], { type: 'audio/wav' });
+  }
+
+  // ===== PERFORMANCE & STABILITY UPGRADE: MP3 Encoding in a Web Worker =====
+  function bufferToMp3(buffer, bitrate) {
+    return new Promise((resolve, reject) => {
+        if (!mp3EncoderWorker) {
+            const encoderJsString = `
+                self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.0/lame.min.js');
+                self.onmessage = function (e) {
+                    if (e.data.command === 'encode') {
+                        const mp3Data = encode(e.data);
+                        self.postMessage({ command: 'end', buffer: mp3Data });
+                    }
+                };
+                function encode({ channelData, sampleRate, bitrate, channels }) {
+                    const mp3Encoder = new lamejs.Mp3Encoder(channels, sampleRate, bitrate);
+                    const sampleBlockSize = 1152;
+                    const mp3Data = [];
+                    const convertToInt16 = (floatArray) => {
+                        const intArray = new Int16Array(floatArray.length);
+                        for (let i = 0; i < floatArray.length; i++) {
+                            const sample = Math.max(-1, Math.min(1, floatArray[i]));
+                            intArray[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+                        }
+                        return intArray;
+                    };
+                    let pcm_i16_channels = [];
+                    if (channels === 1) {
+                        const mono_f32 = new Float32Array(channelData[0].length);
+                        if (channelData.length > 1) {
+                            const left = channelData[0];
+                            const right = channelData[1];
+                            for(let i = 0; i < channelData[0].length; i++) {
+                                mono_f32[i] = (left[i] + right[i]) * 0.5;
+                            }
+                        } else {
+                            mono_f32.set(channelData[0]);
+                        }
+                        pcm_i16_channels.push(convertToInt16(mono_f32));
+                    } else {
+                        const left_f32 = channelData[0];
+                        const right_f32 = channelData.length > 1 ? channelData[1] : left_f32;
+                        pcm_i16_channels.push(convertToInt16(left_f32));
+                        pcm_i16_channels.push(convertToInt16(right_f32));
+                    }
+                    const dataLength = pcm_i16_channels[0].length;
+                    for (let i = 0; i < dataLength; i += sampleBlockSize) {
+                        const sampleChunks = pcm_i16_channels.map(channelData => channelData.subarray(i, i + sampleBlockSize));
+                        const mp3buf = mp3Encoder.encodeBuffer(...sampleChunks);
+                        if (mp3buf.length > 0) {
+                            mp3Data.push(mp3buf);
+                        }
+                    }
+                    const flushed = mp3Encoder.flush();
+                    if (flushed.length > 0) {
+                        mp3Data.push(flushed);
+                    }
+                    return mp3Data;
+                }
+            `;
+            const blob = new Blob([encoderJsString], { type: 'application/javascript' });
+            mp3EncoderWorker = new Worker(URL.createObjectURL(blob));
+        }
+
+        const channelData = [];
+        for (let i = 0; i < buffer.numberOfChannels; i++) {
+            channelData.push(buffer.getChannelData(i));
+        }
+
+        mp3EncoderWorker.onmessage = (e) => {
+            if (e.data.command === 'end') {
+                resolve(new Blob(e.data.buffer, { type: 'audio/mp3' }));
+            }
+        };
+        
+        mp3EncoderWorker.onerror = (e) => {
+            reject(new Error(`Worker error: ${e.message}`));
+        };
+
+        mp3EncoderWorker.postMessage({
+            command: 'encode',
+            channelData: channelData,
+            sampleRate: buffer.sampleRate,
+            bitrate: bitrate,
+            channels: (selectedChannelMode === 'mono') ? 1 : buffer.numberOfChannels
+        });
+    });
+  }
+
+
+  $('saveFileBtn').onclick = async () => {
+    if (!audioBuffer) return;
+    const status = $('exportStatus'), saveBtn = $('saveFileBtn');
+    const statusText = $('exportStatusText');
+    const spinner = status.querySelector('.spinner');
+
+    status.style.display = 'flex'; 
+    spinner.style.display = 'block';
+    statusText.textContent = '音訊處理中，請稍候...';
+    status.style.color = 'var(--blue)';
+    saveBtn.disabled = true;
+    
+    let exportError = null;
+    try {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        const originalFileName = $('fileNameDisplay').textContent.split(' (')[0];
+        const splitCount = parseInt($('splitCount').value) || 1;
+        if (splitCount < 1) throw new Error("分割份數無效");
+
+        for (let i = 0; i < splitCount; i++) {
+            statusText.textContent = `處理中... (${i + 1}/${splitCount})`;
+            const partLength = Math.floor(audioBuffer.length / splitCount);
+            const startOffset = i * partLength;
+            const endOffset = (i + 1) === splitCount ? audioBuffer.length : (i + 1) * partLength;
+            const bufferToRender = AC.createBuffer(audioBuffer.numberOfChannels, endOffset - startOffset, audioBuffer.sampleRate);
+            for(let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+                bufferToRender.copyToChannel(audioBuffer.getChannelData(ch).subarray(startOffset, endOffset), ch);
+            }
+            
+            const offlineCtx = new OfflineAudioContext(bufferToRender.numberOfChannels, bufferToRender.length, bufferToRender.sampleRate);
+            const oSrc = offlineCtx.createBufferSource(); oSrc.buffer = bufferToRender;
+            const oHp = offlineCtx.createBiquadFilter(), oPeak = offlineCtx.createBiquadFilter(), oLp = offlineCtx.createBiquadFilter();
+            const oPan = offlineCtx.createStereoPanner(), oGain = offlineCtx.createGain(), oExportGain = offlineCtx.createGain();
+            const oDeqC = offlineCtx.createDynamicsCompressor(), oDeqI = offlineCtx.createGain(), oDeqM = offlineCtx.createGain();
+            
+            oHp.type = 'highpass'; oHp.frequency.value = hp.frequency.value; oHp.Q.value = 0.707;
+            oLp.type = 'lowpass'; oLp.frequency.value = lp.frequency.value; oLp.Q.value = 0.707;
+            oPeak.type = 'peaking'; oPeak.frequency.value = peak.frequency.value; oPeak.gain.value = peak.gain.value; oPeak.Q.value = peak.Q.value;
+            oPan.pan.value = pan.pan.value;
+            oGain.gain.value = gain.gain.value;
+            oExportGain.gain.value = parseFloat($('exportGain').value);
+            oSrc.playbackRate.value = parseFloat($('rate').value);
+
+            let lastNode = oSrc.connect(oHp).connect(oLp).connect(oPan);
+            
+            const deqThresh = parseFloat($('deqThreshold').value);
+            if (deqThresh > -100) {
+                oDeqC.threshold.value = deqThresh; oDeqC.ratio.value = 4; oDeqC.attack.value = 0.001; oDeqC.release.value = 0.1;
+                oDeqI.gain.value = -1; oDeqM.gain.value = -deqThresh / 2;
+                lastNode.connect(oPeak).connect(oDeqC).connect(oDeqI).connect(oDeqM);
+                oDeqM.connect(oGain);
+                lastNode.connect(oGain);
+                lastNode = oGain;
+            } else {
+                lastNode.connect(oGain);
+                lastNode = oGain;
+            }
+            
+            lastNode.connect(oExportGain).connect(offlineCtx.destination);
+            oSrc.start(0);
+
+            const renderedBuffer = await offlineCtx.startRendering();
+            let audioBlob, fileExtension;
+            if (selectedExportFormat === 'wav') { 
+                audioBlob = bufferToWav(renderedBuffer); 
+                fileExtension = 'wav'; 
+            } 
+            else { 
+                audioBlob = await bufferToMp3(renderedBuffer, parseInt($('mp3Bitrate').value)); 
+                fileExtension = 'mp3'; 
+            }
+            const url = URL.createObjectURL(audioBlob), a = $('download');
+            a.href = url;
+            const fileName = splitCount > 1 ? `${originalFileName}_part${i+1}.${fileExtension}` : `${originalFileName}_processed.${fileExtension}`;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        statusText.textContent = `匯出完成 (${splitCount}個檔案)!`;
+        spinner.style.display = 'none';
+    } catch(e) { 
+        console.error("Export failed:", e); 
+        statusText.textContent = '匯出失敗';
+        status.style.color = 'var(--red)';
+        spinner.style.display = 'none';
+        exportError = e;
+    } finally {
+        saveBtn.disabled = false;
+        if (!exportError) {
+            setTimeout(() => {
+                status.style.display = 'none';
+                $('cancelExportBtn').click();
+            }, 2500);
+        }
+    }
+  };
+  
+  </script>
+</body>
+</html>
