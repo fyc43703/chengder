@@ -55,6 +55,7 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
+      box-sizing: border-box; /* 確保 padding 不會影響總寬度 */
     }
 
     /* ===== 容器：毛玻璃卡片 ===== */
@@ -68,27 +69,15 @@
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow);
       padding: 32px 32px 40px;
+      box-sizing: border-box; /* 確保 padding 不會影響總寬度 */
     }
 
-    /* ===== 標題列：左側三個原點 + 主標題（同一行） ===== */
+    /* ===== 標題列：左側三個原點 + 主標題（分行顯示） ===== */
     .header{ margin-bottom: 28px; }
-    .title-row{
-      display: flex;
-      align-items: center;
-      /* 讓主標題置中，同時保留左側三原點在同一行最左邊 */
-      position: relative;
-      justify-content: center;
-      gap: 12px;
-    }
     .traffic-lights{
-      display: inline-flex;
+      display: flex; /* 改為 flex 以便對齊 */
       gap: 8px;
-      align-items: center;
-      margin-right: 4px;
-      position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
+      margin-bottom: 20px; /* 與下方標題的間距 */
     }
     .dot{
       width: 12px;
@@ -100,27 +89,27 @@
     .dot.red{    background:#ff5f57; }
     .dot.yellow{ background:#febc2e; }
     .dot.green{  background:#28c840; }
-
+    
+    .title-row {
+      text-align: center; /* 讓標題與副標題置中 */
+    }
     .header h1{
       font-size: 28px;
       letter-spacing: .2px;
       margin: 0;
       font-weight: 700;
       color: var(--text);
-      text-align: center; /* 置中標題 */
     }
     .subtitle{
       margin: 8px 0 2px;
       color: var(--text-subtle);
       font-size: 14px;
       line-height: 1.6;
-      text-align: center; /* 置中副標題 */
     }
     .author-name{
       margin: 4px 0 0;
       color: var(--text-muted);
       font-size: 12px;
-      text-align: center; /* 置中作者 */
     }
 
     /* ===== 上傳區（保留原功能與文案） ===== */
@@ -146,7 +135,7 @@
 
     /* ===== 控制列（毛玻璃、系統藍按鈕） ===== */
     .controls{
-      display:flex; gap:20px; flex-wrap:wrap; align-items:center;
+      display:flex; gap:20px; flex-wrap:wrap; align-items:center; justify-content: space-between;
       background: var(--surface-glass);
       border: 1px solid var(--glass-border);
       border-radius: var(--radius-md);
@@ -166,13 +155,14 @@
       background: #fff;
       color: var(--text);
       appearance:none;
+      -webkit-appearance: none;
       background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="none" stroke="%23007aff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 5l6 6 6-6"/></svg>');
       background-repeat:no-repeat; background-position:right 12px center;
       transition: border-color .2s ease, box-shadow .2s ease;
     }
     .output-select:hover{ border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); }
 
-    .quality-slider{ width:200px; height:6px; border-radius:999px; background:#e9e9ec; outline:none; -webkit-appearance:none; position:relative; }
+    .quality-slider{ width:100%; max-width: 200px; height:6px; border-radius:999px; background:#e9e9ec; outline:none; -webkit-appearance:none; position:relative; }
     .quality-slider::-webkit-slider-thumb{
       -webkit-appearance:none; width:22px; height:22px; border-radius:50%;
       background:#fff; border:2px solid var(--primary);
@@ -214,11 +204,12 @@
       background: rgba(255,255,255,0.8); border-radius: 12px; margin-bottom:10px;
       border-left: 6px solid var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
-    .file-info{ flex:1; }
+    .file-item:last-child { margin-bottom: 0; }
+    .file-info{ flex:1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .file-name{ font-weight:600; color: var(--text); margin:0; }
     .file-size{ color: var(--text-muted); font-size:12px; margin-left:6px; }
 
-    .file-status{ padding:6px 12px; border-radius:999px; font-size:12px; font-weight:700; letter-spacing:.2px; }
+    .file-status{ padding:6px 12px; border-radius:999px; font-size:12px; font-weight:700; letter-spacing:.2px; white-space: nowrap; }
     .status-waiting{ background: var(--warn-bg); color: var(--warn-text); }
     .status-processing{ background: var(--process-bg); color: var(--process-text); }
     .status-completed{ background: var(--success-bg); color: var(--success-text); }
@@ -231,6 +222,7 @@
     /* ===== 訊息盒（毛玻璃） ===== */
     .message-box{
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: calc(100% - 40px); max-width: 400px;
       background: var(--surface-glass); border: 1px solid var(--glass-border);
       border-radius: var(--radius-md); padding: 22px; box-shadow: 0 18px 44px rgba(0,0,0,0.18);
       text-align:center; z-index:1000; display:none; animation: fadeIn .25s ease-out;
@@ -244,31 +236,84 @@
     .message-box .close-btn{ background:#fff; border: 1px solid var(--border); padding:8px 14px; border-radius: 10px; cursor:pointer; font-weight:600; }
     @keyframes fadeIn{ from{opacity:0; transform:translate(-50%,-46%);} to{opacity:1; transform:translate(-50%,-50%);} }
 
-    /* ===== 響應式 ===== */
-    @media (max-width: 768px){
-      body{ padding: 16px; }
-      .container{ padding: 24px; }
-      .header h1{ font-size: 22px; }
-      .controls{ flex-direction: column; align-items: stretch; }
-      .control-group{ min-width: unset; }
-      .btn{ width:100%; }
+    /* ===== 響應式設計 (Responsive Web Design) ===== */
+    
+    /* --- Tablet (平板): 1024px 以下 --- */
+    @media (max-width: 1024px) {
+      body {
+        padding: 20px;
+      }
+      .container {
+        padding: 28px;
+      }
+      .header h1 {
+        font-size: 26px;
+      }
+      .controls {
+        justify-content: flex-start; /* 讓內容從左邊開始排列換行 */
+      }
+    }
+
+    /* --- Mobile (手機): 768px 以下 --- */
+    @media (max-width: 768px) {
+      body {
+        padding: 16px;
+        align-items: flex-start; /* 確保內容從頂部開始 */
+      }
+      .container {
+        padding: 20px;
+      }
+      .header h1 {
+        font-size: 22px;
+      }
+      .subtitle {
+        font-size: 13px;
+      }
+      .controls {
+        flex-direction: column; /* 控制項垂直堆疊 */
+        align-items: stretch;   /* 讓控制項撐滿寬度 */
+      }
+      .control-group {
+        flex-direction: column; /* 標籤與輸入框也垂直堆疊 */
+        align-items: flex-start;
+        gap: 8px;
+        min-width: unset;
+      }
+      .quality-slider {
+        max-width: none; /* 移除最大寬度限制，讓它撐滿 */
+      }
+      .btn {
+        width: 100%; /* 按鈕撐滿寬度 */
+        padding: 14px 22px; /* 增加點擊區域 */
+      }
+      .stats {
+        grid-template-columns: 1fr; /* 統計卡片改為單欄 */
+      }
+      .file-item {
+        flex-wrap: wrap; /* 允許檔案狀態換行 */
+        gap: 8px;
+      }
+      .file-list-container {
+        max-height: 180px; /* 縮小檔案列表最大高度 */
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div class="title-row">
-        <!-- macOS 三個原點（與主標題同一行、靠最左；主標題置中） -->
-        <div class="traffic-lights" aria-hidden="true">
-          <span class="dot red"></span>
-          <span class="dot yellow"></span>
-          <span class="dot green"></span>
-        </div>
-        <h1>HEIC 批次轉檔工具</h1>
+      <!-- (已修改) macOS 三個原點移至獨立的第一行 -->
+      <div class="traffic-lights" aria-hidden="true">
+        <span class="dot red"></span>
+        <span class="dot yellow"></span>
+        <span class="dot green"></span>
       </div>
-      <p class="subtitle">輕鬆將 iPhone 的 HEIC 圖片轉換為 JPG、PNG、WebP 等多種格式</p>
-      <p class="author-name">製作者：陳政德</p>
+      <div class="title-row">
+        <h1>HEIC 批次轉檔工具</h1>
+        <!-- (已修改) 副標題文字更新 -->
+        <p class="subtitle">將 iPhone 的 HEIC 圖片檔案轉換為 JPG、PNG 及 WebP 等多種影像格式</p>
+        <p class="author-name">製作者：陳政德</p>
+      </div>
     </div>
 
     <div class="upload-wrapper">
@@ -282,7 +327,7 @@
             <path d="M14 13l1.5-1.5c.6-.6 1.7-.6 2.3 0L20 13" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <div class="upload-text">點選 iPhone 的 HEIC 格式照片</div>
+        <div class="upload-text">點選 iPhone 的 HEIC 照片</div>
       </div>
     </div>
 
@@ -346,7 +391,7 @@
     </div>
   </div>
 
-  <!-- 原功能 JavaScript 保留，僅樣式改造 -->
+  <!-- JavaScript 功能保持不變 -->
   <script>
     class HEICConverter {
       constructor() {
@@ -378,9 +423,9 @@
       }
       bindEvents() {
         this.fileInput.addEventListener('change', (e) => { this.handleFiles(e.target.files); });
-        this.uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); this.uploadArea.classList.add('drag-over'); });
-        this.uploadArea.addEventListener('dragleave', (e) => { e.preventDefault(); this.uploadArea.classList.remove('drag-over'); });
-        this.uploadArea.addEventListener('drop', (e) => { e.preventDefault(); this.uploadArea.classList.remove('drag-over'); this.handleFiles(e.dataTransfer.files); });
+        this.uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); this.uploadArea.style.borderColor = 'var(--primary)'; });
+        this.uploadArea.addEventListener('dragleave', (e) => { e.preventDefault(); this.uploadArea.style.borderColor = 'var(--border)'; });
+        this.uploadArea.addEventListener('drop', (e) => { e.preventDefault(); this.uploadArea.style.borderColor = 'var(--border)'; this.handleFiles(e.dataTransfer.files); });
         this.qualitySlider.addEventListener('input', (e) => {
           this.quality = parseFloat(e.target.value);
           this.qualityValue.textContent = Math.round(this.quality * 100) + '%';
@@ -449,7 +494,7 @@
             statusElement.className = 'file-status status-error';
             this.showMessageBox(`轉換失敗: ${file.name}。請確認檔案沒有損壞或格式不完整。`, 'error');
           }
-          this.updateStats();
+          document.getElementById('completedFiles').textContent = this.convertedFiles.length;
         }
         this.updateProgress(this.files.length, this.files.length, '轉換完成！');
         this.convertBtn.disabled = false;
