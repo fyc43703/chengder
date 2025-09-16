@@ -4,6 +4,46 @@
 <title>全能PDF工具箱</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
 <style>
+      /* General Styles */
+      html, body {
+        margin: 0;
+        padding: 24px;
+        background: #FFFFFF;
+        color: #1d1d1f;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        font-size: 15px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      h1, h2, h3, h4, h5, h6, b, strong {
+        font-weight: 600; /* Semibold for macOS look */
+      }
+      h1 { font-weight: 700; } /* Bold for main title */
+      
+      /* Explicit list styles for consistent rendering in html2canvas */
+      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; }
+      ul { list-style-type: disc; }
+      ol { list-style-type: decimal; }
+      li { display: list-item; }
+
+      .hljs-container {
+        padding: 1.5rem;
+        border-radius: .75rem;
+        overflow-x: auto;
+        background: #fcfcfd;
+        border: 1px solid #d2d2d7;
+      }
+      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
+      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
+    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html><html lang="zh-Hant"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全能PDF工具箱</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
+<style>
       /* --- START OF MACOS STYLE TRANSFORMATION --- */
 
       /* 1. 字體與排版系統 */
@@ -99,7 +139,7 @@
       }
 
       /* 5. Glassmorphism & Card Styling */
-      .glass-panel, .feature-card, .view > .bg-white, #modal > div, #insert-pdf-modal > div {
+      .glass-panel, .feature-card, .view > .bg-white, #modal > div, #insert-pdf-modal > div, #add-blank-page-modal > div {
         background: rgba(255, 255, 255, 0.8);
         backdrop-filter: var(--macos-blur);
         -webkit-backdrop-filter: var(--macos-blur);
@@ -178,11 +218,11 @@
       }
 
       /* Primary Buttons */
-      [id$="-btn"], #download-ocr-btn, #ocr-pdf-view label[for="ocr-pdf-input"], #confirm-insert-btn {
+      [id$="-btn"], #download-ocr-btn, #ocr-pdf-view label[for="ocr-pdf-input"], #confirm-insert-btn, #confirm-add-blank-page-btn {
         background-color: var(--macos-blue) !important;
         color: white !important;
       }
-      [id$="-btn"]:hover:not(:disabled), #download-ocr-btn:hover:not(:disabled), #ocr-pdf-view label[for="ocr-pdf-input"]:hover, #confirm-insert-btn:hover {
+      [id$="-btn"]:hover:not(:disabled), #download-ocr-btn:hover:not(:disabled), #ocr-pdf-view label[for="ocr-pdf-input"]:hover, #confirm-insert-btn:hover, #confirm-add-blank-page-btn:hover {
         background-color: var(--macos-blue-hover) !important;
       }
 
@@ -195,11 +235,11 @@
       [id^="back-to-home-"]:hover {
           background-color: #EA580C !important; /* Darker Orange on hover */
       }
-      #cancel-insert-btn {
+      #cancel-insert-btn, #cancel-add-blank-page-btn {
         background-color: var(--macos-secondary-btn-bg) !important;
         color: var(--macos-text) !important;
       }
-      #cancel-insert-btn:hover {
+      #cancel-insert-btn:hover, #cancel-add-blank-page-btn:hover {
         background-color: var(--macos-secondary-btn-bg-hover) !important;
       }
       
@@ -803,6 +843,10 @@
                         <p class="mb-4">載入 PDF 後，拖曳頁面縮圖即可重新排序。您也可以直接點擊頁面縮圖右下角頁碼輸入目標位置來快速移動。</p>
                         <div class="flex items-center space-x-4 mb-4">
                             <input type="file" id="edit-pdf-file" accept=".pdf" class="block w-full text-sm"/>
+                            <button id="add-blank-page-btn" class="hidden whitespace-nowrap">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z"></path></svg>
+                                <span>新增空白頁</span>
+                            </button>
                             <button id="insert-pdf-btn" class="hidden whitespace-nowrap">
                                 <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clip-rule="evenodd"></path></svg>
                                 <span>插入檔案</span>
@@ -954,14 +998,45 @@
                                     <label for="handout-page-range" class="block text-sm font-medium">來源頁面範圍 (可留白)</label>
                                     <input type="text" id="handout-page-range" placeholder="例如: 1-5, 8, 10-12" class="mt-1 block w-full">
                                 </div>
+                            </div>
+                            
+                            <hr class="section-divider col-span-full">
+                             <!-- START: New options for original page numbers -->
+                            <div class="col-span-full mb-2">
+                                <label class="flex items-center text-base font-semibold text-gray-700">
+                                    <input type="checkbox" id="handout-add-page-numbers" class="mr-2 h-5 w-5 rounded">
+                                    <span>在縮圖下方加上原始頁碼</span>
+                                </label>
+                            </div>
+                            <div id="handout-original-page-number-options" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                <div>
+                                    <label for="handout-original-page-number-position" class="block text-sm font-medium">頁碼位置</label>
+                                    <select id="handout-original-page-number-position" class="mt-1 block w-full">
+                                        <option value="bottom-center">下方置中</option>
+                                        <option value="bottom-right">下方靠右</option>
+                                        <option value="bottom-left">下方靠左</option>
+                                        <option value="top-center">上方置中</option>
+                                        <option value="top-right">上方靠右</option>
+                                        <option value="top-left">上方靠左</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="handout-original-page-number-size" class="block text-sm font-medium">字體大小</label>
+                                    <input type="number" id="handout-original-page-number-size" value="8" min="4" class="mt-1 block w-full">
+                                </div>
+                                <div>
+                                    <label for="handout-original-page-number-color" class="block text-sm font-medium">字體顏色</label>
+                                    <input type="color" id="handout-original-page-number-color" value="#666666" class="mt-1 block w-full p-1 h-10">
+                                </div>
                                 <div class="flex items-end">
                                     <label class="flex items-center">
-                                        <input type="checkbox" id="handout-add-page-numbers" class="mr-2 h-5 w-5 rounded">
-                                        <span>在縮圖下方加上原始頁碼</span>
+                                        <input type="checkbox" id="handout-original-page-number-bold" class="mr-2 h-5 w-5 rounded">
+                                        <span>粗體 (Bold)</span>
                                     </label>
                                 </div>
                             </div>
-                            
+                            <!-- END: New options for original page numbers -->
+
                             <hr class="section-divider col-span-full">
 
                             <div class="col-span-full mb-2">
@@ -1062,6 +1137,41 @@
         </div>
     </div>
     
+    <!-- START: New Modal for adding a blank page -->
+    <div id="add-blank-page-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="p-6 md:p-8 rounded-lg shadow-xl max-w-md w-full mx-4 sm:mx-0">
+            <h3 class="text-xl font-bold mb-4">新增空白頁</h3>
+            <div class="space-y-4 text-left">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                         <label for="blank-page-size" class="block text-sm font-medium mb-1">頁面大小</label>
+                         <select id="blank-page-size" class="block w-full">
+                             <option value="A4" selected>A4</option>
+                             <option value="Letter">Letter</option>
+                         </select>
+                    </div>
+                    <div>
+                         <label for="blank-page-orientation" class="block text-sm font-medium mb-1">頁面方向</label>
+                         <select id="blank-page-orientation" class="block w-full">
+                             <option value="portrait" selected>直向</option>
+                             <option value="landscape">橫向</option>
+                         </select>
+                    </div>
+                </div>
+                <div>
+                    <label for="add-blank-page-number" class="block text-sm font-medium mb-1">插入到第幾頁之後 (輸入 0 則插入到最前方)</label>
+                    <input type="number" id="add-blank-page-number" value="0" min="0" class="block w-full">
+                </div>
+                <div id="add-blank-page-modal-error" class="text-red-600 text-sm hidden"></div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="cancel-add-blank-page-btn">取消</button>
+                <button id="confirm-add-blank-page-btn">確認新增</button>
+            </div>
+        </div>
+    </div>
+    <!-- END: New Modal for adding a blank page -->
+
     <!-- External Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
@@ -1109,6 +1219,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let customFontBytes = null;
     let pageEditorSortable = null;
+    let modalTimeoutId = null; // Used for auto-closing success modals
 
     function hexToRgb(hex) {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -1168,6 +1279,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'edit-pdf-info': el => el.textContent = '請選擇檔案',
             'edit-pdf-pages': el => el.innerHTML = '',
             'insert-pdf-btn': el => el.classList.add('hidden'),
+            'add-blank-page-btn': el => el.classList.add('hidden'),
             'extract-images-info': el => el.textContent = '請選擇檔案',
             'pdf-to-web-info': el => el.textContent = '請選擇檔案',
             'pdf-to-web-options': el => el.classList.add('hidden'),
@@ -1194,7 +1306,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showModal(content) { modalContent.innerHTML = content; modal.classList.remove('hidden'); }
-    window.hideModal = function() { modal.classList.add('hidden'); }
+    window.hideModal = function() { 
+        if (modalTimeoutId) {
+            clearTimeout(modalTimeoutId);
+            modalTimeoutId = null;
+        }
+        modal.classList.add('hidden'); 
+    }
     
     document.querySelectorAll('[id^="back-to-home-"]').forEach(button => {
         button.addEventListener('click', () => showView('home-view'));
@@ -1210,23 +1328,34 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(link.href);
     }
     
+    // MODIFIED: This function now includes a success icon and an auto-close timer.
     function showDownloadModal(title, message, btnText, blob, filename) {
         const modalHTML = `
-            <h3 class="text-xl font-bold mb-4">${title}</h3>
-            <p class="text-left">${message}</p>
-            <div class="mt-6">
-                <button id="modal-download-btn" class="text-white font-bold py-2 px-4 rounded-lg w-full">${btnText}</button>
-                <button onclick="hideModal()" class="mt-2 font-bold py-2 px-4 rounded-lg w-full">關閉</button>
+            <div class="flex flex-col items-center">
+                <svg class="w-16 h-16 text-green-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <h3 class="text-xl font-bold mb-2">${title}</h3>
+                <p class="text-sm text-gray-600 text-left">${message}</p>
+                <div class="mt-6 w-full">
+                    <button id="modal-download-btn" class="text-white font-bold py-2 px-4 rounded-lg w-full">${btnText}</button>
+                    <button onclick="hideModal()" class="mt-2 font-bold py-2 px-4 rounded-lg w-full">關閉</button>
+                </div>
             </div>`;
         
         showModal(modalHTML);
 
         const downloadBtn = document.getElementById('modal-download-btn');
         if (downloadBtn) {
-            downloadBtn.onclick = () => downloadFile(blob, filename);
+            downloadBtn.onclick = () => {
+                if (modalTimeoutId) clearTimeout(modalTimeoutId); // Clear timer on action
+                downloadFile(blob, filename);
+            };
             downloadBtn.style.backgroundColor = 'var(--macos-blue)';
             downloadBtn.style.color = 'white';
         }
+
+        // Auto-close after 5 seconds
+        if (modalTimeoutId) clearTimeout(modalTimeoutId);
+        modalTimeoutId = setTimeout(hideModal, 5000);
     }
 
     function readFileAsArrayBuffer(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsArrayBuffer(file); }); }
@@ -1957,13 +2086,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const editPdfBtn = document.getElementById('edit-pdf-btn');
         const insertPdfBtn = document.getElementById('insert-pdf-btn');
+        const addBlankPageBtn = document.getElementById('add-blank-page-btn'); // New button
         const editPdfPagesContainer = document.getElementById('edit-pdf-pages');
         
+        // --- Modals for Insert File ---
         const insertPdfModal = document.getElementById('insert-pdf-modal');
         const confirmInsertBtn = document.getElementById('confirm-insert-btn');
         const cancelInsertBtn = document.getElementById('cancel-insert-btn');
         const insertFileInput = document.getElementById('insert-pdf-file-input');
         const insertPageNumInput = document.getElementById('insert-page-number');
+
+        // --- NEW: Modals for Add Blank Page ---
+        const addBlankPageModal = document.getElementById('add-blank-page-modal');
+        const confirmAddBlankPageBtn = document.getElementById('confirm-add-blank-page-btn');
+        const cancelAddBlankPageBtn = document.getElementById('cancel-add-blank-page-btn');
+        const addBlankPageNumInput = document.getElementById('add-blank-page-number');
         
         const showInsertModal = () => {
             const currentPageCount = editPdfPagesContainer.children.length;
@@ -1973,14 +2110,24 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('insert-modal-error').classList.add('hidden');
             insertPdfModal.classList.remove('hidden');
         };
-
         const hideInsertModal = () => insertPdfModal.classList.add('hidden');
+
+        const showAddBlankPageModal = () => {
+            const currentPageCount = editPdfPagesContainer.children.length;
+            addBlankPageNumInput.max = currentPageCount;
+            addBlankPageNumInput.value = currentPageCount;
+            document.getElementById('add-blank-page-modal-error').classList.add('hidden');
+            addBlankPageModal.classList.remove('hidden');
+        };
+        const hideAddBlankPageModal = () => addBlankPageModal.classList.add('hidden');
 
         insertPdfBtn.addEventListener('click', showInsertModal);
         cancelInsertBtn.addEventListener('click', hideInsertModal);
-        insertPdfModal.addEventListener('click', (e) => {
-            if (e.target === insertPdfModal) hideInsertModal();
-        });
+        insertPdfModal.addEventListener('click', (e) => { if (e.target === insertPdfModal) hideInsertModal(); });
+
+        addBlankPageBtn.addEventListener('click', showAddBlankPageModal);
+        cancelAddBlankPageBtn.addEventListener('click', hideAddBlankPageModal);
+        addBlankPageModal.addEventListener('click', (e) => { if (e.target === addBlankPageModal) hideAddBlankPageModal(); });
 
         const promptForPasswordAndReload = (file) => {
             const password = prompt('此 PDF 文件已被加密，請輸入密碼：');
@@ -2035,6 +2182,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 editPdfInfo.textContent = `操作成功！目前共 ${editPdfPagesContainer.children.length} 頁。`;
                 editPdfBtn.disabled = false;
                 insertPdfBtn.classList.remove('hidden');
+                addBlankPageBtn.classList.remove('hidden'); // Show new button
             } catch(error) {
                 console.error('編輯器載入失敗:', error);
                 if (error.name === 'PasswordException') {
@@ -2074,6 +2222,60 @@ document.addEventListener('DOMContentLoaded', () => {
             hideInsertModal();
             loadPdfForEditing(file);
         });
+        
+        // NEW: Logic for adding a blank page
+        confirmAddBlankPageBtn.addEventListener('click', async () => {
+            const insertPoint = parseInt(addBlankPageNumInput.value, 10);
+            const errorDiv = document.getElementById('add-blank-page-modal-error');
+            const totalPages = editPdfPagesContainer.children.length;
+
+            if (isNaN(insertPoint) || insertPoint < 0 || insertPoint > totalPages) {
+                errorDiv.textContent = `請輸入介於 0 與 ${totalPages} 之間的頁碼。`;
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            errorDiv.classList.add('hidden');
+            hideAddBlankPageModal();
+            
+            showModal(`<div class="loader mx-auto"></div><p class="mt-4">正在新增空白頁...</p>`);
+
+            try {
+                // Create a new PDF document with one blank page in memory
+                const blankPdfDoc = await PDFDocument.create();
+                const size = document.getElementById('blank-page-size').value;
+                const orientation = document.getElementById('blank-page-orientation').value;
+                let pageSize = PageSizes[size];
+                if (orientation === 'landscape') {
+                    pageSize = [pageSize[1], pageSize[0]];
+                }
+                blankPdfDoc.addPage(pageSize);
+                
+                // Add this new document to our sources
+                const sourceIndex = pageSources.push(blankPdfDoc) - 1;
+                
+                // Create a visual thumbnail for this blank page
+                const blankPageItem = createBlankPageThumbnail(sourceIndex, 0);
+
+                // Insert the thumbnail into the DOM
+                const allPageItems = editPdfPagesContainer.children;
+                if (insertPoint === 0) {
+                    editPdfPagesContainer.prepend(blankPageItem);
+                } else if (insertPoint >= allPageItems.length) {
+                    editPdfPagesContainer.appendChild(blankPageItem);
+                } else {
+                    allPageItems[insertPoint - 1].after(blankPageItem);
+                }
+
+                renumberPageItems(editPdfPagesContainer);
+                document.getElementById('edit-pdf-info').textContent = `新增空白頁成功！目前共 ${editPdfPagesContainer.children.length} 頁。`;
+            } catch (error) {
+                 console.error('新增空白頁失敗:', error);
+                 document.getElementById('edit-pdf-info').textContent = '新增空白頁時發生錯誤。';
+            } finally {
+                hideModal();
+            }
+        });
+
 
         async function createPageThumbnail(page, sourceIndex, pageIndex) {
             const pageItem = document.createElement('div');
@@ -2118,6 +2320,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 pageItem.appendChild(pageNumberContainer);
             }
             
+            return pageItem;
+        }
+
+        function createBlankPageThumbnail(sourceIndex, pageIndex) {
+            const pageItem = document.createElement('div');
+            pageItem.className = 'page-item draggable relative p-2 border rounded-md cursor-move transition-opacity flex flex-col items-center justify-center';
+            pageItem.dataset.sourceIndex = sourceIndex;
+            pageItem.dataset.pageIndex = pageIndex;
+            pageItem.dataset.isBlank = true;
+
+            const blankIndicator = document.createElement('div');
+            blankIndicator.className = 'w-[150px] h-[180px] bg-white border-2 border-dashed border-gray-300 flex items-center justify-center text-sm text-gray-500';
+            blankIndicator.textContent = '空白頁';
+            pageItem.appendChild(blankIndicator);
+
+            const pageNumberContainer = document.createElement('div');
+            pageNumberContainer.className = 'absolute bottom-1 right-1';
+            const pageNumberSpan = document.createElement('span');
+            pageNumberSpan.className = 'page-number-text bg-black bg-opacity-50 text-white text-xs px-1.5 py-0.5 rounded cursor-pointer';
+            pageNumberContainer.appendChild(pageNumberSpan);
+
+            pageItem.appendChild(pageNumberContainer);
+            
+            pageNumberSpan.addEventListener('click', handlePageNumberClick);
+            pageItem.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('page-number-text') && !e.target.closest('.page-number-input')) {
+                     pageItem.classList.toggle('marked-for-deletion');
+                }
+            });
+
             return pageItem;
         }
 
@@ -2475,6 +2707,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const handoutPageNumbersContainer = document.getElementById('handout-page-numbers-container');
         const handoutAddBordersCheckbox = document.getElementById('handout-add-borders');
         const handoutBorderOptionsContainer = document.getElementById('handout-border-options');
+        // NEW: Controls for original page number options
+        const handoutAddOriginalPageNumbersCheckbox = document.getElementById('handout-add-page-numbers');
+        const handoutOriginalPageNumberOptionsContainer = document.getElementById('handout-original-page-number-options');
         
         handoutPdfInput.addEventListener('change', () => {
              if (!handoutPdfInput.files.length) {
@@ -2495,6 +2730,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         handoutAddBordersCheckbox.addEventListener('change', (e) => {
             handoutBorderOptionsContainer.classList.toggle('hidden', !e.target.checked);
+        });
+
+        // NEW: Event listener to show/hide original page number formatting options
+        handoutAddOriginalPageNumbersCheckbox.addEventListener('change', (e) => {
+            handoutOriginalPageNumberOptionsContainer.classList.toggle('hidden', !e.target.checked);
         });
 
         handoutPdfBtn.addEventListener('click', async () => {
@@ -2547,7 +2787,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 document.getElementById('modal-progress').textContent = '正在嵌入頁面...';
                 const embeddedPages = await handoutPdfDoc.embedPdf(pdfBytes, pageIndicesToProcess);
-                const fontForOriginal = await handoutPdfDoc.embedFont(StandardFonts.Helvetica);
+                
+                // MODIFIED: Pre-embed font for original page numbers
+                let fontForOriginal;
+                if (addOriginalPageNumbers) {
+                    const isOriginalBold = document.getElementById('handout-original-page-number-bold').checked;
+                    fontForOriginal = await handoutPdfDoc.embedFont(isOriginalBold ? StandardFonts.HelveticaBold : StandardFonts.Helvetica);
+                }
                 
                 const handoutTotalPages = Math.ceil(embeddedPages.length / pagesPerSheet);
 
@@ -2603,16 +2849,34 @@ document.addEventListener('DOMContentLoaded', () => {
                             });
                         }
 
+                        // MODIFIED: Enhanced logic for adding original page numbers with formatting
                         if (addOriginalPageNumbers) {
                             const originalPageNum = pageIndicesToProcess[pageIndex + j] + 1;
                             const pageNumText = `${originalPageNum}`;
-                            const textWidth = fontForOriginal.widthOfTextAtSize(pageNumText, 8);
+                            
+                            const position = document.getElementById('handout-original-page-number-position').value;
+                            const size = parseInt(document.getElementById('handout-original-page-number-size').value, 10);
+                            const colorHex = document.getElementById('handout-original-page-number-color').value;
+                            const color = hexToRgb(colorHex);
+                            
+                            const textWidth = fontForOriginal.widthOfTextAtSize(pageNumText, size);
+                            const textHeight = fontForOriginal.heightAtSize(size);
+                            let textX, textY;
+                            const offset = 2; // small gap between thumbnail and text
+
+                            if (position.includes('bottom')) textY = centeredY - textHeight - offset;
+                            else textY = centeredY + pageDimensions.height + offset;
+
+                            if (position.includes('center')) textX = centeredX + (pageDimensions.width - textWidth) / 2;
+                            else if (position.includes('right')) textX = centeredX + pageDimensions.width - textWidth;
+                            else textX = centeredX;
+
                             page.drawText(pageNumText, {
-                                x: centeredX + (pageDimensions.width - textWidth) / 2,
-                                y: centeredY - 10,
-                                size: 8,
+                                x: textX,
+                                y: textY,
+                                size,
                                 font: fontForOriginal,
-                                color: rgb(0.4, 0.4, 0.4),
+                                color: rgb(color.r, color.g, color.b),
                             });
                         }
                     });
@@ -2716,4 +2980,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 </body>
-</html>
+</html></div></body></html>
