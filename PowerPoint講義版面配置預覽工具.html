@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerPoint 講義版面配置預覽工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.47059;
+            font-weight: 400;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .title-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .traffic-lights {
+            position: absolute;
+            left: 0;
+            display: flex;
+            gap: 6px;
+        }
+
+        .traffic-light {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .traffic-light.red { background-color: #ff5f56; }
+        .traffic-light.yellow { background-color: #ffbd2e; }
+        .traffic-light.green { background-color: #27ca3f; }
+
+        .title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.022em;
+            color: #1d1d1f;
+            text-align: center;
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 0.5px solid rgba(255, 255, 255, 0.18);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+        }
+
+        .control-section h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+            letter-spacing: -0.022em;
+        }
+
+        .layout-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 8px;
+            margin-bottom: 0;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 122, 255, 0.3);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            text-align: center;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: #1d1d1f;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn.active {
+            background: #007aff;
+            color: white;
+            border-color: #007aff;
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+        }
+
+        .preview-section {
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 0.5px solid rgba(255, 255, 255, 0.18);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+        }
+
+        .preview-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+            text-align: center;
+            letter-spacing: -0.022em;
+        }
+
+        .preview-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .paper {
+            background: white;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.12),
+                0 1px 3px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .paper.portrait {
+            width: 200px;
+            aspect-ratio: 210/297;
+        }
+
+        .paper.landscape {
+            width: 280px;
+            aspect-ratio: 297/210;
+        }
+
+        .paper-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 12px;
+            background: #fbfbfd;
+        }
+
+        .slides-grid {
+            display: grid;
+            width: 100%;
+            height: 100%;
+            gap: 6px;
+        }
+
+        .slide {
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            color: #86868b;
+            font-weight: 500;
+            min-height: 0;
+            overflow: hidden;
+            border-radius: 3px;
+        }
+
+        .specs {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #86868b;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 12px;
+            border-radius: 8px;
+            border: 0.5px solid rgba(255, 255, 255, 0.18);
+            margin-bottom: 16px;
+        }
+
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+        }
+
+        .specs-item {
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        .instructions {
+            margin-top: 0;
+            font-size: 0.8rem;
+            color: #1d1d1f;
+            background: rgba(0, 122, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 16px;
+            border-radius: 12px;
+            border: 0.5px solid rgba(0, 122, 255, 0.12);
+        }
+
+        .instructions h4 {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #007aff;
+            font-size: 0.9rem;
+        }
+
+        .instructions ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        /* macOS 滾動條樣式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .title-header {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .traffic-lights {
+                position: static;
+                margin-bottom: 16px;
+            }
+            
+            .title {
+                font-size: 2rem;
+            }
+            
+            .control-panel,
+            .preview-section {
+                padding: 24px;
+            }
+            
+            .layout-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title-header">
+            <div class="traffic-lights">
+                <div class="traffic-light red"></div>
+                <div class="traffic-light yellow"></div>
+                <div class="traffic-light green"></div>
+            </div>
+            <h1 class="title">PowerPoint 講義版面配置預覽工具</h1>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <div class="control-section">
+                <h3>選擇講義配置</h3>
+                <div class="layout-grid">
+                    <button class="btn active" data-config="2-直">2 張投影片（直）</button>
+                    <button class="btn" data-config="2-橫">2 張投影片（橫）</button>
+                    <button class="btn" data-config="4-直">4 張投影片（直）</button>
+                    <button class="btn" data-config="4-橫">4 張投影片（橫）</button>
+                    <button class="btn" data-config="6-直">6 張投影片（直）</button>
+                    <button class="btn" data-config="6-橫">6 張投影片（橫）</button>
+                    <button class="btn" data-config="8-直">8 張投影片（直）</button>
+                    <button class="btn" data-config="8-橫">8 張投影片（橫）</button>
+                    <button class="btn" data-config="10-直">10 張投影片（直）</button>
+                    <button class="btn" data-config="10-橫">10 張投影片（橫）</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 預覽區域 -->
+        <div class="preview-section">
+            <h3 class="preview-title" id="preview-title">預覽：2 張投影片（直向 A4）</h3>
+            
+            <div class="preview-container">
+                <div class="paper portrait" id="paper">
+                    <div class="paper-content">
+                        <div class="slides-grid" id="slides-grid">
+                            <!-- 投影片會由 JavaScript 動態生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 規格資訊 -->
+            <div class="specs">
+                <div class="specs-grid" id="specs-grid">
+                    <div><span class="specs-item">配置：</span><span id="layout-info">2 × 1</span></div>
+                    <div><span class="specs-item">投影片數量：</span><span id="slide-count-info">2 張</span></div>
+                    <div><span class="specs-item">紙張：</span><span id="paper-info">A4 直向</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 說明文字 -->
+        <div class="instructions">
+            <h4>使用說明：</h4>
+            <ul>
+                <li>點選上方按鈕選擇不同的講義配置</li>
+                <li>支援 2、4、6、8、10 張投影片的直向和橫向配置</li>
+                <li>預覽區域會即時顯示對應的版面配置</li>
+                <li>每個小方框代表一張投影片的位置</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let currentConfig = '2-直';
+
+        // 定義所有配置的布局 - 確保投影片完全在A4範圍內
+        const layoutConfigs = {
+            '2-直': { slides: 2, orientation: '直向', rows: 2, cols: 1 },
+            '2-橫': { slides: 2, orientation: '橫向', rows: 1, cols: 2 },
+            '4-直': { slides: 4, orientation: '直向', rows: 2, cols: 2 },
+            '4-橫': { slides: 4, orientation: '橫向', rows: 2, cols: 2 },
+            '6-直': { slides: 6, orientation: '直向', rows: 3, cols: 2 },
+            '6-橫': { slides: 6, orientation: '橫向', rows: 2, cols: 3 },
+            '8-直': { slides: 8, orientation: '直向', rows: 4, cols: 2 },
+            '8-橫': { slides: 8, orientation: '橫向', rows: 2, cols: 4 },
+            '10-直': { slides: 10, orientation: '直向', rows: 5, cols: 2 },
+            '10-橫': { slides: 10, orientation: '橫向', rows: 2, cols: 5 }
+        };
+
+        // 更新預覽 - 確保投影片縮放在紙張範圍內
+        function updatePreview() {
+            const config = layoutConfigs[currentConfig];
+            const paper = document.getElementById('paper');
+            const slidesGrid = document.getElementById('slides-grid');
+            const previewTitle = document.getElementById('preview-title');
+            const layoutInfo = document.getElementById('layout-info');
+            const slideCountInfo = document.getElementById('slide-count-info');
+            const paperInfo = document.getElementById('paper-info');
+
+            // 更新紙張方向和樣式
+            paper.className = config.orientation === '直向' ? 'paper portrait' : 'paper landscape';
+
+            // 設定網格布局 - 投影片會自動縮放填滿可用空間
+            slidesGrid.style.gridTemplateRows = `repeat(${config.rows}, 1fr)`;
+            slidesGrid.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
+
+            // 清除並重新生成投影片
+            slidesGrid.innerHTML = '';
+            for (let i = 0; i < config.slides; i++) {
+                const slide = document.createElement('div');
+                slide.className = 'slide';
+                slide.textContent = i + 1;
+                slidesGrid.appendChild(slide);
+            }
+
+            // 更新標題和資訊
+            previewTitle.textContent = `預覽：${config.slides} 張投影片（${config.orientation} A4）`;
+            layoutInfo.textContent = `${config.rows} × ${config.cols}`;
+            slideCountInfo.textContent = `${config.slides} 張`;
+            paperInfo.textContent = `A4 ${config.orientation}`;
+        }
+
+        // 初始化事件監聽器
+        document.addEventListener('DOMContentLoaded', function() {
+            const configButtons = document.querySelectorAll('[data-config]');
+            
+            configButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // 更新按鈕狀態
+                    configButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    this.classList.add('active');
+
+                    // 更新當前選擇
+                    currentConfig = this.dataset.config;
+                    updatePreview();
+                });
+            });
+
+            // 初始化預覽
+            updatePreview();
+        });
+    </script>
+</body>
+</html>
