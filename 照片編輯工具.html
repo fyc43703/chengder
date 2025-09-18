@@ -57,15 +57,16 @@
         .slider-arrow-btn { background-color: #cbd5e1; color: #4a5568; padding: 0.25rem; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; border-radius: 50%; cursor: pointer; transition: background-color 0.2s; }
         .slider-arrow-btn:hover { background-color: #a0aec0; }
 
-        #fullscreen-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); justify-content: center; align-items: center; z-index: 9999; cursor: zoom-out; }
-        #fullscreen-image { max-width: 95vw; max-height: 95vh; object-fit: contain; cursor: grab; transition: transform 0.2s ease-out; }
+        #fullscreen-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); justify-content: center; align-items: center; z-index: 9999; cursor: zoom-out; overflow: hidden; }
+        #fullscreen-image { max-width: none; max-height: none; cursor: grab; }
+        #fullscreen-image.grabbing { cursor: grabbing; }
         #fullscreen-controls { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 10000; }
         #fullscreen-controls button { background-color: rgba(255, 255, 255, 0.8); border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; }
     </style>
 </head>
 <body class="flex flex-col items-center justify-start p-4 md:p-8 min-h-screen text-gray-800">
     
-    <!-- [NEW] SVG Arrow Definition -->
+    <!-- SVG Arrow Definition -->
     <svg id="arrow-svg" width="0" height="0" version="1.1" xmlns="http://www.w3.org/2000/svg" style="display:none;">
         <defs>
             <g id="svg-arrow">
@@ -301,6 +302,8 @@
         let history = []; 
         let historyIndex = -1;
         let clipboard = null;
+        let isCropping = false;
+        let croppingRect = null;
 
         fabric.Object.prototype.set({
             borderColor: '#0d6efd',
@@ -393,6 +396,7 @@
             document.getElementById('group-btn').addEventListener('click', groupObjects);
             document.getElementById('ungroup-btn').addEventListener('click', ungroupObjects);
             document.getElementById('object-rotate-slider').addEventListener('input', handleObjectRotation);
+            document.getElementById('crop-btn').addEventListener('click', handleCrop);
             
             ['optimize', 'landscape', 'food', 'night', 'clarity', 'brighten-shadows', 'beauty-skin', 'highlight-recovery'].forEach(id => { document.getElementById(`${id}-btn`).addEventListener('click', () => applyFilter(id)); });
             ['brightness', 'contrast', 'saturation', 'sharpen', 'gamma'].forEach(id => { document.getElementById(`${id}-slider`).addEventListener('input', handleSliderChange); });
@@ -549,24 +553,21 @@
             };
             let shape;
             switch(shapeType) {
-                case 'line': shape = new fabric.Line([center.left - 50, center.top, center.left + 50, center.top], options); break;
+                case 'line': shape = new fabric.Line([0,0,100,0], {left: center.left - 50, top: center.top, ...options}); break;
                 case 'rect': shape = new fabric.Rect({ width: 100, height: 100, ...options }); break;
                 case 'circle': shape = new fabric.Circle({ radius: 50, ...options }); break;
                 case 'rounded-rect': shape = new fabric.Rect({ width: 100, height: 100, rx: 10, ry: 10, ...options }); break;
-                case 'diamond': shape = new fabric.Polygon([{x: 50, y: 0}, {x: 100, y: 50}, {x: 50, y: 100}, {x: 0, y: 50}], { ...options, objectCaching: false }); break;
+                case 'diamond': shape = new fabric.Polygon([{x: -50, y: 0}, {x: 0, y: -50}, {x: 50, y: 0}, {x: 0, y: 50}], { ...options, objectCaching: false }); break;
                 case 'arrow': 
-                     const svgArrow = document.getElementById('svg-arrow').innerHTML;
-                     fabric.loadSVGFromString(svgArrow, (objects, opt) => {
-                        const arrow = fabric.util.groupSVGElements(objects, opt);
-                        arrow.set({
-                            ...options,
-                            fill: options.stroke,
-                            stroke: options.stroke,
-                            strokeWidth: 0
-                        });
-                        canvas.add(arrow).setActiveObject(arrow).renderAll();
+                     const svgArrowEl = document.querySelector('#svg-arrow path').getAttribute('d');
+                     shape = new fabric.Path(svgArrowEl, {
+                        ...options,
+                        fill: options.stroke,
+                        stroke: options.stroke,
+                        strokeWidth: 0,
                      });
-                    return;
+                     shape.scaleToWidth(150);
+                    break;
             }
             if (shape) { canvas.add(shape); canvas.bringToFront(shape); canvas.setActiveObject(shape); }
         }
@@ -586,10 +587,9 @@
             if (canvas.isDrawingMode) { canvas.freeDrawingBrush.width = strokeWidth; canvas.freeDrawingBrush.color = strokeColor; }
             const activeObject = canvas.getActiveObject();
             if (activeObject && !activeObject.isType('i-text')) {
-                // For SVG arrow
-                if (activeObject.isType('path') || (activeObject.isType('group') && activeObject.getObjects('path').length > 0)) {
+                if (activeObject.isType('path')) { // SVG arrow is a path
                      activeObject.set({ fill: strokeColor, stroke: strokeColor });
-                } else { // For other shapes
+                } else {
                     activeObject.set({ stroke: strokeColor, strokeWidth: strokeWidth });
                 }
                 canvas.renderAll();
@@ -620,23 +620,49 @@
             }
         }
 
+        // [FIXED & ENHANCED] Fullscreen Viewer with Panning
         function enterFsViewer() {
             if (!img) return;
             const overlay = document.getElementById('fullscreen-overlay');
             const fsImage = document.getElementById('fullscreen-image');
             const zoomInBtn = document.getElementById('zoom-in-fs');
             const zoomOutBtn = document.getElementById('zoom-out-fs');
-            let scale = 1;
+            
+            let scale = 1, isPanning = false, start = { x: 0, y: 0 }, translate = { x: 0, y: 0 };
             
             fsImage.src = canvas.toDataURL({ format: 'png', quality: 1.0 });
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
 
-            const updateZoom = () => fsImage.style.transform = `scale(${scale})`;
-            const handleWheel = (e) => { e.preventDefault(); scale += e.deltaY * -0.001; scale = Math.min(Math.max(.125, scale), 4); updateZoom(); };
+            const updateTransform = () => {
+                fsImage.style.transform = `translate(${translate.x}px, ${translate.y}px) scale(${scale})`;
+            };
+
+            const handleMouseDown = e => {
+                e.preventDefault();
+                isPanning = true;
+                start = { x: e.clientX - translate.x, y: e.clientY - translate.y };
+                fsImage.classList.add('grabbing');
+            };
+
+            const handleMouseMove = e => {
+                if (!isPanning) return;
+                e.preventDefault();
+                translate.x = e.clientX - start.x;
+                translate.y = e.clientY - start.y;
+                updateTransform();
+            };
+
+            const handleMouseUp = () => { isPanning = false; fsImage.classList.remove('grabbing'); };
+            const handleWheel = (e) => { e.preventDefault(); scale += e.deltaY * -0.001; scale = Math.min(Math.max(.125, scale), 8); updateTransform(); };
+            
             const exitFs = () => {
                 overlay.classList.add('hidden');
                 overlay.classList.remove('flex');
+                // Clean up all event listeners
+                fsImage.removeEventListener('mousedown', handleMouseDown);
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('mouseup', handleMouseUp);
                 overlay.removeEventListener('wheel', handleWheel);
                 overlay.removeEventListener('click', exitFsOnClick);
                 document.removeEventListener('keydown', exitFsOnEsc);
@@ -644,17 +670,113 @@
             const exitFsOnClick = (e) => { if (e.target === overlay) exitFs(); };
             const exitFsOnEsc = (e) => { if (e.key === "Escape") exitFs(); };
 
-            zoomInBtn.onclick = () => { scale = Math.min(4, scale * 1.2); updateZoom(); };
-            zoomOutBtn.onclick = () => { scale = Math.max(0.125, scale / 1.2); updateZoom(); };
+            zoomInBtn.onclick = () => { scale = Math.min(8, scale * 1.2); updateTransform(); };
+            zoomOutBtn.onclick = () => { scale = Math.max(0.125, scale / 1.2); updateTransform(); };
             
+            fsImage.addEventListener('mousedown', handleMouseDown);
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
             overlay.addEventListener('wheel', handleWheel);
             overlay.addEventListener('click', exitFsOnClick);
             document.addEventListener('keydown', exitFsOnEsc);
         }
 
+        // [FIXED] Crop tool logic
+        function handleCrop() {
+            const cropButton = document.getElementById('crop-btn');
+            if (isCropping) {
+                // Apply crop
+                const cropData = {
+                    left: croppingRect.left - img.left,
+                    top: croppingRect.top - img.top,
+                    width: croppingRect.getScaledWidth(),
+                    height: croppingRect.getScaledHeight()
+                };
+
+                const originalImg = new Image();
+                originalImg.src = originalImageSrc;
+                originalImg.onload = () => {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = cropData.width / img.scaleX;
+                    tempCanvas.height = cropData.height / img.scaleY;
+                    const ctx = tempCanvas.getContext('2d');
+
+                    ctx.drawImage(
+                        originalImg,
+                        cropData.left / img.scaleX, // sourceX
+                        cropData.top / img.scaleY, // sourceY
+                        tempCanvas.width, // sourceWidth
+                        tempCanvas.height, // sourceHeight
+                        0, // destX
+                        0, // destY
+                        tempCanvas.width, // destWidth
+                        tempCanvas.height // destHeight
+                    );
+
+                    const newImgDataUrl = tempCanvas.toDataURL();
+                    fabric.Image.fromURL(newImgDataUrl, (newImg) => {
+                        canvas.clear();
+                        history = []; historyIndex = -1;
+                        img = newImg;
+                        originalImageSrc = newImgDataUrl;
+                        img.set({ selectable: false, evented: false });
+                        canvas.add(img);
+                        fitImageToCanvas();
+                        saveState();
+                    });
+                };
+                
+                canvas.remove(croppingRect);
+                croppingRect = null;
+                isCropping = false;
+                cropButton.innerHTML = '<i class="fas fa-crop-simple text-xs mr-1"></i> 剪裁';
+            } else {
+                // Start cropping
+                isCropping = true;
+                const center = canvas.getCenter();
+                const cropWidth = canvas.width * 0.6;
+                const cropHeight = canvas.height * 0.6;
+
+                croppingRect = new fabric.Rect({
+                    left: center.left,
+                    top: center.top,
+                    originX: 'center',
+                    originY: 'center',
+                    width: cropWidth,
+                    height: cropHeight,
+                    fill: 'rgba(0,0,0,0.3)',
+                    strokeWidth: 2,
+                    stroke: '#fff'
+                });
+                canvas.add(croppingRect);
+                canvas.setActiveObject(croppingRect);
+                cropButton.innerHTML = '<i class="fas fa-check text-xs mr-1"></i> 確認剪裁';
+            }
+        }
+        
         function handleKeyDown(e) {
             const activeObject = canvas.getActiveObject();
-            if (activeObject && activeObject.isEditing) return;
+            if (!activeObject) return;
+            if (activeObject.isEditing) return;
+
+            const step = e.shiftKey ? 10 : 1;
+            let moved = false;
+
+            switch (e.key) {
+                case 'ArrowUp': activeObject.top -= step; moved = true; break;
+                case 'ArrowDown': activeObject.top += step; moved = true; break;
+                case 'ArrowLeft': activeObject.left -= step; moved = true; break;
+                case 'ArrowRight': activeObject.left += step; moved = true; break;
+            }
+
+            if (moved) {
+                e.preventDefault();
+                activeObject.setCoords();
+                canvas.renderAll();
+                debouncedSaveState();
+                return;
+            }
+
             if (e.ctrlKey || e.metaKey) {
                 if (['c', 'x', 'v', 'z'].includes(e.key.toLowerCase())) e.preventDefault();
                 switch(e.key.toLowerCase()) {
@@ -744,6 +866,7 @@
             if (!isMulti) document.getElementById('align-options')?.classList.add('hidden');
         }
         
+        // [FIXED] Robust alignment logic with boundary checks
         function handleAlign(alignType) {
             const activeObj = canvas.getActiveObject();
             if (!activeObj || activeObj.type !== 'activeSelection' || activeObj.size() < 2) return;
