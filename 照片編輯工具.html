@@ -35,7 +35,7 @@
         .tool-button { background-color: #e2e8f0; color: #4a5568; transition: all 0.2s ease-in-out; }
         .tool-button:hover:not(:disabled) { background-color: #3b82f6; color: #fff; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2); }
         .tool-button:disabled { background-color: #cbd5e1; color: #a0aec0; cursor: not-allowed; }
-        .mode-active { background-color: #3b82f6; color: white; }
+        .mode-active { background-color: #3b82f6; color: white !important; }
         select#font-family option { font-family: var(--font-family-name); font-size: 1rem !important; }
         
         .upload-btn { background-color: #3b82f6; color: #fff; font-weight: 700; }
@@ -303,7 +303,9 @@
         let historyIndex = -1;
         let clipboard = null;
         let isCropping = false;
-        let croppingRect = null;
+        let cropRect = null;
+        let isDrawingCropRect = false;
+        let cropOrigin = { x: 0, y: 0 };
 
         fabric.Object.prototype.set({
             borderColor: '#0d6efd',
@@ -553,21 +555,25 @@
             };
             let shape;
             switch(shapeType) {
-                case 'line': shape = new fabric.Line([0,0,100,0], {left: center.left - 50, top: center.top, ...options}); break;
+                case 'line': shape = new fabric.Line([0,0,100,0], {left: center.left, top: center.top, ...options}); shape.set({ left: shape.left - shape.width / 2 }); break;
                 case 'rect': shape = new fabric.Rect({ width: 100, height: 100, ...options }); break;
                 case 'circle': shape = new fabric.Circle({ radius: 50, ...options }); break;
                 case 'rounded-rect': shape = new fabric.Rect({ width: 100, height: 100, rx: 10, ry: 10, ...options }); break;
                 case 'diamond': shape = new fabric.Polygon([{x: -50, y: 0}, {x: 0, y: -50}, {x: 50, y: 0}, {x: 0, y: 50}], { ...options, objectCaching: false }); break;
                 case 'arrow': 
-                     const svgArrowEl = document.querySelector('#svg-arrow path').getAttribute('d');
-                     shape = new fabric.Path(svgArrowEl, {
-                        ...options,
-                        fill: options.stroke,
-                        stroke: options.stroke,
-                        strokeWidth: 0,
+                     const svgArrowEl = document.querySelector('#svg-arrow').innerHTML;
+                     fabric.loadSVGFromString(svgArrowEl, (objects, opt) => {
+                        const arrow = fabric.util.groupSVGElements(objects, opt);
+                        arrow.set({
+                            ...options,
+                            fill: options.stroke,
+                            stroke: options.stroke,
+                            strokeWidth: 0,
+                        });
+                        arrow.scaleToWidth(150);
+                        canvas.add(arrow).setActiveObject(arrow).renderAll();
                      });
-                     shape.scaleToWidth(150);
-                    break;
+                    return;
             }
             if (shape) { canvas.add(shape); canvas.bringToFront(shape); canvas.setActiveObject(shape); }
         }
@@ -587,7 +593,7 @@
             if (canvas.isDrawingMode) { canvas.freeDrawingBrush.width = strokeWidth; canvas.freeDrawingBrush.color = strokeColor; }
             const activeObject = canvas.getActiveObject();
             if (activeObject && !activeObject.isType('i-text')) {
-                if (activeObject.isType('path')) { // SVG arrow is a path
+                if (activeObject.isType('path') || (activeObject.isType('group') && activeObject.getObjects('path').length > 0)) {
                      activeObject.set({ fill: strokeColor, stroke: strokeColor });
                 } else {
                     activeObject.set({ stroke: strokeColor, strokeWidth: strokeWidth });
@@ -620,7 +626,6 @@
             }
         }
 
-        // [FIXED & ENHANCED] Fullscreen Viewer with Panning
         function enterFsViewer() {
             if (!img) return;
             const overlay = document.getElementById('fullscreen-overlay');
@@ -634,32 +639,15 @@
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
 
-            const updateTransform = () => {
-                fsImage.style.transform = `translate(${translate.x}px, ${translate.y}px) scale(${scale})`;
-            };
-
-            const handleMouseDown = e => {
-                e.preventDefault();
-                isPanning = true;
-                start = { x: e.clientX - translate.x, y: e.clientY - translate.y };
-                fsImage.classList.add('grabbing');
-            };
-
-            const handleMouseMove = e => {
-                if (!isPanning) return;
-                e.preventDefault();
-                translate.x = e.clientX - start.x;
-                translate.y = e.clientY - start.y;
-                updateTransform();
-            };
-
+            const updateTransform = () => { fsImage.style.transform = `translate(${translate.x}px, ${translate.y}px) scale(${scale})`; };
+            const handleMouseDown = e => { e.preventDefault(); isPanning = true; start = { x: e.clientX - translate.x, y: e.clientY - translate.y }; fsImage.classList.add('grabbing'); };
+            const handleMouseMove = e => { if (!isPanning) return; e.preventDefault(); translate.x = e.clientX - start.x; translate.y = e.clientY - start.y; updateTransform(); };
             const handleMouseUp = () => { isPanning = false; fsImage.classList.remove('grabbing'); };
             const handleWheel = (e) => { e.preventDefault(); scale += e.deltaY * -0.001; scale = Math.min(Math.max(.125, scale), 8); updateTransform(); };
             
             const exitFs = () => {
                 overlay.classList.add('hidden');
                 overlay.classList.remove('flex');
-                // Clean up all event listeners
                 fsImage.removeEventListener('mousedown', handleMouseDown);
                 window.removeEventListener('mousemove', handleMouseMove);
                 window.removeEventListener('mouseup', handleMouseUp);
@@ -681,79 +669,107 @@
             document.addEventListener('keydown', exitFsOnEsc);
         }
 
-        // [FIXED] Crop tool logic
+        // [FIXED & ROBUST] New Drag-to-Crop Logic
         function handleCrop() {
             const cropButton = document.getElementById('crop-btn');
-            if (isCropping) {
-                // Apply crop
-                const cropData = {
-                    left: croppingRect.left - img.left,
-                    top: croppingRect.top - img.top,
-                    width: croppingRect.getScaledWidth(),
-                    height: croppingRect.getScaledHeight()
-                };
-
-                const originalImg = new Image();
-                originalImg.src = originalImageSrc;
-                originalImg.onload = () => {
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = cropData.width / img.scaleX;
-                    tempCanvas.height = cropData.height / img.scaleY;
-                    const ctx = tempCanvas.getContext('2d');
-
-                    ctx.drawImage(
-                        originalImg,
-                        cropData.left / img.scaleX, // sourceX
-                        cropData.top / img.scaleY, // sourceY
-                        tempCanvas.width, // sourceWidth
-                        tempCanvas.height, // sourceHeight
-                        0, // destX
-                        0, // destY
-                        tempCanvas.width, // destWidth
-                        tempCanvas.height // destHeight
-                    );
-
-                    const newImgDataUrl = tempCanvas.toDataURL();
-                    fabric.Image.fromURL(newImgDataUrl, (newImg) => {
-                        canvas.clear();
-                        history = []; historyIndex = -1;
-                        img = newImg;
-                        originalImageSrc = newImgDataUrl;
-                        img.set({ selectable: false, evented: false });
-                        canvas.add(img);
-                        fitImageToCanvas();
-                        saveState();
-                    });
-                };
-                
-                canvas.remove(croppingRect);
-                croppingRect = null;
+            
+            const exitCropMode = () => {
+                canvas.defaultCursor = 'default';
+                canvas.selection = true;
+                if (cropRect) {
+                    canvas.remove(cropRect);
+                    cropRect = null;
+                }
                 isCropping = false;
+                isDrawingCropRect = false;
+                cropButton.classList.remove('mode-active');
                 cropButton.innerHTML = '<i class="fas fa-crop-simple text-xs mr-1"></i> 剪裁';
-            } else {
-                // Start cropping
-                isCropping = true;
-                const center = canvas.getCenter();
-                const cropWidth = canvas.width * 0.6;
-                const cropHeight = canvas.height * 0.6;
+                
+                canvas.off('mouse:down', startCropSelection);
+                canvas.off('mouse:move', moveCropSelection);
+                canvas.off('mouse:up', endCropSelection);
+            };
 
-                croppingRect = new fabric.Rect({
-                    left: center.left,
-                    top: center.top,
-                    originX: 'center',
-                    originY: 'center',
-                    width: cropWidth,
-                    height: cropHeight,
-                    fill: 'rgba(0,0,0,0.3)',
-                    strokeWidth: 2,
-                    stroke: '#fff'
+            if (isCropping && cropRect) { // If in crop mode and a rect exists, apply crop
+                const dataURL = canvas.toDataURL({
+                    left: cropRect.left,
+                    top: cropRect.top,
+                    width: cropRect.getScaledWidth(),
+                    height: cropRect.getScaledHeight()
                 });
-                canvas.add(croppingRect);
-                canvas.setActiveObject(croppingRect);
+                
+                fabric.Image.fromURL(dataURL, (newImg) => {
+                    canvas.clear();
+                    history = []; historyIndex = -1;
+                    img = newImg;
+                    originalImageSrc = dataURL; 
+                    img.set({ selectable: false, evented: false });
+                    canvas.add(img);
+                    fitImageToCanvas();
+                    saveState();
+                });
+
+                exitCropMode();
+                return;
+            }
+
+            // Enter/Exit crop mode
+            isCropping = !isCropping;
+            if (isCropping) {
+                cropButton.classList.add('mode-active');
                 cropButton.innerHTML = '<i class="fas fa-check text-xs mr-1"></i> 確認剪裁';
+                canvas.selection = false; // Disable object selection
+                canvas.defaultCursor = 'crosshair';
+                canvas.on('mouse:down', startCropSelection);
+                canvas.on('mouse:move', moveCropSelection);
+                canvas.on('mouse:up', endCropSelection);
+            } else {
+                exitCropMode();
             }
         }
         
+        const startCropSelection = (o) => {
+            if (!isCropping) return;
+            isDrawingCropRect = true;
+            const pointer = canvas.getPointer(o.e);
+            cropOrigin.x = pointer.x;
+            cropOrigin.y = pointer.y;
+            if(cropRect) canvas.remove(cropRect);
+            cropRect = new fabric.Rect({
+                left: cropOrigin.x, top: cropOrigin.y,
+                width: 0, height: 0,
+                fill: 'rgba(0,0,0,0.3)',
+                stroke: '#0d6efd', strokeWidth: 2,
+                selectable: false, // Make it non-selectable initially
+            });
+            canvas.add(cropRect);
+        };
+        const moveCropSelection = (o) => {
+            if (!isDrawingCropRect) return;
+            const pointer = canvas.getPointer(o.e);
+            let left = cropOrigin.x;
+            let top = cropOrigin.y;
+            let width = pointer.x - cropOrigin.x;
+            let height = pointer.y - cropOrigin.y;
+            if (width < 0) { left = pointer.x; width = Math.abs(width); }
+            if (height < 0) { top = pointer.y; height = Math.abs(height); }
+            cropRect.set({ left, top, width, height });
+            canvas.renderAll();
+        };
+        const endCropSelection = (o) => {
+            isDrawingCropRect = false;
+            if (cropRect) {
+                if (cropRect.width < 10 || cropRect.height < 10) {
+                    canvas.remove(cropRect);
+                    cropRect = null;
+                } else {
+                    cropRect.set({ selectable: true });
+                    canvas.setActiveObject(cropRect);
+                }
+            }
+            canvas.renderAll();
+        };
+
         function handleKeyDown(e) {
             const activeObject = canvas.getActiveObject();
             if (!activeObject) return;
@@ -761,14 +777,12 @@
 
             const step = e.shiftKey ? 10 : 1;
             let moved = false;
-
             switch (e.key) {
                 case 'ArrowUp': activeObject.top -= step; moved = true; break;
                 case 'ArrowDown': activeObject.top += step; moved = true; break;
                 case 'ArrowLeft': activeObject.left -= step; moved = true; break;
                 case 'ArrowRight': activeObject.left += step; moved = true; break;
             }
-
             if (moved) {
                 e.preventDefault();
                 activeObject.setCoords();
@@ -776,7 +790,6 @@
                 debouncedSaveState();
                 return;
             }
-
             if (e.ctrlKey || e.metaKey) {
                 if (['c', 'x', 'v', 'z'].includes(e.key.toLowerCase())) e.preventDefault();
                 switch(e.key.toLowerCase()) {
@@ -841,7 +854,7 @@
             const isGroup = hasActive && activeObject.type === 'group';
             
             const objectOptions = document.getElementById('object-options');
-            if(hasActive && !isMulti){
+            if(hasActive && !isMulti && !isGroup){
                 objectOptions.classList.remove('hidden');
                 const angle = activeObject.angle || 0;
                 document.getElementById('object-rotate-slider').value = angle;
@@ -866,7 +879,6 @@
             if (!isMulti) document.getElementById('align-options')?.classList.add('hidden');
         }
         
-        // [FIXED] Robust alignment logic with boundary checks
         function handleAlign(alignType) {
             const activeObj = canvas.getActiveObject();
             if (!activeObj || activeObj.type !== 'activeSelection' || activeObj.size() < 2) return;
