@@ -19,6 +19,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js"></script>
     <!-- jsPDF for PDF export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- PDF.js for PDF import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
     <!-- 載入多種開源中文字型 -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC&family=Noto+Sans+TC:wght@400;700&family=Zhi+Mang+Xing&family=Long+Cang&family=Ma+Shan+Zheng&family=Hanalei+Fill&family=Liu+Jian+Mao+Cao&family=Yuji+Boku&family=Kaisei+Decol&family=Shippori+Mincho&display=swap" rel="stylesheet">
@@ -49,8 +51,8 @@
         
         input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: #cbd5e1; border-radius: 9999px; outline: none; opacity: 0.9; transition: opacity .2s; }
         input[type="range"]:hover { opacity: 1; }
-        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: #3b82f6; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); transition: all 0.2s ease; }
-        input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; background: #3b82f6; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; background: #3b82f6; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); transition: all 0.2s ease; }
+        input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: #3b82f6; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
         
         .panel-heading { color: #3b82f6; }
         .slider-control-group { display: flex; align-items: center; gap: 0.5rem; }
@@ -95,8 +97,9 @@
     
     <div class="w-full mb-4 text-center">
         <h1 class="text-xl md:text-2xl font-bold panel-heading">照片編輯工具</h1>
-        <p class="text-xs text-gray-600 mt-0.5">在瀏覽器端編輯照片，提供風格濾鏡特效、色彩光影調整及文字添加等功能</p>
-        <p class="text-xs text-gray-600 mt-0">製作者：陳政德</p>
+        <!-- [MODIFIED] Font size increased from text-xs to text-sm -->
+        <p class="text-sm text-gray-600 mt-0.5">在瀏覽器端編輯照片，提供風格濾鏡特效、色彩光影調整及文字添加等功能</p>
+        <p class="text-sm text-gray-600 mt-0">製作者：陳政德</p>
     </div>
 
     <div id="main-container" class="flex flex-col md:flex-row w-full gap-3 items-start">
@@ -135,7 +138,7 @@
                             <label for="image-upload" title="從電腦選擇一張照片" class="cursor-pointer tool-button upload-btn py-2 px-3 rounded-xl shadow-sm text-sm font-bold w-1/2 text-center">
                                 <i class="fas fa-upload text-sm mr-1"></i> 選擇照片
                             </label>
-                            <input type="file" id="image-upload" accept="image/*,.heic,.heif" class="hidden">
+                            <input type="file" id="image-upload" accept="image/*,.heic,.heif,.pdf" class="hidden">
                             <button id="undo-btn" class="tool-button undo-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="復原上一步 (Ctrl+Z)"><i class="fas fa-reply text-sm"></i></button>
                             <button id="reset-btn" class="tool-button reset-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="重設所有變更"><i class="fas fa-rotate-left text-sm"></i></button>
                         </div>
@@ -198,7 +201,6 @@
                 </div>
                 <div class="collapsible-content">
                     <div class="bg-white p-1 rounded-lg shadow-sm tool-panel flex flex-wrap gap-1">
-                        <!-- [MODIFIED] Button listeners changed -->
                         <button onclick="applyPreset('optimize')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="自動最佳化亮度、對比與色彩">最佳化</button>
                         <button onclick="applyPreset('landscape')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="增強風景照的色彩與對比">風景</button>
                         <button onclick="applyPreset('food')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="讓食物照片更鮮豔可口">食物</button>
@@ -208,6 +210,9 @@
                         <button onclick="applyFilter('invert')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs">負片</button>
                         <button onclick="applyFilter('blur')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs">模糊</button>
                         <button onclick="applyFilter('pixelate')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs">像素化</button>
+                        <button onclick="applyFilter('vignette')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs">暈影</button>
+                        <button onclick="applyFilter('noise')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs">雜訊</button>
+                        <button onclick="applyFilter('emboss')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs">浮雕</button>
                     </div>
                 </div>
             </div>
@@ -243,6 +248,35 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Special Effects Adjustment Panel -->
+            <div id="effects-adjustment-panel" class="hidden">
+                 <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                    <h2 class="text-base font-bold panel-heading">特效調整</h2>
+                    <i class="fas fa-chevron-down chevron text-gray-500"></i>
+                </div>
+                <div class="collapsible-content">
+                    <div class="bg-white p-1 rounded-lg shadow-sm tool-panel tool-slider-container">
+                        <div id="blur-control" class="slider-control-group hidden">
+                            <label for="blur-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">模糊強度</label>
+                            <input type="range" id="blur-slider" min="0" max="1" value="0.3" step="0.01" title="調整模糊強度">
+                        </div>
+                        <div id="pixelate-control" class="slider-control-group hidden">
+                            <label for="pixelate-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">像素大小</label>
+                            <input type="range" id="pixelate-slider" min="2" max="30" value="8" step="1" title="調整像素大小">
+                        </div>
+                        <div id="vignette-control" class="slider-control-group hidden">
+                            <label for="vignette-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">暈影強度</label>
+                            <input type="range" id="vignette-slider" min="0" max="1" value="0.5" step="0.01" title="調整暈影強度">
+                        </div>
+                        <div id="noise-control" class="slider-control-group hidden">
+                            <label for="noise-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">雜訊密度</label>
+                            <input type="range" id="noise-slider" min="0" max="500" value="100" step="10" title="調整雜訊密度">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
             <!-- Text & Shape Tools -->
             <div>
@@ -254,7 +288,7 @@
                     <div class="bg-white p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1 mb-1">
                         <div class="flex gap-1">
                             <label for="insert-image-upload" class="cursor-pointer tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3 text-center flex items-center justify-center" title="在照片上插入一張圖片"><i class="fas fa-image text-xs mr-1"></i>插入圖片</label>
-                            <input type="file" id="insert-image-upload" accept="image/*" class="hidden">
+                            <input type="file" id="insert-image-upload" accept="image/*,.pdf" class="hidden">
                             <button id="add-text-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3" title="在照片上加入可編輯的文字"><i class="fas fa-font text-xs mr-1"></i>加入文字</button>
                             <button id="add-shape-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3" title="在照片上加入圖形"><i class="fas fa-shapes text-xs mr-1"></i>加入圖形</button>
                         </div>
@@ -390,6 +424,8 @@
         let isColorPicking = false;
         let gridCanvas, isGridVisible = false;
 
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
+
         fabric.Object.prototype.set({
             borderColor: '#0d6efd',
             cornerColor: '#ffffff',
@@ -473,11 +509,12 @@
                 const rotationControl = new fabric.Control({
                     x: 0,
                     y: -0.5,
-                    offsetY: -30,
+                    offsetY: -16, 
                     sizeX: 24,
                     sizeY: 24,
                     cursorStyle: 'crosshair',
                     actionHandler: fabric.controlsUtils.rotationWithSnapping,
+                    actionName: 'rotate',
                     render: function(ctx, left, top, styleOverride, fabricObject) {
                         const size = this.sizeX;
                         ctx.save();
@@ -504,7 +541,7 @@
             document.getElementById('paste-btn').addEventListener('click', handlePaste);
             document.getElementById('undo-btn').addEventListener('click', undo);
             document.getElementById('delete-btn').addEventListener('click', handleDeleteObject);
-            document.getElementById('reset-btn').addEventListener('click', handleReset);
+            document.getElementById('reset-btn').addEventListener('click', () => handleReset(true));
             document.getElementById('download-btn').addEventListener('click', handleDownload);
             document.getElementById('add-text-btn').addEventListener('click', toggleTextOptions);
             document.getElementById('add-shape-btn').addEventListener('click', toggleShapeOptions);
@@ -520,6 +557,11 @@
 
             ['brightness', 'contrast', 'saturation', 'hue', 'temperature'].forEach(id => {
                  document.getElementById(`${id}-slider`).addEventListener('input', () => debounce(handleAdvancedAdjustments, 100)());
+            });
+
+            ['blur', 'pixelate', 'vignette', 'noise'].forEach(id => {
+                const slider = document.getElementById(`${id}-slider`);
+                if (slider) slider.addEventListener('input', () => debounce(handleEffectAdjustments, 100)());
             });
             
             document.getElementById('font-family').addEventListener('change', updateTextOptions);
@@ -616,32 +658,67 @@
             canvas.renderAll();
         }
 
+        async function handlePdfFile(file, callback) {
+            document.body.style.cursor = 'wait';
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                try {
+                    const pdfData = new Uint8Array(event.target.result);
+                    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+                    const page = await pdf.getPage(1);
+                    const scale = 2.0;
+                    const viewport = page.getViewport({ scale: scale });
+                    
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCanvas.width = viewport.width;
+                    tempCanvas.height = viewport.height;
+
+                    await page.render({ canvasContext: tempCtx, viewport: viewport }).promise;
+                    
+                    callback(tempCanvas.toDataURL('image/png'));
+                } catch (error) {
+                    console.error('Error processing PDF:', error);
+                    alert('無法讀取 PDF 檔案。');
+                } finally {
+                    document.body.style.cursor = 'default';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
         async function handleImageUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                originalImageSrc = event.target.result;
-                fabric.Image.fromURL(originalImageSrc, (oImg) => {
+
+            const processImage = (dataURL) => {
+                fabric.Image.fromURL(dataURL, (oImg) => {
                     canvas.clear();
                     history = []; historyIndex = -1;
                     img = oImg;
+                    originalImageSrc = dataURL;
                     img.set({ selectable: false, evented: false, name: 'background' });
                     canvas.add(img);
                     fitImageToCanvas();
                     saveState();
                 }, { crossOrigin: 'anonymous' });
             };
-            reader.readAsDataURL(file);
+
+            if (file.type === 'application/pdf') {
+                handlePdfFile(file, processImage);
+            } else {
+                const reader = new FileReader();
+                reader.onload = (event) => processImage(event.target.result);
+                reader.readAsDataURL(file);
+            }
             e.target.value = null;
         }
         
         async function handleInsertImageUpload(e) {
             const file = e.target.files[0];
             if (!file || !canvas) return;
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const dataURL = event.target.result;
+
+            const processAndAddImage = (dataURL) => {
                 fabric.Image.fromURL(dataURL, (newImg) => {
                     const scale = Math.min((canvas.width * 0.5) / newImg.width, (canvas.height * 0.5) / newImg.height);
                     newImg.scale(scale);
@@ -652,7 +729,14 @@
                     canvas.requestRenderAll();
                 }, { crossOrigin: 'anonymous' });
             };
-            reader.readAsDataURL(file);
+
+            if (file.type === 'application/pdf') {
+                handlePdfFile(file, processAndAddImage);
+            } else {
+                const reader = new FileReader();
+                reader.onload = (event) => processAndAddImage(event.target.result);
+                reader.readAsDataURL(file);
+            }
             e.target.value = null;
         }
 
@@ -660,10 +744,8 @@
         function handleRotate(e) { if (!img) return; const angle = parseFloat(e.target.value); img.set({ angle: angle }).center(); canvas.renderAll(); document.getElementById('rotate-value').innerText = `${Math.round(angle)}°`; debouncedSaveState(); }
         function fitImageToCanvas() { if (!img) return; const wrapper = document.getElementById('canvas-wrapper'); const scale = Math.min(wrapper.clientWidth / img.width, wrapper.clientHeight / img.height) * 0.95; updateImageAndCanvasSize(scale); updateSliders(); debouncedSaveState(); }
         
-        // --- [NEW/MODIFIED] Central function for advanced adjustments ---
         function handleAdvancedAdjustments() {
             if (!img) return;
-            
             const adjustments = {
                 brightness: parseFloat(document.getElementById('brightness-slider').value),
                 contrast: parseFloat(document.getElementById('contrast-slider').value),
@@ -671,10 +753,7 @@
                 hue: parseFloat(document.getElementById('hue-slider').value),
                 temperature: parseFloat(document.getElementById('temperature-slider').value)
             };
-
-            // Keep one-shot filters if they exist
             img.filters = img.filters.filter(f => !['Brightness', 'Contrast', 'Saturation', 'HueRotation', 'ColorMatrix'].includes(f.type));
-
             if (adjustments.brightness !== 0) img.filters.push(new fabric.Image.filters.Brightness({ brightness: adjustments.brightness }));
             if (adjustments.contrast !== 0) img.filters.push(new fabric.Image.filters.Contrast({ contrast: adjustments.contrast }));
             if (adjustments.saturation !== 0) img.filters.push(new fabric.Image.filters.Saturation({ saturation: adjustments.saturation }));
@@ -684,74 +763,100 @@
                 const matrix = [ 1, 0, 0, 0, tempValue > 0 ? tempValue * 0.2 : 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, tempValue < 0 ? -tempValue * 0.2 : 0, 0, 0, 0, 1, 0 ];
                 img.filters.push(new fabric.Image.filters.ColorMatrix({ matrix: matrix }));
             }
-            
             img.applyFilters();
             canvas.renderAll();
             debouncedSaveState();
         }
         
+        function handleEffectAdjustments() {
+            if (!img) return;
+            const effects = {
+                blur: document.getElementById('blur-slider').value,
+                pixelate: document.getElementById('pixelate-slider').value,
+                vignette: document.getElementById('vignette-slider').value,
+                noise: document.getElementById('noise-slider').value
+            };
+            img.filters = img.filters.filter(f => !['Blur', 'Pixelate', 'Vignette', 'Noise'].includes(f.type));
+            const panel = document.getElementById('effects-adjustment-panel');
+            if(!panel.classList.contains('hidden')) {
+                if(!document.getElementById('blur-control').classList.contains('hidden')) {
+                     img.filters.push(new fabric.Image.filters.Blur({ blur: parseFloat(effects.blur) }));
+                }
+                if(!document.getElementById('pixelate-control').classList.contains('hidden')) {
+                     img.filters.push(new fabric.Image.filters.Pixelate({ blocksize: parseInt(effects.pixelate) }));
+                }
+                if(!document.getElementById('vignette-control').classList.contains('hidden')) {
+                     img.filters.push(new fabric.Image.filters.Vignette({ radius: 0.7, darkness: parseFloat(effects.vignette) }));
+                }
+                if(!document.getElementById('noise-control').classList.contains('hidden')) {
+                     img.filters.push(new fabric.Image.filters.Noise({ noise: parseInt(effects.noise) }));
+                }
+            }
+            img.applyFilters();
+            canvas.renderAll();
+            debouncedSaveState();
+        }
+
         function applyPreset(presetName) {
             if (!img) return;
-            
+            resetImageState(); 
             const sliders = {
                 brightness: document.getElementById('brightness-slider'),
                 contrast: document.getElementById('contrast-slider'),
                 saturation: document.getElementById('saturation-slider'),
-                hue: document.getElementById('hue-slider'),
-                temperature: document.getElementById('temperature-slider')
             };
-
-            // Reset all sliders to default before applying a preset
-            Object.values(sliders).forEach(s => s.value = 0);
-
             switch (presetName) {
-                case 'optimize':
-                    sliders.contrast.value = 0.1;
-                    sliders.saturation.value = 0.05;
-                    break;
-                case 'landscape':
-                    sliders.contrast.value = 0.2;
-                    sliders.saturation.value = 0.2;
-                    break;
-                case 'food':
-                    sliders.brightness.value = 0.1;
-                    sliders.saturation.value = 0.3;
-                    break;
-                case 'night':
-                    sliders.brightness.value = 0.2;
-                    break;
+                case 'optimize': sliders.contrast.value = 0.1; sliders.saturation.value = 0.05; break;
+                case 'landscape': sliders.contrast.value = 0.2; sliders.saturation.value = 0.2; break;
+                case 'food': sliders.brightness.value = 0.1; sliders.saturation.value = 0.3; break;
+                case 'night': sliders.brightness.value = 0.2; break;
             }
             handleAdvancedAdjustments();
         }
 
         function applyFilter(filterName) { 
             if (!img) return; 
-
-            // Reset all advanced adjustment sliders
-            ['brightness', 'contrast', 'saturation', 'hue', 'temperature'].forEach(id => {
-                document.getElementById(`${id}-slider`).value = id === 'temperature' ? 0 : 0;
-            });
-
-            img.filters = []; // Clear all previous filters for a clean effect
+            resetImageState();
             
+            const adjustableFilters = ['blur', 'pixelate', 'vignette', 'noise'];
+            const panel = document.getElementById('effects-adjustment-panel');
+            const controls = {
+                blur: document.getElementById('blur-control'),
+                pixelate: document.getElementById('pixelate-control'),
+                vignette: document.getElementById('vignette-control'),
+                noise: document.getElementById('noise-control'),
+            };
+            Object.values(controls).forEach(c => c.classList.add('hidden'));
+            panel.classList.add('hidden');
+            
+            let hasAdjustableFilter = false;
             switch (filterName) {
                 case 'grayscale': img.filters.push(new fabric.Image.filters.Grayscale()); break;
                 case 'sepia': img.filters.push(new fabric.Image.filters.Sepia()); break;
                 case 'invert': img.filters.push(new fabric.Image.filters.Invert()); break;
-                case 'blur': img.filters.push(new fabric.Image.filters.Blur({ blur: 0.3 })); break;
-                case 'pixelate': img.filters.push(new fabric.Image.filters.Pixelate({ blocksize: 8 })); break;
+                case 'emboss': img.filters.push(new fabric.Image.filters.Convolute({ matrix: [ 1, 1, 1, 1, 0.7, -1, -1, -1, -1 ] })); break;
+                case 'blur':
+                case 'pixelate':
+                case 'vignette':
+                case 'noise':
+                    hasAdjustableFilter = true;
+                    panel.classList.remove('hidden');
+                    controls[filterName].classList.remove('hidden');
+                    handleEffectAdjustments();
+                    break;
             }
             
-            img.applyFilters(); 
-            canvas.renderAll(); 
-            debouncedSaveState(); 
+            if (!hasAdjustableFilter) {
+                img.applyFilters();
+                canvas.renderAll();
+                debouncedSaveState();
+            }
         }
         
         function handleFlip(direction) { if (!img) return; if (direction === 'horizontal') { img.flipX = !img.flipX; } else if (direction === 'vertical') { img.flipY = !img.flipY; } canvas.renderAll(); debouncedSaveState(); }
-        function drawGrid(width, height) { if (!gridCanvas) { const gridEl = document.getElementById('grid-canvas'); gridCanvas = new fabric.StaticCanvas(gridEl); } gridCanvas.clear(); gridCanvas.setDimensions({ width: width, height: height }); const gridSize = 30; for (let i = 1; i < (width / gridSize); i++) { gridCanvas.add(new fabric.Line([i * gridSize, 0, i * gridSize, height], { stroke: 'rgba(255,255,255,0.4)', selectable: false })); } for (let i = 1; i < (height / gridSize); i++) { gridCanvas.add(new fabric.Line([0, i * gridSize, width, i * gridSize], { stroke: 'rgba(255,255,255,0.4)', selectable: false })); } gridCanvas.renderAll(); }
+        function drawGrid(width, height) { if (!gridCanvas) { const gridEl = document.getElementById('grid-canvas'); gridCanvas = new fabric.StaticCanvas(gridEl); } gridCanvas.clear(); const wrapper = document.getElementById('canvas-wrapper'); const canvasEl = document.getElementById('photo-canvas'); const left = canvasEl.offsetLeft; const top = canvasEl.offsetTop; gridCanvas.setDimensions({ width: width, height: height }); gridCanvas.getElement().style.left = `${left}px`; gridCanvas.getElement().style.top = `${top}px`; const gridSize = 30; for (let i = 1; i < (width / gridSize); i++) { gridCanvas.add(new fabric.Line([i * gridSize, 0, i * gridSize, height], { stroke: 'rgba(255,255,255,0.4)', selectable: false })); } for (let i = 1; i < (height / gridSize); i++) { gridCanvas.add(new fabric.Line([0, i * gridSize, width, i * gridSize], { stroke: 'rgba(255,255,255,0.4)', selectable: false })); } gridCanvas.renderAll(); }
         function toggleGrid() { isGridVisible = !isGridVisible; const gridEl = document.getElementById('grid-canvas'); const gridBtn = document.getElementById('grid-btn'); if (isGridVisible && img) { gridEl.classList.remove('hidden'); gridBtn.classList.add('mode-active'); drawGrid(canvas.getWidth(), canvas.getHeight()); } else { gridEl.classList.add('hidden'); gridBtn.classList.remove('mode-active'); } }
         
-        // --- Text & Shape Functions ---
         function toggleTextOptions() { const textOptions = document.getElementById('text-options'); if(textOptions.classList.contains('hidden')){ handleAddText(); } textOptions.classList.toggle('hidden'); document.getElementById('shape-options').classList.add('hidden'); }
         function toggleShapeOptions() { document.getElementById('shape-options').classList.toggle('hidden'); document.getElementById('text-options').classList.add('hidden'); }
         function handleAddText() { if (!img) return; const text = new fabric.IText('點擊輸入文字', { left: canvas.getCenter().left, top: canvas.getCenter().top, fill: '#000000', fontFamily: document.getElementById('font-family').value, fontSize: 40, originX: 'center', originY: 'center', id: Date.now() }); canvas.add(text); canvas.bringToFront(text); canvas.setActiveObject(text); canvas.requestRenderAll(); }
@@ -760,11 +865,9 @@
         function toggleFreeDraw() { canvas.isDrawingMode = !canvas.isDrawingMode; document.getElementById('free-draw-btn').classList.toggle('mode-active', canvas.isDrawingMode); if (canvas.isDrawingMode) { canvas.freeDrawingBrush.color = document.getElementById('shape-stroke-color').value; canvas.freeDrawingBrush.width = parseInt(document.getElementById('shape-stroke-width').value, 10); } }
         function updateShapeOptions() { const strokeWidth = parseInt(document.getElementById('shape-stroke-width').value, 10); const strokeColor = document.getElementById('shape-stroke-color').value; if (canvas.isDrawingMode) { canvas.freeDrawingBrush.width = strokeWidth; canvas.freeDrawingBrush.color = strokeColor; } const activeObject = canvas.getActiveObject(); if (activeObject && !activeObject.isType('i-text')) { if (activeObject.isType('path') || (activeObject.isType('group') && activeObject.getObjects('path').length > 0)) { activeObject.set({ fill: strokeColor }); } else { activeObject.set({ stroke: strokeColor, strokeWidth: strokeWidth }); } canvas.renderAll(); renderLayerPanel(); } }
 
-        // --- Color Picker, Viewer, and Crop Tools ---
         function toggleColorPicker() { isColorPicking = !isColorPicking; const btn = document.getElementById('color-picker-btn'); const display = document.getElementById('color-picker-display'); btn.classList.toggle('mode-active', isColorPicking); display.classList.toggle('hidden', !isColorPicking); if (isColorPicking) { canvas.selection = false; canvas.defaultCursor = 'crosshair'; canvas.hoverCursor = 'crosshair'; } else { canvas.selection = true; canvas.defaultCursor = 'default'; canvas.hoverCursor = 'move'; } canvas.renderAll(); }
         function handleColorPickerMove(o) { if (!isColorPicking) return; const pointer = canvas.getPointer(o.e); const x = Math.round(pointer.x); const y = Math.round(pointer.y); const ctx = canvas.getContext('2d'); if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return; const pixel = ctx.getImageData(x, y, 1, 1).data; const r = pixel[0], g = pixel[1], b = pixel[2]; document.getElementById('rgb-value').textContent = `${r}, ${g}, ${b}`; function rgbToHex(r, g, b) { return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase(); } document.getElementById('hex-value').textContent = rgbToHex(r, g, b); }
         
-        // --- Object Manipulation Tools (Cut, Copy, Paste, etc.) ---
         function handleCopy() { const activeObject = canvas.getActiveObject(); if (!activeObject) return; activeObject.clone(cloned => { clipboard = cloned; document.getElementById('paste-btn').disabled = false; }); }
         function handleCut() { const activeObject = canvas.getActiveObject(); if (!activeObject) return; activeObject.clone(cloned => { clipboard = cloned; document.getElementById('paste-btn').disabled = false; }); handleDeleteObject(); }
         function handlePaste() { if (!clipboard) return; clipboard.clone(clonedObj => { canvas.discardActiveObject(); clonedObj.set({ left: clipboard.left + 10, top: clipboard.top + 10, evented: true, id: Date.now() }); if (clonedObj.type === 'activeSelection') { clonedObj.canvas = canvas; clonedObj.forEachObject(obj => { obj.set({id: Date.now() + Math.random()}); canvas.add(obj); }); clonedObj.setCoords(); } else { canvas.add(clonedObj); } clipboard.left += 10; clipboard.top += 10; canvas.setActiveObject(clonedObj); canvas.requestRenderAll(); }); }
@@ -773,9 +876,38 @@
         function ungroupObjects() { const activeObj = canvas.getActiveObject(); if (!activeObj || activeObj.type !== 'group') return; activeObj.toActiveSelection(); canvas.requestRenderAll(); }
         function handleObjectRotation(e) { const activeObject = canvas.getActiveObject(); if (activeObject) { const angle = parseInt(e.target.value, 10); activeObject.set('angle', angle).setCoords(); canvas.renderAll(); document.getElementById('object-rotate-value').innerText = `${angle}°`; } }
 
-        // --- Keyboard, Reset, Download ---
         function handleKeyDown(e) { const activeObject = canvas.getActiveObject(); if (!activeObject || activeObject.isEditing) return; const step = e.shiftKey ? 10 : 1; let moved = false; switch (e.key) { case 'ArrowUp': activeObject.top -= step; moved = true; break; case 'ArrowDown': activeObject.top += step; moved = true; break; case 'ArrowLeft': activeObject.left -= step; moved = true; break; case 'ArrowRight': activeObject.left += step; moved = true; break; } if (moved) { e.preventDefault(); activeObject.setCoords(); canvas.renderAll(); debouncedSaveState(); return; } if (e.ctrlKey || e.metaKey) { if (['c', 'x', 'v', 'z'].includes(e.key.toLowerCase())) e.preventDefault(); switch(e.key.toLowerCase()) { case 'c': handleCopy(); break; case 'x': handleCut(); break; case 'v': handlePaste(); break; case 'z': undo(); break; } } else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); handleDeleteObject(); } }
-        function handleReset() { if (originalImageSrc) { fabric.Image.fromURL(originalImageSrc, (oImg) => { canvas.clear(); history = []; historyIndex = -1; img = oImg; img.set({ selectable: false, evented: false }); canvas.add(img); fitImageToCanvas(); saveState(); }); } }
+        
+        // [MODIFIED] Robust reset function
+        function resetImageState() {
+            if (img) {
+                img.filters = [];
+                img.applyFilters();
+                img.set({ flipX: false, flipY: false });
+            }
+            ['brightness', 'contrast', 'saturation', 'hue', 'temperature'].forEach(id => {
+                const slider = document.getElementById(`${id}-slider`);
+                slider.value = id === 'temperature-slider' ? 0 : 0;
+            });
+            const panel = document.getElementById('effects-adjustment-panel');
+            panel.classList.add('hidden');
+            ['blur', 'pixelate', 'vignette', 'noise'].forEach(id => {
+                document.getElementById(`${id}-control`).classList.add('hidden');
+            });
+            
+            canvas.renderAll();
+        }
+
+        function handleReset(addToHistory = true) {
+            if (originalImageSrc) {
+                resetImageState(); 
+                fitImageToCanvas(); 
+                if (addToHistory) {
+                    saveState();
+                }
+            }
+        }
+
         function handleDownload() { const format = document.getElementById('download-format').value; const link = document.createElement('a'); if (format === 'pdf') { const { jsPDF } = window.jspdf; const imgData = canvas.toDataURL({format: 'jpeg', quality: 1.0}); const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'landscape' : 'portrait', unit: 'px', format: [canvas.width, canvas.height] }); pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height); pdf.save('edited-photo.pdf'); } else if (format === 'svg') { const svgData = canvas.toSVG(); const blob = new Blob([svgData], { type: 'image/svg+xml' }); link.href = URL.createObjectURL(blob); link.download = `edited-photo.svg`; link.click(); URL.revokeObjectURL(link.href); } else { link.href = canvas.toDataURL({ format: format, quality: 1.0 }); link.download = `edited-photo.${format}`; link.click(); } }
         
         function updateObjectActionButtons(e) {
@@ -814,6 +946,7 @@
             
             const items = activeObj.getObjects();
             const selectionBox = activeObj.getBoundingRect();
+            const originalPosition = { left: activeObj.left, top: activeObj.top };
 
             items.forEach(obj => {
                 const objBox = obj.getBoundingRect();
@@ -848,25 +981,14 @@
 
             canvas.discardActiveObject();
             const sel = new fabric.ActiveSelection(items, { canvas: canvas });
-            canvas.setActiveObject(sel);
-
-            const newSelectionBox = sel.getBoundingRect();
-            let shiftX = 0;
-            let shiftY = 0;
-            if (newSelectionBox.left < 0) shiftX = -newSelectionBox.left;
-            if (newSelectionBox.left + newSelectionBox.width > canvas.width) shiftX = canvas.width - (newSelectionBox.left + newSelectionBox.width);
-            if (newSelectionBox.top < 0) shiftY = -newSelectionBox.top;
-            if (newSelectionBox.top + newSelectionBox.height > canvas.height) shiftY = canvas.height - (newSelectionBox.top + newSelectionBox.height);
+            sel.set({ left: originalPosition.left, top: originalPosition.top });
             
-            if (shiftX !== 0 || shiftY !== 0) {
-                sel.set({ left: sel.left + shiftX, top: sel.top + shiftY });
-            }
             sel.setCoords();
+            canvas.setActiveObject(sel);
             canvas.renderAll();
             debouncedSaveState();
         }
         
-        // --- Layer Panel Logic ---
         function setupLayerPanel() {
             const layerList = document.getElementById('layer-list');
             layerList.addEventListener('click', (e) => {
