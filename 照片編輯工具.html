@@ -62,19 +62,24 @@
         #fullscreen-image.grabbing { cursor: grabbing; }
         #fullscreen-controls { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 10000; }
         #fullscreen-controls button { background-color: rgba(255, 255, 255, 0.8); border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; }
+        
+        .collapsible-header .chevron { transition: transform 0.3s ease-in-out; }
+        .collapsible-header .chevron.collapsed { transform: rotate(-90deg); }
+        .collapsible-content {
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.4s ease-in-out, padding 0.4s ease-in-out;
+            padding-top: 0.25rem;
+        }
+        .collapsible-content.collapsed {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
     </style>
 </head>
 <body class="flex flex-col items-center justify-start p-4 md:p-8 min-h-screen text-gray-800">
     
-    <!-- SVG Arrow Definition -->
-    <svg id="arrow-svg" width="0" height="0" version="1.1" xmlns="http://www.w3.org/2000/svg" style="display:none;">
-        <defs>
-            <g id="svg-arrow">
-                <path d="M 0 7.5 L 80 7.5 L 80 0 L 100 15 L 80 30 L 80 22.5 L 0 22.5 Z" stroke-linecap="round" />
-            </g>
-        </defs>
-    </svg>
-
     <div class="w-full mb-4 text-center">
         <h1 class="text-2xl md:text-3xl font-bold panel-heading">照片編輯工具</h1>
         <p class="text-sm md:text-base text-gray-600 mt-1">在瀏覽器端編輯照片，提供風格濾鏡特效、色彩光影調整及文字添加等功能</p>
@@ -87,135 +92,176 @@
             <canvas id="photo-canvas" class="rounded-xl"></canvas>
         </div>
 
-        <div class="w-full md:w-80 flex flex-col gap-2 p-2 rounded-xl container-card max-h-[80vh] overflow-y-auto">
+        <!-- [FIX] Added id="tools-panel" to this container -->
+        <div id="tools-panel" class="w-full md:w-80 flex flex-col gap-2 p-2 rounded-xl container-card max-h-[80vh] overflow-y-auto">
             <!-- Basic Tools -->
             <div>
-                <h2 class="text-base font-bold mb-1 panel-heading">基本工具</h2>
-                <div class="bg-white p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1">
-                    <div class="flex justify-between items-center gap-1">
-                        <label for="image-upload" title="從電腦選擇一張照片" class="cursor-pointer tool-button upload-btn py-2 px-3 rounded-xl shadow-sm text-sm font-bold w-1/2 text-center">
-                            <i class="fas fa-upload text-sm mr-1"></i> 選擇照片
-                        </label>
-                        <input type="file" id="image-upload" accept="image/*,.heic,.heif" class="hidden">
-                        <button id="undo-btn" class="tool-button undo-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="復原上一步 (Ctrl+Z)"><i class="fas fa-reply text-sm"></i></button>
-                        <button id="reset-btn" class="tool-button reset-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="重設所有變更"><i class="fas fa-rotate-left text-sm"></i></button>
+                <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                    <h2 class="text-base font-bold panel-heading">基本工具</h2>
+                    <i class="fas fa-chevron-down chevron text-gray-500"></i>
+                </div>
+                <div class="collapsible-content">
+                    <div class="bg-white p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1">
+                        <div class="flex justify-between items-center gap-1">
+                            <label for="image-upload" title="從電腦選擇一張照片" class="cursor-pointer tool-button upload-btn py-2 px-3 rounded-xl shadow-sm text-sm font-bold w-1/2 text-center">
+                                <i class="fas fa-upload text-sm mr-1"></i> 選擇照片
+                            </label>
+                            <input type="file" id="image-upload" accept="image/*,.heic,.heif" class="hidden">
+                            <button id="undo-btn" class="tool-button undo-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="復原上一步 (Ctrl+Z)"><i class="fas fa-reply text-sm"></i></button>
+                            <button id="reset-btn" class="tool-button reset-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="重設所有變更"><i class="fas fa-rotate-left text-sm"></i></button>
+                        </div>
+                        <div class="slider-control-group">
+                            <label for="zoom-slider" class="block text-xs font-medium text-gray-600 flex-shrink-0">縮放</label>
+                            <button class="slider-arrow-btn" onclick="adjustSlider('zoom-slider', -0.05)" title="縮小">-</button>
+                            <input type="range" id="zoom-slider" min="0.1" max="5" value="1" step="0.05" title="調整圖片縮放比例">
+                            <button class="slider-arrow-btn" onclick="adjustSlider('zoom-slider', 0.05)" title="放大">+</button>
+                            <span id="zoom-value" class="text-xs text-gray-600 w-8 text-right">100%</span>
+                        </div>
+                        <div class="slider-control-group">
+                            <label for="rotate-slider" class="block text-xs font-medium text-gray-600 flex-shrink-0">旋轉</label>
+                            <button class="slider-arrow-btn" onclick="adjustSlider('rotate-slider', -1)" title="逆時針旋轉">-</button>
+                            <input type="range" id="rotate-slider" min="-180" max="180" value="0" step="1" title="旋轉圖片">
+                            <button class="slider-arrow-btn" onclick="adjustSlider('rotate-slider', 1)" title="順時針旋轉">+</button>
+                            <span id="rotate-value" class="text-xs text-gray-600 w-8 text-right">0°</span>
+                        </div>
+                        <button id="crop-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm w-full text-xs" title="剪裁圖片"><i class="fas fa-crop-simple text-xs mr-1"></i> 剪裁</button>
                     </div>
-                    <div class="slider-control-group">
-                        <label for="zoom-slider" class="block text-xs font-medium text-gray-600 flex-shrink-0">縮放</label>
-                        <button class="slider-arrow-btn" onclick="adjustSlider('zoom-slider', -0.05)" title="縮小">-</button>
-                        <input type="range" id="zoom-slider" min="0.1" max="5" value="1" step="0.05" title="調整圖片縮放比例">
-                        <button class="slider-arrow-btn" onclick="adjustSlider('zoom-slider', 0.05)" title="放大">+</button>
-                        <span id="zoom-value" class="text-xs text-gray-600 w-8 text-right">100%</span>
-                    </div>
-                    <div class="slider-control-group">
-                        <label for="rotate-slider" class="block text-xs font-medium text-gray-600 flex-shrink-0">旋轉</label>
-                        <button class="slider-arrow-btn" onclick="adjustSlider('rotate-slider', -1)" title="逆時針旋轉">-</button>
-                        <input type="range" id="rotate-slider" min="-180" max="180" value="0" step="1" title="旋轉圖片">
-                        <button class="slider-arrow-btn" onclick="adjustSlider('rotate-slider', 1)" title="順時針旋轉">+</button>
-                        <span id="rotate-value" class="text-xs text-gray-600 w-8 text-right">0°</span>
-                    </div>
-                    <button id="crop-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm w-full text-xs" title="剪裁圖片"><i class="fas fa-crop-simple text-xs mr-1"></i> 剪裁</button>
                 </div>
             </div>
 
             <!-- View Tools -->
             <div>
-                <h2 class="text-base font-bold mb-1 panel-heading">檢視工具</h2>
-                <div class="bg-white p-1 rounded-lg shadow-sm tool-panel grid grid-cols-2 gap-1">
-                    <button id="fullscreen-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs" title="進入全螢幕相片檢視模式 (ESC退出)"><i class="fas fa-expand text-xs mr-1"></i> 全螢幕</button>
-                    <button id="fit-canvas-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs" title="將圖片縮放至最適合畫布的大小"><i class="fas fa-compress text-xs mr-1"></i> 縮放至畫布</button>
+                <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                    <h2 class="text-base font-bold panel-heading">檢視工具</h2>
+                    <i class="fas fa-chevron-down chevron text-gray-500"></i>
+                </div>
+                <div class="collapsible-content">
+                    <div class="bg-white p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1">
+                        <div class="grid grid-cols-3 gap-1">
+                            <button id="fullscreen-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs" title="進入全螢幕相片檢視模式 (ESC退出)"><i class="fas fa-expand text-xs mr-1"></i> 全螢幕</button>
+                            <button id="fit-canvas-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs" title="將圖片縮放至最適合畫布的大小"><i class="fas fa-compress text-xs mr-1"></i> 縮放至畫布</button>
+                            <button id="color-picker-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs" title="點選畫布獲取顏色資訊"><i class="fas fa-eye-dropper text-xs mr-1"></i> 色彩選擇器</button>
+                        </div>
+                        <div id="color-picker-display" class="hidden mt-1 p-2 bg-gray-100 rounded-lg text-xs font-mono">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold">RGB:</span>
+                                <span id="rgb-value">---, ---, ---</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="font-bold">HEX:</span>
+                                <span id="hex-value">#------</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Filter & Effects -->
             <div>
-                <h2 class="text-base font-bold mb-1 panel-heading">濾鏡與特效</h2>
-                <div class="bg-white p-1 rounded-lg shadow-sm tool-panel grid grid-cols-4 gap-1">
-                    <button id="optimize-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="自動最佳化亮度、對比與色彩">最佳化</button>
-                    <button id="landscape-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="增強風景照的色彩與對比">風景</button>
-                    <button id="food-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="讓食物照片更鮮豔可口">食物</button>
-                    <button id="night-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="增亮夜景並添加冷色調">夜景</button>
-                    <button id="clarity-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="輕微提升清晰度與飽和度">清晰</button>
-                    <button id="brighten-shadows-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="提亮照片中的陰影部分">陰影增亮</button>
-                    <button id="beauty-skin-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="輕微柔化，適合人像">美肌</button>
-                    <button id="highlight-recovery-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="調暗過曝的高光部分">亮部調暗</button>
+                 <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                    <h2 class="text-base font-bold panel-heading">濾鏡與特效</h2>
+                    <i class="fas fa-chevron-down chevron text-gray-500"></i>
+                </div>
+                <div class="collapsible-content">
+                    <div class="bg-white p-1 rounded-lg shadow-sm tool-panel grid grid-cols-4 gap-1">
+                        <button id="optimize-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="自動最佳化亮度、對比與色彩">最佳化</button>
+                        <button id="landscape-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="增強風景照的色彩與對比">風景</button>
+                        <button id="food-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="讓食物照片更鮮豔可口">食物</button>
+                        <button id="night-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="增亮夜景並添加冷色調">夜景</button>
+                        <button id="clarity-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="輕微提升清晰度與飽和度">清晰</button>
+                        <button id="brighten-shadows-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="提亮照片中的陰影部分">陰影增亮</button>
+                        <button id="beauty-skin-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="輕微柔化，適合人像">美肌</button>
+                        <button id="highlight-recovery-btn" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="調暗過曝的高光部分">亮部調暗</button>
+                    </div>
                 </div>
             </div>
             
             <!-- Advanced Tools -->
             <div>
-                <h2 class="text-base font-bold mb-1 panel-heading">進階工具</h2>
-                <div class="bg-white p-1 rounded-lg shadow-sm tool-panel tool-slider-container">
-                    <div class="slider-control-group">
-                        <label for="brightness-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">亮度</label>
-                        <button class="slider-arrow-btn" onclick="adjustSlider('brightness-slider', -0.01)" title="降低亮度">-</button>
-                        <input type="range" id="brightness-slider" min="-1" max="1" value="0" step="0.01" title="調整亮度">
-                        <button class="slider-arrow-btn" onclick="adjustSlider('brightness-slider', 0.01)" title="增加亮度">+</button>
-                    </div>
-                    <div class="slider-control-group">
-                        <label for="contrast-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">對比度</label>
-                        <button class="slider-arrow-btn" onclick="adjustSlider('contrast-slider', -0.01)" title="降低對比度">-</button>
-                        <input type="range" id="contrast-slider" min="-1" max="1" value="0" step="0.01" title="調整對比度">
-                        <button class="slider-arrow-btn" onclick="adjustSlider('contrast-slider', 0.01)" title="增加對比度">+</button>
-                    </div>
-                    <div class="slider-control-group">
-                        <label for="saturation-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">飽和度</label>
-                        <button class="slider-arrow-btn" onclick="adjustSlider('saturation-slider', -0.01)" title="降低飽和度">-</button>
-                        <input type="range" id="saturation-slider" min="-1" max="1" value="0" step="0.01" title="調整飽和度">
-                        <button class="slider-arrow-btn" onclick="adjustSlider('saturation-slider', 0.01)" title="增加飽和度">+</button>
-                    </div>
-                    <div class="slider-control-group">
-                        <label for="sharpen-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">銳化</label>
-                        <button class="slider-arrow-btn" onclick="adjustSlider('sharpen-slider', -0.01)" title="降低銳化">-</button>
-                        <input type="range" id="sharpen-slider" min="0" max="1" value="0" step="0.01" title="調整銳化程度">
-                        <button class="slider-arrow-btn" onclick="adjustSlider('sharpen-slider', 0.01)" title="增加銳化">+</button>
-                    </div>
-                    <div class="slider-control-group">
-                        <label for="gamma-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">Gamma 校正</label>
-                        <button class="slider-arrow-btn" onclick="adjustSlider('gamma-slider', -0.05)" title="降低 Gamma">-</button>
-                        <input type="range" id="gamma-slider" min="0.1" max="5" value="1" step="0.05" title="調整中間調亮度">
-                        <button class="slider-arrow-btn" onclick="adjustSlider('gamma-slider', 0.05)" title="增加 Gamma">+</button>
+                <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                    <h2 class="text-base font-bold panel-heading">進階工具</h2>
+                    <i class="fas fa-chevron-down chevron text-gray-500"></i>
+                </div>
+                <div class="collapsible-content">
+                    <div class="bg-white p-1 rounded-lg shadow-sm tool-panel tool-slider-container">
+                        <div class="slider-control-group">
+                            <label for="brightness-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">亮度</label>
+                            <button class="slider-arrow-btn" onclick="adjustSlider('brightness-slider', -0.01)" title="降低亮度">-</button>
+                            <input type="range" id="brightness-slider" min="-1" max="1" value="0" step="0.01" title="調整亮度">
+                            <button class="slider-arrow-btn" onclick="adjustSlider('brightness-slider', 0.01)" title="增加亮度">+</button>
+                        </div>
+                        <div class="slider-control-group">
+                            <label for="contrast-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">對比度</label>
+                            <button class="slider-arrow-btn" onclick="adjustSlider('contrast-slider', -0.01)" title="降低對比度">-</button>
+                            <input type="range" id="contrast-slider" min="-1" max="1" value="0" step="0.01" title="調整對比度">
+                            <button class="slider-arrow-btn" onclick="adjustSlider('contrast-slider', 0.01)" title="增加對比度">+</button>
+                        </div>
+                        <div class="slider-control-group">
+                            <label for="saturation-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">飽和度</label>
+                            <button class="slider-arrow-btn" onclick="adjustSlider('saturation-slider', -0.01)" title="降低飽和度">-</button>
+                            <input type="range" id="saturation-slider" min="-1" max="1" value="0" step="0.01" title="調整飽和度">
+                            <button class="slider-arrow-btn" onclick="adjustSlider('saturation-slider', 0.01)" title="增加飽和度">+</button>
+                        </div>
+                        <div class="slider-control-group">
+                            <label for="sharpen-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">銳化</label>
+                            <button class="slider-arrow-btn" onclick="adjustSlider('sharpen-slider', -0.01)" title="降低銳化">-</button>
+                            <input type="range" id="sharpen-slider" min="0" max="1" value="0" step="0.01" title="調整銳化程度">
+                            <button class="slider-arrow-btn" onclick="adjustSlider('sharpen-slider', 0.01)" title="增加銳化">+</button>
+                        </div>
+                        <div class="slider-control-group">
+                            <label for="gamma-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">Gamma 校正</label>
+                            <button class="slider-arrow-btn" onclick="adjustSlider('gamma-slider', -0.05)" title="降低 Gamma">-</button>
+                            <input type="range" id="gamma-slider" min="0.1" max="5" value="1" step="0.05" title="調整中間調亮度">
+                            <button class="slider-arrow-btn" onclick="adjustSlider('gamma-slider', 0.05)" title="增加 Gamma">+</button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Text & Shape Tools -->
             <div>
-                <h2 class="text-base font-bold mb-1 panel-heading">文字與圖形工具</h2>
-                <div class="bg-white p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1 mb-1">
-                    <div class="flex gap-1">
-                        <button id="add-text-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/2" title="在照片上加入可編輯的文字"><i class="fas fa-font text-xs mr-1"></i>加入文字</button>
-                        <button id="add-shape-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/2" title="在照片上加入圖形"><i class="fas fa-shapes text-xs mr-1"></i>加入圖形</button>
-                    </div>
-                    <div id="text-options" class="hidden flex flex-col gap-1 mt-1 p-2 bg-gray-100 rounded-lg">
-                        <label for="font-family" class="text-xs font-medium text-gray-600">字型</label>
-                        <select id="font-family" class="w-full p-1 rounded-md bg-white text-gray-800 border border-gray-300 text-sm">
-                             <option value="Noto Sans TC" style="--font-family-name: 'Noto Sans TC'">思源黑體 (標準)</option>
-                             <option value="Noto Serif TC" style="--font-family-name: 'Noto Serif TC'">思源宋體 (優雅)</option>
-                             <option value="Ma Shan Zheng" style="--font-family-name: 'Ma Shan Zheng'">馬善政 (書法)</option>
-                             <option value="sans-serif" style="--font-family-name: sans-serif">系統無襯線</option>
-                             <option value="serif" style="--font-family-name: serif">系統襯線</option>
-                        </select>
-                        <label for="font-size" class="text-xs font-medium text-gray-600 mt-2">大小</label>
-                        <input type="range" id="font-size" min="10" max="200" value="40" class="w-full">
-                        <label for="font-color" class="text-xs font-medium text-gray-600 mt-2">顏色</label>
-                        <input type="color" id="font-color" value="#000000" class="w-full h-8 p-0 border-none cursor-pointer rounded-md">
-                    </div>
-                    <div id="shape-options" class="hidden flex flex-col gap-1 mt-1 p-2 bg-gray-100 rounded-lg">
-                        <div class="grid grid-cols-4 gap-1">
-                            <button onclick="handleAddShape('line')" class="tool-button p-2 rounded-xl" title="直線"><i class="fas fa-minus"></i></button>
-                            <button onclick="handleAddShape('rect')" class="tool-button p-2 rounded-xl" title="框線"><i class="far fa-square"></i></button>
-                            <button onclick="handleAddShape('circle')" class="tool-button p-2 rounded-xl" title="圓形"><i class="far fa-circle"></i></button>
-                            <button onclick="handleAddShape('arrow')" class="tool-button p-2 rounded-xl" title="箭頭"><i class="fas fa-long-arrow-alt-right"></i></button>
-                            <button onclick="handleAddShape('diamond')" class="tool-button p-2 rounded-xl" title="菱形"><i class="far fa-gem"></i></button>
-                            <button onclick="handleAddShape('rounded-rect')" class="tool-button p-2 rounded-xl" title="圓角矩形"><i class="fas fa-vector-square"></i></button>
-                            <button id="free-draw-btn" class="tool-button p-2 rounded-xl" title="自由劃線"><i class="fas fa-pencil-alt"></i></button>
+                 <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                    <h2 class="text-base font-bold panel-heading">文字與圖形工具</h2>
+                    <i class="fas fa-chevron-down chevron text-gray-500"></i>
+                </div>
+                <div class="collapsible-content">
+                    <div class="bg-white p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1 mb-1">
+                        <div class="flex gap-1">
+                            <label for="insert-image-upload" class="cursor-pointer tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3 text-center flex items-center justify-center" title="在照片上插入一張圖片"><i class="fas fa-image text-xs mr-1"></i>插入圖片</label>
+                            <input type="file" id="insert-image-upload" accept="image/*" class="hidden">
+                            <button id="add-text-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3" title="在照片上加入可編輯的文字"><i class="fas fa-font text-xs mr-1"></i>加入文字</button>
+                            <button id="add-shape-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3" title="在照片上加入圖形"><i class="fas fa-shapes text-xs mr-1"></i>加入圖形</button>
                         </div>
-                        <div class="mt-2 flex flex-col gap-1">
-                            <label for="shape-stroke-width" class="text-xs font-medium text-gray-600">線條寬度</label>
-                            <input type="range" id="shape-stroke-width" min="1" max="50" value="3" class="w-full">
-                            <label for="shape-stroke-color" class="text-xs font-medium text-gray-600">線條顏色</label>
-                            <input type="color" id="shape-stroke-color" value="#000000" class="w-full h-8 p-0 border-none cursor-pointer rounded-md">
+                        <div id="text-options" class="hidden flex flex-col gap-1 mt-1 p-2 bg-gray-100 rounded-lg">
+                            <label for="font-family" class="text-xs font-medium text-gray-600">字型</label>
+                            <select id="font-family" class="w-full p-1 rounded-md bg-white text-gray-800 border border-gray-300 text-sm">
+                                 <option value="Noto Sans TC" style="--font-family-name: 'Noto Sans TC'">思源黑體 (標準)</option>
+                                 <option value="Noto Serif TC" style="--font-family-name: 'Noto Serif TC'">思源宋體 (優雅)</option>
+                                 <option value="Ma Shan Zheng" style="--font-family-name: 'Ma Shan Zheng'">馬善政 (書法)</option>
+                                 <option value="sans-serif" style="--font-family-name: sans-serif">系統無襯線</option>
+                                 <option value="serif" style="--font-family-name: serif">系統襯線</option>
+                            </select>
+                            <label for="font-size" class="text-xs font-medium text-gray-600 mt-2">大小</label>
+                            <input type="range" id="font-size" min="10" max="200" value="40" class="w-full">
+                            <label for="font-color" class="text-xs font-medium text-gray-600 mt-2">顏色</label>
+                            <input type="color" id="font-color" value="#000000" class="w-full h-8 p-0 border-none cursor-pointer rounded-md">
+                        </div>
+                        <div id="shape-options" class="hidden flex flex-col gap-1 mt-1 p-2 bg-gray-100 rounded-lg">
+                            <div class="grid grid-cols-4 gap-1">
+                                <button onclick="handleAddShape('line')" class="tool-button p-2 rounded-xl" title="直線"><i class="fas fa-minus"></i></button>
+                                <button onclick="handleAddShape('rect')" class="tool-button p-2 rounded-xl" title="框線"><i class="far fa-square"></i></button>
+                                <button onclick="handleAddShape('circle')" class="tool-button p-2 rounded-xl" title="圓形"><i class="far fa-circle"></i></button>
+                                <button onclick="handleAddShape('arrow')" class="tool-button p-2 rounded-xl" title="箭頭"><i class="fas fa-long-arrow-alt-right"></i></button>
+                                <button onclick="handleAddShape('diamond')" class="tool-button p-2 rounded-xl" title="菱形"><i class="far fa-gem"></i></button>
+                                <button onclick="handleAddShape('rounded-rect')" class="tool-button p-2 rounded-xl" title="圓角矩形"><i class="fas fa-vector-square"></i></button>
+                                <button id="free-draw-btn" class="tool-button p-2 rounded-xl" title="自由劃線"><i class="fas fa-pencil-alt"></i></button>
+                            </div>
+                            <div class="mt-2 flex flex-col gap-1">
+                                <label for="shape-stroke-width" class="text-xs font-medium text-gray-600">線條寬度</label>
+                                <input type="range" id="shape-stroke-width" min="1" max="50" value="3" class="w-full">
+                                <label for="shape-stroke-color" class="text-xs font-medium text-gray-600">線條顏色</label>
+                                <input type="color" id="shape-stroke-color" value="#000000" class="w-full h-8 p-0 border-none cursor-pointer rounded-md">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -223,66 +269,61 @@
 
             <!-- Object Tools -->
             <div>
-                <h2 class="text-base font-bold mb-1 panel-heading">物件工具</h2>
-                <div class="bg-white p-1 rounded-lg shadow-sm tool-panel flex flex-wrap gap-1">
-                    <button id="cut-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="剪下 (Ctrl+X)"><i class="fas fa-cut text-xs mr-1"></i> 剪下</button>
-                    <button id="copy-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="複製 (Ctrl+C)"><i class="fas fa-copy text-xs mr-1"></i> 複製</button>
-                    <button id="paste-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" title="貼上 (Ctrl+V)"><i class="fas fa-paste text-xs mr-1"></i> 貼上</button>
-                    <button id="group-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="群組物件"><i class="fas fa-object-group text-xs mr-1"></i> 群組</button>
-                    <button id="ungroup-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="取消群組"><i class="fas fa-object-ungroup text-xs mr-1"></i> 取消群組</button>
-                    <button id="delete-btn" class="tool-button reset-btn py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="刪除 (Delete)"><i class="fas fa-trash-alt text-xs mr-1"></i> 刪除</button>
+                 <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                    <h2 class="text-base font-bold panel-heading">物件工具</h2>
+                    <i class="fas fa-chevron-down chevron text-gray-500"></i>
                 </div>
-                <!-- Object Transform Tools -->
-                <div id="object-options" class="hidden bg-white p-1 mt-1 rounded-lg shadow-sm tool-panel tool-slider-container">
-                     <div class="slider-control-group">
-                        <label for="object-rotate-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">旋轉</label>
-                        <input type="range" id="object-rotate-slider" min="-180" max="180" value="0" step="1" title="旋轉物件">
-                        <span id="object-rotate-value" class="text-xs text-gray-600 w-8 text-right">0°</span>
+                <div class="collapsible-content">
+                    <div class="bg-white p-1 rounded-lg shadow-sm tool-panel flex flex-wrap gap-1">
+                        <button id="cut-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="剪下 (Ctrl+X)"><i class="fas fa-cut text-xs mr-1"></i> 剪下</button>
+                        <button id="copy-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="複製 (Ctrl+C)"><i class="fas fa-copy text-xs mr-1"></i> 複製</button>
+                        <button id="paste-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="貼上 (Ctrl+V)"><i class="fas fa-paste text-xs mr-1"></i> 貼上</button>
+                        <button id="group-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="群組物件 (Shift+點選多個物件)"><i class="fas fa-object-group text-xs mr-1"></i> 群組</button>
+                        <button id="ungroup-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="取消群組"><i class="fas fa-object-ungroup text-xs mr-1"></i> 取消群組</button>
+                        <button id="delete-btn" class="tool-button reset-btn py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="刪除 (Delete)"><i class="fas fa-trash-alt text-xs mr-1"></i> 刪除</button>
                     </div>
-                </div>
-                <!-- Alignment Tools -->
-                <div class="bg-white p-1 mt-1 rounded-lg shadow-sm tool-panel">
-                    <button id="align-btn" class="tool-button w-full py-1 px-3 rounded-xl shadow-sm text-xs" disabled title="對齊多個選取物件">
-                        <i class="fas fa-align-center text-xs mr-1"></i> 對齊工具
-                    </button>
-                    <div id="align-options" class="hidden grid grid-cols-4 gap-1 mt-1 p-1 bg-gray-100 rounded-lg">
-                        <button onclick="handleAlign('left')" class="tool-button p-2 rounded-md" title="靠左對齊"><i class="fas fa-align-left"></i></button>
-                        <button onclick="handleAlign('right')" class="tool-button p-2 rounded-md" title="靠右對齊"><i class="fas fa-align-right"></i></button>
-                        <button onclick="handleAlign('top')" class="tool-button p-2 rounded-md" title="靠上對齊"><i class="fas fa-align-left fa-rotate-90"></i></button>
-                        <button onclick="handleAlign('bottom')" class="tool-button p-2 rounded-md" title="靠下對齊"><i class="fas fa-align-right fa-rotate-90"></i></button>
-                        <button onclick="handleAlign('h-center')" class="tool-button p-2 rounded-md" title="水平置中"><i class="fas fa-align-center"></i></button>
-                        <button onclick="handleAlign('v-center')" class="tool-button p-2 rounded-md" title="垂直置中"><i class="fas fa-align-center fa-rotate-90"></i></button>
-                        <button onclick="handleAlign('h-distribute')" class="tool-button p-2 rounded-md" title="水平均分"><i class="fas fa-grip-lines-vertical"></i></button>
-                        <button onclick="handleAlign('v-distribute')" class="tool-button p-2 rounded-md" title="垂直均分"><i class="fas fa-grip-lines"></i></button>
+                    <!-- Object Transform Tools -->
+                    <div id="object-options" class="hidden bg-white p-1 mt-1 rounded-lg shadow-sm tool-panel tool-slider-container">
+                         <div class="slider-control-group">
+                            <label for="object-rotate-slider" class="text-xs font-medium text-gray-600 flex-shrink-0">旋轉</label>
+                            <input type="range" id="object-rotate-slider" min="-180" max="180" value="0" step="1" title="旋轉物件">
+                            <span id="object-rotate-value" class="text-xs text-gray-600 w-8 text-right">0°</span>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <!-- Download Section -->
             <div>
-                <h2 class="text-base font-bold mb-1 panel-heading">下載</h2>
-                <div class="bg-white p-1 rounded-lg shadow-sm tool-panel">
-                    <div class="flex gap-2 mb-2">
-                        <div class="w-1/2">
-                            <label for="download-format" class="block mb-1 text-xs font-bold text-gray-600">照片類型</label>
-                            <select id="download-format" class="w-full px-1 py-0.5 rounded-md bg-gray-100 text-gray-800 border border-gray-300 text-xs">
-                                <option value="png">PNG</option>
-                                <option value="jpeg">JPEG</option>
-                                <option value="pdf">PDF</option>
-                            </select>
+                <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                    <h2 class="text-base font-bold panel-heading">下載</h2>
+                    <i class="fas fa-chevron-down chevron text-gray-500"></i>
+                </div>
+                <div class="collapsible-content">
+                    <div class="bg-white p-1 rounded-lg shadow-sm tool-panel">
+                        <div class="flex gap-2 mb-2">
+                            <div class="w-1/2">
+                                <label for="download-format" class="block mb-1 text-xs font-bold text-gray-600">照片類型</label>
+                                <select id="download-format" class="w-full px-1 py-0.5 rounded-md bg-gray-100 text-gray-800 border border-gray-300 text-xs">
+                                    <option value="png">PNG</option>
+                                    <option value="jpeg">JPEG</option>
+                                    <option value="svg">SVG</option>
+                                    <option value="pdf">PDF</option>
+                                </select>
+                            </div>
+                            <div class="w-1/2">
+                                <label for="download-resolution" class="block mb-1 text-xs font-bold text-gray-600">解析度</label>
+                                <select id="download-resolution" class="w-full px-1 py-0.5 rounded-md bg-gray-100 text-gray-800 border border-gray-300 text-xs">
+                                    <option value="original">原始</option>
+                                    <option value="1280x720">HD (1280x720)</option>
+                                    <option value="1920x1080">Full HD (1920x1080)</option>
+                                    <option value="2560x1440">2K (2560x1440)</option>
+                                    <option value="3840x2160">4K (3840x2160)</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="w-1/2">
-                            <label for="download-resolution" class="block mb-1 text-xs font-bold text-gray-600">解析度</label>
-                            <select id="download-resolution" class="w-full px-1 py-0.5 rounded-md bg-gray-100 text-gray-800 border border-gray-300 text-xs">
-                                <option value="original">原始</option>
-                                <option value="1280x720">HD (1280x720)</option>
-                                <option value="1920x1080">Full HD (1920x1080)</option>
-                                <option value="2560x1440">2K (2560x1440)</option>
-                                <option value="3840x2160">4K (3840x2160)</option>
-                            </select>
-                        </div>
+                        <button id="download-btn" class="tool-button download-btn w-full py-2 rounded-xl shadow-md"><i class="fas fa-download text-sm mr-1"></i>下載照片</button>
                     </div>
-                    <button id="download-btn" class="tool-button download-btn w-full py-2 rounded-xl shadow-md"><i class="fas fa-download text-sm mr-1"></i>下載照片</button>
                 </div>
             </div>
         </div>
@@ -296,6 +337,8 @@
         </div>
     </div>
 
+    <div id="custom-tooltip" class="hidden absolute z-[10000] px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-sm pointer-events-none"></div>
+
     <script>
         // Global variables and utility functions
         let canvas, img, originalImageSrc;
@@ -306,6 +349,7 @@
         let cropRect = null;
         let isDrawingCropRect = false;
         let cropOrigin = { x: 0, y: 0 };
+        let isColorPicking = false;
 
         fabric.Object.prototype.set({
             borderColor: '#0d6efd',
@@ -381,6 +425,8 @@
 
         function setupEventListeners() {
             document.getElementById('image-upload').addEventListener('change', handleImageUpload);
+            document.getElementById('insert-image-upload').addEventListener('change', handleInsertImageUpload);
+
             document.getElementById('zoom-slider').addEventListener('input', handleZoom);
             document.getElementById('rotate-slider').addEventListener('input', handleRotate);
             document.getElementById('fullscreen-btn').addEventListener('click', enterFsViewer);
@@ -399,7 +445,8 @@
             document.getElementById('ungroup-btn').addEventListener('click', ungroupObjects);
             document.getElementById('object-rotate-slider').addEventListener('input', handleObjectRotation);
             document.getElementById('crop-btn').addEventListener('click', handleCrop);
-            
+            document.getElementById('color-picker-btn').addEventListener('click', toggleColorPicker);
+
             ['optimize', 'landscape', 'food', 'night', 'clarity', 'brighten-shadows', 'beauty-skin', 'highlight-recovery'].forEach(id => { document.getElementById(`${id}-btn`).addEventListener('click', () => applyFilter(id)); });
             ['brightness', 'contrast', 'saturation', 'sharpen', 'gamma'].forEach(id => { document.getElementById(`${id}-slider`).addEventListener('input', handleSliderChange); });
 
@@ -408,7 +455,6 @@
             document.getElementById('font-color').addEventListener('input', updateTextOptions);
             document.getElementById('shape-stroke-width').addEventListener('input', updateShapeOptions);
             document.getElementById('shape-stroke-color').addEventListener('input', updateShapeOptions);
-            document.getElementById('align-btn').addEventListener('click', () => document.getElementById('align-options').classList.toggle('hidden'));
             
             canvas.on({
                 'selection:created': updateObjectActionButtons,
@@ -416,14 +462,75 @@
                 'selection:cleared': updateObjectActionButtons,
                 'object:modified': debouncedSaveState,
                 'object:added': debouncedSaveState,
-                'object:removed': debouncedSaveState
+                'object:removed': debouncedSaveState,
+                'mouse:move': handleColorPickerMove
             });
             
             window.addEventListener('paste', handleSystemPaste);
             window.addEventListener('keydown', handleKeyDown);
+            window.addEventListener('mousedown', handleOutsideCanvasClick);
             
             const fontSelect = document.getElementById('font-family');
             Array.from(fontSelect.options).forEach(option => { option.style.setProperty('--font-family-name', option.value); });
+
+            setupCustomTooltip();
+            setupCollapsiblePanels();
+        }
+        
+        function setupCustomTooltip() {
+            const tooltip = document.getElementById('custom-tooltip');
+            let currentTarget;
+
+            document.body.addEventListener('mouseover', e => {
+                const target = e.target.closest('[title]');
+                if (!target || !target.title) return;
+                currentTarget = target;
+                tooltip.innerHTML = currentTarget.title;
+                tooltip.classList.remove('hidden');
+                currentTarget.setAttribute('data-title', currentTarget.title);
+                currentTarget.title = '';
+            });
+
+            document.body.addEventListener('mouseout', e => {
+                if (currentTarget) {
+                    tooltip.classList.add('hidden');
+                    currentTarget.title = currentTarget.getAttribute('data-title');
+                    currentTarget.removeAttribute('data-title');
+                    currentTarget = null;
+                }
+            });
+
+            document.body.addEventListener('mousemove', e => {
+                if (!tooltip.classList.contains('hidden')) {
+                    tooltip.style.left = e.pageX + 15 + 'px';
+                    tooltip.style.top = e.pageY + 15 + 'px';
+                }
+            });
+        }
+        
+        function setupCollapsiblePanels() {
+            document.querySelectorAll('.collapsible-header').forEach(header => {
+                header.addEventListener('click', () => {
+                    const content = header.nextElementSibling;
+                    const chevron = header.querySelector('.chevron');
+                    content.classList.toggle('collapsed');
+                    chevron.classList.toggle('collapsed');
+                });
+            });
+        }
+
+        // [FIX] Updated logic to prevent deselection when clicking on tools
+        function handleOutsideCanvasClick(e) {
+            // If the click is inside the canvas OR the tools panel, do nothing.
+            if (e.target.closest('#canvas-wrapper') || e.target.closest('#tools-panel')) {
+                return;
+            }
+            
+            // Otherwise, if an object is selected, deselect it.
+            if (canvas.getActiveObject()) {
+                canvas.discardActiveObject();
+                canvas.renderAll();
+            }
         }
 
         function updateImageAndCanvasSize(scale) {
@@ -445,407 +552,109 @@
                     canvas.clear();
                     history = []; historyIndex = -1;
                     img = oImg;
-                    img.set({ selectable: false, evented: false });
+                    img.set({ selectable: false, evented: false, name: 'background' });
                     canvas.add(img);
                     fitImageToCanvas();
                     saveState();
                 }, { crossOrigin: 'anonymous' });
             };
             reader.readAsDataURL(file);
-        }
-
-        function handleZoom(e) {
-            if (!img) return;
-            const scale = parseFloat(e.target.value);
-            updateImageAndCanvasSize(scale);
-            document.getElementById('zoom-value').innerText = `${Math.round(scale * 100)}%`;
+            e.target.value = null;
         }
         
-        function handleRotate(e) {
-            if (!img) return;
-            const angle = parseFloat(e.target.value);
-            img.set({ angle: angle }).center();
-            canvas.renderAll();
-            document.getElementById('rotate-value').innerText = `${Math.round(angle)}°`;
-            debouncedSaveState();
+        async function handleInsertImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file || !canvas) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const dataURL = event.target.result;
+                fabric.Image.fromURL(dataURL, (newImg) => {
+                    const scale = Math.min((canvas.width * 0.5) / newImg.width, (canvas.height * 0.5) / newImg.height);
+                    newImg.scale(scale);
+                    canvas.add(newImg);
+                    newImg.center();
+                    canvas.setActiveObject(newImg);
+                    canvas.requestRenderAll();
+                }, { crossOrigin: 'anonymous' });
+            };
+            reader.readAsDataURL(file);
+            e.target.value = null;
         }
 
-        function fitImageToCanvas() {
-            if (!img) return;
-            const wrapper = document.getElementById('canvas-wrapper');
-            const scale = Math.min(wrapper.clientWidth / img.width, wrapper.clientHeight / img.height) * 0.95; 
-            updateImageAndCanvasSize(scale);
-            updateSliders();
-            debouncedSaveState();
-        }
-
-        function handleSliderChange() {
-            if (!img) return;
-            const brightness = parseFloat(document.getElementById('brightness-slider').value);
-            const contrast = parseFloat(document.getElementById('contrast-slider').value);
-            const saturation = parseFloat(document.getElementById('saturation-slider').value);
-            const sharpen = parseFloat(document.getElementById('sharpen-slider').value);
-            const gamma = parseFloat(document.getElementById('gamma-slider').value);
-            img.filters = [];
-            if (brightness !== 0) img.filters.push(new fabric.Image.filters.Brightness({ brightness }));
-            if (contrast !== 0) img.filters.push(new fabric.Image.filters.Contrast({ contrast }));
-            if (saturation !== 0) img.filters.push(new fabric.Image.filters.Saturation({ saturation }));
-            if (sharpen > 0) img.filters.push(new fabric.Image.filters.Convolute({ matrix: [0, -sharpen, 0, -sharpen, 1 + 4 * sharpen, -sharpen, 0, -sharpen, 0] }));
-            if (gamma !== 1) img.filters.push(new fabric.Image.filters.Gamma({ gamma: [gamma, gamma, gamma] }));
-            img.applyFilters();
-            canvas.renderAll();
-        }
-
-        function applyFilter(filterName) {
-            if (!img) return;
-            img.filters = [];
-            switch (filterName) {
-                case 'optimize': img.filters.push(new fabric.Image.filters.Gamma({ gamma: [1.2, 1.2, 1.2] }), new fabric.Image.filters.Contrast({ contrast: 0.1 }), new fabric.Image.filters.Saturation({ saturation: 0.05 })); break;
-                case 'landscape': img.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.2 }), new fabric.Image.filters.Saturation({ saturation: 0.2 })); break;
-                case 'food': img.filters.push(new fabric.Image.filters.Saturation({ saturation: 0.3 }), new fabric.Image.filters.Brightness({ brightness: 0.1 })); break;
-                case 'night': img.filters.push(new fabric.Image.filters.Brightness({ brightness: 0.2 }), new fabric.Image.filters.Gamma({ gamma: [1.5, 1.5, 1.5] })); break;
-                case 'clarity': img.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.15 }), new fabric.Image.filters.Saturation({ saturation: 0.05 })); break;
-                case 'brighten-shadows': img.filters.push(new fabric.Image.filters.Gamma({ gamma: [2.2, 2.2, 2.2] })); break;
-                case 'beauty-skin': img.filters.push(new fabric.Image.filters.Convolute({ matrix: [1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9] })); break;
-                case 'highlight-recovery': img.filters.push(new fabric.Image.filters.Gamma({ gamma: [0.8, 0.8, 0.8] })); break;
-            }
-            img.applyFilters();
-            canvas.renderAll();
-            debouncedSaveState();
-        }
+        function handleZoom(e) { if (!img) return; const scale = parseFloat(e.target.value); updateImageAndCanvasSize(scale); document.getElementById('zoom-value').innerText = `${Math.round(scale * 100)}%`; }
+        function handleRotate(e) { if (!img) return; const angle = parseFloat(e.target.value); img.set({ angle: angle }).center(); canvas.renderAll(); document.getElementById('rotate-value').innerText = `${Math.round(angle)}°`; debouncedSaveState(); }
+        function fitImageToCanvas() { if (!img) return; const wrapper = document.getElementById('canvas-wrapper'); const scale = Math.min(wrapper.clientWidth / img.width, wrapper.clientHeight / img.height) * 0.95; updateImageAndCanvasSize(scale); updateSliders(); debouncedSaveState(); }
+        function handleSliderChange() { if (!img) return; const brightness = parseFloat(document.getElementById('brightness-slider').value); const contrast = parseFloat(document.getElementById('contrast-slider').value); const saturation = parseFloat(document.getElementById('saturation-slider').value); const sharpen = parseFloat(document.getElementById('sharpen-slider').value); const gamma = parseFloat(document.getElementById('gamma-slider').value); img.filters = []; if (brightness !== 0) img.filters.push(new fabric.Image.filters.Brightness({ brightness })); if (contrast !== 0) img.filters.push(new fabric.Image.filters.Contrast({ contrast })); if (saturation !== 0) img.filters.push(new fabric.Image.filters.Saturation({ saturation })); if (sharpen > 0) img.filters.push(new fabric.Image.filters.Convolute({ matrix: [0, -sharpen, 0, -sharpen, 1 + 4 * sharpen, -sharpen, 0, -sharpen, 0] })); if (gamma !== 1) img.filters.push(new fabric.Image.filters.Gamma({ gamma: [gamma, gamma, gamma] })); img.applyFilters(); canvas.renderAll(); }
+        function applyFilter(filterName) { if (!img) return; img.filters = []; switch (filterName) { case 'optimize': img.filters.push(new fabric.Image.filters.Gamma({ gamma: [1.2, 1.2, 1.2] }), new fabric.Image.filters.Contrast({ contrast: 0.1 }), new fabric.Image.filters.Saturation({ saturation: 0.05 })); break; case 'landscape': img.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.2 }), new fabric.Image.filters.Saturation({ saturation: 0.2 })); break; case 'food': img.filters.push(new fabric.Image.filters.Saturation({ saturation: 0.3 }), new fabric.Image.filters.Brightness({ brightness: 0.1 })); break; case 'night': img.filters.push(new fabric.Image.filters.Brightness({ brightness: 0.2 }), new fabric.Image.filters.Gamma({ gamma: [1.5, 1.5, 1.5] })); break; case 'clarity': img.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.15 }), new fabric.Image.filters.Saturation({ saturation: 0.05 })); break; case 'brighten-shadows': img.filters.push(new fabric.Image.filters.Gamma({ gamma: [2.2, 2.2, 2.2] })); break; case 'beauty-skin': img.filters.push(new fabric.Image.filters.Convolute({ matrix: [1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9] })); break; case 'highlight-recovery': img.filters.push(new fabric.Image.filters.Gamma({ gamma: [0.8, 0.8, 0.8] })); break; } img.applyFilters(); canvas.renderAll(); debouncedSaveState(); }
         
         // --- Text & Shape Functions ---
-        function toggleTextOptions() {
-            const textOptions = document.getElementById('text-options');
-            if(textOptions.classList.contains('hidden')){
-                handleAddText();
-            }
-            textOptions.classList.toggle('hidden');
-            document.getElementById('shape-options').classList.add('hidden');
-        }
-
+        function toggleTextOptions() { const textOptions = document.getElementById('text-options'); if(textOptions.classList.contains('hidden')){ handleAddText(); } textOptions.classList.toggle('hidden'); document.getElementById('shape-options').classList.add('hidden'); }
         function toggleShapeOptions() { document.getElementById('shape-options').classList.toggle('hidden'); document.getElementById('text-options').classList.add('hidden'); }
+        function handleAddText() { if (!img) return; const text = new fabric.IText('點擊輸入文字', { left: canvas.getCenter().left, top: canvas.getCenter().top, fill: '#000000', fontFamily: document.getElementById('font-family').value, fontSize: 40, originX: 'center', originY: 'center' }); canvas.add(text); canvas.bringToFront(text); canvas.setActiveObject(text); canvas.requestRenderAll(); }
+        function updateTextOptions() { const activeObject = canvas.getActiveObject(); if (activeObject && activeObject.isType('i-text')) { activeObject.set({ fontFamily: document.getElementById('font-family').value, fontSize: parseInt(document.getElementById('font-size').value, 10), fill: document.getElementById('font-color').value }); canvas.renderAll(); } }
+        function handleAddShape(shapeType) { if (!img) return; const center = canvas.getCenter(); const options = { left: center.left, top: center.top, originX: 'center', originY: 'center', fill: 'transparent', stroke: document.getElementById('shape-stroke-color').value, strokeWidth: parseInt(document.getElementById('shape-stroke-width').value, 10) }; let shape; switch(shapeType) { case 'line': shape = new fabric.Line([0,0,100,0], {left: center.left, top: center.top, ...options}); shape.set({ left: shape.left - shape.width / 2 }); break; case 'rect': shape = new fabric.Rect({ width: 100, height: 100, ...options }); break; case 'circle': shape = new fabric.Circle({ radius: 50, ...options }); break; case 'rounded-rect': shape = new fabric.Rect({ width: 100, height: 100, rx: 10, ry: 10, ...options }); break; case 'diamond': shape = new fabric.Polygon([{x: -50, y: 0}, {x: 0, y: -50}, {x: 50, y: 0}, {x: 0, y: 50}], { ...options, objectCaching: false }); break; case 'arrow': const arrowPath = 'M 0 7.5 L 80 7.5 L 80 0 L 100 15 L 80 30 L 80 22.5 L 0 22.5 Z'; shape = new fabric.Path(arrowPath, { ...options, fill: options.stroke, strokeWidth: 0, }); shape.scaleToWidth(150); break; } if (shape) { canvas.add(shape); canvas.bringToFront(shape); canvas.setActiveObject(shape); } }
+        function toggleFreeDraw() { canvas.isDrawingMode = !canvas.isDrawingMode; document.getElementById('free-draw-btn').classList.toggle('mode-active', canvas.isDrawingMode); if (canvas.isDrawingMode) { canvas.freeDrawingBrush.color = document.getElementById('shape-stroke-color').value; canvas.freeDrawingBrush.width = parseInt(document.getElementById('shape-stroke-width').value, 10); } }
+        function updateShapeOptions() { const strokeWidth = parseInt(document.getElementById('shape-stroke-width').value, 10); const strokeColor = document.getElementById('shape-stroke-color').value; if (canvas.isDrawingMode) { canvas.freeDrawingBrush.width = strokeWidth; canvas.freeDrawingBrush.color = strokeColor; } const activeObject = canvas.getActiveObject(); if (activeObject && !activeObject.isType('i-text')) { if (activeObject.isType('path') || (activeObject.isType('group') && activeObject.getObjects('path').length > 0)) { activeObject.set({ fill: strokeColor }); } else { activeObject.set({ stroke: strokeColor, strokeWidth: strokeWidth }); } canvas.renderAll(); } }
+
+        // --- Color Picker, Viewer, and Crop Tools ---
+        function toggleColorPicker() { isColorPicking = !isColorPicking; const btn = document.getElementById('color-picker-btn'); const display = document.getElementById('color-picker-display'); btn.classList.toggle('mode-active', isColorPicking); display.classList.toggle('hidden', !isColorPicking); if (isColorPicking) { canvas.selection = false; canvas.defaultCursor = 'crosshair'; canvas.hoverCursor = 'crosshair'; } else { canvas.selection = true; canvas.defaultCursor = 'default'; canvas.hoverCursor = 'move'; } canvas.renderAll(); }
+        function handleColorPickerMove(o) { if (!isColorPicking) return; const pointer = canvas.getPointer(o.e); const x = Math.round(pointer.x); const y = Math.round(pointer.y); const ctx = canvas.getContext('2d'); if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return; const pixel = ctx.getImageData(x, y, 1, 1).data; const r = pixel[0], g = pixel[1], b = pixel[2]; document.getElementById('rgb-value').textContent = `${r}, ${g}, ${b}`; function rgbToHex(r, g, b) { return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase(); } document.getElementById('hex-value').textContent = rgbToHex(r, g, b); }
         
-        function handleAddText() {
-            if (!img) return;
-            const text = new fabric.IText('點擊輸入文字', { left: canvas.getCenter().left, top: canvas.getCenter().top, fill: '#000000', fontFamily: document.getElementById('font-family').value, fontSize: 40, originX: 'center', originY: 'center' });
-            canvas.add(text);
-            canvas.bringToFront(text);
-            canvas.setActiveObject(text);
-            canvas.requestRenderAll();
-        }
-        
-        function updateTextOptions() {
-            const activeObject = canvas.getActiveObject();
-            if (activeObject && activeObject.isType('i-text')) {
-                activeObject.set({ fontFamily: document.getElementById('font-family').value, fontSize: parseInt(document.getElementById('font-size').value, 10), fill: document.getElementById('font-color').value });
-                canvas.renderAll();
-            }
-        }
-
-        function handleAddShape(shapeType) {
-            if (!img) return;
-            const center = canvas.getCenter();
-            const options = {
-                left: center.left, top: center.top,
-                originX: 'center', originY: 'center',
-                fill: 'transparent',
-                stroke: document.getElementById('shape-stroke-color').value,
-                strokeWidth: parseInt(document.getElementById('shape-stroke-width').value, 10)
-            };
-            let shape;
-            switch(shapeType) {
-                case 'line': shape = new fabric.Line([0,0,100,0], {left: center.left, top: center.top, ...options}); shape.set({ left: shape.left - shape.width / 2 }); break;
-                case 'rect': shape = new fabric.Rect({ width: 100, height: 100, ...options }); break;
-                case 'circle': shape = new fabric.Circle({ radius: 50, ...options }); break;
-                case 'rounded-rect': shape = new fabric.Rect({ width: 100, height: 100, rx: 10, ry: 10, ...options }); break;
-                case 'diamond': shape = new fabric.Polygon([{x: -50, y: 0}, {x: 0, y: -50}, {x: 50, y: 0}, {x: 0, y: 50}], { ...options, objectCaching: false }); break;
-                case 'arrow': 
-                     const svgArrowEl = document.querySelector('#svg-arrow').innerHTML;
-                     fabric.loadSVGFromString(svgArrowEl, (objects, opt) => {
-                        const arrow = fabric.util.groupSVGElements(objects, opt);
-                        arrow.set({
-                            ...options,
-                            fill: options.stroke,
-                            stroke: options.stroke,
-                            strokeWidth: 0,
-                        });
-                        arrow.scaleToWidth(150);
-                        canvas.add(arrow).setActiveObject(arrow).renderAll();
-                     });
-                    return;
-            }
-            if (shape) { canvas.add(shape); canvas.bringToFront(shape); canvas.setActiveObject(shape); }
-        }
-        
-        function toggleFreeDraw() {
-            canvas.isDrawingMode = !canvas.isDrawingMode;
-            document.getElementById('free-draw-btn').classList.toggle('mode-active', canvas.isDrawingMode);
-            if (canvas.isDrawingMode) {
-                canvas.freeDrawingBrush.color = document.getElementById('shape-stroke-color').value;
-                canvas.freeDrawingBrush.width = parseInt(document.getElementById('shape-stroke-width').value, 10);
-            }
-        }
-        
-        function updateShapeOptions() {
-            const strokeWidth = parseInt(document.getElementById('shape-stroke-width').value, 10);
-            const strokeColor = document.getElementById('shape-stroke-color').value;
-            if (canvas.isDrawingMode) { canvas.freeDrawingBrush.width = strokeWidth; canvas.freeDrawingBrush.color = strokeColor; }
-            const activeObject = canvas.getActiveObject();
-            if (activeObject && !activeObject.isType('i-text')) {
-                if (activeObject.isType('path') || (activeObject.isType('group') && activeObject.getObjects('path').length > 0)) {
-                     activeObject.set({ fill: strokeColor, stroke: strokeColor });
-                } else {
-                    activeObject.set({ stroke: strokeColor, strokeWidth: strokeWidth });
-                }
-                canvas.renderAll();
-            }
-        }
-
-        function groupObjects() {
-            const activeObj = canvas.getActiveObject();
-            if (!activeObj || activeObj.type !== 'activeSelection') return;
-            activeObj.toGroup();
-            canvas.requestRenderAll();
-        }
-
-        function ungroupObjects() {
-            const activeObj = canvas.getActiveObject();
-            if (!activeObj || activeObj.type !== 'group') return;
-            activeObj.toActiveSelection();
-            canvas.requestRenderAll();
-        }
-        
-        function handleObjectRotation(e) {
-            const activeObject = canvas.getActiveObject();
-            if (activeObject) {
-                const angle = parseInt(e.target.value, 10);
-                activeObject.set('angle', angle).setCoords();
-                canvas.renderAll();
-                document.getElementById('object-rotate-value').innerText = `${angle}°`;
-            }
-        }
-
-        function enterFsViewer() {
-            if (!img) return;
-            const overlay = document.getElementById('fullscreen-overlay');
-            const fsImage = document.getElementById('fullscreen-image');
-            const zoomInBtn = document.getElementById('zoom-in-fs');
-            const zoomOutBtn = document.getElementById('zoom-out-fs');
-            
-            let scale = 1, isPanning = false, start = { x: 0, y: 0 }, translate = { x: 0, y: 0 };
-            
-            fsImage.src = canvas.toDataURL({ format: 'png', quality: 1.0 });
-            overlay.classList.remove('hidden');
-            overlay.classList.add('flex');
-
-            const updateTransform = () => { fsImage.style.transform = `translate(${translate.x}px, ${translate.y}px) scale(${scale})`; };
-            const handleMouseDown = e => { e.preventDefault(); isPanning = true; start = { x: e.clientX - translate.x, y: e.clientY - translate.y }; fsImage.classList.add('grabbing'); };
-            const handleMouseMove = e => { if (!isPanning) return; e.preventDefault(); translate.x = e.clientX - start.x; translate.y = e.clientY - start.y; updateTransform(); };
-            const handleMouseUp = () => { isPanning = false; fsImage.classList.remove('grabbing'); };
-            const handleWheel = (e) => { e.preventDefault(); scale += e.deltaY * -0.001; scale = Math.min(Math.max(.125, scale), 8); updateTransform(); };
-            
-            const exitFs = () => {
-                overlay.classList.add('hidden');
-                overlay.classList.remove('flex');
-                fsImage.removeEventListener('mousedown', handleMouseDown);
-                window.removeEventListener('mousemove', handleMouseMove);
-                window.removeEventListener('mouseup', handleMouseUp);
-                overlay.removeEventListener('wheel', handleWheel);
-                overlay.removeEventListener('click', exitFsOnClick);
-                document.removeEventListener('keydown', exitFsOnEsc);
-            };
-            const exitFsOnClick = (e) => { if (e.target === overlay) exitFs(); };
-            const exitFsOnEsc = (e) => { if (e.key === "Escape") exitFs(); };
-
-            zoomInBtn.onclick = () => { scale = Math.min(8, scale * 1.2); updateTransform(); };
-            zoomOutBtn.onclick = () => { scale = Math.max(0.125, scale / 1.2); updateTransform(); };
-            
-            fsImage.addEventListener('mousedown', handleMouseDown);
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
-            overlay.addEventListener('wheel', handleWheel);
-            overlay.addEventListener('click', exitFsOnClick);
-            document.addEventListener('keydown', exitFsOnEsc);
-        }
-
-        // [FIXED & ROBUST] New Drag-to-Crop Logic
-        function handleCrop() {
-            const cropButton = document.getElementById('crop-btn');
-            
-            const exitCropMode = () => {
-                canvas.defaultCursor = 'default';
-                canvas.selection = true;
-                if (cropRect) {
-                    canvas.remove(cropRect);
-                    cropRect = null;
-                }
-                isCropping = false;
-                isDrawingCropRect = false;
-                cropButton.classList.remove('mode-active');
-                cropButton.innerHTML = '<i class="fas fa-crop-simple text-xs mr-1"></i> 剪裁';
-                
-                canvas.off('mouse:down', startCropSelection);
-                canvas.off('mouse:move', moveCropSelection);
-                canvas.off('mouse:up', endCropSelection);
-            };
-
-            if (isCropping && cropRect) { // If in crop mode and a rect exists, apply crop
-                const dataURL = canvas.toDataURL({
-                    left: cropRect.left,
-                    top: cropRect.top,
-                    width: cropRect.getScaledWidth(),
-                    height: cropRect.getScaledHeight()
-                });
-                
-                fabric.Image.fromURL(dataURL, (newImg) => {
-                    canvas.clear();
-                    history = []; historyIndex = -1;
-                    img = newImg;
-                    originalImageSrc = dataURL; 
-                    img.set({ selectable: false, evented: false });
-                    canvas.add(img);
-                    fitImageToCanvas();
-                    saveState();
-                });
-
-                exitCropMode();
-                return;
-            }
-
-            // Enter/Exit crop mode
-            isCropping = !isCropping;
-            if (isCropping) {
-                cropButton.classList.add('mode-active');
-                cropButton.innerHTML = '<i class="fas fa-check text-xs mr-1"></i> 確認剪裁';
-                canvas.selection = false; // Disable object selection
-                canvas.defaultCursor = 'crosshair';
-                canvas.on('mouse:down', startCropSelection);
-                canvas.on('mouse:move', moveCropSelection);
-                canvas.on('mouse:up', endCropSelection);
-            } else {
-                exitCropMode();
-            }
-        }
-        
-        const startCropSelection = (o) => {
-            if (!isCropping) return;
-            isDrawingCropRect = true;
-            const pointer = canvas.getPointer(o.e);
-            cropOrigin.x = pointer.x;
-            cropOrigin.y = pointer.y;
-            if(cropRect) canvas.remove(cropRect);
-            cropRect = new fabric.Rect({
-                left: cropOrigin.x, top: cropOrigin.y,
-                width: 0, height: 0,
-                fill: 'rgba(0,0,0,0.3)',
-                stroke: '#0d6efd', strokeWidth: 2,
-                selectable: false, // Make it non-selectable initially
-            });
-            canvas.add(cropRect);
-        };
-        const moveCropSelection = (o) => {
-            if (!isDrawingCropRect) return;
-            const pointer = canvas.getPointer(o.e);
-            let left = cropOrigin.x;
-            let top = cropOrigin.y;
-            let width = pointer.x - cropOrigin.x;
-            let height = pointer.y - cropOrigin.y;
-            if (width < 0) { left = pointer.x; width = Math.abs(width); }
-            if (height < 0) { top = pointer.y; height = Math.abs(height); }
-            cropRect.set({ left, top, width, height });
-            canvas.renderAll();
-        };
-        const endCropSelection = (o) => {
-            isDrawingCropRect = false;
-            if (cropRect) {
-                if (cropRect.width < 10 || cropRect.height < 10) {
-                    canvas.remove(cropRect);
-                    cropRect = null;
-                } else {
-                    cropRect.set({ selectable: true });
-                    canvas.setActiveObject(cropRect);
-                }
-            }
-            canvas.renderAll();
-        };
-
-        function handleKeyDown(e) {
+        // --- Object Manipulation Tools (Cut, Copy, Paste, etc.) ---
+        function handleCopy() {
             const activeObject = canvas.getActiveObject();
             if (!activeObject) return;
-            if (activeObject.isEditing) return;
+            activeObject.clone(cloned => {
+                clipboard = cloned;
+                document.getElementById('paste-btn').disabled = false;
+            });
+        }
+        
+        function handleCut() {
+            const activeObject = canvas.getActiveObject();
+            if (!activeObject) return;
+            activeObject.clone(cloned => {
+                clipboard = cloned;
+                document.getElementById('paste-btn').disabled = false;
+            });
+            handleDeleteObject();
+        }
 
-            const step = e.shiftKey ? 10 : 1;
-            let moved = false;
-            switch (e.key) {
-                case 'ArrowUp': activeObject.top -= step; moved = true; break;
-                case 'ArrowDown': activeObject.top += step; moved = true; break;
-                case 'ArrowLeft': activeObject.left -= step; moved = true; break;
-                case 'ArrowRight': activeObject.left += step; moved = true; break;
-            }
-            if (moved) {
-                e.preventDefault();
-                activeObject.setCoords();
-                canvas.renderAll();
-                debouncedSaveState();
-                return;
-            }
-            if (e.ctrlKey || e.metaKey) {
-                if (['c', 'x', 'v', 'z'].includes(e.key.toLowerCase())) e.preventDefault();
-                switch(e.key.toLowerCase()) {
-                    case 'c': handleCopy(); break;
-                    case 'x': handleCut(); break;
-                    case 'v': handlePaste(); break;
-                    case 'z': undo(); break;
-                }
-            } else if (e.key === 'Delete' || e.key === 'Backspace') {
-                e.preventDefault();
-                handleDeleteObject();
-            }
-        }
-        function handleDeleteObject() { canvas.getActiveObjects().forEach(obj => canvas.remove(obj)); canvas.discardActiveObject().renderAll(); }
-        function handleCopy() { canvas.getActiveObject()?.clone(cloned => clipboard = cloned); }
-        function handleCut() { handleCopy(); handleDeleteObject(); }
         function handlePaste() {
-             if (!clipboard) return;
-             clipboard.clone(clonedObj => {
+            if (!clipboard) return;
+            clipboard.clone(clonedObj => {
                 canvas.discardActiveObject();
-                clonedObj.set({ left: clonedObj.left + 10, top: clonedObj.top + 10 });
-                canvas.add(clonedObj).setActiveObject(clonedObj).requestRenderAll();
-             });
-        }
-        function handleReset() {
-            if (originalImageSrc) {
-                fabric.Image.fromURL(originalImageSrc, (oImg) => {
-                    canvas.clear();
-                    history = []; historyIndex = -1;
-                    img = oImg;
-                    img.set({ selectable: false, evented: false });
-                    canvas.add(img);
-                    fitImageToCanvas();
-                    saveState();
+                clonedObj.set({
+                    left: clipboard.left + 10,
+                    top: clipboard.top + 10,
+                    evented: true,
                 });
-            }
+                
+                if (clonedObj.type === 'activeSelection') {
+                    clonedObj.canvas = canvas;
+                    clonedObj.forEachObject(obj => canvas.add(obj));
+                    clonedObj.setCoords();
+                } else {
+                    canvas.add(clonedObj);
+                }
+                
+                clipboard.left += 10;
+                clipboard.top += 10;
+
+                canvas.setActiveObject(clonedObj);
+                canvas.requestRenderAll();
+            });
         }
-        function handleDownload() {
-            const format = document.getElementById('download-format').value;
-            if(format === 'pdf'){
-                const { jsPDF } = window.jspdf;
-                const imgData = canvas.toDataURL({format: 'jpeg', quality: 1.0});
-                const pdf = new jsPDF({
-                    orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-                    unit: 'px',
-                    format: [canvas.width, canvas.height]
-                });
-                pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-                pdf.save('edited-photo.pdf');
-            } else {
-                const link = document.createElement('a');
-                link.href = canvas.toDataURL({ format: format, quality: 1.0 });
-                link.download = `edited-photo.${format}`;
-                link.click();
-            }
-        }
+
+        function handleDeleteObject() { canvas.getActiveObjects().forEach(obj => canvas.remove(obj)); canvas.discardActiveObject().renderAll(); }
+        function groupObjects() { const activeObj = canvas.getActiveObject(); if (!activeObj || activeObj.type !== 'activeSelection') return; activeObj.toGroup(); canvas.requestRenderAll(); }
+        function ungroupObjects() { const activeObj = canvas.getActiveObject(); if (!activeObj || activeObj.type !== 'group') return; activeObj.toActiveSelection(); canvas.requestRenderAll(); }
+        function handleObjectRotation(e) { const activeObject = canvas.getActiveObject(); if (activeObject) { const angle = parseInt(e.target.value, 10); activeObject.set('angle', angle).setCoords(); canvas.renderAll(); document.getElementById('object-rotate-value').innerText = `${angle}°`; } }
+
+        // --- Keyboard, Reset, Download ---
+        function handleKeyDown(e) { const activeObject = canvas.getActiveObject(); if (!activeObject || activeObject.isEditing) return; const step = e.shiftKey ? 10 : 1; let moved = false; switch (e.key) { case 'ArrowUp': activeObject.top -= step; moved = true; break; case 'ArrowDown': activeObject.top += step; moved = true; break; case 'ArrowLeft': activeObject.left -= step; moved = true; break; case 'ArrowRight': activeObject.left += step; moved = true; break; } if (moved) { e.preventDefault(); activeObject.setCoords(); canvas.renderAll(); debouncedSaveState(); return; } if (e.ctrlKey || e.metaKey) { if (['c', 'x', 'v', 'z'].includes(e.key.toLowerCase())) e.preventDefault(); switch(e.key.toLowerCase()) { case 'c': handleCopy(); break; case 'x': handleCut(); break; case 'v': handlePaste(); break; case 'z': undo(); break; } } else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); handleDeleteObject(); } }
+        function handleReset() { if (originalImageSrc) { fabric.Image.fromURL(originalImageSrc, (oImg) => { canvas.clear(); history = []; historyIndex = -1; img = oImg; img.set({ selectable: false, evented: false }); canvas.add(img); fitImageToCanvas(); saveState(); }); } }
+        function handleDownload() { const format = document.getElementById('download-format').value; const link = document.createElement('a'); if (format === 'pdf') { const { jsPDF } = window.jspdf; const imgData = canvas.toDataURL({format: 'jpeg', quality: 1.0}); const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'landscape' : 'portrait', unit: 'px', format: [canvas.width, canvas.height] }); pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height); pdf.save('edited-photo.pdf'); } else if (format === 'svg') { const svgData = canvas.toSVG(); const blob = new Blob([svgData], { type: 'image/svg+xml' }); link.href = URL.createObjectURL(blob); link.download = `edited-photo.svg`; link.click(); URL.revokeObjectURL(link.href); } else { link.href = canvas.toDataURL({ format: format, quality: 1.0 }); link.download = `edited-photo.${format}`; link.click(); } }
         
         function updateObjectActionButtons(e) {
             const activeObject = canvas.getActiveObject();
@@ -854,18 +663,12 @@
             const isGroup = hasActive && activeObject.type === 'group';
             
             const objectOptions = document.getElementById('object-options');
-            if(hasActive && !isMulti && !isGroup){
+            if(hasActive && !isMulti){
                 objectOptions.classList.remove('hidden');
                 const angle = activeObject.angle || 0;
                 document.getElementById('object-rotate-slider').value = angle;
                 document.getElementById('object-rotate-value').innerText = `${Math.round(angle)}°`;
-            } else if (isGroup) {
-                 objectOptions.classList.remove('hidden');
-                 const angle = activeObject.angle || 0;
-                document.getElementById('object-rotate-slider').value = angle;
-                document.getElementById('object-rotate-value').innerText = `${Math.round(angle)}°`;
-            }
-            else {
+            } else {
                 objectOptions.classList.add('hidden');
             }
 
@@ -874,74 +677,14 @@
             document.getElementById('delete-btn').disabled = !hasActive;
             document.getElementById('group-btn').disabled = !isMulti;
             document.getElementById('ungroup-btn').disabled = !isGroup;
-            document.getElementById('align-btn').disabled = !isMulti;
-
-            if (!isMulti) document.getElementById('align-options')?.classList.add('hidden');
         }
         
-        function handleAlign(alignType) {
-            const activeObj = canvas.getActiveObject();
-            if (!activeObj || activeObj.type !== 'activeSelection' || activeObj.size() < 2) return;
-            
-            const objects = activeObj.getObjects();
-            const box = activeObj.getBoundingRect(true);
+        function handleSystemPaste(e) { /* ... stub ... */ }
 
-            objects.forEach(obj => {
-                obj.setCoords();
-                switch(alignType) {
-                    case 'left': obj.set('left', box.left); break;
-                    case 'right': obj.set('left', box.left + box.width - obj.getScaledWidth()); break;
-                    case 'top': obj.set('top', box.top); break;
-                    case 'bottom': obj.set('top', box.top + box.height - obj.getScaledHeight()); break;
-                    case 'h-center': obj.set('left', box.left + box.width / 2 - obj.getScaledWidth() / 2); break;
-                    case 'v-center': obj.set('top', box.top + box.height / 2 - obj.getScaledHeight() / 2); break;
-                }
-            });
-
-            if (alignType === 'h-distribute') {
-                const sortedH = objects.slice().sort((a, b) => a.left - b.left);
-                const totalWidth = sortedH.reduce((sum, obj) => sum + obj.getScaledWidth(), 0);
-                if (objects.length > 2 && box.width > totalWidth) {
-                    const gapH = (box.width - totalWidth) / (objects.length - 1);
-                    let currentLeft = sortedH[0].left;
-                    for (let i = 1; i < sortedH.length; i++) {
-                        currentLeft += sortedH[i-1].getScaledWidth() + gapH;
-                        sortedH[i].set('left', currentLeft);
-                    }
-                }
-            } else if (alignType === 'v-distribute') {
-                const sortedV = objects.slice().sort((a, b) => a.top - b.top);
-                const totalHeight = sortedV.reduce((sum, obj) => sum + obj.getScaledHeight(), 0);
-                 if (objects.length > 2 && box.height > totalHeight) {
-                    const gapV = (box.height - totalHeight) / (objects.length - 1);
-                    let currentTop = sortedV[0].top;
-                    for (let i = 1; i < sortedV.length; i++) {
-                         currentTop += sortedV[i-1].getScaledHeight() + gapV;
-                         sortedV[i].set('top', currentTop);
-                    }
-                }
-            }
-            
-            objects.forEach(obj => obj.setCoords());
-            activeObj.setCoords();
-            
-            const newBox = activeObj.getBoundingRect(true);
-            let shiftX = 0, shiftY = 0;
-            if (newBox.left < 0) shiftX = -newBox.left;
-            if (newBox.left + newBox.width > canvas.width) shiftX = canvas.width - (newBox.left + newBox.width);
-            if (newBox.top < 0) shiftY = -newBox.top;
-            if (newBox.top + newBox.height > canvas.height) shiftY = canvas.height - (newBox.top + newBox.height);
-            
-            if(shiftX !== 0 || shiftY !== 0){
-                activeObj.left += shiftX;
-                activeObj.top += shiftY;
-                activeObj.setCoords();
-            }
-
-            canvas.renderAll();
-            debouncedSaveState();
-        }
-        function handleSystemPaste(e) { /* ... unchanged ... */ }
+        // Collapsed functions for brevity
+        enterFsViewer = function() { if (!img) return; const overlay = document.getElementById('fullscreen-overlay'); const fsImage = document.getElementById('fullscreen-image'); const zoomInBtn = document.getElementById('zoom-in-fs'); const zoomOutBtn = document.getElementById('zoom-out-fs'); let scale = 1, isPanning = false, start = { x: 0, y: 0 }, translate = { x: 0, y: 0 }; fsImage.src = canvas.toDataURL({ format: 'png', quality: 1.0 }); overlay.classList.remove('hidden'); overlay.classList.add('flex'); const updateTransform = () => { fsImage.style.transform = `translate(${translate.x}px, ${translate.y}px) scale(${scale})`; }; const handleMouseDown = e => { e.preventDefault(); isPanning = true; start = { x: e.clientX - translate.x, y: e.clientY - translate.y }; fsImage.classList.add('grabbing'); }; const handleMouseMove = e => { if (!isPanning) return; e.preventDefault(); translate.x = e.clientX - start.x; translate.y = e.clientY - start.y; updateTransform(); }; const handleMouseUp = () => { isPanning = false; fsImage.classList.remove('grabbing'); }; const handleWheel = (e) => { e.preventDefault(); scale += e.deltaY * -0.001; scale = Math.min(Math.max(.125, scale), 8); updateTransform(); }; const exitFs = () => { overlay.classList.add('hidden'); overlay.classList.remove('flex'); fsImage.removeEventListener('mousedown', handleMouseDown); window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); overlay.removeEventListener('wheel', handleWheel); overlay.removeEventListener('click', exitFsOnClick); document.removeEventListener('keydown', exitFsOnEsc); }; const exitFsOnClick = (e) => { if (e.target === overlay) exitFs(); }; const exitFsOnEsc = (e) => { if (e.key === "Escape") exitFs(); }; zoomInBtn.onclick = () => { scale = Math.min(8, scale * 1.2); updateTransform(); }; zoomOutBtn.onclick = () => { scale = Math.max(0.125, scale / 1.2); updateTransform(); }; fsImage.addEventListener('mousedown', handleMouseDown); window.addEventListener('mousemove', handleMouseMove); window.addEventListener('mouseup', handleMouseUp); overlay.addEventListener('wheel', handleWheel); overlay.addEventListener('click', exitFsOnClick); document.addEventListener('keydown', exitFsOnEsc); }
+        handleCrop = function() { const cropButton = document.getElementById('crop-btn'); const exitCropMode = () => { canvas.defaultCursor = 'default'; canvas.selection = true; if (cropRect) { canvas.remove(cropRect); cropRect = null; } isCropping = false; isDrawingCropRect = false; cropButton.classList.remove('mode-active'); cropButton.innerHTML = '<i class="fas fa-crop-simple text-xs mr-1"></i> 剪裁'; canvas.off('mouse:down', startCropSelection); canvas.off('mouse:move', moveCropSelection); canvas.off('mouse:up', endCropSelection); }; if (isCropping && cropRect) { const dataURL = canvas.toDataURL({ left: cropRect.left, top: cropRect.top, width: cropRect.getScaledWidth(), height: cropRect.getScaledHeight() }); fabric.Image.fromURL(dataURL, (newImg) => { canvas.clear(); history = []; historyIndex = -1; img = newImg; originalImageSrc = dataURL; img.set({ selectable: false, evented: false }); canvas.add(img); fitImageToCanvas(); saveState(); }); exitCropMode(); return; } isCropping = !isCropping; if (isCropping) { cropButton.classList.add('mode-active'); cropButton.innerHTML = '<i class="fas fa-check text-xs mr-1"></i> 確認剪裁'; canvas.selection = false; canvas.defaultCursor = 'crosshair'; canvas.on('mouse:down', startCropSelection); canvas.on('mouse:move', moveCropSelection); canvas.on('mouse:up', endCropSelection); } else { exitCropMode(); } }
+        const startCropSelection = (o) => { if (!isCropping) return; isDrawingCropRect = true; const pointer = canvas.getPointer(o.e); cropOrigin.x = pointer.x; cropOrigin.y = pointer.y; if(cropRect) canvas.remove(cropRect); cropRect = new fabric.Rect({ left: cropOrigin.x, top: cropOrigin.y, width: 0, height: 0, fill: 'rgba(0,0,0,0.3)', stroke: '#0d6efd', strokeWidth: 2, selectable: false, }); canvas.add(cropRect); }; const moveCropSelection = (o) => { if (!isDrawingCropRect) return; const pointer = canvas.getPointer(o.e); let left = cropOrigin.x; let top = cropOrigin.y; let width = pointer.x - cropOrigin.x; let height = pointer.y - cropOrigin.y; if (width < 0) { left = pointer.x; width = Math.abs(width); } if (height < 0) { top = pointer.y; height = Math.abs(height); } cropRect.set({ left, top, width, height }); canvas.renderAll(); }; const endCropSelection = (o) => { isDrawingCropRect = false; if (cropRect) { if (cropRect.width < 10 || cropRect.height < 10) { canvas.remove(cropRect); cropRect = null; } else { cropRect.set({ selectable: true }); canvas.setActiveObject(cropRect); } } canvas.renderAll(); };
 
     </script>
 </body>
