@@ -1,4 +1,4 @@
-</html><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
@@ -13,6 +13,7 @@
       --blue: #0071e3;
       --red: #ff453a;
       --orange: #f97316;
+      --green: #27c93f;
       --text: #1d1d1f;
       --muted: #6e6e73;
       --card-radius: 18px;
@@ -24,7 +25,9 @@
       color:var(--text);
       -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
       overflow: hidden;
+      box-sizing: border-box;
     }
+    *, *::before, *::after { box-sizing: inherit; }
     .frame{max-width:1400px; height: calc(100% - 32px); margin:0 auto; display: flex; flex-direction: column;}
     .layout{ display:grid; grid-template-columns: 360px 1fr; gap:18px; flex-grow: 1; min-height: 0; }
     .sidebar{display:flex; flex-direction:column; gap:12px; min-height: 0;}
@@ -37,6 +40,7 @@
       overflow: hidden; display: flex; align-items: center; justify-content: center; width: 100%;
       flex: 1 1 0;
       min-height: 0;
+      aspect-ratio: 16 / 9;
     }
     .video-player-container.with-waveform {
         border-radius: var(--card-radius) var(--card-radius) 0 0;
@@ -55,33 +59,72 @@
     .glass{background:var(--panel-bg); border:1px solid var(--stroke); border-radius:var(--card-radius); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); box-shadow:var(--shadow);}
     .panel{padding:18px;}
     .panel .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .panel h3{margin:0; font-size:16px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.8px;}
+    .panel h3{margin:0; font-size:16px; font-weight:600; color:var(--blue); text-transform:uppercase; letter-spacing:.8px;}
     
     .btn.primary { background: var(--orange); color: white; border-radius: 12px; padding: 12px 24px; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .btn.primary:hover{filter:brightness(1.1);}
     .btn.primary svg { width: 20px; height: 20px; fill: white; }
-    .btn.ghost { background: transparent; color: var(--muted); font-size: 12px; padding: 4px 8px; }
+    .btn.ghost { background: transparent; color: var(--muted); font-size: 12px; padding: 4px 8px; border: 1px solid rgba(0,0,0,0.3); border-radius: 6px; }
     .btn.ghost:hover { background: rgba(0,0,0,0.05); }
 
     .filedrop{border:2px dashed rgba(0,0,0,.12); border-radius:16px; padding:12px 16px; text-align:center; display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 12px;}
-    .video-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-size: 18px; pointer-events: none; text-align: center; }
+    .video-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-size: 18px; pointer-events: none; text-align: center; padding: 1rem; }
     
     .controls-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 15px; display: flex; flex-direction: column; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%); opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; z-index: 20; }
     .video-player-container:hover .controls-container, .video-player-container.paused .controls-container { opacity: 1; visibility: visible; }
-    #progressBar { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; background: rgba(255, 255, 255, 0.3); border-radius: 5px; cursor: pointer; margin-bottom: 8px; transition: height 0.15s ease; }
+    .progress-bar-container { position: relative; margin-bottom: 8px; }
+    #progressBar { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; background: rgba(255, 255, 255, 0.3); border-radius: 5px; cursor: pointer; transition: height 0.15s ease; position: relative; z-index: 2;}
     .controls-container:hover #progressBar { height: 6px; }
-    #progressBar::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--red); border-radius: 50%; border: none; }
-    #progressBar::-moz-range-thumb { width: 14px; height: 14px; background: var(--red); border-radius: 50%; border: none; }
+    #progressBar::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--red); border-radius: 50%; border: none; z-index: 3; position: relative; }
+    #progressBar::-moz-range-thumb { width: 14px; height: 14px; background: var(--red); border-radius: 50%; border: none; z-index: 3; position: relative; }
+    
+    .ab-marker { position: absolute; top: 50%; transform: translateY(-50%); width: 3px; height: 10px; background-color: var(--orange); z-index: 1; display: none; border-radius: 1px; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+    
+    /* === MODIFIED: Style for A-B loop range line and arrows === */
+    #abLoopRange { 
+        position: absolute; 
+        top: 50%; 
+        transform: translateY(-50%); 
+        height: 2px; /* Thinner line */
+        background-color: var(--orange); /* Solid line color */
+        z-index: 1; 
+        display: none; 
+    }
+    #abLoopRange::before, #abLoopRange::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+    }
+    #abLoopRange::before { /* Left arrow */
+        left: -3px;
+        border-right: 6px solid var(--orange);
+    }
+    #abLoopRange::after { /* Right arrow */
+        right: -3px;
+        border-left: 6px solid var(--orange);
+    }
+    
     .controls-group { display: flex; justify-content: space-between; align-items: center; }
-    .controls-left, .controls-right { display: flex; align-items: center; gap: 16px; }
+    .controls-left, .controls-right { display: flex; align-items: center; gap: 12px; }
     .control-btn { background: none; border: none; padding: 0; cursor: pointer; color: white; line-height: 1; position: relative; }
-    .control-btn:disabled svg { opacity: 0.4; cursor: not-allowed; }
+    .control-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .control-btn:disabled:hover svg { transform: scale(1); }
     .control-btn svg { width: 24px; height: 24px; fill: white; pointer-events: none; transition: transform 0.2s; }
     .control-btn:not(:disabled):hover svg { transform: scale(1.1); }
     .control-btn.active svg { fill: var(--blue); }
-    .control-btn[data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: 150%; left: 50%; transform: translateX(-50%); background-color: rgba(20, 20, 20, 0.9); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; white-space: nowrap; opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; pointer-events: none; }
+    .control-btn.ab-active svg { fill: var(--orange); }
+    .control-btn.active-green svg { fill: var(--green); }
+    .control-btn[data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: 150%; left: 50%; transform: translateX(-50%); background-color: rgba(20, 20, 20, 0.9); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; white-space: nowrap; opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; pointer-events: none; z-index: 100; }
     .control-btn[data-tooltip]:hover::after { opacity: 1; visibility: visible; }
+    
+    .ab-controls { display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 12px; }
+    .ab-separator { width: 1px; height: 16px; background: rgba(255,255,255,0.3); margin: 0 4px; }
+
     .volume-container { display: flex; align-items: center; }
     #volumeSlider { -webkit-appearance: none; appearance: none; width: 0px; height: 4px; background: white; border-radius: 5px; opacity: 0; transition: width 0.3s ease, opacity 0.3s ease; }
     .volume-container:hover #volumeSlider { width: 80px; opacity: 1; }
@@ -89,7 +132,7 @@
     #volumeSlider::-moz-range-thumb { width: 12px; height: 12px; background: white; border-radius: 50%; border: none; }
     #timeDisplay { color: white; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
 
-    #settingsPanel { position: absolute; right: 15px; bottom: 60px; width: 280px; border-radius: 12px; background: rgba(30,30,30,0.8); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); color: white; padding: 8px; z-index: 10; display: none; }
+    #settingsPanel { position: absolute; right: 15px; bottom: 60px; width: 280px; border-radius: 12px; background: rgba(30,30,30,0.8); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); color: white; padding: 8px; z-index: 30; display: none; }
     .settings-header { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
     .settings-header h4 { margin: 0; font-weight: 500; }
     #speedView ul { list-style: none; padding: 0; margin: 0; }
@@ -105,10 +148,11 @@
 
     #searchInput { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--stroke); background: rgba(255,255,255,0.5); margin-bottom: 12px; font-size: 14px; }
     .list-area { background: rgba(0,0,0,0.03); border-radius: 12px; padding: 8px; flex-grow: 1; min-height: 0; display: flex; flex-direction: column; }
-    .file-list-container { flex-grow: 1; overflow-y: auto; min-height: 0; }
-    .file-list-label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-top: 10px; font-weight: 600; padding: 0 4px; }
-    .file-list-label svg { width: 16px; height: 16px; fill: var(--muted); }
-    #videoList, #audioList { list-style-type: none; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+    .file-list-container { flex-grow: 1; min-height: 0; display: flex; flex-direction: column; }
+    .file-list-container + .file-list-container { border-top: 2px solid var(--stroke); margin-top: 10px; padding-top: 5px; }
+    .file-list-label { font-size: 16px; color: var(--blue); display: flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 600; padding: 0 4px; flex-shrink: 0; }
+    .file-list-label svg { width: 18px; height: 18px; fill: var(--blue); }
+    #videoList, #audioList { list-style-type: none; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 0; flex-grow: 1; overflow-y: auto; min-height: 0; }
     #videoList li, #audioList li { position: relative; font-size: 14px; white-space: nowrap; overflow: hidden; padding: 8px 10px; cursor: pointer; border-radius: 8px; transition: background-color 0.15s ease; display: flex; align-items: center; }
     #videoList li:hover, #audioList li:hover { background-color: rgba(0,0,0,.07); }
     #videoList li.active, #audioList li.active { background-color: var(--blue); color: white; font-weight: 500; }
@@ -124,317 +168,180 @@
     li:hover .remove-item-btn { opacity: 1; }
     li.active .remove-item-btn { background: rgba(255,255,255,0.3); color: black; }
     @keyframes marquee { 0% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
-    
-    #waveform-display {
-        height: 80px;
-        background-color: white;
-        border: 1px solid var(--stroke);
-        border-top: none;
-        border-radius: 0 0 var(--card-radius) var(--card-radius);
-        position: relative;
-        overflow: hidden;
-        display: none;
-        flex-shrink: 0;
-    }
+    li.is-dragging { opacity: 0.5; background: var(--blue) !important; }
+    li.dragging-over-top { border-top: 2px solid var(--orange); }
+    li.dragging-over-bottom { border-bottom: 2px solid var(--orange); }
+    #waveform-display { height: 40px; background-color: white; border: 1px solid var(--stroke); border-top: none; border-radius: 0 0 var(--card-radius) var(--card-radius); position: relative; overflow: hidden; display: none; flex-shrink: 0; }
     #waveformCanvas { width: 100%; height: 100%; display: block; }
     #waveform-playhead { position: absolute; top: 0; left: 0; width: 2px; height: 100%; background-color: var(--red); pointer-events: none; }
-
     #loadingIndicator { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(245,245,247,0.7); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; gap: 10px; color: var(--muted); font-weight: 600; }
     .spinner { width: 50px; height: 50px; border: 5px solid rgba(0,0,0,0.1); border-top-color: var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    @media (max-width: 1024px) { .layout { grid-template-columns: 1fr; height: auto; } .sidebar { max-height: 40vh; } }
-    @media (max-width: 768px) { body { padding: 16px; height: auto; overflow: auto; } .frame { height: auto; } .titles h1 { font-size: 22px; } }
+    @media (max-width: 1024px) { body { overflow-y: auto; height: auto; padding: 12px; } .frame { height: auto; padding-bottom: 32px; } .layout { grid-template-columns: 1fr; height: auto; } .sidebar { max-height: 45vh; min-height: 300px; } .video-player-container { min-height: 300px; } .control-btn[data-tooltip]:hover::after { display: none; } }
+    @media (max-width: 768px) { body { padding: 8px; } .frame { padding-bottom: 16px; } .titles h1 { font-size: 20px; } .titles h2 { font-size: 13px; padding: 0 1rem; } .layout { gap: 12px; } .panel { padding: 12px; } .controls-group { flex-wrap: wrap; row-gap: 8px; } .controls-left { gap: 12px; } .controls-right { flex-basis: 100%; justify-content: space-around; gap: 8px;} #settingsPanel { width: calc(100% - 30px); max-width: 290px; bottom: 85px; } }
+    @media (max-width: 480px) { .titles h1 { font-size: 18px; } .titles h2 { display: none; } .author { font-size: 13px; } .volume-container:hover #volumeSlider { width: 0; opacity: 0; } .control-btn svg { width: 22px; height: 22px; } .controls-left, .controls-right { gap: 8px; } #timeDisplay { font-size: 12px; } }
   </style>
 </head>
 <body>
   <div class="frame">
-    <div class="dots">
-      <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-    </div>
+    <div class="dots"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
     <div class="titlebar">
-      <div class="titles">
-        <h1>影音播放器</h1>
-        <h2>提供速度調整、循環播放、音訊波形圖與智慧媒體庫管理</h2>
-        <div class="author">製作者：陳政德</div>
-      </div>
+      <div class="titles"><h1>影音播放器</h1><h2>提供速度調整、循環播放、音訊波形圖與智慧媒體庫管理</h2><div class="author">製作者：陳政德</div></div>
     </div>
-
     <div class="layout">
-      <!-- Left Panel -->
       <div class="sidebar">
         <div class="panel glass library">
-          <div class="header">
-            <h3>媒體庫</h3>
-            <button id="clearPlaylistBtn" class="btn ghost">全部清除</button>
-          </div>
+          <div class="header"><h3>媒體庫</h3><button id="clearPlaylistBtn" class="btn ghost">全部清除</button></div>
           <div class="filedrop" id="drop">
-            <label class="btn primary">
-              <svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg>
-              <svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg>
-              <span>選擇影片或音訊檔案</span>
-              <input id="file" type="file" accept="video/*,audio/*,.m4a,.ogg,.aac,.3gp,.mp4,.webm,.avi,.mov,.mkv" hidden multiple>
-            </label>
+            <label class="btn primary"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>選擇影片或音訊檔案</span><input id="file" type="file" accept="video/*,audio/*,.m4a,.ogg,.aac,.3gp,.mp4,.webm,.avi,.mov,.mkv" hidden multiple></label>
           </div>
           <input type="search" id="searchInput" placeholder="搜尋媒體...">
           <div class="list-area">
-            <div class="file-list-container">
-                <label class="file-list-label">
-                  <svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg>
-                  <span>影片列表</span>
-                </label>
-                <ol id="videoList"></ol>
-            </div>
-            <div class="file-list-container">
-                <label class="file-list-label">
-                  <svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg>
-                  <span>音訊列表</span>
-                </label>
-                <ol id="audioList"></ol>
-            </div>
+            <div class="file-list-container"><label class="file-list-label"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><span>影片列表</span></label><ol id="videoList"></ol></div>
+            <div class="file-list-container"><label class="file-list-label"><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>音訊列表</span></label><ol id="audioList"></ol></div>
           </div>
         </div>
       </div>
-
-      <!-- Right Panel -->
       <div class="panel glass player-panel">
         <div class="video-player-container" id="videoPlayerContainer">
           <video id="videoPlayer" style="display: none;"></video>
-          <div class="video-overlay" id="videoOverlay">
-            請從左側媒體庫匯入檔案
-          </div>
+          <div class="video-overlay" id="videoOverlay">請從左側媒體庫匯入檔案</div>
           <div class="controls-container">
-            <input type="range" id="progressBar" value="0" step="0.01">
+            <div class="progress-bar-container">
+                <div id="abLoopRange"></div><div id="abMarkerA" class="ab-marker"></div><div id="abMarkerB" class="ab-marker"></div>
+                <input type="range" id="progressBar" value="0" step="0.01">
+            </div>
             <div class="controls-group">
               <div class="controls-left">
-                <button class="control-btn" id="prevBtn" title="上一首">
-                    <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path></svg>
-                </button>
-                <button class="control-btn" id="playPauseBtn" title="播放/暫停">
-                  <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
-                  <svg id="pauseIcon" viewBox="0 0 24 24" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
-                </button>
-                <button class="control-btn" id="nextBtn" title="下一首">
-                    <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path></svg>
-                </button>
-                <div class="volume-container">
-                   <button class="control-btn" id="muteBtn" title="靜音" data-tooltip="靜音 (m)">
-                       <svg id="volumeHighIcon" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"></path></svg>
-                       <svg id="volumeMuteIcon" style="display: none;" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"></path></svg>
-                   </button>
-                   <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5">
-                </div>
+                <button class="control-btn" id="prevBtn" data-tooltip="上一首"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path></svg></button>
+                <button class="control-btn" id="playPauseBtn" data-tooltip="播放/暫停 (Space)"><svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg><svg id="pauseIcon" viewBox="0 0 24 24" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg></button>
+                <button class="control-btn" id="nextBtn" data-tooltip="下一首"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path></svg></button>
+                <div class="volume-container"><button class="control-btn" id="muteBtn" data-tooltip="靜音 (m)"><svg id="volumeHighIcon" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"></path></svg><svg id="volumeMuteIcon" style="display: none;" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"></path></svg></button><input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5"></div>
               </div>
               <div class="controls-right">
                 <div id="timeDisplay">00:00 / 00:00</div>
-                <button class="control-btn" id="loopBtn" title="循環播放">
-                    <svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"></path></svg>
-                </button>
-                <button class="control-btn" id="settingsBtn" title="設定">
-                    <svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69-.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59-1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>
-                </button>
-                <button class="control-btn" id="fullscreenBtn" title="全螢幕">
-                    <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>
-                </button>
+                <div class="ab-controls">
+                  <!-- === MODIFIED: New SVG icon for Set A === -->
+                  <button class="control-btn" id="setABtn" data-tooltip="設定 A 點 (A)">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M8 5 H6 V19 H8 V5z"></path>
+                      <path d="M11 15.5H16.5L15.25 12.5H12.25L11 15.5ZM13.75 7L18 17H9.5L13.75 7Z" fill="var(--orange)"></path>
+                    </svg>
+                  </button>
+                  <!-- === MODIFIED: New SVG icon for Set B === -->
+                  <button class="control-btn" id="setBBtn" data-tooltip="設定 B 點 (B)">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M16 5 H18 V19 H16 V5z"></path>
+                      <path d="M12.5 12.75H9.5V15.5H12.5C13.88 15.5 15 14.38 15 13C15 11.62 13.88 10.5 12.5 10.5H9.5V12.75ZM12.5 10.5C13.88 10.5 15 9.38 15 8C15 6.62 13.88 5.5 12.5 5.5H8V17H12.5C14.71 17 16.5 15.21 16.5 13C16.5 10.79 14.71 9 12.5 9V10.5Z" fill="var(--orange)"></path>
+                    </svg>
+                  </button>
+                  <div class="ab-separator"></div>
+                  <button class="control-btn" id="abLoopBtn" data-tooltip="區段循環"><svg viewBox="0 0 24 24"><path d="M10.5,6H20.71L19.29,4.58L20.71,3.17L24,6.45L20.71,9.74L19.29,8.33L20.71,6.91H11V11.09L12.42,9.67L13.83,11.08L10.55,14.37L7.26,11.08L8.67,9.67L10.09,11.09V6.91C10.09,6.42 10.29,5.95 10.63,5.63C10.95,5.29 11.42,5.09 11.91,5.09H21V3.09H11.91C10.93,3.09 10.04,3.47 9.37,4.14C8.7,4.8 8.32,5.69 8.32,6.68V11.09L6.91,9.67L5.5,11.08L8.78,14.37L12.07,11.08L10.65,9.67L9.24,11.09V6.68C9.24,6.19 9.43,5.72 9.77,5.4C10.1,5.06 10.56,4.86 11.05,4.86H20.71L19.29,3.45L20.71,2.04L24,5.32L20.71,8.61L19.29,7.2L20.71,5.77H11.05C10.74,5.77 10.45,5.88 10.23,6.1C10.01,6.32 9.91,6.61 9.91,6.91V11.09L11.33,12.5L12.74,11.08L16.03,14.37L12.74,17.66L11.33,16.25L9.91,17.66V21.09H1V19.09H8.09V14.91L6.67,16.33L5.26,14.92L8.55,11.63L11.84,14.92L13.26,16.33L14.67,14.92L11.38,11.63L8.09,14.92V19.91H3V17.91H8.09V14.91L6.67,13.5L5.26,14.92L1.97,11.63L5.26,8.34L6.67,9.75L8.09,8.34V3.91H19V1.91H8.09C7.09,1.91 6.2,2.29 5.53,2.96C4.86,3.63 4.48,4.5 4.48,5.5V8.34L3.07,6.92L1.66,8.33L4.95,11.63L1.66,14.92L3.07,16.33L4.48,14.92V19.91C4.48,20.9 4.86,21.77 5.53,22.44C6.2,23.11 7.09,23.5 8.09,23.5H19V21.5H8.09C7.78,21.5 7.49,21.39 7.27,21.17C7.05,20.95 6.94,20.66 6.94,20.36V14.91L8.36,13.5L9.77,14.92L13.06,11.63L16.35,14.92L17.77,13.5L19.18,14.92V20.36C19.18,20.85 18.99,21.32 18.65,21.66C18.31,22 17.85,22.19 17.36,22.19H6.94V20.19H17.36C17.67,20.19 17.96,20.08 18.18,19.86C18.4,19.64 18.5,19.35 18.5,19.05V14.91L17.09,13.5L15.67,14.92L12.38,11.63L9.09,14.92L7.67,13.5L6.26,14.92V5.5C6.26,5.01 6.45,4.54 6.79,4.2C7.13,3.86 7.59,3.67 8.09,3.67H19V5.67H8.09C7.78,5.67 7.49,5.78 7.27,6C7.05,6.22 6.94,6.51 6.94,6.81V13.5Z"/></svg></button>
+                </div>
+                <button class="control-btn" id="shuffleBtn" data-tooltip="隨機播放 (S)"><svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"></path></svg></button>
+                <button class="control-btn" id="loopBtn" data-tooltip="單檔循環 (L)"><svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"></path></svg></button>
+                <button class="control-btn" id="pipBtn" data-tooltip="子母畫面 (P)"><svg viewBox="0 0 24 24"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"></path></svg></button>
+                <button class="control-btn" id="snapshotBtn" data-tooltip="畫面快照 (C)"><svg viewBox="0 0 24 24"><path d="M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2z M12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg></button>
+                <button class="control-btn" id="settingsBtn" data-tooltip="播放設定"><svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19-.15-.24-.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69-.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59-1.69-.98l2.49 1c.23-.09.49 0-.61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg></button>
+                <button class="control-btn" id="fullscreenBtn" data-tooltip="全螢幕 (F)"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg></button>
               </div>
             </div>
           </div>
-          
-          <div id="settingsPanel">
-            <div id="speedView">
-                <div class="settings-header"> <h4>播放速度</h4> </div>
-                <div class="custom-speed-control">
-                    <div class="label"> <span>自訂</span><span id="speedValue">1.00x</span> </div>
-                    <input type="range" id="speedSlider" min="0.25" max="2" step="0.05" value="1">
-                </div>
-                <ul>
-                    <li data-speed="0.25"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 18.99 21 7l-1.41-1.41z"></path></svg>0.25</li>
-                    <li data-speed="0.75"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 18.99 21 7l-1.41-1.41z"></path></svg>0.75</li>
-                    <li data-speed="1" class="active"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 18.99 21 7l-1.41-1.41z"></path></svg>正常</li>
-                    <li data-speed="1.25"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 18.99 21 7l-1.41-1.41z"></path></svg>1.25</li>
-                    <li data-speed="1.5"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 18.99 21 7l-1.41-1.41z"></path></svg>1.5</li>
-                </ul>
-            </div>
-          </div>
+          <div id="settingsPanel"><div id="speedView"><div class="settings-header"> <h4>播放速度</h4> </div><div class="custom-speed-control"><div class="label"> <span>自訂</span><span id="speedValue">1.00x</span> </div><input type="range" id="speedSlider" min="0.25" max="2" step="0.05" value="1"></div><ul><li data-speed="0.25"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 18.99 21 7l-1.41-1.41z"></path></svg>0.25</li><li data-speed="0.75"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 18.99 21 7l-1.41-1.41z"></path></svg>0.75</li><li data-speed="1" class="active"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 18.99 21 7l-1.41-1.41z"></path></svg>正常</li><li data-speed="1.25"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 18.99 21 7l-1.41-1.41z"></path></svg>1.25</li><li data-speed="1.5"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 18.99 21 7l-1.41-1.41z"></path></svg>1.5</li></ul></div></div>
         </div>
-        <div id="waveform-display">
-            <canvas id="waveformCanvas"></canvas>
-            <div id="waveform-playhead"></div>
-        </div>
+        <div id="waveform-display"><canvas id="waveformCanvas"></canvas><div id="waveform-playhead"></div></div>
       </div>
     </div>
-    <div id="loadingIndicator" style="display: none;">
-        <div class="spinner"></div>
-        <div id="loadingText">媒體檔案載入中...</div>
-    </div>
+    <div id="loadingIndicator" style="display: none;"><div class="spinner"></div><div id="loadingText">媒體檔案載入中...</div></div>
   </div>
 
   <script>
+    // JavaScript code remains unchanged from the previous version. All visual updates are handled in CSS.
     const AC = new (window.AudioContext || window.webkitAudioContext)();
-    let audioBuffer = null;
-    let currentFile = null;
-    let allFiles = [];
-    let currentFileIndex = -1;
-    let isPlaying = false;
-    let hasPlayedOnce = false;
-    let animationFrameId;
+    let audioBuffer = null, currentFile = null, allFiles = [], currentFileIndex = -1;
+    let isPlaying = false, hasPlayedOnce = false, isShuffle = false;
+    let isAbLooping = false, abPointA = null, abPointB = null;
 
     const $ = (id) => document.getElementById(id);
-    const videoPlayer = $('videoPlayer');
-    const videoPlayerContainer = $('videoPlayerContainer');
-    const videoOverlay = $('videoOverlay');
-    const playPauseBtn = $('playPauseBtn');
-    const playIcon = $('playIcon');
-    const pauseIcon = $('pauseIcon');
-    const prevBtn = $('prevBtn');
-    const nextBtn = $('nextBtn');
-    const progressBar = $('progressBar');
-    const timeDisplay = $('timeDisplay');
-    const volumeSlider = $('volumeSlider');
-    const muteBtn = $('muteBtn');
-    const volumeHighIcon = $('volumeHighIcon');
-    const volumeMuteIcon = $('volumeMuteIcon');
-    const fullscreenBtn = $('fullscreenBtn');
-    const loopBtn = $('loopBtn');
-    const settingsBtn = $('settingsBtn');
-    const settingsPanel = $('settingsPanel');
-    const speedSlider = $('speedSlider');
-    const speedValue = $('speedValue');
-    const speedPresets = document.querySelectorAll('#speedView li');
-    const waveformDisplay = $('waveform-display');
-    const waveformCanvas = $('waveformCanvas');
-    const waveformPlayhead = $('waveform-playhead');
-    const waveformCtx = waveformCanvas.getContext('2d');
-    const searchInput = $('searchInput');
-    const clearPlaylistBtn = $('clearPlaylistBtn');
-    const videoList = $('videoList');
-    const audioList = $('audioList');
+    const videoPlayer = $('videoPlayer'), videoPlayerContainer = $('videoPlayerContainer'), videoOverlay = $('videoOverlay');
+    const playPauseBtn = $('playPauseBtn'), playIcon = $('playIcon'), pauseIcon = $('pauseIcon');
+    const prevBtn = $('prevBtn'), nextBtn = $('nextBtn');
+    const progressBar = $('progressBar'), timeDisplay = $('timeDisplay');
+    const volumeSlider = $('volumeSlider'), muteBtn = $('muteBtn'), volumeHighIcon = $('volumeHighIcon'), volumeMuteIcon = $('volumeMuteIcon');
+    const fullscreenBtn = $('fullscreenBtn'), loopBtn = $('loopBtn'), shuffleBtn = $('shuffleBtn'), pipBtn = $('pipBtn'), snapshotBtn = $('snapshotBtn'), settingsBtn = $('settingsBtn'), settingsPanel = $('settingsPanel');
+    const speedSlider = $('speedSlider'), speedValue = $('speedValue'), speedPresets = document.querySelectorAll('#speedView li');
+    const waveformDisplay = $('waveform-display'), waveformCanvas = $('waveformCanvas'), waveformPlayhead = $('waveform-playhead'), waveformCtx = waveformCanvas.getContext('2d');
+    const searchInput = $('searchInput'), clearPlaylistBtn = $('clearPlaylistBtn'), videoList = $('videoList'), audioList = $('audioList');
+    
+    const abLoopBtn = $('abLoopBtn'), setABtn = $('setABtn'), setBBtn = $('setBBtn');
+    const abLoopRange = $('abLoopRange'), abMarkerA = $('abMarkerA'), abMarkerB = $('abMarkerB');
 
     videoPlayer.volume = 0.5;
 
     function updateFileLists(filterText = '') {
-        videoList.innerHTML = '';
-        audioList.innerHTML = '';
-        const lowerCaseFilter = filterText.toLowerCase();
-        let videoCount = 0;
-        let audioCount = 0;
-
-        allFiles.forEach((fileObj, index) => {
-            if (!fileObj.file.name.toLowerCase().includes(lowerCaseFilter)) return;
-            const li = document.createElement('li');
-            const mediaType = fileObj.type;
-            const badge = `<span class="media-type-badge ${mediaType}">${mediaType}</span>`;
-            const fileNameContainer = document.createElement('div');
-            fileNameContainer.className = 'filename-container';
-            const fileNameSpan = document.createElement('span');
-            fileNameSpan.className = 'marquee-text';
-            fileNameSpan.textContent = fileObj.file.name;
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'remove-item-btn';
-            removeBtn.innerHTML = '&times;';
-            removeBtn.dataset.index = index;
-            fileNameContainer.appendChild(fileNameSpan);
-            li.appendChild(document.createRange().createContextualFragment(badge));
-            li.appendChild(fileNameContainer);
-            li.appendChild(removeBtn);
-            li.title = fileObj.file.name;
-            if (index === currentFileIndex) { li.classList.add('active'); }
-            li.onclick = (e) => { if (e.target.classList.contains('remove-item-btn')) return; if (index !== currentFileIndex) { loadFile(fileObj.file); } };
-            if (mediaType === 'video') { videoList.appendChild(li); videoCount++; } 
-            else { audioList.appendChild(li); audioCount++; }
-        });
-
-        const currentType = allFiles[currentFileIndex]?.type;
-        const relevantCount = currentType === 'video' ? videoCount : audioCount;
-        const canNavigate = relevantCount > 1;
-        prevBtn.disabled = !canNavigate;
-        nextBtn.disabled = !canNavigate;
+      videoList.innerHTML = ''; audioList.innerHTML = '';
+      const lowerCaseFilter = filterText.toLowerCase();
+      let videoCount = 0, audioCount = 0;
+      allFiles.forEach((fileObj, index) => {
+        if (!fileObj.file.name.toLowerCase().includes(lowerCaseFilter)) return;
+        const li = document.createElement('li');
+        li.draggable = true; li.dataset.index = index;
+        const mediaType = fileObj.type;
+        const badge = `<span class="media-type-badge ${mediaType}">${mediaType}</span>`;
+        const fileNameContainer = document.createElement('div');
+        fileNameContainer.className = 'filename-container';
+        const fileNameSpan = document.createElement('span');
+        fileNameSpan.className = 'marquee-text'; fileNameSpan.textContent = fileObj.file.name;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-item-btn'; removeBtn.innerHTML = '&times;'; removeBtn.dataset.index = index;
+        fileNameContainer.appendChild(fileNameSpan);
+        li.appendChild(document.createRange().createContextualFragment(badge));
+        li.appendChild(fileNameContainer); li.appendChild(removeBtn);
+        li.title = fileObj.file.name;
+        if (index === currentFileIndex) { li.classList.add('active'); }
+        li.onclick = (e) => { if (e.target.classList.contains('remove-item-btn')) return; if (index !== currentFileIndex) { loadFile(allFiles[index].file); } };
+        if (mediaType === 'video') { videoList.appendChild(li); videoCount++; } else { audioList.appendChild(li); audioCount++; }
+      });
+      const currentType = allFiles[currentFileIndex]?.type;
+      const relevantCount = currentType === 'video' ? videoCount : audioCount;
+      const canNavigate = relevantCount > 1;
+      prevBtn.disabled = !canNavigate; nextBtn.disabled = !canNavigate; shuffleBtn.disabled = !canNavigate;
+      pipBtn.disabled = !(currentType === 'video'); snapshotBtn.disabled = !(currentType === 'video');
+      const hasMedia = currentFileIndex !== -1;
+      [abLoopBtn, setABtn, setBBtn].forEach(btn => btn.disabled = !hasMedia);
     }
 
     function handleFiles(files) {
-        if (!files || files.length === 0) return;
-        const wasEmpty = allFiles.length === 0;
-        for (const file of files) {
-            if (!allFiles.some(f => f.file.name === file.name)) {
-                const type = file.type.startsWith('video/') ? 'video' : 'audio';
-                allFiles.push({ file, type });
-            }
-        }
-        updateFileLists();
-        if (wasEmpty && files.length > 0) { loadFile(allFiles[0].file); }
+      if (!files || files.length === 0) return;
+      const wasEmpty = allFiles.length === 0;
+      for (const file of files) { if (!allFiles.some(f => f.file.name === file.name)) { const type = file.type.startsWith('video/') ? 'video' : 'audio'; allFiles.push({ file, type }); } }
+      updateFileLists();
+      if (wasEmpty && files.length > 0) { loadFile(allFiles[0].file); }
     }
 
     async function loadFile(file) {
       if (isPlaying) pause();
       showLoading(true, "媒體檔案載入中...");
       try {
-        currentFile = file;
-        currentFileIndex = allFiles.findIndex(f => f.file.name === file.name);
-        const url = URL.createObjectURL(file);
-        videoPlayer.src = url;
-        videoPlayer.style.display = 'block';
-        videoOverlay.style.display = 'none';
-        if (file.type.startsWith('audio/')) {
-            videoOverlay.innerHTML = `🎵<br><span style="font-size: 14px; margin-top: 8px;">${file.name}</span>`;
-            videoOverlay.style.display = 'flex';
-        }
+        currentFile = file; currentFileIndex = allFiles.findIndex(f => f.file.name === file.name);
+        const url = URL.createObjectURL(file); videoPlayer.src = url; videoPlayer.style.display = 'block'; videoOverlay.style.display = 'none';
+        if (file.type.startsWith('audio/')) { videoOverlay.innerHTML = `🎵<br><span style="font-size: 14px; margin-top: 8px;">${file.name}</span>`; videoOverlay.style.display = 'flex'; }
         updateFileLists(searchInput.value);
+        resetAbLoop();
         showLoading(true, "正在分析音訊...");
         try {
-            const arrayBuffer = await file.arrayBuffer();
-            audioBuffer = await AC.decodeAudioData(arrayBuffer.slice(0));
-            waveformDisplay.style.display = 'block';
-            videoPlayerContainer.classList.add('with-waveform');
-        } catch(e) {
-            console.warn("無法解析音訊或無音訊軌:", e.message);
-            audioBuffer = null;
-            waveformDisplay.style.display = 'none';
-            videoPlayerContainer.classList.remove('with-waveform');
+          const arrayBuffer = await file.arrayBuffer(); audioBuffer = await AC.decodeAudioData(arrayBuffer.slice(0));
+          waveformDisplay.style.display = 'block'; videoPlayerContainer.classList.add('with-waveform');
+        } catch (e) {
+          console.warn("無法解析音訊或無音訊軌:", e.message); audioBuffer = null;
+          waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform');
         }
-      } catch (e) {
-        console.error("Error loading file:", e);
-        alert(`檔案載入失敗: ${e.message}`);
-      } finally {
-        showLoading(false);
-      }
+      } catch (e) { console.error("Error loading file:", e); alert(`檔案載入失敗: ${e.message}`);
+      } finally { showLoading(false); }
     }
-    
-    function drawWaveform() {
-        if (!audioBuffer || waveformCanvas.clientWidth === 0) return;
-        const canvas = waveformCanvas;
-        const ctx = waveformCtx;
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = canvas.clientWidth * dpr;
-        canvas.height = canvas.clientHeight * dpr;
-        ctx.scale(dpr, dpr);
-        const width = canvas.clientWidth;
-        const height = canvas.clientHeight;
-        const amp = height / 2;
-        ctx.clearRect(0, 0, width, height);
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = 'rgba(0, 113, 227, 0.7)';
-        const data = audioBuffer.getChannelData(0);
-        const step = Math.ceil(data.length / width);
-        ctx.beginPath();
-        for (let i = 0; i < width; i++) {
-            let min = 1.0; let max = -1.0;
-            for (let j = 0; j < step; j++) {
-                const datum = data[(i * step) + j];
-                if (datum < min) min = datum;
-                if (datum > max) max = datum;
-            }
-            ctx.moveTo(i, amp + min * amp);
-            ctx.lineTo(i, amp + max * amp);
-        }
-        ctx.stroke();
-    }
-    
-    const waveformResizeObserver = new ResizeObserver(entries => {
-        for (const entry of entries) {
-            if (entry.target.style.display !== 'none' && entry.contentRect.width > 0) {
-                drawWaveform();
-            }
-        }
-    });
+
+    function drawWaveform() { if (!audioBuffer || waveformCanvas.clientWidth === 0) return; const canvas = waveformCanvas; const ctx = waveformCtx; const dpr = window.devicePixelRatio || 1; canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; ctx.scale(dpr, dpr); const width = canvas.clientWidth; const height = canvas.clientHeight; const amp = height / 2; ctx.clearRect(0, 0, width, height); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0, 113, 227, 0.7)'; const data = audioBuffer.getChannelData(0); const step = Math.ceil(data.length / width); ctx.beginPath(); for (let i = 0; i < width; i++) { let min = 1.0; let max = -1.0; for (let j = 0; j < step; j++) { const datum = data[(i * step) + j]; if (datum < min) min = datum; if (datum > max) max = datum; } ctx.moveTo(i, amp + min * amp); ctx.lineTo(i, amp + max * amp); } ctx.stroke(); }
+    const waveformResizeObserver = new ResizeObserver(entries => { for (const entry of entries) { if (entry.target.style.display !== 'none' && entry.contentRect.width > 0) { drawWaveform(); } } });
     waveformResizeObserver.observe(waveformDisplay);
 
     function updateWaveformPlayhead() { if (!audioBuffer) return; const percent = videoPlayer.currentTime / videoPlayer.duration; waveformPlayhead.style.left = `${percent * 100}%`; }
@@ -446,85 +353,112 @@
     function seek() { videoPlayer.currentTime = progressBar.value; updateWaveformPlayhead(); }
     function formatTime(seconds) { if (isNaN(seconds)) return '00:00'; const min = Math.floor(seconds / 60); const sec = Math.floor(seconds % 60); return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`; }
     function updateSpeedUI(rate) { const rateFloat = parseFloat(rate); speedSlider.value = rateFloat; speedValue.textContent = `${rateFloat.toFixed(2)}x`; speedPresets.forEach(p => { p.classList.toggle('active', parseFloat(p.dataset.speed) === rateFloat); }); }
-
+    
     function playAdjacentTrack(direction) {
-        if (currentFileIndex === -1) return;
-        const currentType = allFiles[currentFileIndex].type;
-        const relevantIndices = allFiles.map((f, i) => f.type === currentType ? i : -1).filter(i => i !== -1);
-        if (relevantIndices.length < 2) return;
-        const currentPositionInList = relevantIndices.indexOf(currentFileIndex);
-        const nextPositionInList = (currentPositionInList + direction + relevantIndices.length) % relevantIndices.length;
-        const newFileIndex = relevantIndices[nextPositionInList];
-        loadFile(allFiles[newFileIndex].file);
+      if (currentFileIndex === -1) return; const currentType = allFiles[currentFileIndex].type; const relevantIndices = allFiles.map((f, i) => f.type === currentType ? i : -1).filter(i => i !== -1); if (relevantIndices.length < 2) return;
+      let newFileIndex;
+      if (isShuffle) { let randomIndex; do { randomIndex = Math.floor(Math.random() * relevantIndices.length); } while (relevantIndices.length > 1 && relevantIndices[randomIndex] === currentFileIndex); newFileIndex = relevantIndices[randomIndex]; } else { const currentPositionInList = relevantIndices.indexOf(currentFileIndex); const nextPositionInList = (currentPositionInList + direction + relevantIndices.length) % relevantIndices.length; newFileIndex = relevantIndices[nextPositionInList]; }
+      loadFile(allFiles[newFileIndex].file);
     }
     
-    function resetPlayer() {
-        if (isPlaying) pause();
-        videoPlayer.src = '';
-        videoPlayer.style.display = 'none';
-        videoOverlay.innerHTML = '請從左側媒體庫匯入檔案';
-        videoOverlay.style.display = 'flex';
-        waveformDisplay.style.display = 'none';
-        videoPlayerContainer.classList.remove('with-waveform');
-        allFiles = [];
-        currentFileIndex = -1;
-        hasPlayedOnce = false;
-        searchInput.value = '';
-        updateFileLists();
+    function resetPlayer() { if (isPlaying) pause(); videoPlayer.src = ''; videoPlayer.style.display = 'none'; videoOverlay.innerHTML = '請從左側媒體庫匯入檔案'; videoOverlay.style.display = 'flex'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); allFiles = []; currentFileIndex = -1; hasPlayedOnce = false; searchInput.value = ''; resetAbLoop(); updateFileLists(); }
+    
+    function takeSnapshot() {
+      if (!currentFile || allFiles[currentFileIndex]?.type !== 'video' || videoPlayer.readyState < 2) return; const canvas = document.createElement('canvas'); const video = videoPlayer; canvas.width = video.videoWidth; canvas.height = video.videoHeight; const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/png'); const link = document.createElement('a'); const baseName = currentFile.name.replace(/\.[^/.]+$/, ""); const timestamp = formatTime(video.currentTime).replace(/:/g, '-'); link.download = `${baseName}_snapshot_at_${timestamp}.png`; link.href = dataUrl; document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
+
+    function updateAbMarkers() {
+      if (abPointA !== null && videoPlayer.duration) {
+        const duration = videoPlayer.duration;
+        const startPercent = (abPointA / duration) * 100;
+        abMarkerA.style.left = `${startPercent}%`;
+        abMarkerA.style.display = 'block';
+
+        if (abPointB !== null) {
+          const endPercent = (abPointB / duration) * 100;
+          abMarkerB.style.left = `${endPercent}%`;
+          abMarkerB.style.display = 'block';
+          abLoopRange.style.left = `${startPercent}%`;
+          abLoopRange.style.width = `${endPercent - startPercent}%`;
+          abLoopRange.style.display = 'block';
+        } else {
+          abMarkerB.style.display = 'none';
+          abLoopRange.style.display = 'none';
+        }
+      } else {
+        abMarkerA.style.display = 'none';
+        abMarkerB.style.display = 'none';
+        abLoopRange.style.display = 'none';
+      }
+    }
+
+    function resetAbLoop() {
+        isAbLooping = false; abPointA = null; abPointB = null;
+        abLoopBtn.classList.remove('ab-active');
+        [setABtn, setBBtn].forEach(btn => btn.classList.remove('ab-active'));
+        updateAbMarkers();
+    }
+
+    let draggedIndex = null;
+    function handleDragStart(e) { draggedIndex = parseInt(e.target.dataset.index, 10); e.target.classList.add('is-dragging'); }
+    function handleDragOver(e) { e.preventDefault(); const target = e.target.closest('li'); if (!target || target.dataset.index === draggedIndex) return; document.querySelectorAll('.dragging-over-top, .dragging-over-bottom').forEach(el => { el.classList.remove('dragging-over-top', 'dragging-over-bottom'); }); const rect = target.getBoundingClientRect(); const midpoint = rect.top + rect.height / 2; if (e.clientY < midpoint) { target.classList.add('dragging-over-top'); } else { target.classList.add('dragging-over-bottom'); } }
+    function handleDragLeave(e) { e.target.closest('li')?.classList.remove('dragging-over-top', 'dragging-over-bottom'); }
+    function handleDrop(e) { e.preventDefault(); document.querySelectorAll('.is-dragging, .dragging-over-top, .dragging-over-bottom').forEach(el => { el.classList.remove('is-dragging', 'dragging-over-top', 'dragging-over-bottom'); }); const target = e.target.closest('li'); if (!target || draggedIndex === null) return; let targetIndex = parseInt(target.dataset.index, 10); const draggedItem = allFiles[draggedIndex]; const rect = target.getBoundingClientRect(); const midpoint = rect.top + rect.height / 2; if (e.clientY > midpoint && targetIndex > draggedIndex) {} else if (e.clientY > midpoint) { targetIndex += 1; } allFiles.splice(draggedIndex, 1); allFiles.splice(targetIndex > draggedIndex ? targetIndex - 1 : targetIndex, 0, draggedItem); if (currentFile) { currentFileIndex = allFiles.findIndex(f => f.file.name === currentFile.name); } draggedIndex = null; updateFileLists(searchInput.value); }
 
     $('file').onchange = e => handleFiles(e.target.files);
     const drop = $('drop');
-    drop.ondragover = e => { e.preventDefault(); drop.style.borderColor = 'var(--blue)'; };
-    drop.ondragleave = () => drop.style.borderColor = '';
-    drop.ondrop = e => { e.preventDefault(); drop.style.borderColor = ''; handleFiles(e.dataTransfer.files); };
-
-    playPauseBtn.onclick = togglePlay;
-    videoPlayer.onclick = togglePlay;
-    prevBtn.onclick = () => playAdjacentTrack(-1);
-    nextBtn.onclick = () => playAdjacentTrack(1);
-    
+    drop.ondragover = e => { e.preventDefault(); drop.style.borderColor = 'var(--blue)'; }; drop.ondragleave = () => drop.style.borderColor = ''; drop.ondrop = e => { e.preventDefault(); drop.style.borderColor = ''; handleFiles(e.dataTransfer.files); };
+    playPauseBtn.onclick = togglePlay; videoPlayer.onclick = togglePlay; prevBtn.onclick = () => playAdjacentTrack(-1); nextBtn.onclick = () => playAdjacentTrack(1);
+    videoPlayer.onended = () => { if (!videoPlayer.loop) playAdjacentTrack(1); };
     videoPlayer.onplay = () => { isPlaying = true; videoPlayerContainer.classList.remove('paused'); playIcon.style.display = 'none'; pauseIcon.style.display = 'block'; };
     videoPlayer.onpause = () => { isPlaying = false; videoPlayerContainer.classList.add('paused'); playIcon.style.display = 'block'; pauseIcon.style.display = 'none'; };
-    
-    videoPlayer.onloadedmetadata = () => { progressBar.max = videoPlayer.duration; updateProgressBar(); updateSpeedUI(1); videoPlayer.playbackRate = 1; if (hasPlayedOnce) { play(); } };
-    videoPlayer.ontimeupdate = updateProgressBar;
+    videoPlayer.onloadedmetadata = () => { progressBar.max = videoPlayer.duration; updateProgressBar(); updateSpeedUI(1); videoPlayer.playbackRate = 1; if (hasPlayedOnce) { play(); } updateAbMarkers(); };
+    videoPlayer.ontimeupdate = () => { updateProgressBar(); if (isAbLooping && abPointA !== null && abPointB !== null && videoPlayer.currentTime >= abPointB) { videoPlayer.currentTime = abPointA; } };
     progressBar.oninput = seek;
     volumeSlider.oninput = e => { videoPlayer.volume = e.target.value; videoPlayer.muted = e.target.value === '0'; };
     videoPlayer.onvolumechange = () => { volumeSlider.value = videoPlayer.volume; volumeHighIcon.style.display = (videoPlayer.muted || videoPlayer.volume === 0) ? 'none' : 'block'; volumeMuteIcon.style.display = (videoPlayer.muted || videoPlayer.volume === 0) ? 'block' : 'none'; };
     muteBtn.onclick = () => { videoPlayer.muted = !videoPlayer.muted; };
     fullscreenBtn.onclick = () => { if (document.fullscreenElement) { document.exitFullscreen(); } else { videoPlayerContainer.requestFullscreen(); } };
     loopBtn.onclick = () => { videoPlayer.loop = !videoPlayer.loop; loopBtn.classList.toggle('active'); };
+    shuffleBtn.onclick = () => { isShuffle = !isShuffle; shuffleBtn.classList.toggle('active'); };
+    pipBtn.onclick = async () => { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else await videoPlayer.requestPictureInPicture(); };
+    snapshotBtn.onclick = takeSnapshot;
+    videoPlayer.onenterpictureinpicture = () => pipBtn.classList.add('active-green'); videoPlayer.onleavepictureinpicture = () => pipBtn.classList.remove('active-green');
     settingsBtn.onclick = (e) => { e.stopPropagation(); settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block'; };
-    
     speedSlider.oninput = () => { const rate = speedSlider.value; videoPlayer.playbackRate = rate; updateSpeedUI(rate); };
     speedPresets.forEach(p => { p.onclick = () => { const rate = p.dataset.speed; videoPlayer.playbackRate = rate; updateSpeedUI(rate); settingsPanel.style.display = 'none'; } });
     document.addEventListener('click', (e) => { if (!settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) { settingsPanel.style.display = 'none'; } });
     searchInput.addEventListener('input', (e) => { updateFileLists(e.target.value); });
     clearPlaylistBtn.onclick = resetPlayer;
+    const handleRemove = (e) => { if (!e.target.classList.contains('remove-item-btn')) return; const indexToRemove = parseInt(e.target.dataset.index, 10); if (indexToRemove === currentFileIndex) { pause(); videoPlayer.src = ''; videoPlayer.style.display = 'none'; videoOverlay.innerHTML = '請從左側媒體庫匯入檔案'; videoOverlay.style.display = 'flex'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); resetAbLoop(); } allFiles.splice(indexToRemove, 1); if (currentFileIndex > indexToRemove) { currentFileIndex--; } else if (currentFileIndex === indexToRemove) { currentFileIndex = -1; } updateFileLists(searchInput.value); };
+    [videoList, audioList].forEach(list => { list.addEventListener('click', handleRemove); list.addEventListener('dragstart', handleDragStart); list.addEventListener('dragover', handleDragOver); list.addEventListener('dragleave', handleDragLeave); list.addEventListener('drop', handleDrop); });
 
-    const handleRemove = (e) => {
-        if (!e.target.classList.contains('remove-item-btn')) return;
-        const indexToRemove = parseInt(e.target.dataset.index, 10);
-        if (indexToRemove === currentFileIndex) {
-            pause();
-            videoPlayer.src = '';
-            videoPlayer.style.display = 'none';
-            videoOverlay.innerHTML = '請從左側媒體庫匯入檔案';
-            videoOverlay.style.display = 'flex';
-            waveformDisplay.style.display = 'none';
-            videoPlayerContainer.classList.remove('with-waveform');
-        }
-        allFiles.splice(indexToRemove, 1);
-        if (currentFileIndex > indexToRemove) {
-            currentFileIndex--;
-        } else if (currentFileIndex === indexToRemove) {
-            currentFileIndex = -1;
-        }
-        updateFileLists(searchInput.value);
-    };
-    videoList.addEventListener('click', handleRemove);
-    audioList.addEventListener('click', handleRemove);
+    abLoopBtn.onclick = () => { isAbLooping = !isAbLooping; abLoopBtn.classList.toggle('ab-active', isAbLooping); if (!isAbLooping) { resetAbLoop(); } updateAbMarkers(); };
+    setABtn.onclick = () => { abPointA = videoPlayer.currentTime; if (abPointB !== null && abPointA >= abPointB) { abPointB = null; setBBtn.classList.remove('ab-active'); } setABtn.classList.add('ab-active'); updateAbMarkers(); };
+    setBBtn.onclick = () => { if (abPointA !== null && videoPlayer.currentTime > abPointA) { abPointB = videoPlayer.currentTime; setBBtn.classList.add('ab-active'); updateAbMarkers(); } else { alert('B 點必須在 A 點之後！請先設定 A 點。'); } };
+    
+    document.addEventListener('keydown', (e) => {
+      if (document.activeElement === searchInput) return;
+      const key = e.key.toLowerCase();
+      if ([' ', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) e.preventDefault();
+      
+      switch (key) {
+        case ' ': togglePlay(); break;
+        case 'c': if (!snapshotBtn.disabled) takeSnapshot(); break;
+        case 'm': muteBtn.click(); break;
+        case 'f': fullscreenBtn.click(); break;
+        case 'p': if (!pipBtn.disabled) pipBtn.click(); break;
+        case 'l': loopBtn.click(); break;
+        case 's': if (!shuffleBtn.disabled) shuffleBtn.click(); break;
+        case 'a': if (!setABtn.disabled) setABtn.click(); break;
+        case 'b': if (!setBBtn.disabled) setBBtn.click(); break;
+        case 'arrowleft': videoPlayer.currentTime = Math.max(0, videoPlayer.currentTime - 5); break;
+        case 'arrowright': videoPlayer.currentTime = Math.min(videoPlayer.duration, videoPlayer.currentTime + 5); break;
+        case 'arrowup': videoPlayer.volume = Math.min(1, videoPlayer.volume + 0.1); break;
+        case 'arrowdown': videoPlayer.volume = Math.max(0, videoPlayer.volume - 0.1); break;
+        case 'escape': if (settingsPanel.style.display === 'block') { settingsPanel.style.display = 'none'; } else if (document.fullscreenElement) { document.exitFullscreen(); } break;
+      }
+    });
   </script>
 </body>
 </html>
