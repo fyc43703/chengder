@@ -47,6 +47,17 @@
     }
     #videoPlayer { width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
     
+    #audioVisualizer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: none;
+        cursor: pointer;
+    }
+    
     .titlebar{display:flex; align-items:center; justify-content:center; margin-bottom: 0.5rem; flex-shrink: 0;}
     .dots{display:flex; gap:8px; align-items:center}
     .dot{width:12px; height:12px; border-radius:50%;}
@@ -61,14 +72,14 @@
     .panel .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .panel h3{margin:0; font-size:16px; font-weight:600; color:var(--blue); text-transform:uppercase; letter-spacing:.8px;}
     
-    .btn.primary { background: var(--orange); color: white; border-radius: 12px; padding: 12px 24px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn.primary { background: var(--orange); color: white; border-radius: 12px; padding: 12px 24px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
     .btn.primary:hover{filter:brightness(1.1);}
     .btn.primary svg { width: 20px; height: 20px; fill: white; }
-    .btn.ghost { background: transparent; color: var(--muted); font-size: 12px; padding: 4px 8px; border: 1px solid rgba(0,0,0,0.3); border-radius: 6px; }
+    .btn.ghost { background: transparent; color: var(--muted); font-size: 12px; padding: 4px 8px; border: 1px solid rgba(0,0,0,0.3); border-radius: 6px; cursor: pointer; }
     .btn.ghost:hover { background: rgba(0,0,0,0.05); }
 
     .filedrop{border:2px dashed rgba(0,0,0,.12); border-radius:16px; padding:12px 16px; text-align:center; display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 12px;}
-    .video-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-size: 18px; pointer-events: none; text-align: center; padding: 1rem; }
+    .video-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-size: 18px; pointer-events: none; text-align: center; padding: 1rem; z-index: 10; }
     
     .controls-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 15px; display: flex; flex-direction: column; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%); opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; z-index: 20; }
     .video-player-container:hover .controls-container, .video-player-container.paused .controls-container { opacity: 1; visibility: visible; }
@@ -80,13 +91,12 @@
     
     .ab-marker { position: absolute; top: 50%; transform: translateY(-50%); width: 3px; height: 10px; background-color: var(--orange); z-index: 1; display: none; border-radius: 1px; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
     
-    /* === MODIFIED: Style for A-B loop range line and arrows === */
     #abLoopRange { 
         position: absolute; 
         top: 50%; 
         transform: translateY(-50%); 
-        height: 2px; /* Thinner line */
-        background-color: var(--orange); /* Solid line color */
+        height: 2px;
+        background-color: var(--orange);
         z-index: 1; 
         display: none; 
     }
@@ -100,14 +110,8 @@
         border-top: 5px solid transparent;
         border-bottom: 5px solid transparent;
     }
-    #abLoopRange::before { /* Left arrow */
-        left: -3px;
-        border-right: 6px solid var(--orange);
-    }
-    #abLoopRange::after { /* Right arrow */
-        right: -3px;
-        border-left: 6px solid var(--orange);
-    }
+    #abLoopRange::before { left: -3px; border-right: 6px solid var(--orange); }
+    #abLoopRange::after { right: -3px; border-left: 6px solid var(--orange); }
     
     .controls-group { display: flex; justify-content: space-between; align-items: center; }
     .controls-left, .controls-right { display: flex; align-items: center; gap: 12px; }
@@ -191,9 +195,9 @@
     <div class="layout">
       <div class="sidebar">
         <div class="panel glass library">
-          <div class="header"><h3>媒體庫</h3><button id="clearPlaylistBtn" class="btn ghost">全部清除</button></div>
+          <div class="header"><h3>媒體庫</h3><button id="clearPlaylistBtn" class="btn ghost" title="清除媒體庫所有匯入的檔案">全部清除</button></div>
           <div class="filedrop" id="drop">
-            <label class="btn primary"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>選擇影片或音訊檔案</span><input id="file" type="file" accept="video/*,audio/*,.m4a,.ogg,.aac,.3gp,.mp4,.webm,.avi,.mov,.mkv" hidden multiple></label>
+            <label class="btn primary" title="點擊選擇影片或音訊檔案"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>選擇影片或音訊檔案</span><input id="file" type="file" accept="video/*,audio/*,.m4a,.ogg,.aac,.3gp,.mp4,.webm,.avi,.mov,.mkv" hidden multiple></label>
           </div>
           <input type="search" id="searchInput" placeholder="搜尋媒體...">
           <div class="list-area">
@@ -205,6 +209,7 @@
       <div class="panel glass player-panel">
         <div class="video-player-container" id="videoPlayerContainer">
           <video id="videoPlayer" style="display: none;"></video>
+          <canvas id="audioVisualizer"></canvas>
           <div class="video-overlay" id="videoOverlay">請從左側媒體庫匯入檔案</div>
           <div class="controls-container">
             <div class="progress-bar-container">
@@ -216,19 +221,17 @@
                 <button class="control-btn" id="prevBtn" data-tooltip="上一首"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path></svg></button>
                 <button class="control-btn" id="playPauseBtn" data-tooltip="播放/暫停 (Space)"><svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg><svg id="pauseIcon" viewBox="0 0 24 24" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg></button>
                 <button class="control-btn" id="nextBtn" data-tooltip="下一首"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path></svg></button>
-                <div class="volume-container"><button class="control-btn" id="muteBtn" data-tooltip="靜音 (m)"><svg id="volumeHighIcon" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"></path></svg><svg id="volumeMuteIcon" style="display: none;" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"></path></svg></button><input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5"></div>
+                <div class="volume-container"><button class="control-btn" id="muteBtn" data-tooltip="靜音 (m)"><svg id="volumeHighIcon" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"></path></svg><svg id="volumeMuteIcon" style="display: none;" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"></path></svg></button><input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.2"></div>
               </div>
               <div class="controls-right">
                 <div id="timeDisplay">00:00 / 00:00</div>
                 <div class="ab-controls">
-                  <!-- === MODIFIED: New SVG icon for Set A === -->
                   <button class="control-btn" id="setABtn" data-tooltip="設定 A 點 (A)">
                     <svg viewBox="0 0 24 24">
                       <path d="M8 5 H6 V19 H8 V5z"></path>
                       <path d="M11 15.5H16.5L15.25 12.5H12.25L11 15.5ZM13.75 7L18 17H9.5L13.75 7Z" fill="var(--orange)"></path>
                     </svg>
                   </button>
-                  <!-- === MODIFIED: New SVG icon for Set B === -->
                   <button class="control-btn" id="setBBtn" data-tooltip="設定 B 點 (B)">
                     <svg viewBox="0 0 24 24">
                       <path d="M16 5 H18 V19 H16 V5z"></path>
@@ -238,6 +241,14 @@
                   <div class="ab-separator"></div>
                   <button class="control-btn" id="abLoopBtn" data-tooltip="區段循環"><svg viewBox="0 0 24 24"><path d="M10.5,6H20.71L19.29,4.58L20.71,3.17L24,6.45L20.71,9.74L19.29,8.33L20.71,6.91H11V11.09L12.42,9.67L13.83,11.08L10.55,14.37L7.26,11.08L8.67,9.67L10.09,11.09V6.91C10.09,6.42 10.29,5.95 10.63,5.63C10.95,5.29 11.42,5.09 11.91,5.09H21V3.09H11.91C10.93,3.09 10.04,3.47 9.37,4.14C8.7,4.8 8.32,5.69 8.32,6.68V11.09L6.91,9.67L5.5,11.08L8.78,14.37L12.07,11.08L10.65,9.67L9.24,11.09V6.68C9.24,6.19 9.43,5.72 9.77,5.4C10.1,5.06 10.56,4.86 11.05,4.86H20.71L19.29,3.45L20.71,2.04L24,5.32L20.71,8.61L19.29,7.2L20.71,5.77H11.05C10.74,5.77 10.45,5.88 10.23,6.1C10.01,6.32 9.91,6.61 9.91,6.91V11.09L11.33,12.5L12.74,11.08L16.03,14.37L12.74,17.66L11.33,16.25L9.91,17.66V21.09H1V19.09H8.09V14.91L6.67,16.33L5.26,14.92L8.55,11.63L11.84,14.92L13.26,16.33L14.67,14.92L11.38,11.63L8.09,14.92V19.91H3V17.91H8.09V14.91L6.67,13.5L5.26,14.92L1.97,11.63L5.26,8.34L6.67,9.75L8.09,8.34V3.91H19V1.91H8.09C7.09,1.91 6.2,2.29 5.53,2.96C4.86,3.63 4.48,4.5 4.48,5.5V8.34L3.07,6.92L1.66,8.33L4.95,11.63L1.66,14.92L3.07,16.33L4.48,14.92V19.91C4.48,20.9 4.86,21.77 5.53,22.44C6.2,23.11 7.09,23.5 8.09,23.5H19V21.5H8.09C7.78,21.5 7.49,21.39 7.27,21.17C7.05,20.95 6.94,20.66 6.94,20.36V14.91L8.36,13.5L9.77,14.92L13.06,11.63L16.35,14.92L17.77,13.5L19.18,14.92V20.36C19.18,20.85 18.99,21.32 18.65,21.66C18.31,22 17.85,22.19 17.36,22.19H6.94V20.19H17.36C17.67,20.19 17.96,20.08 18.18,19.86C18.4,19.64 18.5,19.35 18.5,19.05V14.91L17.09,13.5L15.67,14.92L12.38,11.63L9.09,14.92L7.67,13.5L6.26,14.92V5.5C6.26,5.01 6.45,4.54 6.79,4.2C7.13,3.86 7.59,3.67 8.09,3.67H19V5.67H8.09C7.78,5.67 7.49,5.78 7.27,6C7.05,6.22 6.94,6.51 6.94,6.81V13.5Z"/></svg></button>
                 </div>
+                <!-- MODIFIED: Button now contains two icons to switch between -->
+                <button class="control-btn active-green" id="toggleVisualizerBtn" data-tooltip="切換視覺化效果">
+                    <svg id="visualizerIconCircular" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2 L12 5 M22 12 L19 12 M12 22 L12 19 M2 12 L5 12 M5.64 5.64 L7.76 7.76 M18.36 18.36 L16.24 16.24 M5.64 18.36 L7.76 16.24 M18.36 5.64 L16.24 7.76"></path>
+                        <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
+                    </svg>
+                    <svg id="visualizerIconBar" viewBox="0 0 24 24" style="display: none;"><path d="M4 9h4v11H4zm6-5h4v21h-4zm6 9h4v12h-4z"></path></svg>
+                </button>
                 <button class="control-btn" id="shuffleBtn" data-tooltip="隨機播放 (S)"><svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"></path></svg></button>
                 <button class="control-btn" id="loopBtn" data-tooltip="單檔循環 (L)"><svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"></path></svg></button>
                 <button class="control-btn" id="pipBtn" data-tooltip="子母畫面 (P)"><svg viewBox="0 0 24 24"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"></path></svg></button>
@@ -256,19 +267,24 @@
   </div>
 
   <script>
-    // JavaScript code remains unchanged from the previous version. All visual updates are handled in CSS.
     const AC = new (window.AudioContext || window.webkitAudioContext)();
     let audioBuffer = null, currentFile = null, allFiles = [], currentFileIndex = -1;
     let isPlaying = false, hasPlayedOnce = false, isShuffle = false;
     let isAbLooping = false, abPointA = null, abPointB = null;
+    let audioSource, analyser, visualizerFrameId;
+    let visualizerMode = 'circular'; // NEW: Can be 'circular', 'bar', or 'off'
 
     const $ = (id) => document.getElementById(id);
     const videoPlayer = $('videoPlayer'), videoPlayerContainer = $('videoPlayerContainer'), videoOverlay = $('videoOverlay');
+    const audioVisualizer = $('audioVisualizer');
     const playPauseBtn = $('playPauseBtn'), playIcon = $('playIcon'), pauseIcon = $('pauseIcon');
     const prevBtn = $('prevBtn'), nextBtn = $('nextBtn');
     const progressBar = $('progressBar'), timeDisplay = $('timeDisplay');
     const volumeSlider = $('volumeSlider'), muteBtn = $('muteBtn'), volumeHighIcon = $('volumeHighIcon'), volumeMuteIcon = $('volumeMuteIcon');
     const fullscreenBtn = $('fullscreenBtn'), loopBtn = $('loopBtn'), shuffleBtn = $('shuffleBtn'), pipBtn = $('pipBtn'), snapshotBtn = $('snapshotBtn'), settingsBtn = $('settingsBtn'), settingsPanel = $('settingsPanel');
+    const toggleVisualizerBtn = $('toggleVisualizerBtn');
+    const visualizerIconCircular = $('visualizerIconCircular'); // NEW
+    const visualizerIconBar = $('visualizerIconBar'); // NEW
     const speedSlider = $('speedSlider'), speedValue = $('speedValue'), speedPresets = document.querySelectorAll('#speedView li');
     const waveformDisplay = $('waveform-display'), waveformCanvas = $('waveformCanvas'), waveformPlayhead = $('waveform-playhead'), waveformCtx = waveformCanvas.getContext('2d');
     const searchInput = $('searchInput'), clearPlaylistBtn = $('clearPlaylistBtn'), videoList = $('videoList'), audioList = $('audioList');
@@ -276,7 +292,103 @@
     const abLoopBtn = $('abLoopBtn'), setABtn = $('setABtn'), setBBtn = $('setBBtn');
     const abLoopRange = $('abLoopRange'), abMarkerA = $('abMarkerA'), abMarkerB = $('abMarkerB');
 
-    videoPlayer.volume = 0.5;
+    videoPlayer.volume = 0.2;
+    volumeSlider.value = 0.2;
+
+    function setupVisualizer() {
+        if (!audioSource) {
+            audioSource = AC.createMediaElementSource(videoPlayer);
+            analyser = AC.createAnalyser();
+            audioSource.connect(analyser);
+            analyser.connect(AC.destination);
+            analyser.fftSize = 256;
+        }
+    }
+
+    // NEW: Separated drawing functions
+    function drawCircularVisualizer(ctx, dataArray, width, height) {
+        const centerX = width / 2;
+        const centerY = height / 2;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Fading effect
+        ctx.fillRect(0, 0, width, height);
+
+        const bars = dataArray.length * 0.8;
+        const radius = Math.min(width, height) * 0.2;
+
+        for (let i = 0; i < bars; i++) {
+            const barHeight = dataArray[i] * 0.7;
+            const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
+            const startX = centerX + radius * Math.cos(angle);
+            const startY = centerY + radius * Math.sin(angle);
+            const endX = centerX + (radius + barHeight) * Math.cos(angle);
+            const endY = centerY + (radius + barHeight) * Math.sin(angle);
+            const hue = (i / bars) * 360;
+            ctx.strokeStyle = `hsl(${hue}, 100%, 60%)`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+            if (barHeight > 60) {
+                ctx.beginPath();
+                ctx.arc(endX, endY, 2, 0, Math.PI * 2);
+                ctx.fillStyle = `hsl(${hue}, 100%, 85%)`;
+                ctx.fill();
+            }
+        }
+    }
+
+    function drawBarVisualizer(ctx, dataArray, width, height) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, width, height);
+        const bufferLength = dataArray.length;
+        const barWidth = (width / bufferLength) * 1.5;
+        let x = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            const barHeight = dataArray[i] * 1.8;
+            const hue = (i / bufferLength) * 360;
+            ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+            ctx.fillRect(x, height - barHeight / 2 - height/2, barWidth, barHeight);
+            x += barWidth + 2;
+        }
+    }
+
+    // MODIFIED: Main draw loop now decides which visualizer to render
+    function drawVisualizer() {
+        if (visualizerMode === 'off') return;
+        const visualizerCtx = audioVisualizer.getContext('2d');
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        const draw = () => {
+            visualizerFrameId = requestAnimationFrame(draw);
+            analyser.getByteFrequencyData(dataArray);
+            const dpr = window.devicePixelRatio || 1;
+            audioVisualizer.width = audioVisualizer.clientWidth * dpr;
+            audioVisualizer.height = audioVisualizer.clientHeight * dpr;
+            visualizerCtx.scale(dpr, dpr);
+            const width = audioVisualizer.clientWidth;
+            const height = audioVisualizer.clientHeight;
+
+            if (visualizerMode === 'circular') {
+                drawCircularVisualizer(visualizerCtx, dataArray, width, height);
+            } else if (visualizerMode === 'bar') {
+                drawBarVisualizer(visualizerCtx, dataArray, width, height);
+            }
+        };
+        draw();
+    }
+    
+    // NEW: Function to update the visualizer button's icon and state
+    function updateVisualizerButton() {
+        const isActive = visualizerMode !== 'off';
+        toggleVisualizerBtn.classList.toggle('active-green', isActive);
+        visualizerIconCircular.style.display = visualizerMode === 'circular' ? 'block' : 'none';
+        visualizerIconBar.style.display = visualizerMode === 'bar' ? 'block' : 'none';
+        if (visualizerMode === 'off') {
+            visualizerIconBar.style.display = 'block'; // Show a default icon when off
+        }
+    }
 
     function updateFileLists(filterText = '') {
       videoList.innerHTML = ''; audioList.innerHTML = '';
@@ -303,10 +415,17 @@
         if (mediaType === 'video') { videoList.appendChild(li); videoCount++; } else { audioList.appendChild(li); audioCount++; }
       });
       const currentType = allFiles[currentFileIndex]?.type;
-      const relevantCount = currentType === 'video' ? videoCount : audioCount;
+      const isAudio = currentType === 'audio';
+      const relevantCount = isAudio ? audioCount : videoCount;
       const canNavigate = relevantCount > 1;
-      prevBtn.disabled = !canNavigate; nextBtn.disabled = !canNavigate; shuffleBtn.disabled = !canNavigate;
-      pipBtn.disabled = !(currentType === 'video'); snapshotBtn.disabled = !(currentType === 'video');
+      
+      prevBtn.disabled = !canNavigate; 
+      nextBtn.disabled = !canNavigate; 
+      shuffleBtn.disabled = !canNavigate;
+      pipBtn.disabled = isAudio; 
+      snapshotBtn.disabled = isAudio;
+      toggleVisualizerBtn.disabled = !isAudio;
+
       const hasMedia = currentFileIndex !== -1;
       [abLoopBtn, setABtn, setBBtn].forEach(btn => btn.disabled = !hasMedia);
     }
@@ -321,13 +440,37 @@
 
     async function loadFile(file) {
       if (isPlaying) pause();
+      cancelAnimationFrame(visualizerFrameId);
       showLoading(true, "媒體檔案載入中...");
       try {
         currentFile = file; currentFileIndex = allFiles.findIndex(f => f.file.name === file.name);
-        const url = URL.createObjectURL(file); videoPlayer.src = url; videoPlayer.style.display = 'block'; videoOverlay.style.display = 'none';
-        if (file.type.startsWith('audio/')) { videoOverlay.innerHTML = `🎵<br><span style="font-size: 14px; margin-top: 8px;">${file.name}</span>`; videoOverlay.style.display = 'flex'; }
+        if (AC.state === 'suspended') { await AC.resume(); }
+        setupVisualizer();
+
+        const url = URL.createObjectURL(file); videoPlayer.src = url;
         updateFileLists(searchInput.value);
         resetAbLoop();
+
+        if (file.type.startsWith('audio/')) {
+            videoPlayer.style.display = 'none';
+            videoOverlay.innerHTML = `🎵<br><span style="font-size: 16px; margin-top: 10px; font-weight: 500;">${file.name}</span>`;
+            
+            if (visualizerMode !== 'off') {
+                audioVisualizer.style.display = 'block';
+                videoOverlay.style.background = 'transparent';
+                drawVisualizer();
+            } else {
+                audioVisualizer.style.display = 'none';
+                videoOverlay.style.background = 'rgba(0,0,0,0.7)';
+            }
+            videoOverlay.style.display = 'flex';
+        } else {
+            videoPlayer.style.display = 'block';
+            audioVisualizer.style.display = 'none';
+            videoOverlay.style.display = 'none';
+            videoOverlay.style.background = 'rgba(0,0,0,0.7)';
+        }
+        
         showLoading(true, "正在分析音訊...");
         try {
           const arrayBuffer = await file.arrayBuffer(); audioBuffer = await AC.decodeAudioData(arrayBuffer.slice(0));
@@ -361,7 +504,22 @@
       loadFile(allFiles[newFileIndex].file);
     }
     
-    function resetPlayer() { if (isPlaying) pause(); videoPlayer.src = ''; videoPlayer.style.display = 'none'; videoOverlay.innerHTML = '請從左側媒體庫匯入檔案'; videoOverlay.style.display = 'flex'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); allFiles = []; currentFileIndex = -1; hasPlayedOnce = false; searchInput.value = ''; resetAbLoop(); updateFileLists(); }
+    function resetPlayer() { 
+      if (isPlaying) pause(); 
+      cancelAnimationFrame(visualizerFrameId);
+      audioVisualizer.style.display = 'none';
+      videoPlayer.src = ''; 
+      videoPlayer.style.display = 'none'; 
+      videoOverlay.innerHTML = '請從左側媒體庫匯入檔案';
+      videoOverlay.style.background = 'rgba(0,0,0,0.7)';
+      videoOverlay.style.display = 'flex'; 
+      waveformDisplay.style.display = 'none'; 
+      videoPlayerContainer.classList.remove('with-waveform'); 
+      allFiles = []; currentFileIndex = -1; hasPlayedOnce = false; 
+      visualizerMode = 'circular'; // Reset to default mode
+      updateVisualizerButton();
+      searchInput.value = ''; resetAbLoop(); updateFileLists(); 
+    }
     
     function takeSnapshot() {
       if (!currentFile || allFiles[currentFileIndex]?.type !== 'video' || videoPlayer.readyState < 2) return; const canvas = document.createElement('canvas'); const video = videoPlayer; canvas.width = video.videoWidth; canvas.height = video.videoHeight; const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/png'); const link = document.createElement('a'); const baseName = currentFile.name.replace(/\.[^/.]+$/, ""); const timestamp = formatTime(video.currentTime).replace(/:/g, '-'); link.download = `${baseName}_snapshot_at_${timestamp}.png`; link.href = dataUrl; document.body.appendChild(link); link.click(); document.body.removeChild(link);
@@ -408,7 +566,11 @@
     $('file').onchange = e => handleFiles(e.target.files);
     const drop = $('drop');
     drop.ondragover = e => { e.preventDefault(); drop.style.borderColor = 'var(--blue)'; }; drop.ondragleave = () => drop.style.borderColor = ''; drop.ondrop = e => { e.preventDefault(); drop.style.borderColor = ''; handleFiles(e.dataTransfer.files); };
-    playPauseBtn.onclick = togglePlay; videoPlayer.onclick = togglePlay; prevBtn.onclick = () => playAdjacentTrack(-1); nextBtn.onclick = () => playAdjacentTrack(1);
+    playPauseBtn.onclick = togglePlay; 
+    videoPlayer.onclick = togglePlay;
+    audioVisualizer.onclick = togglePlay;
+    prevBtn.onclick = () => playAdjacentTrack(-1); 
+    nextBtn.onclick = () => playAdjacentTrack(1);
     videoPlayer.onended = () => { if (!videoPlayer.loop) playAdjacentTrack(1); };
     videoPlayer.onplay = () => { isPlaying = true; videoPlayerContainer.classList.remove('paused'); playIcon.style.display = 'none'; pauseIcon.style.display = 'block'; };
     videoPlayer.onpause = () => { isPlaying = false; videoPlayerContainer.classList.add('paused'); playIcon.style.display = 'block'; pauseIcon.style.display = 'none'; };
@@ -423,7 +585,33 @@
     shuffleBtn.onclick = () => { isShuffle = !isShuffle; shuffleBtn.classList.toggle('active'); };
     pipBtn.onclick = async () => { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else await videoPlayer.requestPictureInPicture(); };
     snapshotBtn.onclick = takeSnapshot;
-    videoPlayer.onenterpictureinpicture = () => pipBtn.classList.add('active-green'); videoPlayer.onleavepictureinpicture = () => pipBtn.classList.remove('active-green');
+    
+    // MODIFIED: Cycle through visualizer modes
+    toggleVisualizerBtn.onclick = () => {
+        if (visualizerMode === 'circular') {
+            visualizerMode = 'bar';
+        } else if (visualizerMode === 'bar') {
+            visualizerMode = 'off';
+        } else { // it was 'off'
+            visualizerMode = 'circular';
+        }
+        updateVisualizerButton();
+        
+        if (currentFile && currentFile.type.startsWith('audio/')) {
+            cancelAnimationFrame(visualizerFrameId);
+            if (visualizerMode !== 'off') {
+                audioVisualizer.style.display = 'block';
+                videoOverlay.style.background = 'transparent';
+                drawVisualizer();
+            } else {
+                audioVisualizer.style.display = 'none';
+                videoOverlay.style.background = 'rgba(0,0,0,0.7)';
+            }
+        }
+    };
+
+    videoPlayer.onenterpictureinpicture = () => pipBtn.classList.add('active-green'); 
+    videoPlayer.onleavepictureinpicture = () => pipBtn.classList.remove('active-green');
     settingsBtn.onclick = (e) => { e.stopPropagation(); settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block'; };
     speedSlider.oninput = () => { const rate = speedSlider.value; videoPlayer.playbackRate = rate; updateSpeedUI(rate); };
     speedPresets.forEach(p => { p.onclick = () => { const rate = p.dataset.speed; videoPlayer.playbackRate = rate; updateSpeedUI(rate); settingsPanel.style.display = 'none'; } });
@@ -432,7 +620,6 @@
     clearPlaylistBtn.onclick = resetPlayer;
     const handleRemove = (e) => { if (!e.target.classList.contains('remove-item-btn')) return; const indexToRemove = parseInt(e.target.dataset.index, 10); if (indexToRemove === currentFileIndex) { pause(); videoPlayer.src = ''; videoPlayer.style.display = 'none'; videoOverlay.innerHTML = '請從左側媒體庫匯入檔案'; videoOverlay.style.display = 'flex'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); resetAbLoop(); } allFiles.splice(indexToRemove, 1); if (currentFileIndex > indexToRemove) { currentFileIndex--; } else if (currentFileIndex === indexToRemove) { currentFileIndex = -1; } updateFileLists(searchInput.value); };
     [videoList, audioList].forEach(list => { list.addEventListener('click', handleRemove); list.addEventListener('dragstart', handleDragStart); list.addEventListener('dragover', handleDragOver); list.addEventListener('dragleave', handleDragLeave); list.addEventListener('drop', handleDrop); });
-
     abLoopBtn.onclick = () => { isAbLooping = !isAbLooping; abLoopBtn.classList.toggle('ab-active', isAbLooping); if (!isAbLooping) { resetAbLoop(); } updateAbMarkers(); };
     setABtn.onclick = () => { abPointA = videoPlayer.currentTime; if (abPointB !== null && abPointA >= abPointB) { abPointB = null; setBBtn.classList.remove('ab-active'); } setABtn.classList.add('ab-active'); updateAbMarkers(); };
     setBBtn.onclick = () => { if (abPointA !== null && videoPlayer.currentTime > abPointA) { abPointB = videoPlayer.currentTime; setBBtn.classList.add('ab-active'); updateAbMarkers(); } else { alert('B 點必須在 A 點之後！請先設定 A 點。'); } };
