@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI語句潤飾工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- START: 新增的函式庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        // 設定 pdf.js 的 worker 路徑，這是非同步處理 PDF 的必要設定
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        }
+    </script>
+    <!-- END: 新增的函式庫 -->
+    <style>
+        /* --- 核心設計系統 (Design System) --- */
+        :root {
+            --bg-primary: #f5f5f7;
+            --bg-window: rgba(249, 249, 251, 0.85);
+            --bg-inset: rgba(0, 0, 0, 0.04);
+            --bg-input: rgba(242, 242, 247, 0.9);
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #a1a1a6;
+            --accent-blue: #007aff;
+            --border-primary: rgba(0, 0, 0, 0.1);
+            --shadow-color: rgba(0, 0, 0, 0.12);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1c1c1e;
+            --bg-window: rgba(44, 44, 46, 0.85);
+            --bg-inset: rgba(255, 255, 255, 0.05);
+            --bg-input: rgba(58, 58, 60, 0.9);
+            --text-primary: #f5f5f7;
+            --text-secondary: #8e8e93;
+            --text-tertiary: #636366;
+            --accent-blue: #0a84ff;
+            --border-primary: rgba(255, 255, 255, 0.15);
+            --shadow-color: rgba(0, 0, 0, 0.2);
+        }
+
+        /* --- 基礎設定 --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* --- 核心元素：毛玻璃視窗效果 --- */
+        .macos-window {
+            background-color: var(--bg-window);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid var(--border-primary);
+            box-shadow: 0 8px 32px 0 var(--shadow-color);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .macos-inset-box {
+             background-color: var(--bg-inset);
+             border: 1px solid var(--border-primary);
+             transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        /* --- 按鈕樣式 --- */
+        .macos-button {
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            padding: 8px 16px;
+        }
+        .macos-button-primary {
+            background-color: var(--accent-blue);
+            color: white;
+        }
+        .macos-button-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 122, 255, 0.2);
+        }
+        .macos-button-secondary {
+            background-color: rgba(120, 120, 128, 0.12);
+            color: var(--text-primary);
+        }
+        .macos-button-secondary:hover {
+            background-color: rgba(120, 120, 128, 0.24);
+        }
+        .macos-button-action {
+            color: white;
+            font-weight: bold;
+        }
+        .macos-button-copy { background-color: #ea580c; }
+        .macos-button-copy:hover { background-color: #f97316; }
+
+        /* START: 新增的自訂按鈕顏色 */
+        .macos-button-green {
+            background-color: #166534; /* 柔和綠色暗色系 */
+            color: white;
+            font-weight: bold;
+        }
+        .macos-button-green:hover {
+            background-color: #14532d;
+        }
+        .macos-button-apple-blue {
+            background-color: var(--accent-blue); /* 蘋果藍色 */
+            color: white;
+        }
+        .macos-button-apple-blue:hover {
+            opacity: 0.9;
+        }
+        .macos-button-dark-gray {
+            background-color: #4b5563; /* 黑灰色 */
+            color: white;
+        }
+        .macos-button-dark-gray:hover {
+            background-color: #374151;
+        }
+        /* END: 新增的自訂按鈕顏色 */
+
+
+        /* --- 輸入框與下拉選單 --- */
+        .macos-input {
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .macos-input::placeholder { color: var(--text-secondary); }
+        .macos-input:focus-visible, .macos-input:focus {
+            border-color: rgba(0, 122, 255, 0.5);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+            outline: none;
+        }
+        select.macos-input {
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%238e8e93' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+        optgroup {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        /* --- 拖曳檔案提示 --- */
+        #inputText.drag-over {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+        }
+        
+        /* --- AI 說明文字與差異化顯示樣式 --- */
+        #explanationOutput strong { color: var(--accent-blue); }
+        .diff-added { color: #1e8449; background-color: transparent; text-decoration: none; }
+        .diff-removed { color: #ff3b30; text-decoration: line-through; background-color: transparent; }
+        [data-theme="dark"] .diff-added { color: #34d399; }
+        [data-theme="dark"] .diff-removed { color: #f87171; }
+        
+        /* --- 讀取中動畫 --- */
+        .lds-dual-ring { display: inline-block; width: 60px; height: 60px; }
+        .lds-dual-ring:after { content: " "; display: block; width: 48px; height: 48px; margin: 8px; border-radius: 50%; border: 5px solid var(--text-secondary); border-color: var(--text-secondary) transparent var(--text-secondary) transparent; animation: lds-dual-ring 1.2s linear infinite; }
+        @keyframes lds-dual-ring { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- 提示框 (Toast Notification) --- */
+        #toast-notification {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            transition: bottom 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        #toast-notification.show { bottom: 20px; }
+        #toast-notification.success { background-color: #34d399; }
+        #toast-notification.error { background-color: #f43f5e; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 text-sm">
+
+    <!-- ===== 登入驗證覆蓋層 ===== -->
+    <div id="auth-overlay">
+        <div class="w-full max-w-md macos-window rounded-2xl p-8 space-y-5">
+            <h2 class="text-xl font-semibold text-center">存取驗證</h2>
+            <div class="space-y-3 text-sm p-4 rounded-lg macos-inset-box text-[var(--text-secondary)]">
+                <p>歡迎使用「AI 語句潤飾工具」。本工具透過介接 Google AI Studio 的 Gemini 模型來提供強大的文字處理功能。</p>
+                <p>為確保工具正常運作，您必須擁有自己的 Google Gemini API 金鑰，並在程式碼中設定。原因如下：</p>
+                <ul class="list-disc list-inside space-y-1 pl-2">
+                    <li><strong>個人化用量：</strong> 您的所有請求都將使用您個人的 API 免費額度或帳戶費用，確保公平且不會被他人濫用。</li>
+                    <li><strong>服務穩定性：</strong> 避免因共用金鑰達到流量限制而導致服務中斷。</li>
+                </ul>
+            </div>
+            <div>
+                <input type="password" id="accessCodeInput" class="w-full p-2 rounded-lg macos-input text-center text-lg tracking-widest" placeholder="請輸入存取碼" autofocus>
+                <p id="errorMessage" class="text-center text-red-500 text-sm mt-2 h-5"></p>
+                <button id="submitAccessCode" class="w-full mt-2 macos-button macos-button-primary">登入</button>
+            </div>
+        </div>
+    </div>
+    <!-- ===== 登入邏輯結束 ===== -->
+
+
+    <div id="main-app-container" class="relative w-full max-w-screen-xl mx-auto macos-window rounded-2xl pt-4 px-6 pb-6 md:pt-4 md:px-8 md:pb-8 space-y-6" style="display: none;">
+        <!-- 視窗控制按鈕 -->
+        <div class="absolute top-4 left-4 flex space-x-2">
+            <span class="block w-3 h-3 bg-[#ff5f56] rounded-full"></span>
+            <span class="block w-3 h-3 bg-[#ffbd2e] rounded-full"></span>
+            <span class="block w-3 h-3 bg-[#27c93f] rounded-full"></span>
+        </div>
+        <!-- 主題切換按鈕 -->
+        <div class="absolute top-4 right-4">
+            <button id="theme-toggle" class="p-1.5 rounded-full macos-button-secondary" title="切換淺色/深色主題">
+                <svg id="theme-icon-light" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                <svg id="theme-icon-dark" class="hidden" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+        </div>
+
+        <div class="text-center">
+            <h1 class="text-2xl md:text-3xl font-semibold tracking-wide">AI 語句潤飾工具</h1>
+            <p class="text-sm mt-2 text-[var(--text-secondary)]">匯入多種格式文件，AI 智慧潤飾精煉文稿，即時視覺化比對，提供修改差異詳細說明，匯出優化後文字檔</p>
+            <p class="mt-2 text-xs text-[var(--text-tertiary)]">製作者：陳政德</p>
+        </div>
+
+        <div class="flex flex-col gap-6">
+            <div class="order-1 flex flex-col items-center justify-center gap-4">
+                 <div class="w-full max-w-2xl p-4 rounded-xl macos-inset-box flex items-center gap-x-4">
+                    <label for="polishStyle" class="text-base font-medium text-[var(--accent-blue)] flex-shrink-0">選擇模式：</label>
+                    <select id="polishStyle" class="flex-1 p-2 rounded-lg macos-input">
+                        <optgroup label="潤飾模式">
+                            <option value="general">✨ 通用潤飾 (更通順)</option>
+                            <option value="professional">👔 專業正式 (商業、學術)</option>
+                            <option value="casual">😎 口語活潑 (社群、部落格)</option>
+                            <option value="concise">⚡️ 精簡扼要 (縮短句子)</option>
+                            <option value="typo_only">✒️ 僅修正錯別字</option>
+                            <option value="grammar">📚 修正文法與錯字</option>
+                            <option value="official_document">📄 符合公文用語規範</option>
+                            <option value="legal_standard">⚖️ 符合法律用語規範</option>
+                            <option value="academic_journal">🔬 符合國際期刊論文風格</option>
+                            <option value="humorous">😂 幽默輕鬆風格</option>
+                            <option value="news">📰 新聞報導風格</option>
+                        </optgroup>
+                        <optgroup label="生成模式">
+                            <option value="summarize_transcript">📑 文件彙整摘要</option>
+                            <option value="lazy_html">💡 懶人包HTML(顯示原始碼)</option>
+                        </optgroup>
+                     </select>
+                     <button id="polishButton" class="flex-shrink-0 flex justify-center items-center gap-2 macos-button macos-button-primary" title="根據選擇的模式處理原文">
+                        <span>🚀 開始處理</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 order-2">
+                <div class="space-y-2 p-4 rounded-xl macos-inset-box">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="inputText" class="text-base font-medium text-[var(--accent-blue)]">原文：</label>
+                        <div class="flex items-center gap-2">
+                            <!-- START: 修改按鈕樣式 -->
+                            <button id="importButton" title="從檔案匯入文字 (支援 .txt, .docx, .pdf, .pptx)" class="flex items-center gap-2 macos-button macos-button-apple-blue text-xs !px-3 !py-1.5"><span>匯入文字檔</span></button>
+                            <input type="file" id="fileInput" class="hidden" accept=".txt,.docx,.pdf,.pptx">
+                            <button id="clearButton" title="清除原文與結果" class="flex items-center gap-2 macos-button macos-button-dark-gray text-xs !px-3 !py-1.5"><span>清除內容</span></button>
+                            <!-- END: 修改按鈕樣式 -->
+                        </div>
+                    </div>
+                    <textarea id="inputText" class="w-full h-56 md:h-[55vh] p-3 rounded-lg macos-input resize-none text-base" placeholder="在此貼上您的文字..."></textarea>
+                    <div id="inputCharCount" class="text-right text-xs text-[var(--text-secondary)]">字數：0</div>
+                </div>
+                
+                <div class="space-y-2 p-4 rounded-xl macos-inset-box">
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-base font-medium text-[var(--accent-blue)] flex-shrink-0">處理結果：</h2>
+                        <div id="diffLegend" class="text-xs flex-1 flex-wrap gap-x-3 items-center text-[var(--text-secondary)]">
+                            <span><span class="diff-added">綠色</span>:新增</span>
+                            <span><span class="diff-removed">紅色</span>:刪除</span>
+                        </div>
+                        <div class="flex-shrink-0 flex items-center gap-2">
+                            <!-- START: 修改按鈕樣式 -->
+                            <button id="exportButton" title="將潤飾結果匯出為 RTF 檔案" class="flex items-center gap-2 macos-button macos-button-green text-xs !px-3 !py-1.5"><span>匯出文字</span></button>
+                            <!-- END: 修改按鈕樣式 -->
+                            <button id="copyButton" title="複製潤飾後的純文字結果" class="flex items-center gap-2 macos-button macos-button-action macos-button-copy text-xs !px-3 !py-1.5"><span>複製結果</span></button>
+                        </div>
+                    </div>
+                    <div id="outputText" class="w-full h-56 md:h-[55vh] mt-2 p-3 macos-input rounded-lg whitespace-pre-wrap overflow-y-auto text-base"></div>
+                    <div id="outputCharCount" class="text-right text-xs text-[var(--text-secondary)]">字數：0</div>
+                </div>
+            </div>
+            
+            <div id="explanation-container" class="order-3 space-y-2 p-4 rounded-xl macos-inset-box">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-base font-medium text-[var(--accent-blue)]">AI 潤飾說明：</h3>
+                    <!-- START: 修改按鈕樣式 -->
+                    <button id="exportExplanationButton" title="將 AI 潤飾說明匯出為 RTF 檔案" class="flex items-center gap-2 macos-button macos-button-green text-xs !px-3 !py-1.5"><span>匯出說明</span></button>
+                    <!-- END: 修改按鈕樣式 -->
+                </div>
+                <div id="explanationOutput" class="text-sm whitespace-pre-wrap leading-relaxed text-[var(--text-secondary)]">此處將顯示 AI 對潤飾內容的說明。</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示框 (Toast Notification) 容器 -->
+    <div id="toast-notification" class=""></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const allUIElements = {
+                authOverlay: document.getElementById('auth-overlay'),
+                mainAppContainer: document.getElementById('main-app-container'),
+                accessCodeInput: document.getElementById('accessCodeInput'),
+                submitAccessCode: document.getElementById('submitAccessCode'),
+                errorMessage: document.getElementById('errorMessage'),
+                polishButton: document.getElementById('polishButton'),
+                clearButton: document.getElementById('clearButton'),
+                copyButton: document.getElementById('copyButton'),
+                exportButton: document.getElementById('exportButton'),
+                exportExplanationButton: document.getElementById('exportExplanationButton'),
+                themeToggle: document.getElementById('theme-toggle'),
+                inputText: document.getElementById('inputText'),
+                outputText: document.getElementById('outputText'),
+                polishStyleSelect: document.getElementById('polishStyle'),
+                inputCharCount: document.getElementById('inputCharCount'),
+                outputCharCount: document.getElementById('outputCharCount'),
+                diffLegend: document.getElementById('diffLegend'),
+                polishButtonText: document.getElementById('polishButton').querySelector('span'),
+                explanationContainer: document.getElementById('explanation-container'),
+                explanationOutput: document.getElementById('explanationOutput'),
+                toast: document.getElementById('toast-notification'),
+                themeIconLight: document.getElementById('theme-icon-light'),
+                themeIconDark: document.getElementById('theme-icon-dark'),
+                importButton: document.getElementById('importButton'),
+                fileInput: document.getElementById('fileInput'),
+            };
+
+            const generationModes = ['summarize_transcript', 'lazy_html'];
+            let loginAttempts = 0;
+            let toastTimer;
+            
+            // --- 初始化 ---
+            initializeTheme();
+            initializeEventListeners();
+            handleStyleChange();
+
+            // --- 事件監聽器 ---
+            function initializeEventListeners() {
+                const { submitAccessCode, accessCodeInput, polishStyleSelect, polishButton, clearButton, copyButton, exportButton, exportExplanationButton, inputText, themeToggle, importButton, fileInput } = allUIElements;
+                submitAccessCode.addEventListener('click', checkAccessCode);
+                accessCodeInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') checkAccessCode(); });
+                polishStyleSelect.addEventListener('change', handleStyleChange);
+                polishButton.addEventListener('click', processText);
+                clearButton.addEventListener('click', clearContent);
+                copyButton.addEventListener('click', () => copyToClipboard('result'));
+                exportButton.addEventListener('click', () => exportToRtf('result'));
+                exportExplanationButton.addEventListener('click', () => exportToRtf('explanation'));
+                inputText.addEventListener('input', () => updateCharCount(inputText, allUIElements.inputCharCount));
+                themeToggle.addEventListener('click', toggleTheme);
+                setupDragAndDrop();
+                
+                importButton.addEventListener('click', () => fileInput.click());
+                fileInput.addEventListener('change', handleFileImport);
+            }
+            
+            async function handleFileImport(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const { inputText, inputCharCount } = allUIElements;
+                const fileName = file.name.toLowerCase();
+
+                showToast("正在讀取檔案...", "success");
+                inputText.value = '正在讀取檔案，請稍候...';
+                disableUI(); // 處理期間禁用UI
+
+                try {
+                    let text = '';
+                    if (fileName.endsWith('.txt')) {
+                        text = await file.text();
+                    } else if (fileName.endsWith('.docx')) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                        text = result.value;
+                    } else if (fileName.endsWith('.pdf')) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        let fullText = '';
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+                        }
+                        text = fullText;
+                    } else if (fileName.endsWith('.pptx')) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const jszip = new JSZip();
+                        const zip = await jszip.loadAsync(arrayBuffer);
+                        const slideFiles = Object.keys(zip.files).filter(name => name.startsWith('ppt/slides/slide') && name.endsWith('.xml'));
+                        
+                        slideFiles.sort((a, b) => {
+                            const numA = parseInt(a.match(/slide(\d+)\.xml/)[1]);
+                            const numB = parseInt(b.match(/slide(\d+)\.xml/)[1]);
+                            return numA - numB;
+                        });
+
+                        let slideTexts = [];
+                        for (const slideFile of slideFiles) {
+                            const slideXml = await zip.file(slideFile).async('string');
+                            const parser = new DOMParser();
+                            const xmlDoc = parser.parseFromString(slideXml, 'text/xml');
+                            const textNodes = xmlDoc.getElementsByTagName('a:t');
+                            let slideText = '';
+                            for (let i = 0; i < textNodes.length; i++) {
+                                slideText += textNodes[i].textContent;
+                            }
+                            slideText = slideText.replace(/<\/a:p>/g, '\n');
+                            slideTexts.push(slideText.trim());
+                        }
+                        text = slideTexts.join('\n\n');
+                    } else {
+                        throw new Error('不支援的檔案格式。請選擇 .txt, .docx, .pdf, 或 .pptx 檔案。');
+                    }
+
+                    inputText.value = text;
+                    updateCharCount(inputText, inputCharCount);
+                    showToast("檔案匯入成功！", "success");
+                } catch (error) {
+                    inputText.value = '';
+                    updateCharCount(inputText, inputCharCount);
+                    showToast(`檔案讀取失敗: ${error.message}`, "error");
+                    console.error("File Read Error:", error);
+                } finally {
+                    event.target.value = '';
+                    enableUI();
+                }
+            }
+
+            // --- 登入邏輯 ---
+            function checkAccessCode() {
+                const { accessCodeInput, errorMessage, submitAccessCode } = allUIElements;
+                // **任務2：登入密碼 '11283' 保持不變**
+                if (accessCodeInput.value === '11283') {
+                    startApp();
+                } else {
+                    loginAttempts++;
+                    if (loginAttempts >= 3) {
+                        errorMessage.textContent = '錯誤次數過多，已停止驗證。';
+                        accessCodeInput.disabled = true;
+                        submitAccessCode.disabled = true;
+                        submitAccessCode.classList.add('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        errorMessage.textContent = `存取碼錯誤，您還有 ${3 - loginAttempts} 次機會。`;
+                        accessCodeInput.value = '';
+                        accessCodeInput.focus();
+                    }
+                }
+            }
+            
+            function startApp() {
+                const { authOverlay, mainAppContainer } = allUIElements;
+                authOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    authOverlay.style.display = 'none';
+                    mainAppContainer.style.display = 'block';
+                }, 300);
+            }
+
+            // --- 功能函式 ---
+            function handleStyleChange() {
+                const { polishStyleSelect, diffLegend, explanationContainer, polishButtonText } = allUIElements;
+                const selectedStyle = polishStyleSelect.value;
+                const isGenerationMode = generationModes.includes(selectedStyle);
+                
+                diffLegend.style.display = isGenerationMode ? 'none' : 'flex';
+                explanationContainer.style.display = isGenerationMode ? 'none' : 'block';
+                polishButtonText.textContent = isGenerationMode ? '🚀 開始生成' : '🚀 開始處理';
+            }
+            
+            function updateCharCount(element, countElement) {
+                const text = element.nodeName === 'TEXTAREA' ? element.value : element.innerText;
+                countElement.textContent = `字數：${text.length}`;
+            }
+
+            function getCleanOutputText(element) {
+                const clone = element.cloneNode(true);
+                clone.querySelectorAll('.diff-removed').forEach(el => el.remove());
+                return clone.textContent || '';
+            }
+
+            function clearContent() {
+                const { inputText, outputText, explanationOutput, inputCharCount, outputCharCount } = allUIElements;
+                inputText.value = '';
+                outputText.innerHTML = '';
+                explanationOutput.innerHTML = '此處將顯示 AI 對潤飾內容的說明。';
+                updateCharCount(inputText, inputCharCount);
+                updateCharCount(outputText, outputCharCount);
+                showToast("內容已全部清除", "success");
+            }
+
+            function copyToClipboard(type) {
+                const { outputText, polishStyleSelect } = allUIElements;
+                let textToCopy = '';
+                if (type === 'result') {
+                    if (generationModes.includes(polishStyleSelect.value)) {
+                        textToCopy = outputText.textContent;
+                    } else {
+                        textToCopy = getCleanOutputText(outputText);
+                    }
+                }
+                
+                if (textToCopy) {
+                    navigator.clipboard.writeText(textToCopy)
+                        .then(() => showToast("已成功複製到剪貼簿！", "success"))
+                        .catch(() => showToast("複製失敗", "error"));
+                }
+            }
+
+            function convertToRtfUnicode(text) {
+                let rtf = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Microsoft JhengHei;}}\\fs24 ';
+                for (const char of text) {
+                    const code = char.charCodeAt(0);
+                    if (code > 127) {
+                        rtf += `\\u${code}?`;
+                    } else if (char === '\n') {
+                        rtf += '\\par ';
+                    } else if (char === '\\' || char === '{' || char === '}') {
+                        rtf += `\\${char}`;
+                    } else {
+                        rtf += char;
+                    }
+                }
+                return rtf + '}';
+            }
+
+            function exportToRtf(type) {
+                const { outputText, explanationOutput, polishStyleSelect } = allUIElements;
+                let cleanText = '', filename = '';
+                
+                if (type === 'result') {
+                    if (generationModes.includes(polishStyleSelect.value)) {
+                        cleanText = outputText.textContent;
+                    } else {
+                        cleanText = getCleanOutputText(outputText);
+                    }
+                    filename = '潤飾結果.rtf';
+                } else { // explanation
+                    cleanText = explanationOutput.innerText;
+                    filename = 'AI潤飾說明.rtf';
+                }
+
+                if (cleanText && cleanText.trim() && cleanText !== '此處將顯示 AI 對潤飾內容的說明。') {
+                    const rtfContent = convertToRtfUnicode(cleanText);
+                    const blob = new Blob([rtfContent], { type: 'application/rtf' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showToast("文件匯出成功！", "success");
+                } else {
+                    showToast("沒有內容可以匯出。", "error");
+                }
+            }
+
+            async function processText() {
+                const { inputText, outputText, explanationOutput, polishStyleSelect, outputCharCount } = allUIElements;
+                const originalText = inputText.value.trim();
+                if (!originalText) {
+                    showToast("請先輸入您想要處理的文字。", "error");
+                    return;
+                }
+
+                disableUI();
+                const loadingHTML = '<div class="flex justify-center items-center h-full"><div class="lds-dual-ring"></div></div>';
+                outputText.innerHTML = loadingHTML;
+                explanationOutput.innerHTML = loadingHTML;
+                
+                const selectedStyle = polishStyleSelect.value;
+                const isGenerationMode = generationModes.includes(selectedStyle);
+
+                // **任務1：修改 apiKey**
+                const apiKey = "AIzaSyCwcBrK-dSAmG0M84-QiMhZ-rxakoJucb8";
+                const modelName = "gemini-1.5-flash-latest";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+                
+                const stylePrompts = {
+                    general: "你是一位專業的中文寫作專家，請將以下句子潤飾得更通順、精煉，同時完整保留原始語意。",
+                    professional: "你是一位資深的商業與學術編輯，請將以下文字改寫得非常專業、正式、客觀，適用於報告或論文，同時完整保留原始語意。",
+                    casual: "你是一位社群文案高手，請將以下句子改寫得更口語化、活潑、有吸引力，適合用在部落格或社群媒體，同時完整保留原始語意。",
+                    concise: "你是一位精煉的文字編輯，請將以下句子縮短，用最少的字表達核心意思，移除贅字，同時完整保留原始語意。",
+                    typo_only: "你是一位極度專注的校對員，你的唯一任務是修正文字中的錯別字。請不要修改任何標點符號、語法、風格或句子結構，只找出並更正錯字。",
+                    grammar: "你是一位嚴謹的校稿員，請只修正以下句子中的錯別字、標點符號和語法錯誤，不要改變句意或風格。",
+                    official_document: "你是一位精通政府公文寫作的專家，請將以下文字改寫成符合公文用語規範的正式書面語，確保用詞精確、語氣莊重，同時完整保留原始語意。",
+                    legal_standard: "你是一位資深的法律專家，請將以下文字改寫成符合法律文件（如合約、訴狀）的嚴謹、精確、無歧義的書面用語，確保邏輯清晰、用詞專業，同時完整保留原始語意。",
+                    academic_journal: "你是一位頂尖國際期刊的學術編輯，請將以下文字改寫成符合學術論文發表的最高標準。文字必須極度客觀、精煉、且具備學術嚴謹性，用詞需符合該領域的專業規範，同時完整保留原始語意。",
+                    humorous: "你是一位幽默大師，請將以下句子改寫得輕鬆、有趣、甚至帶點諷刺，但要保留核心意思。",
+                    news: "你是一位資深記者，請將以下文字改寫成客觀、中立、精確的新聞報導風格，同時完整保留原始語意。",
+                    summarize_transcript: "你是資深會議紀錄承辦人員的角色，請將以下內容彙整成有結構的摘要。以「一、」、「二、」等序號標示，每項重點項目以段落區隔。請直接以純文字段落呈現，不要使用星號 (*) 或其他項目符號。",
+                    lazy_html: "你是一位具備資訊整合、視覺設計與簡報製作能力的領域專家，請結合文字的規範性與視覺效果，將以下內容打造成一份符合HTML格式的圖文並茂懶人包。請直接提供完整的 HTML body 內容，不需要 `<html>` 或 `<body>` 標籤，也不需要任何額外解釋或 markdown 標記。"
+                };
+                
+                const formattingInstruction = "你的任務是比較原文和優化後的文字，並產生一個能精確顯示差異的 HTML。請嚴格遵循以下規則：1. **未變動的文字**必須保持原樣，不加任何 HTML 標籤。 2. **從原文中刪除的文字**，必須用 `<del>` 標籤包圍。 3. **在新文中增加的文字**，必須用 `<ins>` 標籤包圍。 你的輸出必須是單一的 HTML 字串，不包含任何額外解釋。例如，若原文是「今天天氣很好」，優化後是「今天天氣真好！」，你的輸出就必須是「今天天氣<del>很</del><ins>真</ins>好<ins>！</ins>」。";
+                const explanationInstruction = "處理完畢後，請另起一行並加上 `---EXPLANATION---` 作為分隔符，然後以數字編號 (1., 2., 3.) 的條列式說明你做了哪些修改。在說明中，當你提到新增或取代的具體詞彙時，請使用粗體字 (例如：將「不錯」改為 **「傑出」** ) 來強調。**引用文字時，請只引用純文字，不要包含任何 HTML 標籤 (如 <del> 或 <ins>)**。除此用途外，請勿使用任何其他 markdown 語法。說明應簡潔、專業、有幫助。";
+
+                let systemPrompt = stylePrompts[selectedStyle];
+                if (!isGenerationMode) {
+                    systemPrompt += ` ${formattingInstruction} ${explanationInstruction} 請直接提供優化後的版本，不需要任何額外解釋。請使用繁體中文回答。`;
+                } else {
+                    systemPrompt += ' 請使用繁體中文回答。';
+                }
+
+                try {
+                    const payload = {
+                        contents: [{ parts: [{ text: originalText }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        safetySettings: [
+                            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                        ]
+                    };
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`請求失敗 (狀態碼 ${response.status})：${errorData.error?.message || '未知錯誤'}`);
+                    }
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+
+                    if (candidate?.finishReason === 'SAFETY') {
+                        const safetyErrorMsg = '抱歉，您的輸入或AI的回應可能違反了安全政策，無法處理。請修改後再試。';
+                        outputText.textContent = safetyErrorMsg;
+                        explanationOutput.textContent = safetyErrorMsg;
+                    } else if (candidate?.content?.parts?.[0]?.text) {
+                        let rawText = candidate.content.parts[0].text;
+                        let cleanedText = rawText.replace(/^```(html|)\s*\n/, '').replace(/\n```\s*$/, '').trim();
+
+                        if (isGenerationMode) {
+                            outputText.textContent = cleanedText;
+                            explanationOutput.innerHTML = '';
+                        } else {
+                            const parts = cleanedText.split('---EXPLANATION---');
+                            const polishedHtml = parts[0] ? parts[0].trim() : 'AI未能生成有效的潤飾結果。';
+                            let explanationText = parts[1] ? parts[1].trim() : 'AI未能提供相關說明。';
+                            
+                            explanationText = explanationText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                            const styledHtml = polishedHtml
+                                .replace(/<del>([\s\S]*?)<\/del>/g, '<span class="diff-removed">$1</span>')
+                                .replace(/<ins>([\s\S]*?)<\/ins>/g, '<span class="diff-added">$1</span>');
+                            
+                            outputText.innerHTML = styledHtml;
+                            explanationOutput.innerHTML = explanationText;
+                        }
+                    } else {
+                        const apiErrorMsg = 'API 未返回有效的結果，請稍後再試。';
+                        outputText.textContent = apiErrorMsg;
+                        explanationOutput.textContent = apiErrorMsg;
+                    }
+
+                } catch (error) {
+                    const errorMsg = `<span class="diff-removed">發生錯誤：</span><pre class="whitespace-pre-wrap text-sm">${error.message}</pre>`;
+                    outputText.innerHTML = errorMsg;
+                    explanationOutput.innerHTML = errorMsg;
+                } finally {
+                    enableUI();
+                    if (isGenerationMode) {
+                        updateCharCount(outputText, outputCharCount);
+                    } else {
+                         const cleanText = getCleanOutputText(outputText);
+                         outputCharCount.textContent = `字數：${cleanText.length}`;
+                    }
+                }
+            }
+
+            function disableUI() {
+                const elementsToDisable = [
+                    allUIElements.polishButton, allUIElements.clearButton, allUIElements.copyButton, 
+                    allUIElements.exportButton, allUIElements.exportExplanationButton, allUIElements.polishStyleSelect,
+                    allUIElements.importButton
+                ];
+                elementsToDisable.forEach(el => {
+                    el.disabled = true;
+                    el.classList.add('opacity-50', 'cursor-not-allowed');
+                });
+            }
+
+            function enableUI() {
+                const elementsToEnable = [
+                    allUIElements.polishButton, allUIElements.clearButton, allUIElements.copyButton, 
+                    allUIElements.exportButton, allUIElements.exportExplanationButton, allUIElements.polishStyleSelect,
+                    allUIElements.importButton
+                ];
+                elementsToEnable.forEach(el => {
+                    el.disabled = false;
+                    el.classList.remove('opacity-50', 'cursor-not-allowed');
+                });
+            }
+            
+            function showToast(message, type = 'success') {
+                const { toast } = allUIElements;
+                clearTimeout(toastTimer);
+                toast.textContent = message;
+                toast.className = '';
+                toast.classList.add(type, 'show');
+                toastTimer = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            function initializeTheme() {
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                updateThemeIcons(savedTheme);
+            }
+
+            function toggleTheme() {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcons(newTheme);
+            }
+            
+            function updateThemeIcons(theme) {
+                const { themeIconLight, themeIconDark } = allUIElements;
+                if (theme === 'dark') {
+                    themeIconLight.classList.add('hidden');
+                    themeIconDark.classList.remove('hidden');
+                } else {
+                    themeIconLight.classList.remove('hidden');
+                    themeIconDark.classList.add('hidden');
+                }
+            }
+            
+            function setupDragAndDrop() {
+                const { inputText, inputCharCount } = allUIElements;
+                inputText.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); inputText.classList.add('drag-over'); });
+                inputText.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); inputText.classList.remove('drag-over'); });
+                inputText.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    inputText.classList.remove('drag-over');
+                    const file = e.dataTransfer.files[0];
+                    if (file && file.type.match('text.*')) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            inputText.value = event.target.result;
+                            updateCharCount(inputText, inputCharCount);
+                            showToast("檔案已成功載入！", "success");
+                        };
+                        reader.readAsText(file);
+                    } else {
+                        showToast("檔案格式錯誤，請拖曳 .txt 檔案。", "error");
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
