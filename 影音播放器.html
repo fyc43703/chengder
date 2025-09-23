@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>影音播放器</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     :root{
       --bg: #f5f5f7;
@@ -28,7 +29,7 @@
       box-sizing: border-box;
     }
     *, *::before, *::after { box-sizing: inherit; }
-    .frame{max-width:1400px; height: calc(100% - 32px); margin:0 auto; display: flex; flex-direction: column;}
+    .frame{max-width:1400px; height: 100%; margin:0 auto; display: flex; flex-direction: column;}
     .layout{ display:grid; grid-template-columns: 360px 1fr; gap:18px; flex-grow: 1; min-height: 0; }
     .sidebar{display:flex; flex-direction:column; gap:12px; min-height: 0;}
     .panel.library { display: flex; flex-direction: column; height: 100%; }
@@ -58,10 +59,11 @@
         cursor: pointer;
     }
     
-    .titlebar{display:flex; align-items:center; justify-content:center; margin-bottom: 0.5rem; flex-shrink: 0;}
     .dots{display:flex; gap:8px; align-items:center}
     .dot{width:12px; height:12px; border-radius:50%;}
     .dot.red{background:#ff5f56;} .dot.yellow{background:#ffbd2e;} .dot.green{background:#27c93f;}
+
+    .titlebar{display:flex; align-items:center; justify-content:center; padding-bottom: 1rem; flex-shrink: 0;}
     .titles{text-align:center; flex-grow:1;}
     .titles h1{margin:0 0 4px 0; font-size:24px; font-weight:600;}
     .titles h2{margin:0; font-size:14px; font-weight:400; color:var(--muted); line-height: 1.2;}
@@ -85,31 +87,15 @@
     .video-player-container:hover .controls-container, .video-player-container.paused .controls-container { opacity: 1; visibility: visible; }
     .progress-bar-container { position: relative; margin-bottom: 8px; }
     #progressBar { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; background: rgba(255, 255, 255, 0.3); border-radius: 5px; cursor: pointer; transition: height 0.15s ease; position: relative; z-index: 2;}
+    #progressBar:disabled { opacity: 0.3; cursor: not-allowed; }
     .controls-container:hover #progressBar { height: 6px; }
     #progressBar::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--red); border-radius: 50%; border: none; z-index: 3; position: relative; }
     #progressBar::-moz-range-thumb { width: 14px; height: 14px; background: var(--red); border-radius: 50%; border: none; z-index: 3; position: relative; }
     
     .ab-marker { position: absolute; top: 50%; transform: translateY(-50%); width: 3px; height: 10px; background-color: var(--orange); z-index: 1; display: none; border-radius: 1px; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
     
-    #abLoopRange { 
-        position: absolute; 
-        top: 50%; 
-        transform: translateY(-50%); 
-        height: 2px;
-        background-color: var(--orange);
-        z-index: 1; 
-        display: none; 
-    }
-    #abLoopRange::before, #abLoopRange::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 0;
-        height: 0;
-        border-top: 5px solid transparent;
-        border-bottom: 5px solid transparent;
-    }
+    #abLoopRange { position: absolute; top: 50%; transform: translateY(-50%); height: 2px; background-color: var(--orange); z-index: 1; display: none; }
+    #abLoopRange::before, #abLoopRange::after { content: ''; position: absolute; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
     #abLoopRange::before { left: -3px; border-right: 6px solid var(--orange); }
     #abLoopRange::after { right: -3px; border-left: 6px solid var(--orange); }
     
@@ -149,25 +135,85 @@
     .custom-speed-control .label { display: flex; justify-content: space-between; margin-bottom: 12px; }
     .custom-speed-control .label span:last-child { font-weight: 600; color: var(--blue); }
     #speedSlider { width: 100%; }
-
-    #searchInput { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--stroke); background: rgba(255,255,255,0.5); margin-bottom: 12px; font-size: 14px; }
+    
     .list-area { background: rgba(0,0,0,0.03); border-radius: 12px; padding: 8px; flex-grow: 1; min-height: 0; display: flex; flex-direction: column; }
-    .file-list-container { flex-grow: 1; min-height: 0; display: flex; flex-direction: column; }
+    .list-group-top { flex-shrink: 0; }
+    .file-list-container.radio-main-container { flex-grow: 1; min-height: 0; display: flex; flex-direction: column; }
+    
+    .file-list-container { display: flex; flex-direction: column; }
+    .file-list-container.favorites-container { position: relative; }
+
     .file-list-container + .file-list-container { border-top: 2px solid var(--stroke); margin-top: 10px; padding-top: 5px; }
-    .file-list-label { font-size: 16px; color: var(--blue); display: flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 600; padding: 0 4px; flex-shrink: 0; }
+    .list-group-top .file-list-container + .file-list-container { margin-top: 0; padding-top: 0; border-top: none; }
+
+    .file-list-label { font-size: 16px; color: var(--blue); display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; padding: 8px 4px; flex-shrink: 0; }
+    .file-list-label .label-text { display: flex; align-items: center; gap: 8px; }
     .file-list-label svg { width: 18px; height: 18px; fill: var(--blue); }
-    #videoList, #audioList { list-style-type: none; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 0; flex-grow: 1; overflow-y: auto; min-height: 0; }
-    #videoList li, #audioList li { position: relative; font-size: 14px; white-space: nowrap; overflow: hidden; padding: 8px 10px; cursor: pointer; border-radius: 8px; transition: background-color 0.15s ease; display: flex; align-items: center; }
-    #videoList li:hover, #audioList li:hover { background-color: rgba(0,0,0,.07); }
-    #videoList li.active, #audioList li.active { background-color: var(--blue); color: white; font-weight: 500; }
-    #videoList:empty::after, #audioList:empty::after { content: "尚未匯入檔案"; color: var(--muted); font-style: italic; font-size: 13px; padding: 4px; }
+
+    .label-actions { display: flex; align-items: center; gap: 8px; }
+    .label-btn { background: none; border: none; padding: 2px; cursor: pointer; line-height: 1; }
+    .label-btn svg { width: 16px; height: 16px; fill: var(--muted); transition: all 0.2s; }
+    .label-btn:hover svg { fill: var(--blue); }
+    .label-btn.active svg { fill: var(--orange); }
+    #toggleFavoritesBtn .chevron { transition: transform 0.3s ease; }
+    #favoritesContainer.collapsed #toggleFavoritesBtn .chevron { transform: rotate(-90deg); }
+    
+    .favorites-dropdown-wrapper {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      z-index: 10;
+      max-height: 300px;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+      border-radius: 0 0 12px 12px;
+    }
+    #favoritesContainer.collapsed .favorites-dropdown-wrapper { max-height: 0; }
+    
+    #favoriteRadioList { 
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      max-height: 300px; 
+      overflow-y: auto; 
+    }
+    
+    #videoList, #audioList, #radioList, #favoriteRadioList { list-style-type: none; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 0; overflow-y: auto; overscroll-behavior: contain; }
+    #videoList, #audioList { max-height: 120px; }
+    #radioList { flex-grow: 1; min-height: 0; }
+
+    #videoList li, #audioList li, #radioList li, #favoriteRadioList li { position: relative; font-size: 14px; white-space: nowrap; overflow: hidden; padding: 8px 10px; cursor: pointer; border-radius: 8px; transition: background-color 0.15s ease; display: flex; align-items: center; }
+    #videoList li:hover, #audioList li:hover, #radioList li:hover, #favoriteRadioList li:hover { background-color: rgba(0,0,0,.07); }
+    #videoList li.active, #audioList li.active, #radioList li.active, #favoriteRadioList li.active { background-color: var(--blue); color: white; font-weight: 500; }
+    #videoList:empty::after, #audioList:empty::after, #radioList:empty::after, #favoriteRadioList:empty::after { content: "尚未匯入檔案"; color: var(--muted); font-style: italic; font-size: 13px; padding: 4px; }
+    #radioList:empty::after { content: "正在載入電台..."; }
+    #favoriteRadioList:empty::after { content: "點擊星號收藏電台"; }
+    
     .media-type-badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; margin-right: 8px; flex-shrink: 0; }
     .media-type-badge.video { background: var(--blue); color: white; }
     .media-type-badge.audio { background: var(--green); color: white; }
-    .filename-container { flex-grow: 1; overflow: hidden; position: relative; }
+    .media-type-badge.radio { background: var(--red); color: white; }
+
+    .filename-container { flex: 1 1 0; min-width: 0; overflow: hidden; position: relative; display: flex; align-items: center; }
     li.active .filename-container { color: white; }
-    .marquee-text { display: inline-block; white-space: nowrap; }
-    li.active .marquee-text { animation: marquee 10s linear infinite; padding-left: 100%; }
+    .marquee-text { display: inline-block; white-space: nowrap; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; }
+    li.active .marquee-text { animation: marquee 10s linear infinite; padding-left: 100%; text-overflow: clip; }
+
+    .list-item-actions { display: flex; align-items: center; padding-left: 8px; flex-shrink: 0; }
+    .list-item-btn { background: transparent; border: none; cursor: pointer; padding: 2px 4px; line-height: 1; opacity: 0; transition: opacity 0.2s; }
+    li:hover .list-item-btn { opacity: 0.6; }
+    .list-item-btn:hover { opacity: 1; }
+    li.active .list-item-btn { opacity: 0.8; }
+    li.active .list-item-btn:hover { opacity: 1; }
+    .list-item-btn svg { width: 16px; height: 16px; pointer-events: none; }
+    .favorite-btn svg { fill: #ccc; }
+    .favorite-btn.is-favorite svg { fill: #ffc845; }
+    li.active .favorite-btn svg { fill: #fff; }
+    li.active .favorite-btn.is-favorite svg { fill: #ffc845; }
+    .remove-station-btn svg { fill: var(--muted); }
+    li.active .remove-station-btn svg { fill: #fff; }
+
     .remove-item-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; background: rgba(0,0,0,0.3); color: white; border: none; border-radius: 50%; text-align: center; line-height: 18px; font-size: 14px; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
     li:hover .remove-item-btn { opacity: 1; }
     li.active .remove-item-btn { background: rgba(255,255,255,0.3); color: black; }
@@ -175,23 +221,56 @@
     li.is-dragging { opacity: 0.5; background: var(--blue) !important; }
     li.dragging-over-top { border-top: 2px solid var(--orange); }
     li.dragging-over-bottom { border-bottom: 2px solid var(--orange); }
+    #radioList li .station-status, #favoriteRadioList li .station-status { width: 24px; text-align: center; margin-right: 8px; flex-shrink: 0; font-size: 12px; }
+    #radioList li.failed, #favoriteRadioList li.failed { opacity: 0.5; cursor: not-allowed; color: var(--muted); }
+    #radioList li.failed:hover, #favoriteRadioList li.failed:hover { background-color: transparent; }
     #waveform-display { height: 40px; background-color: white; border: 1px solid var(--stroke); border-top: none; border-radius: 0 0 var(--card-radius) var(--card-radius); position: relative; overflow: hidden; display: none; flex-shrink: 0; }
     #waveformCanvas { width: 100%; height: 100%; display: block; }
     #waveform-playhead { position: absolute; top: 0; left: 0; width: 2px; height: 100%; background-color: var(--red); pointer-events: none; }
     #loadingIndicator { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(245,245,247,0.7); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; gap: 10px; color: var(--muted); font-weight: 600; }
     .spinner { width: 50px; height: 50px; border: 5px solid rgba(0,0,0,0.1); border-top-color: var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    @media (max-width: 1024px) { body { overflow-y: auto; height: auto; padding: 12px; } .frame { height: auto; padding-bottom: 32px; } .layout { grid-template-columns: 1fr; height: auto; } .sidebar { max-height: 45vh; min-height: 300px; } .video-player-container { min-height: 300px; } .control-btn[data-tooltip]:hover::after { display: none; } }
-    @media (max-width: 768px) { body { padding: 8px; } .frame { padding-bottom: 16px; } .titles h1 { font-size: 20px; } .titles h2 { font-size: 13px; padding: 0 1rem; } .layout { gap: 12px; } .panel { padding: 12px; } .controls-group { flex-wrap: wrap; row-gap: 8px; } .controls-left { gap: 12px; } .controls-right { flex-basis: 100%; justify-content: space-around; gap: 8px;} #settingsPanel { width: calc(100% - 30px); max-width: 290px; bottom: 85px; } }
-    @media (max-width: 480px) { .titles h1 { font-size: 18px; } .titles h2 { display: none; } .author { font-size: 13px; } .volume-container:hover #volumeSlider { width: 0; opacity: 0; } .control-btn svg { width: 22px; height: 22px; } .controls-left, .controls-right { gap: 8px; } #timeDisplay { font-size: 12px; } }
+
+    @media (max-width: 1024px) { 
+      body { overflow-y: auto; height: auto; padding: 12px; } 
+      .frame { height: auto; padding-bottom: 32px; } 
+      .layout { grid-template-columns: 1fr; height: auto; } 
+      .sidebar { max-height: 50vh; min-height: 350px; } 
+      #videoList, #audioList { max-height: 100px; }
+      .video-player-container { min-height: 300px; } 
+      .control-btn[data-tooltip]:hover::after { display: none; } 
+    }
+    @media (max-width: 768px) { 
+      body { padding: 8px; } 
+      .frame { padding-bottom: 16px; } 
+      .titles h1 { font-size: 20px; } 
+      .titles h2 { font-size: 13px; padding: 0 1rem; } 
+      .layout { gap: 12px; } .panel { padding: 12px; } 
+      .controls-group { flex-wrap: wrap; row-gap: 8px; } 
+      .controls-left { gap: 12px; } 
+      .controls-right { flex-basis: 100%; justify-content: space-around; gap: 8px;} 
+      #settingsPanel { width: calc(100% - 30px); max-width: 290px; bottom: 85px; } 
+    }
+    @media (max-width: 480px) { 
+      .titles h1 { font-size: 18px; } 
+      .titles h2 { display: none; } 
+      .author { font-size: 13px; } 
+      .volume-container:hover #volumeSlider { width: 0; opacity: 0; } 
+      .control-btn svg { width: 22px; height: 22px; } 
+      .controls-left, .controls-right { gap: 8px; } 
+      #timeDisplay { font-size: 12px; } 
+    }
   </style>
 </head>
 <body>
   <div class="frame">
-    <div class="dots"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+    <div class="dots">
+        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    </div>
     <div class="titlebar">
       <div class="titles"><h1>影音播放器(含電台)</h1><h2>提供支援速度調整、循環播放、音訊波形圖顯示、廣播電台與智慧媒體庫管理功能</h2><div class="author">製作者：陳政德</div></div>
     </div>
+    
     <div class="layout">
       <div class="sidebar">
         <div class="panel glass library">
@@ -199,16 +278,39 @@
           <div class="filedrop" id="drop">
             <label class="btn primary" title="點擊選擇影片或音訊檔案"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>選擇影片或音訊檔案</span><input id="file" type="file" accept="video/*,audio/*,.m4a,.ogg,.aac,.3gp,.mp4,.webm,.avi,.mov,.mkv" hidden multiple></label>
           </div>
-          <input type="search" id="searchInput" placeholder="搜尋媒體...">
-          <div class="list-area">
-            <div class="file-list-container"><label class="file-list-label"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><span>影片列表</span></label><ol id="videoList"></ol></div>
-            <div class="file-list-container"><label class="file-list-label"><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>音訊列表</span></label><ol id="audioList"></ol></div>
+          
+          <div class="list-area" id="listArea">
+            <div class="list-group-top">
+                <div class="file-list-container"><label class="file-list-label"><div class="label-text"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><span>影片列表</span></div></label><ol id="videoList"></ol></div>
+                <div class="file-list-container"><label class="file-list-label"><div class="label-text"><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>音訊列表</span></div></label><ol id="audioList"></ol></div>
+                <div class="file-list-container favorites-container" id="favoritesContainer">
+                    <label class="file-list-label">
+                        <div class="label-text"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg><span>我的最愛電台</span></div>
+                        <div class="label-actions">
+                            <button id="toggleFavoritesBtn" class="label-btn" title="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button>
+                        </div>
+                    </label>
+                    <div class="favorites-dropdown-wrapper">
+                        <ol id="favoriteRadioList"></ol>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="file-list-container radio-main-container">
+                <label class="file-list-label">
+                    <div class="label-text"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 2v3h-2V8h2zm-2 5h2v2h-2v-2zm-4-5h2v8h-2V8zm-2 8h-2v-2h2v2zm-2-4h-2V8h2v4z"></path></svg><span>廣播電台</span></div>
+                    <div class="label-actions">
+                        <button id="sortRadioBtn" class="label-btn" title="切換排序 (人氣/名稱)"><svg viewBox="0 0 24 24"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"></path></svg></button>
+                    </div>
+                </label>
+                <ol id="radioList"></ol>
+            </div>
           </div>
         </div>
       </div>
       <div class="panel glass player-panel">
         <div class="video-player-container" id="videoPlayerContainer">
-          <video id="videoPlayer" style="display: none;"></video>
+          <video id="videoPlayer" style="display: none;" crossOrigin="anonymous"></video>
           <canvas id="audioVisualizer"></canvas>
           <div class="video-overlay" id="videoOverlay">請從左側媒體庫匯入檔案</div>
           <div class="controls-container">
@@ -241,7 +343,6 @@
                   <div class="ab-separator"></div>
                   <button class="control-btn" id="abLoopBtn" data-tooltip="區段循環"><svg viewBox="0 0 24 24"><path d="M10.5,6H20.71L19.29,4.58L20.71,3.17L24,6.45L20.71,9.74L19.29,8.33L20.71,6.91H11V11.09L12.42,9.67L13.83,11.08L10.55,14.37L7.26,11.08L8.67,9.67L10.09,11.09V6.91C10.09,6.42 10.29,5.95 10.63,5.63C10.95,5.29 11.42,5.09 11.91,5.09H21V3.09H11.91C10.93,3.09 10.04,3.47 9.37,4.14C8.7,4.8 8.32,5.69 8.32,6.68V11.09L6.91,9.67L5.5,11.08L8.78,14.37L12.07,11.08L10.65,9.67L9.24,11.09V6.68C9.24,6.19 9.43,5.72 9.77,5.4C10.1,5.06 10.56,4.86 11.05,4.86H20.71L19.29,3.45L20.71,2.04L24,5.32L20.71,8.61L19.29,7.2L20.71,5.77H11.05C10.74,5.77 10.45,5.88 10.23,6.1C10.01,6.32 9.91,6.61 9.91,6.91V11.09L11.33,12.5L12.74,11.08L16.03,14.37L12.74,17.66L11.33,16.25L9.91,17.66V21.09H1V19.09H8.09V14.91L6.67,16.33L5.26,14.92L8.55,11.63L11.84,14.92L13.26,16.33L14.67,14.92L11.38,11.63L8.09,14.92V19.91H3V17.91H8.09V14.91L6.67,13.5L5.26,14.92L1.97,11.63L5.26,8.34L6.67,9.75L8.09,8.34V3.91H19V1.91H8.09C7.09,1.91 6.2,2.29 5.53,2.96C4.86,3.63 4.48,4.5 4.48,5.5V8.34L3.07,6.92L1.66,8.33L4.95,11.63L1.66,14.92L3.07,16.33L4.48,14.92V19.91C4.48,20.9 4.86,21.77 5.53,22.44C6.2,23.11 7.09,23.5 8.09,23.5H19V21.5H8.09C7.78,21.5 7.49,21.39 7.27,21.17C7.05,20.95 6.94,20.66 6.94,20.36V14.91L8.36,13.5L9.77,14.92L13.06,11.63L16.35,14.92L17.77,13.5L19.18,14.92V20.36C19.18,20.85 18.99,21.32 18.65,21.66C18.31,22 17.85,22.19 17.36,22.19H6.94V20.19H17.36C17.67,20.19 17.96,20.08 18.18,19.86C18.4,19.64 18.5,19.35 18.5,19.05V14.91L17.09,13.5L15.67,14.92L12.38,11.63L9.09,14.92L7.67,13.5L6.26,14.92V5.5C6.26,5.01 6.45,4.54 6.79,4.2C7.13,3.86 7.59,3.67 8.09,3.67H19V5.67H8.09C7.78,5.67 7.49,5.78 7.27,6C7.05,6.22 6.94,6.51 6.94,6.81V13.5Z"/></svg></button>
                 </div>
-                <!-- MODIFIED: Button now contains all visualizer icons -->
                 <button class="control-btn active-green" id="toggleVisualizerBtn" data-tooltip="切換視覺化效果">
                     <svg id="visualizerIconCircular" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 2 L12 5 M22 12 L19 12 M12 22 L12 19 M2 12 L5 12 M5.64 5.64 L7.76 7.76 M18.36 18.36 L16.24 16.24 M5.64 18.36 L7.76 16.24 M18.36 5.64 L16.24 7.76"></path>
@@ -271,7 +372,7 @@
                 <button class="control-btn" id="shuffleBtn" data-tooltip="隨機播放 (S)"><svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"></path></svg></button>
                 <button class="control-btn" id="loopBtn" data-tooltip="單檔循環 (L)"><svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"></path></svg></button>
                 <button class="control-btn" id="pipBtn" data-tooltip="子母畫面 (P)"><svg viewBox="0 0 24 24"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"></path></svg></button>
-                <button class="control-btn" id="snapshotBtn" data-tooltip="畫面快照 (C)"><svg viewBox="0 0 24 24"><path d="M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2z M12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg></button>
+                <button class="control-btn" id="snapshotBtn" data-tooltip="畫面快照 (C)"><svg viewBox="0 0 24 24"><path d="M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2z M12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5-5 5-2.24 5-5 5z"/></svg></button>
                 <button class="control-btn" id="settingsBtn" data-tooltip="播放設定"><svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19-.15-.24-.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69-.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59-1.69-.98l2.49 1c.23-.09.49 0-.61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg></button>
                 <button class="control-btn" id="fullscreenBtn" data-tooltip="全螢幕 (F)"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg></button>
               </div>
@@ -282,6 +383,7 @@
         <div id="waveform-display"><canvas id="waveformCanvas"></canvas><div id="waveform-playhead"></div></div>
       </div>
     </div>
+
     <div id="loadingIndicator" style="display: none;"><div class="spinner"></div><div id="loadingText">媒體檔案載入中...</div></div>
   </div>
 
@@ -291,11 +393,17 @@
     let isPlaying = false, hasPlayedOnce = false, isShuffle = false;
     let isAbLooping = false, abPointA = null, abPointB = null;
     let audioSource, analyser, visualizerFrameId;
-    let visualizerMode = 'circular'; // MODIFIED: Can be 'circular', 'bar', 'sphere', 'stardust', 'tunnel', 'pulsar', or 'off'
-    let particles = []; // For Stardust visualizer
-    let rings = []; // NEW: For Time Tunnel visualizer
-    let beatCooldown = 0; // NEW: For Time Tunnel visualizer
-    let rotation = 0; // NEW: For Pulsar Ring visualizer
+    let visualizerMode = 'circular';
+    let particles = [], rings = [], rotation = 0, beatCooldown = 0;
+
+    let hlsInstance;
+    let allStations = [], originalStationOrder = [];
+    let currentStation = null;
+    let currentMode = 'file';
+    const stationStatusCache = JSON.parse(sessionStorage.getItem('stationStatusCache')) || {};
+    let favoriteStationUUIDs = [];
+    let isFavoritesExpanded = false;
+    let radioSortMode = 'clickcount';
 
     const $ = (id) => document.getElementById(id);
     const videoPlayer = $('videoPlayer'), videoPlayerContainer = $('videoPlayerContainer'), videoOverlay = $('videoOverlay');
@@ -306,500 +414,137 @@
     const volumeSlider = $('volumeSlider'), muteBtn = $('muteBtn'), volumeHighIcon = $('volumeHighIcon'), volumeMuteIcon = $('volumeMuteIcon');
     const fullscreenBtn = $('fullscreenBtn'), loopBtn = $('loopBtn'), shuffleBtn = $('shuffleBtn'), pipBtn = $('pipBtn'), snapshotBtn = $('snapshotBtn'), settingsBtn = $('settingsBtn'), settingsPanel = $('settingsPanel');
     const toggleVisualizerBtn = $('toggleVisualizerBtn');
-    const visualizerIconCircular = $('visualizerIconCircular');
-    const visualizerIconBar = $('visualizerIconBar');
-    const visualizerIconSphere = $('visualizerIconSphere');
-    const visualizerIconStardust = $('visualizerIconStardust');
-    const visualizerIconTunnel = $('visualizerIconTunnel'); // NEW
-    const visualizerIconPulsar = $('visualizerIconPulsar'); // NEW
+    const visualizerIconCircular = $('visualizerIconCircular'), visualizerIconBar = $('visualizerIconBar'), visualizerIconSphere = $('visualizerIconSphere'), visualizerIconStardust = $('visualizerIconStardust'), visualizerIconTunnel = $('visualizerIconTunnel'), visualizerIconPulsar = $('visualizerIconPulsar');
     const speedSlider = $('speedSlider'), speedValue = $('speedValue'), speedPresets = document.querySelectorAll('#speedView li');
     const waveformDisplay = $('waveform-display'), waveformCanvas = $('waveformCanvas'), waveformPlayhead = $('waveform-playhead'), waveformCtx = waveformCanvas.getContext('2d');
-    const searchInput = $('searchInput'), clearPlaylistBtn = $('clearPlaylistBtn'), videoList = $('videoList'), audioList = $('audioList');
-    
+    const clearPlaylistBtn = $('clearPlaylistBtn');
     const abLoopBtn = $('abLoopBtn'), setABtn = $('setABtn'), setBBtn = $('setBBtn');
     const abLoopRange = $('abLoopRange'), abMarkerA = $('abMarkerA'), abMarkerB = $('abMarkerB');
+    const titlesH1 = document.querySelector('.titles h1'), titlesH2 = document.querySelector('.titles h2');
+    const listArea = $('listArea');
+    const videoList = $('videoList'), audioList = $('audioList'), radioList = $('radioList'), favoriteRadioList = $('favoriteRadioList');
+    const favoritesContainer = $('favoritesContainer'), toggleFavoritesBtn = $('toggleFavoritesBtn'), sortRadioBtn = $('sortRadioBtn');
 
     videoPlayer.volume = 0.2;
     volumeSlider.value = 0.2;
 
-    function setupVisualizer() {
-        if (!audioSource) {
-            audioSource = AC.createMediaElementSource(videoPlayer);
-            analyser = AC.createAnalyser();
-            audioSource.connect(analyser);
-            analyser.connect(AC.destination);
-            analyser.fftSize = 256;
-        }
-    }
+    function setupVisualizer() { if (!audioSource) { try { audioSource = AC.createMediaElementSource(videoPlayer); analyser = AC.createAnalyser(); audioSource.connect(analyser); analyser.connect(AC.destination); analyser.fftSize = 256; } catch (e) { console.error("Error setting up AudioContext:", e); } } }
+    function drawCircularVisualizer(ctx, dataArray, width, height) { const centerX = width / 2; const centerY = height / 2; ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; ctx.fillRect(0, 0, width, height); const bars = dataArray.length * 0.8; const radius = Math.min(width, height) * 0.2; for (let i = 0; i < bars; i++) { const barHeight = dataArray[i] * 0.7; const angle = (i / bars) * Math.PI * 2 - Math.PI / 2; const startX = centerX + radius * Math.cos(angle); const startY = centerY + radius * Math.sin(angle); const endX = centerX + (radius + barHeight) * Math.cos(angle); const endY = centerY + (radius + barHeight) * Math.sin(angle); const hue = (i / bars) * 360; ctx.strokeStyle = `hsl(${hue}, 100%, 60%)`; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(endX, endY); ctx.stroke(); if (barHeight > 60) { ctx.beginPath(); ctx.arc(endX, endY, 2, 0, Math.PI * 2); ctx.fillStyle = `hsl(${hue}, 100%, 85%)`; ctx.fill(); } } }
+    function drawBarVisualizer(ctx, dataArray, width, height) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height); const bufferLength = dataArray.length; const barWidth = (width / bufferLength) * 1.5; let x = 0; for (let i = 0; i < bufferLength; i++) { const barHeight = dataArray[i] * 1.8; const hue = (i / bufferLength) * 360; ctx.fillStyle = `hsl(${hue}, 100%, 50%)`; ctx.fillRect(x, height - barHeight / 2 - height/2, barWidth, barHeight); x += barWidth + 2; } }
+    function drawSphereVisualizer(ctx, dataArray, width, height) { const centerX = width / 2; const centerY = height / 2; ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; ctx.fillRect(0, 0, width, height); let sum = 0; for (let i = 0; i < dataArray.length; i++) { sum += dataArray[i]; } const average = sum / dataArray.length; const baseRadius = Math.min(width, height) * 0.1; const pulse = (average / 128) * Math.min(width, height) * 0.15; const radius = baseRadius + pulse; const lowFreq = (dataArray[2] + dataArray[3] + dataArray[4]) / 3; const hue = 200 + (lowFreq / 255) * 60; const glowRadius = radius * 1.8; const grad = ctx.createRadialGradient(centerX, centerY, radius, centerX, centerY, glowRadius); grad.addColorStop(0, `hsla(${hue}, 100%, 70%, 0.8)`); grad.addColorStop(1, `hsla(${hue}, 100%, 50%, 0)`); ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = `hsl(${hue}, 100%, 85%)`; ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.fill(); }
+    function drawStardustVisualizer(ctx, dataArray, width, height) { const connectionDistance = 120; ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'; ctx.fillRect(0, 0, width, height); if (particles.length === 0) { for (let i = 0; i < 80; i++) { particles.push({ x: Math.random() * width, y: Math.random() * height, radius: Math.random() * 2 + 1, baseRadius: Math.random() * 2 + 1, vx: Math.random() * 0.8 - 0.4, vy: Math.random() * 0.8 - 0.4 }); } } const bass = dataArray.slice(0, 10).reduce((a, b) => a + b, 0) / 10; const overallLevel = dataArray.reduce((a, b) => a + b, 0) / dataArray.length; particles.forEach(p => { p.radius = p.baseRadius + (bass / 255) * 5; p.x += p.vx; p.y += p.vy; if (p.x < 0 || p.x > width) p.vx *= -1; if (p.y < 0 || p.y > height) p.vy *= -1; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = `hsla(180, 100%, 75%, ${overallLevel / 200})`; ctx.fill(); }); ctx.strokeStyle = 'rgba(173, 216, 230, 0.5)'; ctx.globalAlpha = 1; for (let i = 0; i < particles.length; i++) { for (let j = i + 1; j < particles.length; j++) { const dx = particles[i].x - particles[j].x; const dy = particles[i].y - particles[j].y; const distance = Math.sqrt(dx * dx + dy * dy); if (distance < connectionDistance) { ctx.beginPath(); ctx.lineWidth = 0.5; ctx.globalAlpha = 1 - (distance / connectionDistance); ctx.moveTo(particles[i].x, particles[i].y); ctx.lineTo(particles[j].x, particles[j].y); ctx.stroke(); } } } ctx.globalAlpha = 1; }
+    function drawTunnelVisualizer(ctx, dataArray, width, height) { const beatThreshold = 180; const centerX = width / 2; const centerY = height / 2; ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; ctx.fillRect(0, 0, width, height); const bass = dataArray.slice(0, 10).reduce((a, b) => a + b, 0) / 10; if (bass > beatThreshold && beatCooldown === 0) { beatCooldown = 15; rings.push({ radius: 1, opacity: 1, lineWidth: 1 + (bass / 255) * 6, hue: 200 + (bass / 255) * 120 }); } if (beatCooldown > 0) beatCooldown--; for (let i = rings.length - 1; i >= 0; i--) { const ring = rings[i]; ring.radius += 2; ring.opacity -= 0.008; if (ring.opacity <= 0) { rings.splice(i, 1); continue; } ctx.beginPath(); ctx.strokeStyle = `hsla(${ring.hue}, 100%, 70%, ${ring.opacity})`; ctx.lineWidth = ring.lineWidth; ctx.arc(centerX, centerY, ring.radius, 0, Math.PI * 2); ctx.stroke(); } }
+    function drawPulsarVisualizer(ctx, dataArray, width, height) { const centerX = width / 2; const centerY = height / 2; ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; ctx.fillRect(0, 0, width, height); const bass = dataArray.slice(0, 10).reduce((a, b) => a + b, 0) / 10; const overallLevel = dataArray.reduce((a, b) => a + b, 0) / dataArray.length; const baseRadius = 50 + (bass / 255) * 30; const lineLengthMultiplier = 1 + (overallLevel / 255) * 1.5; ctx.save(); ctx.translate(centerX, centerY); ctx.rotate(rotation); const bars = dataArray.length * 0.8; for (let i = 0; i < bars; i++) { const barHeight = dataArray[i] * lineLengthMultiplier * 0.7; const angle = (i / bars) * Math.PI * 2; const hue = (i / bars) * 360; ctx.strokeStyle = `hsl(${hue}, 100%, ${50 + (dataArray[i]/255) * 30}%)`; ctx.lineWidth = 3; ctx.shadowColor = `hsl(${hue}, 100%, 50%)`; ctx.shadowBlur = 10; const startX = Math.cos(angle) * baseRadius; const startY = Math.sin(angle) * baseRadius; const endX = Math.cos(angle) * (baseRadius + barHeight); const endY = Math.sin(angle) * (baseRadius + barHeight); ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(endX, endY); ctx.stroke(); } ctx.restore(); rotation += 0.001; }
+    function drawVisualizer() { if (visualizerMode === 'off') return; const visualizerCtx = audioVisualizer.getContext('2d'); const bufferLength = analyser.frequencyBinCount; const dataArray = new Uint8Array(bufferLength); const draw = () => { visualizerFrameId = requestAnimationFrame(draw); analyser.getByteFrequencyData(dataArray); const dpr = window.devicePixelRatio || 1; audioVisualizer.width = audioVisualizer.clientWidth * dpr; audioVisualizer.height = audioVisualizer.clientHeight * dpr; visualizerCtx.scale(dpr, dpr); const width = audioVisualizer.clientWidth; const height = audioVisualizer.clientHeight; if (visualizerMode === 'circular') { drawCircularVisualizer(visualizerCtx, dataArray, width, height); } else if (visualizerMode === 'bar') { drawBarVisualizer(visualizerCtx, dataArray, width, height); } else if (visualizerMode === 'sphere') { drawSphereVisualizer(visualizerCtx, dataArray, width, height); } else if (visualizerMode === 'stardust') { drawStardustVisualizer(visualizerCtx, dataArray, width, height); } else if (visualizerMode === 'tunnel') { drawTunnelVisualizer(visualizerCtx, dataArray, width, height); } else if (visualizerMode === 'pulsar') { drawPulsarVisualizer(visualizerCtx, dataArray, width, height); } }; draw(); }
+    function updateVisualizerButton() { const isActive = visualizerMode !== 'off'; toggleVisualizerBtn.classList.toggle('active-green', isActive); visualizerIconCircular.style.display = 'none'; visualizerIconBar.style.display = 'none'; visualizerIconSphere.style.display = 'none'; visualizerIconStardust.style.display = 'none'; visualizerIconTunnel.style.display = 'none'; visualizerIconPulsar.style.display = 'none'; if (visualizerMode === 'circular') { visualizerIconCircular.style.display = 'block'; } else if (visualizerMode === 'bar') { visualizerIconBar.style.display = 'block'; } else if (visualizerMode === 'sphere') { visualizerIconSphere.style.display = 'block'; } else if (visualizerMode === 'stardust') { visualizerIconStardust.style.display = 'block'; } else if (visualizerMode === 'tunnel') { visualizerIconTunnel.style.display = 'block'; } else if (visualizerMode === 'pulsar') { visualizerIconPulsar.style.display = 'block'; } else { visualizerIconCircular.style.display = 'block'; } }
 
-    // MODIFIED: Separated drawing functions
-    function drawCircularVisualizer(ctx, dataArray, width, height) {
-        const centerX = width / 2;
-        const centerY = height / 2;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Fading effect
-        ctx.fillRect(0, 0, width, height);
+    function updateAllLists() { updateFileLists(); populateFavoriteRadioList(); populateRadioList(); }
+    function loadFavorites() { try { const storedFavorites = localStorage.getItem('favoriteStations'); if (storedFavorites) favoriteStationUUIDs = JSON.parse(storedFavorites); } catch (e) { console.error("無法讀取我的最愛:", e); favoriteStationUUIDs = []; } }
+    function saveFavorites() { try { localStorage.setItem('favoriteStations', JSON.stringify(favoriteStationUUIDs)); } catch (e) { console.error("無法儲存我的最愛:", e); } }
+    function toggleFavorite(uuid) { const index = favoriteStationUUIDs.indexOf(uuid); if (index > -1) favoriteStationUUIDs.splice(index, 1); else favoriteStationUUIDs.push(uuid); saveFavorites(); updateAllLists(); }
+    function deleteRadioStation(uuid) { allStations = allStations.filter(s => s.stationuuid !== uuid); originalStationOrder = originalStationOrder.filter(s => s.stationuuid !== uuid); const favIndex = favoriteStationUUIDs.indexOf(uuid); if (favIndex > -1) { favoriteStationUUIDs.splice(favIndex, 1); saveFavorites(); } updateAllLists(); }
 
-        const bars = dataArray.length * 0.8;
-        const radius = Math.min(width, height) * 0.2;
-
-        for (let i = 0; i < bars; i++) {
-            const barHeight = dataArray[i] * 0.7;
-            const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
-            const startX = centerX + radius * Math.cos(angle);
-            const startY = centerY + radius * Math.sin(angle);
-            const endX = centerX + (radius + barHeight) * Math.cos(angle);
-            const endY = centerY + (radius + barHeight) * Math.sin(angle);
-            const hue = (i / bars) * 360;
-            ctx.strokeStyle = `hsl(${hue}, 100%, 60%)`;
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(endX, endY);
-            ctx.stroke();
-            if (barHeight > 60) {
-                ctx.beginPath();
-                ctx.arc(endX, endY, 2, 0, Math.PI * 2);
-                ctx.fillStyle = `hsl(${hue}, 100%, 85%)`;
-                ctx.fill();
-            }
-        }
-    }
-
-    function drawBarVisualizer(ctx, dataArray, width, height) {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, width, height);
-        const bufferLength = dataArray.length;
-        const barWidth = (width / bufferLength) * 1.5;
-        let x = 0;
-        for (let i = 0; i < bufferLength; i++) {
-            const barHeight = dataArray[i] * 1.8;
-            const hue = (i / bufferLength) * 360;
-            ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-            ctx.fillRect(x, height - barHeight / 2 - height/2, barWidth, barHeight);
-            x += barWidth + 2;
-        }
-    }
-    
-    function drawSphereVisualizer(ctx, dataArray, width, height) {
-        const centerX = width / 2;
-        const centerY = height / 2;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        ctx.fillRect(0, 0, width, height);
-
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-            sum += dataArray[i];
-        }
-        const average = sum / dataArray.length;
-        
-        const baseRadius = Math.min(width, height) * 0.1;
-        const pulse = (average / 128) * Math.min(width, height) * 0.15;
-        const radius = baseRadius + pulse;
-
-        const lowFreq = (dataArray[2] + dataArray[3] + dataArray[4]) / 3;
-        const hue = 200 + (lowFreq / 255) * 60;
-
-        const glowRadius = radius * 1.8;
-        const grad = ctx.createRadialGradient(centerX, centerY, radius, centerX, centerY, glowRadius);
-        grad.addColorStop(0, `hsla(${hue}, 100%, 70%, 0.8)`);
-        grad.addColorStop(1, `hsla(${hue}, 100%, 50%, 0)`);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = `hsl(${hue}, 100%, 85%)`;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    
-    function drawStardustVisualizer(ctx, dataArray, width, height) {
-        const connectionDistance = 120;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-        ctx.fillRect(0, 0, width, height);
-
-        if (particles.length === 0) {
-            for (let i = 0; i < 80; i++) {
-                particles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    radius: Math.random() * 2 + 1,
-                    baseRadius: Math.random() * 2 + 1,
-                    vx: Math.random() * 0.8 - 0.4,
-                    vy: Math.random() * 0.8 - 0.4
-                });
-            }
-        }
-
-        const bass = dataArray.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
-        const overallLevel = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-
-        particles.forEach(p => {
-            p.radius = p.baseRadius + (bass / 255) * 5;
-            p.x += p.vx;
-            p.y += p.vy;
-            if (p.x < 0 || p.x > width) p.vx *= -1;
-            if (p.y < 0 || p.y > height) p.vy *= -1;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(180, 100%, 75%, ${overallLevel / 200})`;
-            ctx.fill();
-        });
-        
-        ctx.strokeStyle = 'rgba(173, 216, 230, 0.5)';
-        ctx.globalAlpha = 1;
-        for (let i = 0; i < particles.length; i++) {
-            for (let j = i + 1; j < particles.length; j++) {
-                const dx = particles[i].x - particles[j].x;
-                const dy = particles[i].y - particles[j].y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < connectionDistance) {
-                    ctx.beginPath();
-                    ctx.lineWidth = 0.5;
-                    ctx.globalAlpha = 1 - (distance / connectionDistance);
-                    ctx.moveTo(particles[i].x, particles[i].y);
-                    ctx.lineTo(particles[j].x, particles[j].y);
-                    ctx.stroke();
-                }
-            }
-        }
-        ctx.globalAlpha = 1;
-    }
-    
-    // NEW: Function for the Time Tunnel visualizer
-    function drawTunnelVisualizer(ctx, dataArray, width, height) {
-        const beatThreshold = 180;
-        const centerX = width / 2;
-        const centerY = height / 2;
-
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        ctx.fillRect(0, 0, width, height);
-        
-        const bass = dataArray.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
-
-        if (bass > beatThreshold && beatCooldown === 0) {
-            beatCooldown = 15;
-            rings.push({
-                radius: 1,
-                opacity: 1,
-                lineWidth: 1 + (bass / 255) * 6,
-                hue: 200 + (bass / 255) * 120
-            });
-        }
-        if (beatCooldown > 0) beatCooldown--;
-
-        for (let i = rings.length - 1; i >= 0; i--) {
-            const ring = rings[i];
-            ring.radius += 2;
-            ring.opacity -= 0.008;
-
-            if (ring.opacity <= 0) {
-                rings.splice(i, 1);
-                continue;
-            }
-
-            ctx.beginPath();
-            ctx.strokeStyle = `hsla(${ring.hue}, 100%, 70%, ${ring.opacity})`;
-            ctx.lineWidth = ring.lineWidth;
-            ctx.arc(centerX, centerY, ring.radius, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-    }
-
-    // NEW: Function for the Pulsar Ring visualizer
-    function drawPulsarVisualizer(ctx, dataArray, width, height) {
-        const centerX = width / 2;
-        const centerY = height / 2;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        ctx.fillRect(0, 0, width, height);
-
-        const bass = dataArray.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
-        const overallLevel = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-
-        const baseRadius = 50 + (bass / 255) * 30;
-        const lineLengthMultiplier = 1 + (overallLevel / 255) * 1.5;
-
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(rotation);
-
-        const bars = dataArray.length * 0.8;
-        for (let i = 0; i < bars; i++) {
-            const barHeight = dataArray[i] * lineLengthMultiplier * 0.7;
-            const angle = (i / bars) * Math.PI * 2;
-            const hue = (i / bars) * 360;
-            ctx.strokeStyle = `hsl(${hue}, 100%, ${50 + (dataArray[i]/255) * 30}%)`;
-            ctx.lineWidth = 3;
-            
-            ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
-            ctx.shadowBlur = 10;
-
-            const startX = Math.cos(angle) * baseRadius;
-            const startY = Math.sin(angle) * baseRadius;
-            const endX = Math.cos(angle) * (baseRadius + barHeight);
-            const endY = Math.sin(angle) * (baseRadius + barHeight);
-
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(endX, endY);
-            ctx.stroke();
-        }
-        ctx.restore();
-        rotation += 0.001;
-    }
-
-    // MODIFIED: Main draw loop now decides which visualizer to render
-    function drawVisualizer() {
-        if (visualizerMode === 'off') return;
-        const visualizerCtx = audioVisualizer.getContext('2d');
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        
-        const draw = () => {
-            visualizerFrameId = requestAnimationFrame(draw);
-            analyser.getByteFrequencyData(dataArray);
-            const dpr = window.devicePixelRatio || 1;
-            audioVisualizer.width = audioVisualizer.clientWidth * dpr;
-            audioVisualizer.height = audioVisualizer.clientHeight * dpr;
-            visualizerCtx.scale(dpr, dpr);
-            const width = audioVisualizer.clientWidth;
-            const height = audioVisualizer.clientHeight;
-
-            if (visualizerMode === 'circular') {
-                drawCircularVisualizer(visualizerCtx, dataArray, width, height);
-            } else if (visualizerMode === 'bar') {
-                drawBarVisualizer(visualizerCtx, dataArray, width, height);
-            } else if (visualizerMode === 'sphere') {
-                drawSphereVisualizer(visualizerCtx, dataArray, width, height);
-            } else if (visualizerMode === 'stardust') {
-                drawStardustVisualizer(visualizerCtx, dataArray, width, height);
-            } else if (visualizerMode === 'tunnel') {
-                drawTunnelVisualizer(visualizerCtx, dataArray, width, height);
-            } else if (visualizerMode === 'pulsar') {
-                drawPulsarVisualizer(visualizerCtx, dataArray, width, height);
-            }
-        };
-        draw();
-    }
-    
-    // MODIFIED: Function to update the visualizer button's icon and state
-    function updateVisualizerButton() {
-        const isActive = visualizerMode !== 'off';
-        toggleVisualizerBtn.classList.toggle('active-green', isActive);
-
-        visualizerIconCircular.style.display = 'none';
-        visualizerIconBar.style.display = 'none';
-        visualizerIconSphere.style.display = 'none';
-        visualizerIconStardust.style.display = 'none';
-        visualizerIconTunnel.style.display = 'none';
-        visualizerIconPulsar.style.display = 'none';
-        
-        if (visualizerMode === 'circular') {
-            visualizerIconCircular.style.display = 'block';
-        } else if (visualizerMode === 'bar') {
-            visualizerIconBar.style.display = 'block';
-        } else if (visualizerMode === 'sphere') {
-            visualizerIconSphere.style.display = 'block';
-        } else if (visualizerMode === 'stardust') {
-            visualizerIconStardust.style.display = 'block';
-        } else if (visualizerMode === 'tunnel') {
-            visualizerIconTunnel.style.display = 'block';
-        } else if (visualizerMode === 'pulsar') {
-            visualizerIconPulsar.style.display = 'block';
-        } else { // 'off' state
-            visualizerIconCircular.style.display = 'block';
-        }
-    }
-
-    function updateFileLists(filterText = '') {
+    function updateFileLists() {
       videoList.innerHTML = ''; audioList.innerHTML = '';
-      const lowerCaseFilter = filterText.toLowerCase();
-      let videoCount = 0, audioCount = 0;
       allFiles.forEach((fileObj, index) => {
-        if (!fileObj.file.name.toLowerCase().includes(lowerCaseFilter)) return;
         const li = document.createElement('li');
         li.draggable = true; li.dataset.index = index;
-        const mediaType = fileObj.type;
-        const badge = `<span class="media-type-badge ${mediaType}">${mediaType}</span>`;
-        const fileNameContainer = document.createElement('div');
-        fileNameContainer.className = 'filename-container';
-        const fileNameSpan = document.createElement('span');
-        fileNameSpan.className = 'marquee-text'; fileNameSpan.textContent = fileObj.file.name;
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove-item-btn'; removeBtn.innerHTML = '&times;'; removeBtn.dataset.index = index;
-        fileNameContainer.appendChild(fileNameSpan);
-        li.appendChild(document.createRange().createContextualFragment(badge));
-        li.appendChild(fileNameContainer); li.appendChild(removeBtn);
+        li.innerHTML = `<span class="media-type-badge ${fileObj.type}">${fileObj.type}</span><div class="filename-container"><span class="marquee-text">${fileObj.file.name}</span></div><button class="remove-item-btn" data-index="${index}">&times;</button>`;
         li.title = fileObj.file.name;
-        if (index === currentFileIndex) { li.classList.add('active'); }
-        li.onclick = (e) => { if (e.target.classList.contains('remove-item-btn')) return; if (index !== currentFileIndex) { loadFile(allFiles[index].file); } };
-        if (mediaType === 'video') { videoList.appendChild(li); videoCount++; } else { audioList.appendChild(li); audioCount++; }
+        if (currentMode === 'file' && index === currentFileIndex) li.classList.add('active');
+        li.onclick = (e) => { if (e.target.classList.contains('remove-item-btn')) return; if (index !== currentFileIndex || currentMode !== 'file') loadFile(allFiles[index].file); };
+        if (fileObj.type === 'video') videoList.appendChild(li); else audioList.appendChild(li);
       });
-      const currentType = allFiles[currentFileIndex]?.type;
-      const isAudio = currentType === 'audio';
-      const relevantCount = isAudio ? audioCount : videoCount;
-      const canNavigate = relevantCount > 1;
-      
-      prevBtn.disabled = !canNavigate; 
-      nextBtn.disabled = !canNavigate; 
-      shuffleBtn.disabled = !canNavigate;
-      pipBtn.disabled = isAudio; 
-      snapshotBtn.disabled = isAudio;
-      toggleVisualizerBtn.disabled = !isAudio;
-
-      const hasMedia = currentFileIndex !== -1;
-      [abLoopBtn, setABtn, setBBtn].forEach(btn => btn.disabled = !hasMedia);
+      if (currentMode === 'file') { const currentType = allFiles[currentFileIndex]?.type; const relevantCount = allFiles.filter(f => f.type === currentType).length; const canNavigate = relevantCount > 1; prevBtn.disabled = !canNavigate; nextBtn.disabled = !canNavigate; }
     }
-
-    function handleFiles(files) {
-      if (!files || files.length === 0) return;
-      const wasEmpty = allFiles.length === 0;
-      for (const file of files) { if (!allFiles.some(f => f.file.name === file.name)) { const type = file.type.startsWith('video/') ? 'video' : 'audio'; allFiles.push({ file, type }); } }
-      updateFileLists();
-      if (wasEmpty && files.length > 0) { loadFile(allFiles[0].file); }
-    }
-
-    async function loadFile(file) {
-      if (isPlaying) pause();
-      cancelAnimationFrame(visualizerFrameId);
-      showLoading(true, "媒體檔案載入中...");
-      try {
-        currentFile = file; currentFileIndex = allFiles.findIndex(f => f.file.name === file.name);
-        if (AC.state === 'suspended') { await AC.resume(); }
-        setupVisualizer();
-
-        const url = URL.createObjectURL(file); videoPlayer.src = url;
-        updateFileLists(searchInput.value);
-        resetAbLoop();
-
-        if (file.type.startsWith('audio/')) {
-            videoPlayer.style.display = 'none';
-            videoOverlay.innerHTML = `🎵<br><span style="font-size: 16px; margin-top: 10px; font-weight: 500;">${file.name}</span>`;
-            
-            if (visualizerMode !== 'off') {
-                audioVisualizer.style.display = 'block';
-                videoOverlay.style.background = 'transparent';
-                drawVisualizer();
-            } else {
-                audioVisualizer.style.display = 'none';
-                videoOverlay.style.background = 'rgba(0,0,0,0.7)';
-            }
-            videoOverlay.style.display = 'flex';
+    
+    function updateControlsState() {
+        const isRadio = currentMode === 'radio';
+        progressBar.disabled = isRadio;
+        [prevBtn, nextBtn, loopBtn, shuffleBtn, pipBtn, snapshotBtn, setABtn, setBBtn, abLoopBtn, settingsBtn, toggleVisualizerBtn].forEach(btn => { btn.disabled = isRadio; });
+        if (isRadio) {
+            timeDisplay.textContent = "LIVE";
+            pipBtn.classList.remove('active-green'); loopBtn.classList.remove('active'); shuffleBtn.classList.remove('active'); resetAbLoop();
         } else {
-            videoPlayer.style.display = 'block';
-            audioVisualizer.style.display = 'none';
-            videoOverlay.style.display = 'none';
-            videoOverlay.style.background = 'rgba(0,0,0,0.7)';
+            const hasMedia = currentFileIndex !== -1;
+            const isAudio = allFiles[currentFileIndex]?.type === 'audio';
+            const canNavigate = allFiles.filter(f => f.type === allFiles[currentFileIndex]?.type).length > 1;
+            prevBtn.disabled = !canNavigate; nextBtn.disabled = !canNavigate; loopBtn.disabled = !hasMedia; shuffleBtn.disabled = !canNavigate; pipBtn.disabled = !hasMedia || isAudio; snapshotBtn.disabled = !hasMedia || isAudio; settingsBtn.disabled = !hasMedia; toggleVisualizerBtn.disabled = !hasMedia || !isAudio;
+            [abLoopBtn, setABtn, setBBtn].forEach(btn => btn.disabled = !hasMedia);
         }
-        
-        showLoading(true, "正在分析音訊...");
-        try {
-          const arrayBuffer = await file.arrayBuffer(); audioBuffer = await AC.decodeAudioData(arrayBuffer.slice(0));
-          waveformDisplay.style.display = 'block'; videoPlayerContainer.classList.add('with-waveform');
-        } catch (e) {
-          console.warn("無法解析音訊或無音訊軌:", e.message); audioBuffer = null;
-          waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform');
-        }
-      } catch (e) { console.error("Error loading file:", e); alert(`檔案載入失敗: ${e.message}`);
-      } finally { showLoading(false); }
     }
 
+    function handleFiles(files) { if (!files || files.length === 0) return; const wasEmpty = allFiles.length === 0; for (const file of files) { if (!allFiles.some(f => f.file.name === file.name)) { const type = file.type.startsWith('video/') ? 'video' : 'audio'; allFiles.push({ file, type }); } } updateAllLists(); if (wasEmpty && files.length > 0) { loadFile(allFiles[0].file); } }
+    async function loadFile(file) { if (hlsInstance) { hlsInstance.destroy(); } videoPlayer.crossOrigin = null; currentMode = 'file'; updateControlsState(); if (isPlaying) pause(); cancelAnimationFrame(visualizerFrameId); showLoading(true, "媒體檔案載入中..."); document.querySelectorAll('#radioList li.active, #favoriteRadioList li.active').forEach(el => el.classList.remove('active')); try { currentFile = file; currentFileIndex = allFiles.findIndex(f => f.file.name === file.name); if (AC.state === 'suspended') { await AC.resume(); } setupVisualizer(); const url = URL.createObjectURL(file); videoPlayer.src = url; updateAllLists(); resetAbLoop(); titlesH1.textContent = file.name; titlesH2.textContent = '本地檔案播放'; if (file.type.startsWith('audio/')) { videoPlayer.style.display = 'none'; videoOverlay.innerHTML = `🎵<br><span style="font-size: 16px; margin-top: 10px; font-weight: 500;">${file.name}</span>`; if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } videoOverlay.style.display = 'flex'; } else { videoPlayer.style.display = 'block'; audioVisualizer.style.display = 'none'; videoOverlay.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } showLoading(true, "正在分析音訊..."); try { const arrayBuffer = await file.arrayBuffer(); audioBuffer = await AC.decodeAudioData(arrayBuffer.slice(0)); waveformDisplay.style.display = 'block'; videoPlayerContainer.classList.add('with-waveform'); } catch (e) { console.warn("無法解析音訊或無音訊軌:", e.message); audioBuffer = null; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); } } catch (e) { console.error("Error loading file:", e); alert(`檔案載入失敗: ${e.message}`); } finally { showLoading(false); } }
     function drawWaveform() { if (!audioBuffer || waveformCanvas.clientWidth === 0) return; const canvas = waveformCanvas; const ctx = waveformCtx; const dpr = window.devicePixelRatio || 1; canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; ctx.scale(dpr, dpr); const width = canvas.clientWidth; const height = canvas.clientHeight; const amp = height / 2; ctx.clearRect(0, 0, width, height); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0, 113, 227, 0.7)'; const data = audioBuffer.getChannelData(0); const step = Math.ceil(data.length / width); ctx.beginPath(); for (let i = 0; i < width; i++) { let min = 1.0; let max = -1.0; for (let j = 0; j < step; j++) { const datum = data[(i * step) + j]; if (datum < min) min = datum; if (datum > max) max = datum; } ctx.moveTo(i, amp + min * amp); ctx.lineTo(i, amp + max * amp); } ctx.stroke(); }
     const waveformResizeObserver = new ResizeObserver(entries => { for (const entry of entries) { if (entry.target.style.display !== 'none' && entry.contentRect.width > 0) { drawWaveform(); } } });
     waveformResizeObserver.observe(waveformDisplay);
-
     function updateWaveformPlayhead() { if (!audioBuffer) return; const percent = videoPlayer.currentTime / videoPlayer.duration; waveformPlayhead.style.left = `${percent * 100}%`; }
     function showLoading(show, text = "媒體檔案載入中...") { $('loadingIndicator').style.display = show ? 'flex' : 'none'; $('loadingText').textContent = text; }
-    function play() { videoPlayer.play(); hasPlayedOnce = true; }
+    function play() { if(currentStation || currentFile) videoPlayer.play().catch(e => console.error("播放錯誤:", e)); hasPlayedOnce = true; }
     function pause() { videoPlayer.pause(); }
-    function togglePlay() { if (isPlaying) { pause(); } else { play(); } }
-    function updateProgressBar() { progressBar.value = videoPlayer.currentTime; const current = formatTime(videoPlayer.currentTime); const duration = formatTime(videoPlayer.duration); timeDisplay.textContent = `${current} / ${duration}`; updateWaveformPlayhead(); }
-    function seek() { videoPlayer.currentTime = progressBar.value; updateWaveformPlayhead(); }
+    function togglePlay() { if (currentStation || currentFile) { if (isPlaying) pause(); else play(); } }
+    function updateProgressBar() { if (currentMode !== 'file') return; progressBar.value = videoPlayer.currentTime; const current = formatTime(videoPlayer.currentTime); const duration = formatTime(videoPlayer.duration); timeDisplay.textContent = `${current} / ${duration}`; updateWaveformPlayhead(); }
+    function seek() { if (currentMode !== 'file') return; videoPlayer.currentTime = progressBar.value; updateWaveformPlayhead(); }
     function formatTime(seconds) { if (isNaN(seconds)) return '00:00'; const min = Math.floor(seconds / 60); const sec = Math.floor(seconds % 60); return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`; }
     function updateSpeedUI(rate) { const rateFloat = parseFloat(rate); speedSlider.value = rateFloat; speedValue.textContent = `${rateFloat.toFixed(2)}x`; speedPresets.forEach(p => { p.classList.toggle('active', parseFloat(p.dataset.speed) === rateFloat); }); }
-    
-    function playAdjacentTrack(direction) {
-      if (currentFileIndex === -1) return; const currentType = allFiles[currentFileIndex].type; const relevantIndices = allFiles.map((f, i) => f.type === currentType ? i : -1).filter(i => i !== -1); if (relevantIndices.length < 2) return;
-      let newFileIndex;
-      if (isShuffle) { let randomIndex; do { randomIndex = Math.floor(Math.random() * relevantIndices.length); } while (relevantIndices.length > 1 && relevantIndices[randomIndex] === currentFileIndex); newFileIndex = relevantIndices[randomIndex]; } else { const currentPositionInList = relevantIndices.indexOf(currentFileIndex); const nextPositionInList = (currentPositionInList + direction + relevantIndices.length) % relevantIndices.length; newFileIndex = relevantIndices[nextPositionInList]; }
-      loadFile(allFiles[newFileIndex].file);
-    }
-    
-    function resetPlayer() { 
-      if (isPlaying) pause(); 
-      cancelAnimationFrame(visualizerFrameId);
-      audioVisualizer.style.display = 'none';
-      videoPlayer.src = ''; 
-      videoPlayer.style.display = 'none'; 
-      videoOverlay.innerHTML = '請從左側媒體庫匯入檔案';
-      videoOverlay.style.background = 'rgba(0,0,0,0.7)';
-      videoOverlay.style.display = 'flex'; 
-      waveformDisplay.style.display = 'none'; 
-      videoPlayerContainer.classList.remove('with-waveform'); 
-      allFiles = []; currentFileIndex = -1; hasPlayedOnce = false; 
-      visualizerMode = 'circular';
-      particles = [];
-      rings = [];
-      updateVisualizerButton();
-      searchInput.value = ''; resetAbLoop(); updateFileLists(); 
-    }
-    
-    function takeSnapshot() {
-      if (!currentFile || allFiles[currentFileIndex]?.type !== 'video' || videoPlayer.readyState < 2) return; const canvas = document.createElement('canvas'); const video = videoPlayer; canvas.width = video.videoWidth; canvas.height = video.videoHeight; const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/png'); const link = document.createElement('a'); const baseName = currentFile.name.replace(/\.[^/.]+$/, ""); const timestamp = formatTime(video.currentTime).replace(/:/g, '-'); link.download = `${baseName}_snapshot_at_${timestamp}.png`; link.href = dataUrl; document.body.appendChild(link); link.click(); document.body.removeChild(link);
-    }
-
-    function updateAbMarkers() {
-      if (abPointA !== null && videoPlayer.duration) {
-        const duration = videoPlayer.duration;
-        const startPercent = (abPointA / duration) * 100;
-        abMarkerA.style.left = `${startPercent}%`;
-        abMarkerA.style.display = 'block';
-
-        if (abPointB !== null) {
-          const endPercent = (abPointB / duration) * 100;
-          abMarkerB.style.left = `${endPercent}%`;
-          abMarkerB.style.display = 'block';
-          abLoopRange.style.left = `${startPercent}%`;
-          abLoopRange.style.width = `${endPercent - startPercent}%`;
-          abLoopRange.style.display = 'block';
-        } else {
-          abMarkerB.style.display = 'none';
-          abLoopRange.style.display = 'none';
-        }
-      } else {
-        abMarkerA.style.display = 'none';
-        abMarkerB.style.display = 'none';
-        abLoopRange.style.display = 'none';
-      }
-    }
-
-    function resetAbLoop() {
-        isAbLooping = false; abPointA = null; abPointB = null;
-        abLoopBtn.classList.remove('ab-active');
-        [setABtn, setBBtn].forEach(btn => btn.classList.remove('ab-active'));
-        updateAbMarkers();
-    }
-
+    function playAdjacentTrack(direction) { if (currentMode !== 'file' || currentFileIndex === -1) return; const currentType = allFiles[currentFileIndex].type; const relevantIndices = allFiles.map((f, i) => f.type === currentType ? i : -1).filter(i => i !== -1); if (relevantIndices.length < 2) return; let newFileIndex; if (isShuffle) { let randomIndex; do { randomIndex = Math.floor(Math.random() * relevantIndices.length); } while (relevantIndices.length > 1 && relevantIndices[randomIndex] === currentFileIndex); newFileIndex = relevantIndices[randomIndex]; } else { const currentPositionInList = relevantIndices.indexOf(currentFileIndex); const nextPositionInList = (currentPositionInList + direction + relevantIndices.length) % relevantIndices.length; newFileIndex = relevantIndices[nextPositionInList]; } loadFile(allFiles[newFileIndex].file); }
+    function resetPlayer() { if (isPlaying) pause(); if (hlsInstance) { hlsInstance.destroy(); } cancelAnimationFrame(visualizerFrameId); audioVisualizer.style.display = 'none'; videoPlayer.src = ''; videoPlayer.style.display = 'none'; videoOverlay.innerHTML = '請從左側媒體庫匯入檔案'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; videoOverlay.style.display = 'flex'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); allFiles = []; currentFileIndex = -1; hasPlayedOnce = false; currentMode = 'file'; currentStation = null; visualizerMode = 'circular'; particles = []; rings = []; updateVisualizerButton(); resetAbLoop(); updateAllLists(); updateControlsState(); titlesH1.textContent = '影音播放器'; titlesH2.textContent = '提供支援速度調整、循環播放、音訊波形圖顯示與智慧媒體庫管理功能'; }
+    function takeSnapshot() { if (!currentFile || allFiles[currentFileIndex]?.type !== 'video' || videoPlayer.readyState < 2) return; const canvas = document.createElement('canvas'); const video = videoPlayer; canvas.width = video.videoWidth; canvas.height = video.videoHeight; const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/png'); const link = document.createElement('a'); const baseName = currentFile.name.replace(/\.[^/.]+$/, ""); const timestamp = formatTime(video.currentTime).replace(/:/g, '-'); link.download = `${baseName}_snapshot_at_${timestamp}.png`; link.href = dataUrl; document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+    function updateAbMarkers() { if (currentMode === 'file' && abPointA !== null && videoPlayer.duration) { const duration = videoPlayer.duration; const startPercent = (abPointA / duration) * 100; abMarkerA.style.left = `${startPercent}%`; abMarkerA.style.display = 'block'; if (abPointB !== null) { const endPercent = (abPointB / duration) * 100; abMarkerB.style.left = `${endPercent}%`; abMarkerB.style.display = 'block'; abLoopRange.style.left = `${startPercent}%`; abLoopRange.style.width = `${endPercent - startPercent}%`; abLoopRange.style.display = 'block'; } else { abMarkerB.style.display = 'none'; abLoopRange.style.display = 'none'; } } else { abMarkerA.style.display = 'none'; abMarkerB.style.display = 'none'; abLoopRange.style.display = 'none'; } }
+    function resetAbLoop() { isAbLooping = false; abPointA = null; abPointB = null; abLoopBtn.classList.remove('ab-active'); [setABtn, setBBtn].forEach(btn => btn.classList.remove('ab-active')); updateAbMarkers(); }
     let draggedIndex = null;
     function handleDragStart(e) { draggedIndex = parseInt(e.target.dataset.index, 10); e.target.classList.add('is-dragging'); }
     function handleDragOver(e) { e.preventDefault(); const target = e.target.closest('li'); if (!target || target.dataset.index === draggedIndex) return; document.querySelectorAll('.dragging-over-top, .dragging-over-bottom').forEach(el => { el.classList.remove('dragging-over-top', 'dragging-over-bottom'); }); const rect = target.getBoundingClientRect(); const midpoint = rect.top + rect.height / 2; if (e.clientY < midpoint) { target.classList.add('dragging-over-top'); } else { target.classList.add('dragging-over-bottom'); } }
     function handleDragLeave(e) { e.target.closest('li')?.classList.remove('dragging-over-top', 'dragging-over-bottom'); }
-    function handleDrop(e) { e.preventDefault(); document.querySelectorAll('.is-dragging, .dragging-over-top, .dragging-over-bottom').forEach(el => { el.classList.remove('is-dragging', 'dragging-over-top', 'dragging-over-bottom'); }); const target = e.target.closest('li'); if (!target || draggedIndex === null) return; let targetIndex = parseInt(target.dataset.index, 10); const draggedItem = allFiles[draggedIndex]; const rect = target.getBoundingClientRect(); const midpoint = rect.top + rect.height / 2; if (e.clientY > midpoint && targetIndex > draggedIndex) {} else if (e.clientY > midpoint) { targetIndex += 1; } allFiles.splice(draggedIndex, 1); allFiles.splice(targetIndex > draggedIndex ? targetIndex - 1 : targetIndex, 0, draggedItem); if (currentFile) { currentFileIndex = allFiles.findIndex(f => f.file.name === currentFile.name); } draggedIndex = null; updateFileLists(searchInput.value); }
+    function handleDrop(e) { e.preventDefault(); document.querySelectorAll('.is-dragging, .dragging-over-top, .dragging-over-bottom').forEach(el => { el.classList.remove('is-dragging', 'dragging-over-top', 'dragging-over-bottom'); }); const target = e.target.closest('li'); if (!target || draggedIndex === null) return; let targetIndex = parseInt(target.dataset.index, 10); const draggedItem = allFiles[draggedIndex]; const rect = target.getBoundingClientRect(); const midpoint = rect.top + rect.height / 2; if (e.clientY > midpoint && targetIndex > draggedIndex) {} else if (e.clientY > midpoint) { targetIndex += 1; } allFiles.splice(draggedIndex, 1); allFiles.splice(targetIndex > draggedIndex ? targetIndex - 1 : targetIndex, 0, draggedItem); if (currentFile) { currentFileIndex = allFiles.findIndex(f => f.file.name === currentFile.name); } draggedIndex = null; updateAllLists(); }
+
+    async function tryPlayUrl(urlsToTry) { return new Promise(async (resolve, reject) => { if (!urlsToTry || urlsToTry.length === 0) return reject(new Error("No valid URLs provided.")); let lastError = null; for (const url of urlsToTry) { try { await new Promise((resolveAttempt, rejectAttempt) => { const timeout = setTimeout(() => rejectAttempt(new Error(`連線超時`)), 8000); const cleanup = (listeners) => { clearTimeout(timeout); listeners.forEach(([event, handler]) => videoPlayer.removeEventListener(event, handler)); }; const successCallback = () => { cleanup(listeners); resolveAttempt(); }; const errorCallback = (e) => { cleanup(listeners); rejectAttempt(e || new Error('Playback error')); }; const listeners = [['canplay', successCallback], ['loadedmetadata', successCallback], ['error', errorCallback]]; if (hlsInstance) hlsInstance.destroy(); videoPlayer.src = ''; videoPlayer.load(); if (url.includes('.m3u8') && Hls.isSupported()) { hlsInstance = new Hls({ enableWorker: true }); hlsInstance.loadSource(url); hlsInstance.attachMedia(videoPlayer); hlsInstance.once(Hls.Events.MANIFEST_PARSED, successCallback); hlsInstance.once(Hls.Events.ERROR, (event, data) => errorCallback(data)); } else { videoPlayer.src = url; listeners.forEach(([event, handler]) => videoPlayer.addEventListener(event, handler, { once: true })); } }); return resolve(url); } catch (error) { console.warn(`Attempt failed for ${url}:`, error.details || error.message); lastError = error; } } return reject(lastError); }); }
+    async function playRadioStream(station) { if (isPlaying) pause(); videoPlayer.crossOrigin = 'anonymous'; currentMode = 'radio'; updateControlsState(); currentStation = station; if (AC.state === 'suspended') { await AC.resume(); } updateAllLists(); titlesH1.textContent = station.name; titlesH2.textContent = "網路廣播"; videoPlayer.style.display = 'none'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); videoOverlay.innerHTML = `📡<br>正在連接到<br>${station.name}...`; videoOverlay.style.display = 'flex'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; try { const urlsToTry = [station.url_resolved, station.url].filter((url, index, self) => url && self.indexOf(url) === index && url.startsWith('https')); if (urlsToTry.length === 0) throw new Error("無安全 (HTTPS) 的串流網址可用。"); await tryPlayUrl(urlsToTry); videoPlayer.play(); setupVisualizer(); cancelAnimationFrame(visualizerFrameId); if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.display = 'none'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; videoOverlay.innerHTML = `📡<br>正在播放<br>${station.name}`; videoOverlay.style.display = 'flex'; } stationStatusCache[station.stationuuid] = 'success'; sessionStorage.setItem('stationStatusCache', JSON.stringify(stationStatusCache)); updateStationItemStatus(station.stationuuid, 'success'); } catch (error) { pause(); videoOverlay.innerHTML = `❌<br>無法播放 ${station.name}`; alert(`無法播放電台：${station.name}\n\n此電台目前可能無訊號或網址已失效。\n錯誤: ${error.message}`); stationStatusCache[station.stationuuid] = 'failed'; sessionStorage.setItem('stationStatusCache', JSON.stringify(stationStatusCache)); updateStationItemStatus(station.stationuuid, 'failed'); currentStation = null; updateAllLists(); } }
+    async function fetchStations() { const API_URL = 'https://de1.api.radio-browser.info/json/stations/search?countrycode=TW&limit=300&order=clickcount&reverse=true&hidebroken=true&is_https=true'; try { const response = await fetch(API_URL); if (!response.ok) throw new Error('API request failed'); let data = await response.json(); let fetchedStations = data.filter(s => s.url_resolved && s.url_resolved.startsWith('https')); 
+    
+        const keywordsToExclude = ['世新', '教育', '桃園', '神州', '大樹下', '鳳鳴', '民本', 'BRAVO', '台海', '栗子', 'AM'];
+        fetchedStations = fetchedStations.filter(station => !keywordsToExclude.some(keyword => station.name.toUpperCase().includes(keyword.toUpperCase())));
+
+        if (fetchedStations.length === 0) { radioList.innerHTML = `<li style="padding: 1rem; color: var(--muted); cursor: default;">找不到可用的台灣電台。</li>`; return; } 
+        const keywords = ['中廣', '警廣', 'ICRT', 'Hit FM', '飛碟', '愛樂', 'Kiss']; 
+        let prioritizedStations = [], otherStations = []; 
+        fetchedStations.forEach(station => { if (keywords.some(k => station.name.includes(k))) { prioritizedStations.push(station); } else { otherStations.push(station); } }); 
+        allStations = [...prioritizedStations, ...otherStations]; 
+        originalStationOrder = [...allStations]; updateAllLists(); 
+    } catch (error) { console.error('Failed to fetch stations:', error); radioList.innerHTML = `<li style="padding: 1rem; color: var(--muted); cursor: default;">獲取電台列表失敗。</li>`; } }
+    
+    function createRadioListItem(station) {
+        const li = document.createElement('li');
+        li.dataset.stationuuid = station.stationuuid;
+        const isFavorite = favoriteStationUUIDs.includes(station.stationuuid);
+        li.innerHTML = `<span class="station-status"></span><div class="filename-container"><span class="marquee-text">${station.name}</span><div class="list-item-actions"><button class="list-item-btn favorite-btn ${isFavorite ? 'is-favorite' : ''}" title="加入/移出我的最愛"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg></button><button class="list-item-btn remove-station-btn" title="從列表中移除"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg></button></div></div>`;
+        li.title = station.name;
+        li.querySelector('.filename-container').onclick = (e) => { if(e.target.closest('.list-item-btn')) return; if (li.classList.contains('failed')) return; if (currentStation && currentStation.stationuuid === station.stationuuid) togglePlay(); else playRadioStream(station); };
+        return li;
+    }
+    function populateFavoriteRadioList() { favoriteRadioList.innerHTML = ''; const favoriteStations = allStations.filter(s => favoriteStationUUIDs.includes(s.stationuuid)); if(favoriteStations.length > 0){ favoriteStations.forEach(station => { const li = createRadioListItem(station); if (currentMode === 'radio' && currentStation?.stationuuid === station.stationuuid) li.classList.add('active'); favoriteRadioList.appendChild(li); updateStationItemStatus(station.stationuuid, stationStatusCache[station.stationuuid] || 'unknown'); }); } }
+    function populateRadioList() {
+        radioList.innerHTML = '';
+        let stationsToDisplay = [...allStations].filter(s => !favoriteStationUUIDs.includes(s.stationuuid));
+        if (radioSortMode === 'name') stationsToDisplay.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'));
+        if (stationsToDisplay.length === 0 && allStations.length > 0) { radioList.innerHTML = `<li style="padding: 1rem; color: var(--muted); cursor: default;">所有電台均已收藏。</li>`; return; }
+        stationsToDisplay.forEach(station => { const li = createRadioListItem(station); if (currentMode === 'radio' && currentStation?.stationuuid === station.stationuuid) li.classList.add('active'); radioList.appendChild(li); updateStationItemStatus(station.stationuuid, stationStatusCache[station.stationuuid] || 'unknown'); });
+    }
+    function updateStationItemStatus(uuid, status) { document.querySelectorAll(`li[data-stationuuid="${uuid}"]`).forEach(li => { const statusEl = li.querySelector('.station-status'); if (!statusEl) return; if (status === 'success') { statusEl.textContent = '✅'; li.classList.remove('failed'); } else if (status === 'failed') { statusEl.textContent = '❌'; li.classList.add('failed'); } else { statusEl.innerHTML = '●'; statusEl.style.color = '#ccc'; li.classList.remove('failed'); } }); }
 
     $('file').onchange = e => handleFiles(e.target.files);
-    const drop = $('drop');
     drop.ondragover = e => { e.preventDefault(); drop.style.borderColor = 'var(--blue)'; }; drop.ondragleave = () => drop.style.borderColor = ''; drop.ondrop = e => { e.preventDefault(); drop.style.borderColor = ''; handleFiles(e.dataTransfer.files); };
     playPauseBtn.onclick = togglePlay; 
     videoPlayer.onclick = togglePlay;
     audioVisualizer.onclick = togglePlay;
     prevBtn.onclick = () => playAdjacentTrack(-1); 
     nextBtn.onclick = () => playAdjacentTrack(1);
-    videoPlayer.onended = () => { if (!videoPlayer.loop) playAdjacentTrack(1); };
+    videoPlayer.onended = () => { if (currentMode === 'file' && !videoPlayer.loop) playAdjacentTrack(1); };
     videoPlayer.onplay = () => { isPlaying = true; videoPlayerContainer.classList.remove('paused'); playIcon.style.display = 'none'; pauseIcon.style.display = 'block'; };
     videoPlayer.onpause = () => { isPlaying = false; videoPlayerContainer.classList.add('paused'); playIcon.style.display = 'block'; pauseIcon.style.display = 'none'; };
-    videoPlayer.onloadedmetadata = () => { progressBar.max = videoPlayer.duration; updateProgressBar(); updateSpeedUI(1); videoPlayer.playbackRate = 1; if (hasPlayedOnce) { play(); } updateAbMarkers(); };
-    videoPlayer.ontimeupdate = () => { updateProgressBar(); if (isAbLooping && abPointA !== null && abPointB !== null && videoPlayer.currentTime >= abPointB) { videoPlayer.currentTime = abPointA; } };
+    videoPlayer.onloadedmetadata = () => { if(currentMode === 'file') { progressBar.max = videoPlayer.duration; updateProgressBar(); updateSpeedUI(1); videoPlayer.playbackRate = 1; updateAbMarkers(); } if (hasPlayedOnce && currentMode === 'file') { play(); } };
+    videoPlayer.ontimeupdate = () => { if(currentMode === 'file') { updateProgressBar(); if (isAbLooping && abPointA !== null && abPointB !== null && videoPlayer.currentTime >= abPointB) { videoPlayer.currentTime = abPointA; } } };
     progressBar.oninput = seek;
     volumeSlider.oninput = e => { videoPlayer.volume = e.target.value; videoPlayer.muted = e.target.value === '0'; };
     videoPlayer.onvolumechange = () => { volumeSlider.value = videoPlayer.volume; volumeHighIcon.style.display = (videoPlayer.muted || videoPlayer.volume === 0) ? 'none' : 'block'; volumeMuteIcon.style.display = (videoPlayer.muted || videoPlayer.volume === 0) ? 'block' : 'none'; };
@@ -809,82 +554,47 @@
     shuffleBtn.onclick = () => { isShuffle = !isShuffle; shuffleBtn.classList.toggle('active'); };
     pipBtn.onclick = async () => { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else await videoPlayer.requestPictureInPicture(); };
     snapshotBtn.onclick = takeSnapshot;
-    
-    // MODIFIED: Cycle through all visualizer modes
-    toggleVisualizerBtn.onclick = () => {
-        // Reset state for modes that need it when switching AWAY
-        if (visualizerMode === 'stardust') particles = [];
-        if (visualizerMode === 'tunnel') rings = [];
-        
-        if (visualizerMode === 'circular') {
-            visualizerMode = 'bar';
-        } else if (visualizerMode === 'bar') {
-            visualizerMode = 'sphere';
-        } else if (visualizerMode === 'sphere') {
-            visualizerMode = 'stardust';
-        } else if (visualizerMode === 'stardust') {
-            visualizerMode = 'tunnel';
-        } else if (visualizerMode === 'tunnel') {
-            visualizerMode = 'pulsar';
-        } else if (visualizerMode === 'pulsar') {
-            visualizerMode = 'off';
-        } else { // it was 'off'
-            visualizerMode = 'circular';
-        }
-        
-        // Reset state for modes that need it when switching TO
-        if (visualizerMode === 'pulsar') rotation = 0;
-
-        updateVisualizerButton();
-        
-        if (currentFile && currentFile.type.startsWith('audio/')) {
-            cancelAnimationFrame(visualizerFrameId);
-            if (visualizerMode !== 'off') {
-                audioVisualizer.style.display = 'block';
-                videoOverlay.style.background = 'transparent';
-                drawVisualizer();
-            } else {
-                audioVisualizer.style.display = 'none';
-                videoOverlay.style.background = 'rgba(0,0,0,0.7)';
-            }
-        }
-    };
-
+    toggleVisualizerBtn.onclick = () => { if (toggleVisualizerBtn.disabled) return; if (visualizerMode === 'stardust') particles = []; if (visualizerMode === 'tunnel') rings = []; if (visualizerMode === 'circular') { visualizerMode = 'bar'; } else if (visualizerMode === 'bar') { visualizerMode = 'sphere'; } else if (visualizerMode === 'sphere') { visualizerMode = 'stardust'; } else if (visualizerMode === 'stardust') { visualizerMode = 'tunnel'; } else if (visualizerMode === 'tunnel') { visualizerMode = 'pulsar'; } else if (visualizerMode === 'pulsar') { visualizerMode = 'off'; } else { visualizerMode = 'circular'; } if (visualizerMode === 'pulsar') rotation = 0; updateVisualizerButton(); if (currentMode !== 'file' || (currentFile && currentFile.type.startsWith('audio/'))) { cancelAnimationFrame(visualizerFrameId); if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } } };
     videoPlayer.onenterpictureinpicture = () => pipBtn.classList.add('active-green'); 
     videoPlayer.onleavepictureinpicture = () => pipBtn.classList.remove('active-green');
-    settingsBtn.onclick = (e) => { e.stopPropagation(); settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block'; };
+    settingsBtn.onclick = (e) => { e.stopPropagation(); if(settingsBtn.disabled) return; settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block'; };
     speedSlider.oninput = () => { const rate = speedSlider.value; videoPlayer.playbackRate = rate; updateSpeedUI(rate); };
     speedPresets.forEach(p => { p.onclick = () => { const rate = p.dataset.speed; videoPlayer.playbackRate = rate; updateSpeedUI(rate); settingsPanel.style.display = 'none'; } });
     document.addEventListener('click', (e) => { if (!settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) { settingsPanel.style.display = 'none'; } });
-    searchInput.addEventListener('input', (e) => { updateFileLists(e.target.value); });
     clearPlaylistBtn.onclick = resetPlayer;
-    const handleRemove = (e) => { if (!e.target.classList.contains('remove-item-btn')) return; const indexToRemove = parseInt(e.target.dataset.index, 10); if (indexToRemove === currentFileIndex) { pause(); videoPlayer.src = ''; videoPlayer.style.display = 'none'; videoOverlay.innerHTML = '請從左側媒體庫匯入檔案'; videoOverlay.style.display = 'flex'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); resetAbLoop(); } allFiles.splice(indexToRemove, 1); if (currentFileIndex > indexToRemove) { currentFileIndex--; } else if (currentFileIndex === indexToRemove) { currentFileIndex = -1; } updateFileLists(searchInput.value); };
-    [videoList, audioList].forEach(list => { list.addEventListener('click', handleRemove); list.addEventListener('dragstart', handleDragStart); list.addEventListener('dragover', handleDragOver); list.addEventListener('dragleave', handleDragLeave); list.addEventListener('drop', handleDrop); });
+    const handleRemoveFile = (e) => { if (!e.target.classList.contains('remove-item-btn')) return; const indexToRemove = parseInt(e.target.dataset.index, 10); if (indexToRemove === currentFileIndex) { pause(); videoPlayer.src = ''; videoPlayer.style.display = 'none'; videoOverlay.innerHTML = '請從左側媒體庫匯入檔案'; videoOverlay.style.display = 'flex'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); resetAbLoop(); } allFiles.splice(indexToRemove, 1); if (currentFileIndex > indexToRemove) { currentFileIndex--; } else if (currentFileIndex === indexToRemove) { currentFileIndex = -1; } updateAllLists(); };
+    [videoList, audioList].forEach(list => { list.addEventListener('click', handleRemoveFile); list.addEventListener('dragstart', handleDragStart); list.addEventListener('dragover', handleDragOver); list.addEventListener('dragleave', handleDragLeave); list.addEventListener('drop', handleDrop); });
     abLoopBtn.onclick = () => { isAbLooping = !isAbLooping; abLoopBtn.classList.toggle('ab-active', isAbLooping); if (!isAbLooping) { resetAbLoop(); } updateAbMarkers(); };
     setABtn.onclick = () => { abPointA = videoPlayer.currentTime; if (abPointB !== null && abPointA >= abPointB) { abPointB = null; setBBtn.classList.remove('ab-active'); } setABtn.classList.add('ab-active'); updateAbMarkers(); };
     setBBtn.onclick = () => { if (abPointA !== null && videoPlayer.currentTime > abPointA) { abPointB = videoPlayer.currentTime; setBBtn.classList.add('ab-active'); updateAbMarkers(); } else { alert('B 點必須在 A 點之後！請先設定 A 點。'); } };
-    
-    document.addEventListener('keydown', (e) => {
-      if (document.activeElement === searchInput) return;
-      const key = e.key.toLowerCase();
-      if ([' ', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) e.preventDefault();
-      
-      switch (key) {
-        case ' ': togglePlay(); break;
-        case 'c': if (!snapshotBtn.disabled) takeSnapshot(); break;
-        case 'm': muteBtn.click(); break;
-        case 'f': fullscreenBtn.click(); break;
-        case 'p': if (!pipBtn.disabled) pipBtn.click(); break;
-        case 'l': loopBtn.click(); break;
-        case 's': if (!shuffleBtn.disabled) shuffleBtn.click(); break;
-        case 'a': if (!setABtn.disabled) setABtn.click(); break;
-        case 'b': if (!setBBtn.disabled) setBBtn.click(); break;
-        case 'arrowleft': videoPlayer.currentTime = Math.max(0, videoPlayer.currentTime - 5); break;
-        case 'arrowright': videoPlayer.currentTime = Math.min(videoPlayer.duration, videoPlayer.currentTime + 5); break;
-        case 'arrowup': videoPlayer.volume = Math.min(1, videoPlayer.volume + 0.1); break;
-        case 'arrowdown': videoPlayer.volume = Math.max(0, videoPlayer.volume - 0.1); break;
-        case 'escape': if (settingsPanel.style.display === 'block') { settingsPanel.style.display = 'none'; } else if (document.fullscreenElement) { document.exitFullscreen(); } break;
-      }
+    document.addEventListener('keydown', (e) => { const key = e.key.toLowerCase(); if ([' ', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) e.preventDefault(); switch (key) { case ' ': togglePlay(); break; case 'c': if (!snapshotBtn.disabled) takeSnapshot(); break; case 'm': muteBtn.click(); break; case 'f': fullscreenBtn.click(); break; case 'p': if (!pipBtn.disabled) pipBtn.click(); break; case 'l': if (!loopBtn.disabled) loopBtn.click(); break; case 's': if (!shuffleBtn.disabled) shuffleBtn.click(); break; case 'a': if (!setABtn.disabled) setABtn.click(); break; case 'b': if (!setBBtn.disabled) setBBtn.click(); break; case 'arrowleft': if (currentMode === 'file') videoPlayer.currentTime = Math.max(0, videoPlayer.currentTime - 5); break; case 'arrowright': if (currentMode === 'file') videoPlayer.currentTime = Math.min(videoPlayer.duration, videoPlayer.currentTime + 5); break; case 'arrowup': videoPlayer.volume = Math.min(1, videoPlayer.volume + 0.1); break; case 'arrowdown': videoPlayer.volume = Math.max(0, videoPlayer.volume - 0.1); break; case 'escape': if (settingsPanel.style.display === 'block') { settingsPanel.style.display = 'none'; } else if (document.fullscreenElement) { document.exitFullscreen(); } break; } });
+
+    toggleFavoritesBtn.onclick = () => {
+        isFavoritesExpanded = !isFavoritesExpanded;
+        favoritesContainer.classList.toggle('collapsed', !isFavoritesExpanded);
+    };
+    sortRadioBtn.onclick = () => {
+        radioSortMode = radioSortMode === 'clickcount' ? 'name' : 'clickcount';
+        sortRadioBtn.classList.toggle('active', radioSortMode === 'name');
+        updateAllLists();
+    };
+    listArea.addEventListener('click', (e) => {
+        const favoriteBtn = e.target.closest('.favorite-btn');
+        const removeBtn = e.target.closest('.remove-station-btn');
+        if (favoriteBtn) {
+            const uuid = favoriteBtn.closest('li').dataset.stationuuid;
+            toggleFavorite(uuid);
+        } else if (removeBtn) {
+            const uuid = removeBtn.closest('li').dataset.stationuuid;
+            deleteRadioStation(uuid);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadFavorites();
+      updateControlsState();
+      fetchStations();
+      favoritesContainer.classList.toggle('collapsed', !isFavoritesExpanded);
     });
   </script>
 </body>
