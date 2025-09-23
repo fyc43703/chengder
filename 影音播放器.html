@@ -310,7 +310,7 @@
       </div>
       <div class="panel glass player-panel">
         <div class="video-player-container" id="videoPlayerContainer">
-          <video id="videoPlayer" style="display: none;" crossOrigin="anonymous"></video>
+          <video id="videoPlayer" style="display: none;"></video>
           <canvas id="audioVisualizer"></canvas>
           <div class="video-overlay" id="videoOverlay">請從左側媒體庫匯入檔案</div>
           <div class="controls-container">
@@ -461,7 +461,12 @@
     function updateControlsState() {
         const isRadio = currentMode === 'radio';
         progressBar.disabled = isRadio;
-        [prevBtn, nextBtn, loopBtn, shuffleBtn, pipBtn, snapshotBtn, setABtn, setBBtn, abLoopBtn, settingsBtn, toggleVisualizerBtn].forEach(btn => { btn.disabled = isRadio; });
+        [prevBtn, nextBtn, loopBtn, shuffleBtn, pipBtn, snapshotBtn, setABtn, setBBtn, abLoopBtn, settingsBtn].forEach(btn => { btn.disabled = isRadio; });
+        
+        // [修正] 視覺化按鈕邏輯
+        const isVideo = currentMode === 'file' && allFiles[currentFileIndex]?.type === 'video';
+        toggleVisualizerBtn.disabled = isVideo;
+
         if (isRadio) {
             timeDisplay.textContent = "LIVE";
             pipBtn.classList.remove('active-green'); loopBtn.classList.remove('active'); shuffleBtn.classList.remove('active'); resetAbLoop();
@@ -469,7 +474,7 @@
             const hasMedia = currentFileIndex !== -1;
             const isAudio = allFiles[currentFileIndex]?.type === 'audio';
             const canNavigate = allFiles.filter(f => f.type === allFiles[currentFileIndex]?.type).length > 1;
-            prevBtn.disabled = !canNavigate; nextBtn.disabled = !canNavigate; loopBtn.disabled = !hasMedia; shuffleBtn.disabled = !canNavigate; pipBtn.disabled = !hasMedia || isAudio; snapshotBtn.disabled = !hasMedia || isAudio; settingsBtn.disabled = !hasMedia; toggleVisualizerBtn.disabled = !hasMedia || !isAudio;
+            prevBtn.disabled = !canNavigate; nextBtn.disabled = !canNavigate; loopBtn.disabled = !hasMedia; shuffleBtn.disabled = !canNavigate; pipBtn.disabled = !hasMedia || isAudio; snapshotBtn.disabled = !hasMedia || isAudio; settingsBtn.disabled = !hasMedia;
             [abLoopBtn, setABtn, setBBtn].forEach(btn => btn.disabled = !hasMedia);
         }
     }
@@ -554,7 +559,7 @@
     shuffleBtn.onclick = () => { isShuffle = !isShuffle; shuffleBtn.classList.toggle('active'); };
     pipBtn.onclick = async () => { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else await videoPlayer.requestPictureInPicture(); };
     snapshotBtn.onclick = takeSnapshot;
-    toggleVisualizerBtn.onclick = () => { if (toggleVisualizerBtn.disabled) return; if (visualizerMode === 'stardust') particles = []; if (visualizerMode === 'tunnel') rings = []; if (visualizerMode === 'circular') { visualizerMode = 'bar'; } else if (visualizerMode === 'bar') { visualizerMode = 'sphere'; } else if (visualizerMode === 'sphere') { visualizerMode = 'stardust'; } else if (visualizerMode === 'stardust') { visualizerMode = 'tunnel'; } else if (visualizerMode === 'tunnel') { visualizerMode = 'pulsar'; } else if (visualizerMode === 'pulsar') { visualizerMode = 'off'; } else { visualizerMode = 'circular'; } if (visualizerMode === 'pulsar') rotation = 0; updateVisualizerButton(); if (currentMode !== 'file' || (currentFile && currentFile.type.startsWith('audio/'))) { cancelAnimationFrame(visualizerFrameId); if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } } };
+    toggleVisualizerBtn.onclick = () => { if (toggleVisualizerBtn.disabled) return; if (visualizerMode === 'stardust') particles = []; if (visualizerMode === 'tunnel') rings = []; if (visualizerMode === 'circular') { visualizerMode = 'bar'; } else if (visualizerMode === 'bar') { visualizerMode = 'sphere'; } else if (visualizerMode === 'sphere') { visualizerMode = 'stardust'; } else if (visualizerMode === 'stardust') { visualizerMode = 'tunnel'; } else if (visualizerMode === 'tunnel') { visualizerMode = 'pulsar'; } else if (visualizerMode === 'pulsar') { visualizerMode = 'off'; } else { visualizerMode = 'circular'; } if (visualizerMode === 'pulsar') rotation = 0; updateVisualizerButton(); if (currentMode !== 'file' || (currentFile && currentFile.type.startsWith('audio/'))) { cancelAnimationFrame(visualizerFrameId); if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; videoOverlay.style.display = 'none'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; if(currentMode === 'radio' && isPlaying) videoOverlay.innerHTML = `📡<br>正在播放<br>${currentStation.name}`; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; videoOverlay.style.display = 'flex'; } } };
     videoPlayer.onenterpictureinpicture = () => pipBtn.classList.add('active-green'); 
     videoPlayer.onleavepictureinpicture = () => pipBtn.classList.remove('active-green');
     settingsBtn.onclick = (e) => { e.stopPropagation(); if(settingsBtn.disabled) return; settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block'; };
