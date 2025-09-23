@@ -74,7 +74,7 @@
     .panel .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .panel h3{margin:0; font-size:16px; font-weight:600; color:var(--blue); text-transform:uppercase; letter-spacing:.8px;}
     
-    .btn.primary { background: var(--orange); color: white; border-radius: 12px; padding: 12px 24px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+    .btn.primary { background: var(--orange); color: white; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
     .btn.primary:hover{filter:brightness(1.1);}
     .btn.primary svg { width: 20px; height: 20px; fill: white; }
     .btn.ghost { background: transparent; color: var(--muted); font-size: 12px; padding: 4px 8px; border: 1px solid rgba(0,0,0,0.3); border-radius: 6px; cursor: pointer; }
@@ -155,8 +155,8 @@
     .label-btn svg { width: 16px; height: 16px; fill: var(--muted); transition: all 0.2s; }
     .label-btn:hover svg { fill: var(--blue); }
     .label-btn.active svg { fill: var(--orange); }
-    #toggleFavoritesBtn .chevron { transition: transform 0.3s ease; }
-    #favoritesContainer.collapsed #toggleFavoritesBtn .chevron { transform: rotate(-90deg); }
+    .chevron-btn .chevron { transition: transform 0.3s ease; }
+    .file-list-container.collapsed .chevron-btn .chevron { transform: rotate(-90deg); }
     
     .favorites-dropdown-wrapper {
       position: absolute;
@@ -179,38 +179,42 @@
       overflow-y: auto; 
     }
     
-    #videoList, #audioList, #radioList, #favoriteRadioList { list-style-type: none; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 0; overflow-y: auto; overscroll-behavior: contain; }
+    #videoList, #audioList, #radioList, #favoriteRadioList { list-style-type: none; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 0; overflow-y: auto; overscroll-behavior: contain; transition: max-height 0.3s ease-out; }
     #videoList, #audioList { max-height: 120px; }
+    .file-list-container.collapsed #videoList, .file-list-container.collapsed #audioList { max-height: 0; }
     #radioList { flex-grow: 1; min-height: 0; }
+    .radio-main-container.collapsed #radioList { max-height: 0; }
 
     #videoList li, #audioList li, #radioList li, #favoriteRadioList li { position: relative; font-size: 14px; white-space: nowrap; overflow: hidden; padding: 8px 10px; cursor: pointer; border-radius: 8px; transition: background-color 0.15s ease; display: flex; align-items: center; }
     #videoList li:hover, #audioList li:hover, #radioList li:hover, #favoriteRadioList li:hover { background-color: rgba(0,0,0,.07); }
     #videoList li.active, #audioList li.active, #radioList li.active, #favoriteRadioList li.active { background-color: var(--blue); color: white; font-weight: 500; }
     #videoList:empty::after, #audioList:empty::after, #radioList:empty::after, #favoriteRadioList:empty::after { content: "尚未匯入檔案"; color: var(--muted); font-style: italic; font-size: 13px; padding: 4px; }
-    #radioList:empty::after { content: "正在載入電台..."; }
+    #radioList:empty::after { content: ""; }
+    .list-spinner { display: flex; justify-content: center; align-items: center; padding: 2rem; }
     #favoriteRadioList:empty::after { content: "點擊星號收藏電台"; }
     
     .media-type-badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; margin-right: 8px; flex-shrink: 0; }
     .media-type-badge.video { background: var(--blue); color: white; }
     .media-type-badge.audio { background: var(--green); color: white; }
     .media-type-badge.radio { background: var(--red); color: white; }
-
+    
     .filename-container { flex: 1 1 0; min-width: 0; overflow: hidden; position: relative; display: flex; align-items: center; }
-    li.active .filename-container { color: white; }
+    li.active .filename-container { color: white; overflow: visible; }
     .marquee-text { display: inline-block; white-space: nowrap; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; }
-    li.active .marquee-text { animation: marquee 10s linear infinite; padding-left: 100%; text-overflow: clip; }
-
+    li.active .marquee-text { animation: marquee 10s linear infinite; padding-left: 100%; text-overflow: clip; overflow: visible; }
+    
     .list-item-actions { display: flex; align-items: center; padding-left: 8px; flex-shrink: 0; }
-    .list-item-btn { background: transparent; border: none; cursor: pointer; padding: 2px 4px; line-height: 1; opacity: 0; transition: opacity 0.2s; }
-    li:hover .list-item-btn { opacity: 0.6; }
+    .list-item-btn { background: transparent; border: none; cursor: pointer; padding: 2px 4px; line-height: 1; opacity: 0.4; transition: opacity 0.2s; }
+    li:hover .list-item-btn { opacity: 0.8; }
     .list-item-btn:hover { opacity: 1; }
     li.active .list-item-btn { opacity: 0.8; }
     li.active .list-item-btn:hover { opacity: 1; }
     .list-item-btn svg { width: 16px; height: 16px; pointer-events: none; }
     .favorite-btn svg { fill: #ccc; }
-    .favorite-btn.is-favorite svg { fill: #ffc845; }
-    li.active .favorite-btn svg { fill: #fff; }
-    li.active .favorite-btn.is-favorite svg { fill: #ffc845; }
+    li:hover .favorite-btn svg { fill: #aaa; }
+    li.active:hover .favorite-btn svg { fill: #fff; }
+    .favorite-btn.is-favorite svg { fill: #ffc845; opacity: 1; }
+    li.active .favorite-btn.is-favorite svg { opacity: 1; }
     .remove-station-btn svg { fill: var(--muted); }
     li.active .remove-station-btn svg { fill: #fff; }
 
@@ -235,9 +239,9 @@
       body { overflow-y: auto; height: auto; padding: 12px; } 
       .frame { height: auto; padding-bottom: 32px; } 
       .layout { grid-template-columns: 1fr; height: auto; } 
-      .sidebar { max-height: 50vh; min-height: 350px; } 
+      .sidebar { max-height: 60vh; min-height: 400px; } 
       #videoList, #audioList { max-height: 100px; }
-      .video-player-container { min-height: 300px; } 
+      .video-player-container { min-height: 250px; } 
       .control-btn[data-tooltip]:hover::after { display: none; } 
     }
     @media (max-width: 768px) { 
@@ -281,13 +285,17 @@
           
           <div class="list-area" id="listArea">
             <div class="list-group-top">
-                <div class="file-list-container"><label class="file-list-label"><div class="label-text"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><span>影片列表</span></div></label><ol id="videoList"></ol></div>
-                <div class="file-list-container"><label class="file-list-label"><div class="label-text"><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>音訊列表</span></div></label><ol id="audioList"></ol></div>
+                <div class="file-list-container" id="videoListContainer">
+                    <label class="file-list-label"><div class="label-text"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><span>影片列表</span></div><button id="toggleVideoListBtn" class="label-btn chevron-btn" title="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button></label><ol id="videoList"></ol>
+                </div>
+                <div class="file-list-container" id="audioListContainer">
+                    <label class="file-list-label"><div class="label-text"><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>音訊列表</span></div><button id="toggleAudioListBtn" class="label-btn chevron-btn" title="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button></label><ol id="audioList"></ol>
+                </div>
                 <div class="file-list-container favorites-container" id="favoritesContainer">
                     <label class="file-list-label">
                         <div class="label-text"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg><span>我的最愛電台</span></div>
                         <div class="label-actions">
-                            <button id="toggleFavoritesBtn" class="label-btn" title="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button>
+                            <button id="toggleFavoritesBtn" class="label-btn chevron-btn" title="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button>
                         </div>
                     </label>
                     <div class="favorites-dropdown-wrapper">
@@ -296,11 +304,12 @@
                 </div>
             </div>
             
-            <div class="file-list-container radio-main-container">
+            <div class="file-list-container radio-main-container" id="radioMainContainer">
                 <label class="file-list-label">
                     <div class="label-text"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 2v3h-2V8h2zm-2 5h2v2h-2v-2zm-4-5h2v8h-2V8zm-2 8h-2v-2h2v2zm-2-4h-2V8h2v4z"></path></svg><span>廣播電台</span></div>
                     <div class="label-actions">
                         <button id="sortRadioBtn" class="label-btn" title="切換排序 (人氣/名稱)"><svg viewBox="0 0 24 24"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"></path></svg></button>
+                        <button id="toggleRadioListBtn" class="label-btn chevron-btn" title="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button>
                     </div>
                 </label>
                 <ol id="radioList"></ol>
@@ -403,6 +412,9 @@
     const stationStatusCache = JSON.parse(sessionStorage.getItem('stationStatusCache')) || {};
     let favoriteStationUUIDs = [];
     let isFavoritesExpanded = false;
+    let isRadioListExpanded = false;
+    let isVideoListExpanded = true;
+    let isAudioListExpanded = true;
     let radioSortMode = 'clickcount';
 
     const $ = (id) => document.getElementById(id);
@@ -424,6 +436,9 @@
     const listArea = $('listArea');
     const videoList = $('videoList'), audioList = $('audioList'), radioList = $('radioList'), favoriteRadioList = $('favoriteRadioList');
     const favoritesContainer = $('favoritesContainer'), toggleFavoritesBtn = $('toggleFavoritesBtn'), sortRadioBtn = $('sortRadioBtn');
+    const radioMainContainer = $('radioMainContainer'), toggleRadioListBtn = $('toggleRadioListBtn');
+    const videoListContainer = $('videoListContainer'), toggleVideoListBtn = $('toggleVideoListBtn');
+    const audioListContainer = $('audioListContainer'), toggleAudioListBtn = $('toggleAudioListBtn');
 
     videoPlayer.volume = 0.2;
     volumeSlider.value = 0.2;
@@ -463,7 +478,6 @@
         progressBar.disabled = isRadio;
         [prevBtn, nextBtn, loopBtn, shuffleBtn, pipBtn, snapshotBtn, setABtn, setBBtn, abLoopBtn, settingsBtn].forEach(btn => { btn.disabled = isRadio; });
         
-        // [修正] 視覺化按鈕邏輯
         const isVideo = currentMode === 'file' && allFiles[currentFileIndex]?.type === 'video';
         toggleVisualizerBtn.disabled = isVideo;
 
@@ -480,7 +494,7 @@
     }
 
     function handleFiles(files) { if (!files || files.length === 0) return; const wasEmpty = allFiles.length === 0; for (const file of files) { if (!allFiles.some(f => f.file.name === file.name)) { const type = file.type.startsWith('video/') ? 'video' : 'audio'; allFiles.push({ file, type }); } } updateAllLists(); if (wasEmpty && files.length > 0) { loadFile(allFiles[0].file); } }
-    async function loadFile(file) { if (hlsInstance) { hlsInstance.destroy(); } videoPlayer.crossOrigin = null; currentMode = 'file'; updateControlsState(); if (isPlaying) pause(); cancelAnimationFrame(visualizerFrameId); showLoading(true, "媒體檔案載入中..."); document.querySelectorAll('#radioList li.active, #favoriteRadioList li.active').forEach(el => el.classList.remove('active')); try { currentFile = file; currentFileIndex = allFiles.findIndex(f => f.file.name === file.name); if (AC.state === 'suspended') { await AC.resume(); } setupVisualizer(); const url = URL.createObjectURL(file); videoPlayer.src = url; updateAllLists(); resetAbLoop(); titlesH1.textContent = file.name; titlesH2.textContent = '本地檔案播放'; if (file.type.startsWith('audio/')) { videoPlayer.style.display = 'none'; videoOverlay.innerHTML = `🎵<br><span style="font-size: 16px; margin-top: 10px; font-weight: 500;">${file.name}</span>`; if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } videoOverlay.style.display = 'flex'; } else { videoPlayer.style.display = 'block'; audioVisualizer.style.display = 'none'; videoOverlay.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } showLoading(true, "正在分析音訊..."); try { const arrayBuffer = await file.arrayBuffer(); audioBuffer = await AC.decodeAudioData(arrayBuffer.slice(0)); waveformDisplay.style.display = 'block'; videoPlayerContainer.classList.add('with-waveform'); } catch (e) { console.warn("無法解析音訊或無音訊軌:", e.message); audioBuffer = null; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); } } catch (e) { console.error("Error loading file:", e); alert(`檔案載入失敗: ${e.message}`); } finally { showLoading(false); } }
+    async function loadFile(file) { if (hlsInstance) { hlsInstance.destroy(); } videoPlayer.crossOrigin = null; currentMode = 'file'; updateControlsState(); if (isPlaying) pause(); cancelAnimationFrame(visualizerFrameId); showLoading(true, "媒體檔案載入中..."); document.querySelectorAll('#radioList li.active, #favoriteRadioList li.active').forEach(el => el.classList.remove('active')); try { currentFile = file; currentFileIndex = allFiles.findIndex(f => f.file.name === file.name); if (AC.state === 'suspended') { await AC.resume(); } setupVisualizer(); const url = URL.createObjectURL(file); videoPlayer.src = url; videoPlayer.load(); updateAllLists(); resetAbLoop(); titlesH1.textContent = file.name; titlesH2.textContent = '本地檔案播放'; if (file.type.startsWith('audio/')) { videoPlayer.style.display = 'none'; videoOverlay.innerHTML = `🎵<br><span style="font-size: 16px; margin-top: 10px; font-weight: 500;">${file.name}</span>`; if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } videoOverlay.style.display = 'flex'; } else { videoPlayer.style.display = 'block'; audioVisualizer.style.display = 'none'; videoOverlay.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } showLoading(true, "正在分析音訊..."); try { const arrayBuffer = await file.arrayBuffer(); audioBuffer = await AC.decodeAudioData(arrayBuffer.slice(0)); waveformDisplay.style.display = 'block'; videoPlayerContainer.classList.add('with-waveform'); } catch (e) { console.warn("無法解析音訊或無音訊軌:", e.message); audioBuffer = null; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); } } catch (e) { console.error("Error loading file:", e); alert(`檔案載入失敗: ${e.message}`); } finally { showLoading(false); } }
     function drawWaveform() { if (!audioBuffer || waveformCanvas.clientWidth === 0) return; const canvas = waveformCanvas; const ctx = waveformCtx; const dpr = window.devicePixelRatio || 1; canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; ctx.scale(dpr, dpr); const width = canvas.clientWidth; const height = canvas.clientHeight; const amp = height / 2; ctx.clearRect(0, 0, width, height); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0, 113, 227, 0.7)'; const data = audioBuffer.getChannelData(0); const step = Math.ceil(data.length / width); ctx.beginPath(); for (let i = 0; i < width; i++) { let min = 1.0; let max = -1.0; for (let j = 0; j < step; j++) { const datum = data[(i * step) + j]; if (datum < min) min = datum; if (datum > max) max = datum; } ctx.moveTo(i, amp + min * amp); ctx.lineTo(i, amp + max * amp); } ctx.stroke(); }
     const waveformResizeObserver = new ResizeObserver(entries => { for (const entry of entries) { if (entry.target.style.display !== 'none' && entry.contentRect.width > 0) { drawWaveform(); } } });
     waveformResizeObserver.observe(waveformDisplay);
@@ -494,7 +508,7 @@
     function formatTime(seconds) { if (isNaN(seconds)) return '00:00'; const min = Math.floor(seconds / 60); const sec = Math.floor(seconds % 60); return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`; }
     function updateSpeedUI(rate) { const rateFloat = parseFloat(rate); speedSlider.value = rateFloat; speedValue.textContent = `${rateFloat.toFixed(2)}x`; speedPresets.forEach(p => { p.classList.toggle('active', parseFloat(p.dataset.speed) === rateFloat); }); }
     function playAdjacentTrack(direction) { if (currentMode !== 'file' || currentFileIndex === -1) return; const currentType = allFiles[currentFileIndex].type; const relevantIndices = allFiles.map((f, i) => f.type === currentType ? i : -1).filter(i => i !== -1); if (relevantIndices.length < 2) return; let newFileIndex; if (isShuffle) { let randomIndex; do { randomIndex = Math.floor(Math.random() * relevantIndices.length); } while (relevantIndices.length > 1 && relevantIndices[randomIndex] === currentFileIndex); newFileIndex = relevantIndices[randomIndex]; } else { const currentPositionInList = relevantIndices.indexOf(currentFileIndex); const nextPositionInList = (currentPositionInList + direction + relevantIndices.length) % relevantIndices.length; newFileIndex = relevantIndices[nextPositionInList]; } loadFile(allFiles[newFileIndex].file); }
-    function resetPlayer() { if (isPlaying) pause(); if (hlsInstance) { hlsInstance.destroy(); } cancelAnimationFrame(visualizerFrameId); audioVisualizer.style.display = 'none'; videoPlayer.src = ''; videoPlayer.style.display = 'none'; videoOverlay.innerHTML = '請從左側媒體庫匯入檔案'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; videoOverlay.style.display = 'flex'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); allFiles = []; currentFileIndex = -1; hasPlayedOnce = false; currentMode = 'file'; currentStation = null; visualizerMode = 'circular'; particles = []; rings = []; updateVisualizerButton(); resetAbLoop(); updateAllLists(); updateControlsState(); titlesH1.textContent = '影音播放器'; titlesH2.textContent = '提供支援速度調整、循環播放、音訊波形圖顯示與智慧媒體庫管理功能'; }
+    function resetPlayer() { if (isPlaying) pause(); if (hlsInstance) { hlsInstance.destroy(); } cancelAnimationFrame(visualizerFrameId); audioVisualizer.style.display = 'none'; videoPlayer.src = ''; videoPlayer.style.display = 'none'; videoOverlay.innerHTML = '請從左側媒體庫匯入檔案'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; videoOverlay.style.display = 'flex'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); allFiles = []; currentFileIndex = -1; hasPlayedOnce = false; currentMode = 'file'; currentStation = null; visualizerMode = 'circular'; particles = []; rings = []; updateVisualizerButton(); resetAbLoop(); updateAllLists(); updateControlsState(); titlesH1.textContent = '影音播放器(含電台)'; titlesH2.textContent = '提供支援速度調整、循環播放、音訊波形圖顯示與智慧媒體庫管理功能'; }
     function takeSnapshot() { if (!currentFile || allFiles[currentFileIndex]?.type !== 'video' || videoPlayer.readyState < 2) return; const canvas = document.createElement('canvas'); const video = videoPlayer; canvas.width = video.videoWidth; canvas.height = video.videoHeight; const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/png'); const link = document.createElement('a'); const baseName = currentFile.name.replace(/\.[^/.]+$/, ""); const timestamp = formatTime(video.currentTime).replace(/:/g, '-'); link.download = `${baseName}_snapshot_at_${timestamp}.png`; link.href = dataUrl; document.body.appendChild(link); link.click(); document.body.removeChild(link); }
     function updateAbMarkers() { if (currentMode === 'file' && abPointA !== null && videoPlayer.duration) { const duration = videoPlayer.duration; const startPercent = (abPointA / duration) * 100; abMarkerA.style.left = `${startPercent}%`; abMarkerA.style.display = 'block'; if (abPointB !== null) { const endPercent = (abPointB / duration) * 100; abMarkerB.style.left = `${endPercent}%`; abMarkerB.style.display = 'block'; abLoopRange.style.left = `${startPercent}%`; abLoopRange.style.width = `${endPercent - startPercent}%`; abLoopRange.style.display = 'block'; } else { abMarkerB.style.display = 'none'; abLoopRange.style.display = 'none'; } } else { abMarkerA.style.display = 'none'; abMarkerB.style.display = 'none'; abLoopRange.style.display = 'none'; } }
     function resetAbLoop() { isAbLooping = false; abPointA = null; abPointB = null; abLoopBtn.classList.remove('ab-active'); [setABtn, setBBtn].forEach(btn => btn.classList.remove('ab-active')); updateAbMarkers(); }
@@ -506,9 +520,9 @@
 
     async function tryPlayUrl(urlsToTry) { return new Promise(async (resolve, reject) => { if (!urlsToTry || urlsToTry.length === 0) return reject(new Error("No valid URLs provided.")); let lastError = null; for (const url of urlsToTry) { try { await new Promise((resolveAttempt, rejectAttempt) => { const timeout = setTimeout(() => rejectAttempt(new Error(`連線超時`)), 8000); const cleanup = (listeners) => { clearTimeout(timeout); listeners.forEach(([event, handler]) => videoPlayer.removeEventListener(event, handler)); }; const successCallback = () => { cleanup(listeners); resolveAttempt(); }; const errorCallback = (e) => { cleanup(listeners); rejectAttempt(e || new Error('Playback error')); }; const listeners = [['canplay', successCallback], ['loadedmetadata', successCallback], ['error', errorCallback]]; if (hlsInstance) hlsInstance.destroy(); videoPlayer.src = ''; videoPlayer.load(); if (url.includes('.m3u8') && Hls.isSupported()) { hlsInstance = new Hls({ enableWorker: true }); hlsInstance.loadSource(url); hlsInstance.attachMedia(videoPlayer); hlsInstance.once(Hls.Events.MANIFEST_PARSED, successCallback); hlsInstance.once(Hls.Events.ERROR, (event, data) => errorCallback(data)); } else { videoPlayer.src = url; listeners.forEach(([event, handler]) => videoPlayer.addEventListener(event, handler, { once: true })); } }); return resolve(url); } catch (error) { console.warn(`Attempt failed for ${url}:`, error.details || error.message); lastError = error; } } return reject(lastError); }); }
     async function playRadioStream(station) { if (isPlaying) pause(); videoPlayer.crossOrigin = 'anonymous'; currentMode = 'radio'; updateControlsState(); currentStation = station; if (AC.state === 'suspended') { await AC.resume(); } updateAllLists(); titlesH1.textContent = station.name; titlesH2.textContent = "網路廣播"; videoPlayer.style.display = 'none'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); videoOverlay.innerHTML = `📡<br>正在連接到<br>${station.name}...`; videoOverlay.style.display = 'flex'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; try { const urlsToTry = [station.url_resolved, station.url].filter((url, index, self) => url && self.indexOf(url) === index && url.startsWith('https')); if (urlsToTry.length === 0) throw new Error("無安全 (HTTPS) 的串流網址可用。"); await tryPlayUrl(urlsToTry); videoPlayer.play(); setupVisualizer(); cancelAnimationFrame(visualizerFrameId); if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.display = 'none'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; videoOverlay.innerHTML = `📡<br>正在播放<br>${station.name}`; videoOverlay.style.display = 'flex'; } stationStatusCache[station.stationuuid] = 'success'; sessionStorage.setItem('stationStatusCache', JSON.stringify(stationStatusCache)); updateStationItemStatus(station.stationuuid, 'success'); } catch (error) { pause(); videoOverlay.innerHTML = `❌<br>無法播放 ${station.name}`; alert(`無法播放電台：${station.name}\n\n此電台目前可能無訊號或網址已失效。\n錯誤: ${error.message}`); stationStatusCache[station.stationuuid] = 'failed'; sessionStorage.setItem('stationStatusCache', JSON.stringify(stationStatusCache)); updateStationItemStatus(station.stationuuid, 'failed'); currentStation = null; updateAllLists(); } }
-    async function fetchStations() { const API_URL = 'https://de1.api.radio-browser.info/json/stations/search?countrycode=TW&limit=300&order=clickcount&reverse=true&hidebroken=true&is_https=true'; try { const response = await fetch(API_URL); if (!response.ok) throw new Error('API request failed'); let data = await response.json(); let fetchedStations = data.filter(s => s.url_resolved && s.url_resolved.startsWith('https')); 
+    async function fetchStations() { radioList.innerHTML = '<li class="list-spinner"><div class="spinner"></div></li>'; const API_URL = 'https://de1.api.radio-browser.info/json/stations/search?countrycode=TW&limit=300&order=clickcount&reverse=true&hidebroken=true&is_https=true'; try { const response = await fetch(API_URL); if (!response.ok) throw new Error('API request failed'); let data = await response.json(); let fetchedStations = data.filter(s => s.url_resolved && s.url_resolved.startsWith('https')); 
     
-        const keywordsToExclude = ['世新', '教育', '桃園', '神州', '大樹下', '鳳鳴', '民本', 'BRAVO', '台海', '栗子', 'AM'];
+        const keywordsToExclude = ['世新', '教育', '桃園', '神州', '大樹下', '鳳鳴', '民本', 'BRAVO', '台海', '栗子', 'AM', '佳音', 'Rti', '星蹤之愛', '南投', 'Phate', '臺東', 'CanCheers'];
         fetchedStations = fetchedStations.filter(station => !keywordsToExclude.some(keyword => station.name.toUpperCase().includes(keyword.toUpperCase())));
 
         if (fetchedStations.length === 0) { radioList.innerHTML = `<li style="padding: 1rem; color: var(--muted); cursor: default;">找不到可用的台灣電台。</li>`; return; } 
@@ -517,6 +531,7 @@
         fetchedStations.forEach(station => { if (keywords.some(k => station.name.includes(k))) { prioritizedStations.push(station); } else { otherStations.push(station); } }); 
         allStations = [...prioritizedStations, ...otherStations]; 
         originalStationOrder = [...allStations]; updateAllLists(); 
+        if (!isRadioListExpanded) radioMainContainer.classList.add('collapsed'); 
     } catch (error) { console.error('Failed to fetch stations:', error); radioList.innerHTML = `<li style="padding: 1rem; color: var(--muted); cursor: default;">獲取電台列表失敗。</li>`; } }
     
     function createRadioListItem(station) {
@@ -559,7 +574,7 @@
     shuffleBtn.onclick = () => { isShuffle = !isShuffle; shuffleBtn.classList.toggle('active'); };
     pipBtn.onclick = async () => { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else await videoPlayer.requestPictureInPicture(); };
     snapshotBtn.onclick = takeSnapshot;
-    toggleVisualizerBtn.onclick = () => { if (toggleVisualizerBtn.disabled) return; if (visualizerMode === 'stardust') particles = []; if (visualizerMode === 'tunnel') rings = []; if (visualizerMode === 'circular') { visualizerMode = 'bar'; } else if (visualizerMode === 'bar') { visualizerMode = 'sphere'; } else if (visualizerMode === 'sphere') { visualizerMode = 'stardust'; } else if (visualizerMode === 'stardust') { visualizerMode = 'tunnel'; } else if (visualizerMode === 'tunnel') { visualizerMode = 'pulsar'; } else if (visualizerMode === 'pulsar') { visualizerMode = 'off'; } else { visualizerMode = 'circular'; } if (visualizerMode === 'pulsar') rotation = 0; updateVisualizerButton(); if (currentMode !== 'file' || (currentFile && currentFile.type.startsWith('audio/'))) { cancelAnimationFrame(visualizerFrameId); if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; videoOverlay.style.display = 'none'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; if(currentMode === 'radio' && isPlaying) videoOverlay.innerHTML = `📡<br>正在播放<br>${currentStation.name}`; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; videoOverlay.style.display = 'flex'; } } };
+    toggleVisualizerBtn.onclick = () => { if (toggleVisualizerBtn.disabled) return; if (visualizerMode === 'stardust') particles = []; if (visualizerMode === 'tunnel') rings = []; if (visualizerMode === 'circular') { visualizerMode = 'bar'; } else if (visualizerMode === 'bar') { visualizerMode = 'sphere'; } else if (visualizerMode === 'sphere') { visualizerMode = 'stardust'; } else if (visualizerMode === 'stardust') { visualizerMode = 'tunnel'; } else if (visualizerMode === 'tunnel') { visualizerMode = 'pulsar'; } else if (visualizerMode === 'pulsar') { visualizerMode = 'off'; } else { visualizerMode = 'circular'; } if (visualizerMode === 'pulsar') rotation = 0; updateVisualizerButton(); if (currentMode !== 'file' || (currentFile && currentFile.type.startsWith('audio/'))) { cancelAnimationFrame(visualizerFrameId); if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; videoOverlay.style.display = 'none'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; if(currentMode === 'radio' && isPlaying) { videoOverlay.innerHTML = `📡<br>正在播放<br>${currentStation.name}`; videoOverlay.style.display = 'flex'; } else if (currentFile?.type.startsWith('audio/')) { videoOverlay.innerHTML = `🎵<br><span style="font-size: 16px; margin-top: 10px; font-weight: 500;">${currentFile.name}</span>`; videoOverlay.style.display = 'flex'; } videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } } };
     videoPlayer.onenterpictureinpicture = () => pipBtn.classList.add('active-green'); 
     videoPlayer.onleavepictureinpicture = () => pipBtn.classList.remove('active-green');
     settingsBtn.onclick = (e) => { e.stopPropagation(); if(settingsBtn.disabled) return; settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block'; };
@@ -574,6 +589,8 @@
     setBBtn.onclick = () => { if (abPointA !== null && videoPlayer.currentTime > abPointA) { abPointB = videoPlayer.currentTime; setBBtn.classList.add('ab-active'); updateAbMarkers(); } else { alert('B 點必須在 A 點之後！請先設定 A 點。'); } };
     document.addEventListener('keydown', (e) => { const key = e.key.toLowerCase(); if ([' ', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) e.preventDefault(); switch (key) { case ' ': togglePlay(); break; case 'c': if (!snapshotBtn.disabled) takeSnapshot(); break; case 'm': muteBtn.click(); break; case 'f': fullscreenBtn.click(); break; case 'p': if (!pipBtn.disabled) pipBtn.click(); break; case 'l': if (!loopBtn.disabled) loopBtn.click(); break; case 's': if (!shuffleBtn.disabled) shuffleBtn.click(); break; case 'a': if (!setABtn.disabled) setABtn.click(); break; case 'b': if (!setBBtn.disabled) setBBtn.click(); break; case 'arrowleft': if (currentMode === 'file') videoPlayer.currentTime = Math.max(0, videoPlayer.currentTime - 5); break; case 'arrowright': if (currentMode === 'file') videoPlayer.currentTime = Math.min(videoPlayer.duration, videoPlayer.currentTime + 5); break; case 'arrowup': videoPlayer.volume = Math.min(1, videoPlayer.volume + 0.1); break; case 'arrowdown': videoPlayer.volume = Math.max(0, videoPlayer.volume - 0.1); break; case 'escape': if (settingsPanel.style.display === 'block') { settingsPanel.style.display = 'none'; } else if (document.fullscreenElement) { document.exitFullscreen(); } break; } });
 
+    toggleVideoListBtn.onclick = () => { isVideoListExpanded = !isVideoListExpanded; videoListContainer.classList.toggle('collapsed', !isVideoListExpanded); };
+    toggleAudioListBtn.onclick = () => { isAudioListExpanded = !isAudioListExpanded; audioListContainer.classList.toggle('collapsed', !isAudioListExpanded); };
     toggleFavoritesBtn.onclick = () => {
         isFavoritesExpanded = !isFavoritesExpanded;
         favoritesContainer.classList.toggle('collapsed', !isFavoritesExpanded);
@@ -582,6 +599,10 @@
         radioSortMode = radioSortMode === 'clickcount' ? 'name' : 'clickcount';
         sortRadioBtn.classList.toggle('active', radioSortMode === 'name');
         updateAllLists();
+    };
+    toggleRadioListBtn.onclick = () => {
+        isRadioListExpanded = !isRadioListExpanded;
+        radioMainContainer.classList.toggle('collapsed', !isRadioListExpanded);
     };
     listArea.addEventListener('click', (e) => {
         const favoriteBtn = e.target.closest('.favorite-btn');
@@ -600,6 +621,8 @@
       updateControlsState();
       fetchStations();
       favoritesContainer.classList.toggle('collapsed', !isFavoritesExpanded);
+      videoListContainer.classList.toggle('collapsed', !isVideoListExpanded);
+      audioListContainer.classList.toggle('collapsed', !isAudioListExpanded);
     });
   </script>
 </body>
