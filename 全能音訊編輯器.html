@@ -15,6 +15,24 @@
       --red:#FF605C; --yellow:#FFBD44; --green:#00CA4E;
       --text:#1c1c1e; --muted:#6e6e73;
       --card-radius:20px;
+      --seg-active-bg: white;
+      --seg-active-text: var(--blue);
+      --theme-btn-bg: rgba(0,0,0,.06);
+      --theme-btn-bg-hover: rgba(0,0,0,.1);
+    }
+    html.dark-theme {
+      --bg: #1c1c1e;
+      --panel-bg: rgba(44, 44, 46, 0.85);
+      --stroke: rgba(255, 255, 255, 0.1);
+      --shadow: 0 8px 30px rgba(0,0,0,0.2);
+      --text: #f2f2f7;
+      --muted: #8e8e93;
+      --seg-active-bg: var(--blue);
+      --seg-active-text: white;
+      --theme-btn-bg: rgba(255,255,255,.1);
+      --theme-btn-bg-hover: rgba(255,255,255,.15);
+      --btn-ghost-bg: rgba(255,255,255,.08);
+      --btn-ghost-bg-hover: rgba(255,255,255,.12);
     }
     html,body{height:100%;}
     body{
@@ -22,8 +40,9 @@
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
       color:var(--text);
       -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+      transition: background-color .3s ease, color .3s ease;
     }
-    .frame{max-width:1200px; margin:0 auto;}
+    .frame{max-width:1200px; margin:0 auto; position: relative;}
     .frame > .dots { padding-bottom: 6px; }
     .titlebar{display:flex; align-items:center; justify-content:center; margin-bottom: 0.5rem;}
     .dots{display:flex; gap:8px; align-items:center}
@@ -33,7 +52,7 @@
     .titles h1{margin:0; font-size:26px; font-weight:700;}
     .titles h2{margin:2px 0 0; font-size:14px; font-weight:400; color:var(--muted);}
     .author{font-size:13px; color:var(--muted); white-space:nowrap; margin-top: 0.2rem;}
-    .glass{background:var(--panel-bg); border:1px solid var(--stroke); border-radius:var(--card-radius); backdrop-filter: saturate(160%) blur(22px); -webkit-backdrop-filter:saturate(160%) blur(22px); box-shadow:var(--shadow);}
+    .glass{background:var(--panel-bg); border:1px solid var(--stroke); border-radius:var(--card-radius); backdrop-filter: saturate(160%) blur(22px); -webkit-backdrop-filter:sate(160%) blur(22px); box-shadow:var(--shadow); transition: background-color .3s ease, border-color .3s ease;}
     .layout{display:grid; grid-template-columns: 360px 1fr; gap:18px; align-items: start;}
     .sidebar{display:flex; flex-direction:column; gap:12px;}
     .panel{padding:18px;}
@@ -41,6 +60,8 @@
     .btn{appearance:none; border:none; border-radius:14px; padding:10px 14px; cursor:pointer; font-weight:600; box-shadow:0 1px 0 rgba(0,0,0,.04) inset; transition:.15s ease;}
     .btn.primary{background:var(--blue); color:white;} .btn.primary:hover{filter:brightness(1.05);}
     .btn.ghost{background:rgba(0,0,0,.04);} .btn.ghost:hover{background:rgba(0,0,0,.07);}
+    html.dark-theme .btn.ghost { background-color: var(--btn-ghost-bg); }
+    html.dark-theme .btn.ghost:hover { background-color: var(--btn-ghost-bg-hover); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     #export.btn.primary { background: var(--peach); }
     #export.btn.primary:hover { filter: brightness(1.08); }
@@ -56,7 +77,7 @@
     .grid{display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px;}
     .seg{display:flex; gap:6px; background:rgba(0,0,0,.06); padding:6px; border-radius:12px}
     .seg .format-btn, .seg button { background: transparent; border: none; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-weight: 600; color: var(--muted); font-size: 16px; line-height: 1; transition: .15s ease; }
-    .seg .format-btn.active, .seg button.active { background: white; color: var(--blue); box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+    .seg .format-btn.active, .seg button.active { background: var(--seg-active-bg); color: var(--seg-active-text); box-shadow: 0 1px 3px rgba(0,0,0,.05); }
     canvas{width:100%; display:block; border-radius:14px; background:rgba(255,255,255,.65); border:1px solid var(--stroke)}
     .badge{font-size:12px; color:var(--muted)}
     .scope-container{ margin-top: 12px; grid-column: 1 / -1; }
@@ -65,7 +86,7 @@
     .analyzer-item .badge { text-align: center; }
     #waveformContainer { position: relative; margin-bottom: 12px; }
     .playhead { position: absolute; top: 0; left: 0; width: 4px; height: 100%; background-color: var(--red); pointer-events: none; transform: translateX(-2px); }
-    .selection-rect { position: absolute; top: 0; background-color: rgba(10, 132, 255, 0.3); border: 2px solid var(--blue); pointer-events: none; }
+    .selection-rect { position: absolute; top: 0; background-color: rgba(10, 132, 255, 0.3); border: 2px solid var(--blue); pointer-events: none; height: 100%; box-sizing: border-box; }
     .time-container { margin-bottom: 12px; position: relative; padding-top: 10px; }
     #time-ruler { width: 100%; height: 20px; background: rgba(0,0,0,0.05); border-radius: 10px; cursor: pointer; position: relative; }
     #time-indicator { position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--blue); transform: translateX(-2px); }
@@ -82,42 +103,44 @@
     .loop-controls .input-group input { width: 75px; text-align: center; }
     .zoom-controls { display: flex; gap: 10px; justify-content: center; margin-top: 10px; grid-column: 1 / -1; }
     .zoom-controls .btn { padding: 6px 12px; font-size: 13px; border-radius: 10px; }
-    #fileNameDisplay { text-align: center; margin-top: 8px; padding: 6px 8px; white-space: normal; word-break: break-all; font-size: 14px; font-weight: 700; color: var(--blue); border-radius: 8px; background: rgba(10, 132, 255, 0.1); min-height: 1.2em; }
     #scope, #oscilloscopeCanvas, #vectorscopeCanvas, #peakMeterCanvas { height: 100px; }
     #loadingIndicator { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; gap: 10px; color: var(--muted); font-weight: 600; }
+    html.dark-theme #loadingIndicator { background: rgba(0,0,0,0.6); }
     .spinner { width: 50px; height: 50px; border: 5px solid rgba(0,0,0,0.1); border-top-color: var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #exportStatus { display: flex; align-items: center; justify-content: center; gap: 8px; }
-    #exportStatus .spinner {
-        width: 18px;
-        height: 18px;
-        border: 2px solid rgba(10, 132, 255, 0.2);
-        border-top-color: var(--blue);
-    }
-    .file-list-container {
-      max-height: 140px; overflow-y: auto; border: 1px solid var(--stroke);
-      border-radius: 8px; padding: 8px 12px; margin-top: 12px; background: rgba(0,0,0,.04);
-    }
-    #fileList {
-      list-style-type: decimal; list-style-position: inside; padding-left: 0; margin: 0;
-      display: flex; flex-direction: column; gap: 2px;
-    }
-    #fileList li {
-      font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden;
-      text-overflow: ellipsis; padding: 4px 8px; cursor: pointer; border-radius: 6px;
-      transition: background-color 0.15s ease;
-    }
+    #exportStatus .spinner { width: 18px; height: 18px; border: 2px solid rgba(10, 132, 255, 0.2); border-top-color: var(--blue); }
+    .file-list-container { max-height: 140px; overflow-y: auto; border: 1px solid var(--stroke); border-radius: 8px; padding: 8px 12px; margin-top: 12px; background: rgba(0,0,0,.04); }
+    #fileList { list-style-type: decimal; list-style-position: inside; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
+    #fileList li { font-size: 13px; color: var(--text); padding: 4px 8px; cursor: pointer; border-radius: 6px; transition: background-color 0.15s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #fileList li:hover { background-color: rgba(0,0,0,.07); }
+    html.dark-theme #fileList li:hover { background-color: rgba(255,255,255,.07); }
     #fileList li.active { background-color: var(--blue); color: white; font-weight: 600; }
-    #fileList:empty::after {
-        content: "尚未匯入任何檔案"; color: var(--muted); font-style: italic; font-size: 13px;
-    }
-    .grid .slider {
-        grid-template-columns: 95px 1fr 60px; gap: 8px;
-    }
+    #fileList:empty::after { content: "尚未匯入任何檔案"; color: var(--muted); font-style: italic; font-size: 13px; }
+    .grid .slider { grid-template-columns: 95px 1fr 60px; gap: 8px; }
     .grid .slider label { font-size: 13px; }
+    .theme-switcher { position: absolute; top: -14px; right: 0; }
+    .theme-switcher button { background: var(--theme-btn-bg); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text); transition: background-color .2s ease; }
+    .theme-switcher button:hover { background: var(--theme-btn-bg-hover); }
+    .theme-switcher svg { width: 22px; height: 22px; }
+    #theme-icon-sun { display: none; }
+    html.dark-theme #theme-icon-moon { display: none; }
+    html.dark-theme #theme-icon-sun { display: block; }
+    .edit-toolbar { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+    .edit-toolbar > .btn, .effect-group > .btn { display: inline-flex; align-items: center; gap: 8px; width: 100%; justify-content: flex-start; text-align: left; }
+    .edit-toolbar > .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .effect-group { border-top: 1px solid var(--stroke); padding-top: 10px; margin-top: 2px; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+    .effect-group h4 { margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+    .effect-group h4.blue-title { color: var(--blue); }
+    .effect-group h4 svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .effect-group .slider { grid-template-columns: 80px 1fr 64px; font-size: 13px; }
+    .effect-group .btn { margin-top: 4px; background-color: rgba(0,0,0,0.06); }
+    html.dark-theme .effect-group .btn { background-color: var(--btn-ghost-bg); }
+    .effect-group .btn:hover { background-color: rgba(0,0,0,0.09); }
+    html.dark-theme .effect-group .btn:hover { background-color: var(--btn-ghost-bg-hover); }
+    .btn.center-text { justify-content: center; text-align: center; }
     
-    /* ===== START OF RESPONSIVE DESIGN (RWD) ===== */
+    /* ===== START OF RWD ADJUSTMENTS ===== */
     
     /* Tablet View (1024px and below) */
     @media (max-width: 1024px) {
@@ -128,55 +151,51 @@
     
     /* Mobile View (768px and below) */
     @media (max-width: 768px) {
-        body {
-            padding: 16px; /* Reduce overall padding */
+        body { padding: 16px; }
+        .layout { gap: 12px; }
+        .titles h1 { font-size: 22px; }
+        .titles h2 { font-size: 13px; }
+        .analyzer-grid { grid-template-columns: 1fr 1fr; }
+        
+        /* --- MOBILE SLIDER LAYOUT REVOLUTION --- */
+        /* Universal rule for all sliders on mobile */
+        .slider {
+            grid-template-columns: 1fr auto; /* Slider takes all space, value aligns to the right */
+            grid-template-rows: auto auto;    /* Two rows: 1 for label, 1 for slider+value */
+            gap: 4px 10px;                   /* Adjust gap for compact view */
+            align-items: center;
         }
-        .titles h1 {
-            font-size: 22px; /* Slightly smaller main title */
-        }
-        .titles h2 {
+        .slider label {
+            grid-column: 1 / -1;             /* Label spans full width, effectively placing it on top */
+            margin-bottom: 2px;
             font-size: 13px;
+            font-weight: 500;
         }
-
-        /* Stack player control sliders */
-        .player-controls .slider-group {
-            grid-template-columns: 1fr;
+        .slider input[type="range"] {
+            grid-row: 2;                     /* Explicitly put slider on the second row */
+            grid-column: 1 / 2;
         }
-
-        /* Stack EQ sliders */
-        .grid {
-            grid-template-columns: 1fr;
+        .slider .value {
+            grid-row: 2;                     /* Value also on the second row */
+            grid-column: 2 / 3;
+            justify-self: end;
         }
-
-        /* Stack analyzers into two columns */
-        .analyzer-grid {
-            grid-template-columns: 1fr 1fr;
+        
+        .player-controls .slider-group, .grid {
+            grid-template-columns: 1fr; /* Stack sliders vertically */
         }
     }
 
     /* Extra small screens (e.g., small phones, 480px and below) */
     @media (max-width: 480px) {
-        body {
-            padding: 12px;
-        }
-        .panel {
-            padding: 12px;
-        }
-        /* Stack analyzers into a single column for best visibility */
-        .analyzer-grid {
-            grid-template-columns: 1fr;
-        }
-        /* Make loop controls more compact */
-        .loop-controls {
-            flex-direction: column;
-            gap: 8px;
-        }
-        /* Make export panel buttons stack */
-        #exportPanel .toolbar button {
-            width: 100%;
-        }
+        body { padding: 10px; }
+        .panel { padding: 12px; }
+        .analyzer-grid { grid-template-columns: 1fr; }
+        .loop-controls { flex-direction: column; gap: 8px; }
+        #exportPanel .toolbar button { width: 100%; }
+        .theme-switcher { top: -8px; }
     }
-    /* ===== END OF RESPONSIVE DESIGN (RWD) ===== */
+    /* ===== END OF RWD ADJUSTMENTS ===== */
   </style>
 </head>
 <body>
@@ -191,6 +210,13 @@
         <div class="author">製作者：陳政德</div>
       </div>
     </div>
+    
+    <div class="theme-switcher">
+      <button id="theme-toggle" title="切換明暗模式">
+        <svg id="theme-icon-moon" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4-4.45A8.995 8.995 0 0 0 12 3z"></path></svg>
+        <svg id="theme-icon-sun" fill="currentColor" viewBox="0 0 24 24"><path d="M12 9a3 3 0 1 0 3 3 3 3 0 0 0-3-3zm0-4.5a1.5 1.5 0 0 1 1.5 1.5v1.5a1.5 1.5 0 0 1-3 0V6a1.5 1.5 0 0 1 1.5-1.5zm0 15a1.5 1.5 0 0 1-1.5-1.5v-1.5a1.5 1.5 0 0 1 3 0V18a1.5 1.5 0 0 1-1.5 1.5zM4.5 12a1.5 1.5 0 0 1 1.5-1.5h1.5a1.5 1.5 0 0 1 0 3H6a1.5 1.5 0 0 1-1.5-1.5zm15 0a1.5 1.5 0 0 1-1.5 1.5h-1.5a1.5 1.5 0 0 1 0-3H18a1.5 1.5 0 0 1 1.5 1.5zM7.05 7.05a1.5 1.5 0 0 1 2.12 0l1.06 1.06a1.5 1.5 0 0 1-2.12 2.12l-1.06-1.06a1.5 1.5 0 0 1 0-2.12zm9.9 9.9a1.5 1.5 0 0 1 0-2.12l-1.06-1.06a1.5 1.5 0 0 1-2.12 2.12l1.06 1.06a1.5 1.5 0 0 1 2.12 0zm-9.9 0a1.5 1.5 0 0 1 0 2.12l1.06 1.06a1.5 1.5 0 1 1-2.12 2.12l-1.06-1.06a1.5 1.5 0 0 1 2.12 0zm9.9-9.9a1.5 1.5 0 0 1 2.12 0l1.06 1.06a1.5 1.5 0 1 1-2.12 2.12l-1.06-1.06a1.5 1.5 0 0 1 0-2.12z"></path></svg>
+      </button>
+    </div>
 
     <div class="layout">
       <!-- Left panels -->
@@ -204,7 +230,6 @@
             </label>
             <div class="badge">支援常見格式，如WAV, MP3, M4A, OGG等</div>
           </div>
-          <div id="fileNameDisplay" title="尚未載入檔案">尚未載入檔案</div>
           <div class="file-list-container">
               <label style="font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px;">已匯入檔案列表：</label>
               <ol id="fileList"></ol>
@@ -216,10 +241,47 @@
 
         <div class="panel glass stack">
             <h3>修復與編輯</h3>
-            <div class="toolbar" style="flex-direction: column; gap: 8px; align-items: stretch; margin-top:0;">
-              <button id="normalizeBtn" class="btn ghost" title="將音訊的最大音量調整至 -1 dBFS，使整體音量一致">音量標準化 (-1 dBFS)</button>
-              <button id="trimBtn" class="btn ghost" title="僅保留在波形圖上選取的範圍，裁剪掉其餘部分">裁剪 ( 只保留選取範圍，其餘刪除 )</button>
-              <button id="deleteBtn" class="btn ghost" title="從音訊中移除在波形圖上選取的範圍">刪除 ( 可分次移除選取範圍 )</button>
+            <div class="edit-toolbar">
+              <button id="normalizeBtn" class="btn ghost" title="將音訊的最大音量調整至 -1 dBFS，使整體音量一致">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 15V9H6V15H4Z" fill="#FF605C"></path><path d="M8 17V7H10V17H8Z" fill="#FFBD44"></path><path d="M12 20V4H14V20H12Z" fill="#00CA4E"></path><path d="M16 17V7H18V17H16Z" fill="#FFBD44"></path><path d="M20 15V9H22V15H20Z" fill="#FF605C"></path></svg>
+                <span>音量標準化 (-1 dBFS)</span>
+              </button>
+
+              <div class="effect-group">
+                <h4 class="blue-title"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12H5L7 7L9 17L11 10L13 14L15 9L17 15L19 12H22" stroke="#0A84FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4 8L2 10L4 12" stroke="#FF8C66" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M20 8L22 10L20 12" stroke="#FF8C66" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>動態壓縮器</h4>
+                <div class="slider">
+                  <label>閾值</label>
+                  <input id="compThreshold" type="range" min="-80" max="0" step="1" value="-24" title="壓縮器開始作用的音量水平">
+                  <div class="value" id="compThresholdV">-24 dB</div>
+                </div>
+                <div class="slider">
+                  <label>比率</label>
+                  <input id="compRatio" type="range" min="1" max="20" step="0.1" value="4" title="超過閾值時音量被壓縮的程度">
+                  <div class="value" id="compRatioV">4.0:1</div>
+                </div>
+                <button id="applyCompressorBtn" class="btn ghost center-text" title="將目前的壓縮器設定套用至整個音訊">套用壓縮</button>
+              </div>
+        
+              <div class="effect-group">
+                <h4 class="blue-title"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="14" width="4" height="6" rx="1" fill="#FF605C"></rect><rect x="10" y="4" width="4" height="16" rx="1" fill="#FFBD44"></rect><rect x="16" y="10" width="4" height="10" rx="1" fill="#00CA4E"></rect></svg>音量均衡 (最大化)</h4>
+                <div class="slider">
+                  <label>強度</label>
+                  <input id="maximizeAmount" type="range" min="0" max="100" step="1" value="50" title="提升整體音量並降低動態範圍的強度">
+                  <div class="value" id="maximizeAmountV">50 %</div>
+                </div>
+                <button id="applyMaximizerBtn" class="btn ghost center-text" title="將目前的音量均衡設定套用至整個音訊">套用均衡</button>
+              </div>
+              
+              <div style="border-top: 1px solid var(--stroke); width:100%; margin: 8px 0;"></div>
+        
+              <button id="trimBtn" class="btn ghost" title="僅保留在波形圖上選取的範圍，裁剪掉其餘部分">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="7.5" cy="17.5" r="2.5" stroke="#FF605C" stroke-width="2"></circle><circle cx="7.5" cy="6.5" r="2.5" stroke="#0A84FF" stroke-width="2"></circle><line x1="9.5" y1="15.5" x2="18" y2="7" stroke="#6e6e73" stroke-width="2"></line><line x1="9.5" y1="8.5" x2="18" y2="17" stroke="#6e6e73" stroke-width="2"></line></svg>
+                <span>裁剪 ( 僅保留拖曳範圍，移除其餘音訊 )</span>
+              </button>
+              <button id="deleteBtn" class="btn ghost" title="從音訊中移除在波形圖上選取的範圍">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 19C6 20.1046 6.89543 21 8 21H16C17.1046 21 18 20.1046 18 19V7H6V19Z" fill="#FF605C"></path><path d="M19 4H15.5L14.5 3H9.5L8.5 4H5V6H19V4Z" fill="#FF8C66"></path></svg>
+                <span>刪除 ( 可多次刪除拖曳範圍，移除開頭及結尾 )</span>
+              </button>
             </div>
         </div>
       </div>
@@ -251,7 +313,7 @@
               <button id="nextTrackBtn" title="下一首">⏭</button>
             </div>
           </div>
-           <div class="loop-controls">
+           <div class="loop-controls" title="區段播放：選取範圍 → 勾選循環 → 按下停止鍵 → 再按播放鍵即可循環">
                 <div class="input-group">
                     <label>開始:</label>
                     <input type="text" id="loopStart" value="00:00.0" title="循環播放的開始時間 (分:秒.毫秒)，可拖曳波形選取">
@@ -262,8 +324,7 @@
                 </div>
                 <div class="input-group">
                     <input type="checkbox" id="loopToggle" style="width: auto;" title="啟用或停用循環播放選取範圍">
-                    <label for="loopToggle">循環  ( 區段播放：選範圍→句循環→停止鍵→播放鍵 )                      
-                    </label>
+                    <label for="loopToggle">循環播放選取範圍</label>
                 </div>
             </div>
           <div class="slider-group">
@@ -273,7 +334,7 @@
               <div class="value" id="gainV">1.00</div>
             </div>
             <div class="slider">
-              <label>聲道平衡</label>
+              <label>平衡</label>
               <input id="pan" type="range" min="-1" max="1" step="0.01" value="0" title="調整左右聲道平衡 (-1為左, 1為右)"/>
               <div class="value" id="panV">0.00</div>
             </div>
@@ -355,7 +416,7 @@
           </div>
           
           <div style="margin-top: 12px;">
-            <label>分割檔案（ 分割 MP3 格式較耗時，請耐心等待 ！ ）</label>
+            <label>分割檔案（ 分割 MP3 壓縮格式較耗時，請耐心等候 ！ ）</label>
             <div class="input-group">
                 <label for="splitCount">平均分割為</label>
                 <input type="number" id="splitCount" min="1" placeholder="份數" title="將音訊平均分割成指定數量的檔案再匯出">
@@ -378,7 +439,7 @@
     
     <div id="loadingIndicator" style="display: none;">
         <div class="spinner"></div>
-        <div>音訊載入中...</div>
+        <div>處理中...</div>
     </div>
   </div>
 
@@ -431,7 +492,7 @@
       if (!listElement) return;
       listElement.innerHTML = '';
       
-      const currentFileName = $('fileNameDisplay').textContent.split(' (')[0];
+      const currentFileName = importedFiles[currentFileIndex]?.name;
 
       importedFiles.forEach((file, index) => {
           const li = document.createElement('li');
@@ -481,11 +542,11 @@
 
   async function loadFile(file) {
     stop();
+    $('loadingIndicator').querySelector('div:last-child').textContent = '音訊載入中...';
     $('loadingIndicator').style.display = 'flex';
     try {
       const arrayBuffer = await file.arrayBuffer();
       audioBuffer = await AC.decodeAudioData(arrayBuffer);
-      showFileInfo(file);
       currentFileIndex = importedFiles.findIndex(f => f.name === file.name);
       updateFileList();
       const duration = audioBuffer ? audioBuffer.duration : 0;
@@ -499,26 +560,10 @@
     } catch (e) {
       console.error("Error decoding audio file:", e);
       audioBuffer = null;
-      $('fileNameDisplay').textContent = "檔案載入失敗";
       updateFileList();
     } finally {
         $('loadingIndicator').style.display = 'none';
     }
-  }
-  
-  function showFileInfo(file) {
-      const fileName = file.name;
-      const fileSize = formatFileSize(file.size);
-      $('fileNameDisplay').textContent = `${fileName} (${fileSize})`;
-      $('fileNameDisplay').title = `${fileName} (${fileSize})`;
-  }
-  
-  function formatFileSize(bytes) {
-      if (bytes === 0) return '0 Bytes';
-      const k = 1024;
-      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
   
   $('file').onchange = e => handleFiles(e.target.files);
@@ -661,7 +706,7 @@
       const canvas = waveformCanvas;
       const dpr = window.devicePixelRatio || 1;
       canvas.width = canvas.clientWidth * dpr;
-      canvas.height = 40 * dpr; 
+      canvas.height = 100 * dpr;
       const ctx = waveformCtx;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (!audioBuffer) return;
@@ -720,7 +765,7 @@
     selectionRect.style.display = 'block';
     const onMouseMove = moveE => {
         if (!isDragging) return;
-        const currentX = moveE.clientX - rect.left;
+        const currentX = Math.max(0, Math.min(moveE.clientX - rect.left, rect.width));
         const left = Math.min(startX, currentX), width = Math.abs(currentX - startX);
         selectionRect.style.left = `${left}px`;
         selectionRect.style.width = `${width}px`;
@@ -788,6 +833,10 @@
       setVal('deqTV', val > -100 ? `${val} dB` : `-inf dB`);
   };
 
+  $('compThreshold').oninput = e => setVal('compThresholdV', `${e.target.value} dB`);
+  $('compRatio').oninput = e => setVal('compRatioV', `${Number(e.target.value).toFixed(1)}:1`);
+  $('maximizeAmount').oninput = e => setVal('maximizeAmountV', `${e.target.value} %`);
+
   function updateBuffer(newBuffer) {
       const wasPlaying = isPlaying; stop(); audioBuffer = newBuffer;
       const duration = audioBuffer ? audioBuffer.duration : 0;
@@ -797,6 +846,30 @@
       drawWaveform();
       if(wasPlaying) play();
   }
+
+  async function applyOfflineEffect(nodeSetupCallback) {
+      if (!audioBuffer) { alert("請先載入音訊檔案"); return; }
+      const indicator = $('loadingIndicator');
+      indicator.querySelector('div:last-child').textContent = '音訊處理中...';
+      indicator.style.display = 'flex';
+      await new Promise(resolve => setTimeout(resolve, 20)); 
+      try {
+          const offlineCtx = new OfflineAudioContext(audioBuffer.numberOfChannels, audioBuffer.length, audioBuffer.sampleRate);
+          const source = offlineCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          const lastNode = nodeSetupCallback(offlineCtx, source);
+          lastNode.connect(offlineCtx.destination);
+          source.start(0);
+          const renderedBuffer = await offlineCtx.startRendering();
+          updateBuffer(renderedBuffer);
+      } catch (e) {
+          console.error("Error applying effect:", e);
+          alert("套用效果時發生錯誤。");
+      } finally {
+          indicator.style.display = 'none';
+      }
+  }
+
   $('normalizeBtn').onclick = () => {
     if (!audioBuffer) return; let peak = 0;
     for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
@@ -828,6 +901,38 @@
       newData.set(oldData.subarray(0, start)); newData.set(oldData.subarray(end), start);
     }
     updateBuffer(newBuffer);
+  };
+
+  $('applyCompressorBtn').onclick = () => {
+      const threshold = parseFloat($('compThreshold').value);
+      const ratio = parseFloat($('compRatio').value);
+      applyOfflineEffect((ctx, sourceNode) => {
+          const compressor = ctx.createDynamicsCompressor();
+          compressor.threshold.setValueAtTime(threshold, ctx.currentTime);
+          compressor.ratio.setValueAtTime(ratio, ctx.currentTime);
+          compressor.knee.setValueAtTime(3, ctx.currentTime);
+          compressor.attack.setValueAtTime(0.003, ctx.currentTime);
+          compressor.release.setValueAtTime(0.25, ctx.currentTime);
+          sourceNode.connect(compressor);
+          return compressor;
+      });
+  };
+  $('applyMaximizerBtn').onclick = () => {
+      const amount = parseFloat($('maximizeAmount').value) / 100;
+      const threshold = -30 * amount;
+      const makeupGainValue = 1 + amount * 1.5;
+      applyOfflineEffect((ctx, sourceNode) => {
+          const limiter = ctx.createDynamicsCompressor();
+          limiter.threshold.setValueAtTime(threshold, ctx.currentTime);
+          limiter.ratio.setValueAtTime(20, ctx.currentTime);
+          limiter.knee.setValueAtTime(0, ctx.currentTime);
+          limiter.attack.setValueAtTime(0.001, ctx.currentTime);
+          limiter.release.setValueAtTime(0.1, ctx.currentTime);
+          const makeupGain = ctx.createGain();
+          makeupGain.gain.setValueAtTime(makeupGainValue, ctx.currentTime);
+          sourceNode.connect(limiter).connect(makeupGain);
+          return makeupGain;
+      });
   };
 
   const scopeCanvas = $('scope'), scopeCtx = scopeCanvas.getContext('2d');
@@ -862,7 +967,6 @@
     analyserL.getByteTimeDomainData(timeDataL);
     analyserR.getByteTimeDomainData(timeDataR);
 
-    // 1. Draw Spectrum
     scopeCtx.clearRect(0, 0, scopeCanvas.width, scopeCanvas.height);
     const bars = freqData.length;
     const bw = scopeCanvas.width / bars;
@@ -873,7 +977,6 @@
         scopeCtx.fillRect(i * bw, scopeCanvas.height - h, bw * 0.9, h);
     }
 
-    // 2. Draw Oscilloscope
     oscilloscopeCtx.clearRect(0, 0, oscilloscopeCanvas.width, oscilloscopeCanvas.height);
     oscilloscopeCtx.lineWidth = 2 * dpr;
     oscilloscopeCtx.strokeStyle = 'rgb(10, 132, 255)';
@@ -890,7 +993,6 @@
     oscilloscopeCtx.lineTo(oscilloscopeCanvas.width, oscilloscopeCanvas.height / 2);
     oscilloscopeCtx.stroke();
 
-    // 3. Draw Vectorscope
     vectorscopeCtx.fillStyle = 'rgba(0,0,0,0.1)';
     vectorscopeCtx.fillRect(0, 0, vectorscopeCanvas.width, vectorscopeCanvas.height);
     vectorscopeCtx.fillStyle = '#00CA4E';
@@ -900,7 +1002,6 @@
         vectorscopeCtx.fillRect(x, y, dpr, dpr);
     }
     
-    // 4. Draw Peak Meter
     peakMeterCtx.clearRect(0, 0, peakMeterCanvas.width, peakMeterCanvas.height);
     const meterWidth = peakMeterCanvas.width / 2 - 10 * dpr;
     const meterGradient = peakMeterCtx.createLinearGradient(0, peakMeterCanvas.height, 0, 0);
@@ -972,7 +1073,6 @@
     return new Blob([view], { type: 'audio/wav' });
   }
 
-  // ===== PERFORMANCE & STABILITY UPGRADE: MP3 Encoding in a Web Worker =====
   function bufferToMp3(buffer, bitrate) {
     return new Promise((resolve, reject) => {
         if (!mp3EncoderWorker) {
@@ -1075,7 +1175,7 @@
     try {
         await new Promise(resolve => setTimeout(resolve, 50));
         
-        const originalFileName = $('fileNameDisplay').textContent.split(' (')[0];
+        const originalFileName = importedFiles[currentFileIndex]?.name.replace(/\.[^/.]+$/, "") || "audio_file";
         const splitCount = parseInt($('splitCount').value) || 1;
         if (splitCount < 1) throw new Error("分割份數無效");
 
@@ -1159,7 +1259,30 @@
     }
   };
   
-  document.addEventListener('DOMContentLoaded', updateFileList);
+  // ===== Theme Toggler Logic =====
+  const themeToggle = $('theme-toggle');
+  const htmlEl = document.documentElement;
+  
+  function setDarkTheme(isDark) {
+    if (isDark) {
+      htmlEl.classList.add('dark-theme');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      htmlEl.classList.remove('dark-theme');
+      localStorage.setItem('theme', 'light');
+    }
+  }
+
+  themeToggle.addEventListener('click', () => {
+    setDarkTheme(!htmlEl.classList.contains('dark-theme'));
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateFileList();
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    setDarkTheme(savedTheme === 'dark');
+  });
+
   </script>
 </body>
 </html>
