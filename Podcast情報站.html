@@ -116,12 +116,12 @@
 
         /* 側邊欄 */
         .sidebar { background-color: var(--color-surface); border-radius: 0.5rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.25rem; overflow-y: auto; }
-        .library-title-styled { background-color: #007AFF; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; display: inline-block; margin-bottom: 0.5rem; cursor: pointer; align-self: center; } /* 置中 */
+        .library-title-styled { background-color: #007AFF; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; display: inline-block; margin-bottom: 0.5rem; cursor: pointer; align-self: center; }
         .main-container { display: flex; flex-direction: column; gap: 0.5rem; overflow: hidden; }
         .main-content { background-color: var(--color-surface); border-radius: 0.5rem; padding: 1.5rem; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         #theme-toggle-btn { background-color: transparent !important; color: var(--color-text-secondary); width: 44px; height: 44px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
-        /* MODIFICATION: 新增側邊欄功能區樣式 */
+        /* 側邊欄功能區 */
         .sidebar-controls { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
         .sidebar-controls .top-row { display: flex; align-items: center; gap: 0.5rem; }
         .sidebar-controls .bottom-row { display: flex; justify-content: space-between; align-items: center; }
@@ -168,11 +168,17 @@
         .episode-item-actions { display: none; align-items: center; gap: 0.75rem; }
         .episode-action-btn { background-color: transparent; border: 1px solid var(--color-text-secondary); color: var(--color-text-secondary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .episode-action-btn:hover { background-color: var(--color-text-secondary); color: var(--color-surface); }
-        .episode-action-btn.download-action-link { color: #007AFF; border-color: #007AFF; } /* 藍色下載鈕 */
+        .episode-action-btn.download-action-link { color: #007AFF; border-color: #007AFF; }
         .episode-action-btn.download-action-link:hover { background-color: #007AFF; color: white; }
         .episode-item:not(.is-playing-item):hover .episode-date { display: none; }
         .episode-item:not(.is-playing-item):hover .episode-item-actions { display: flex; }
         .episode-date { font-size: 0.75rem; color: var(--color-text-secondary); white-space: nowrap; }
+
+        /* MODIFICATION START: 新增載入中動畫樣式 */
+        #episodes-placeholder { display: flex; flex-direction: column; justify-content: center; align-items: center; flex-grow: 1; gap: 1rem; color: var(--color-text-secondary); }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--color-surface-hover); border-top-color: #007AFF; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* MODIFICATION END */
 
         /* 播放動畫與狀態 */
         .player-title-container.marquee #player-title { display: inline-block; padding-left: 100%; animation: scroll-text 15s linear infinite; }
@@ -190,7 +196,6 @@
         .episode-item.is-playing-item .sound-icon-container { display: flex; }
         .episode-item.is-playing-item .sound-icon-container svg { width: 24px; height: 24px; color: white; }
         
-        /* 音量提示 */
         #volume-tooltip { position: absolute; bottom: 150%; left: 50%; transform: translateX(-50%); background-color: var(--color-interactive-element); color: var(--color-text-primary); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; display: none; white-space: nowrap; pointer-events: none; }
         #volume-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border-width: 5px; border-style: solid; border-color: var(--color-interactive-element) transparent transparent transparent; }
 
@@ -212,7 +217,6 @@
                 <button id="search-btn" class="bg-[#1DB954] text-white py-2 px-4 rounded-full border-none cursor-pointer flex-shrink-0 font-semibold">搜尋</button>
             </div>
 
-            <!-- MODIFICATION START: 新增三大功能區 -->
             <div class="sidebar-controls">
                 <div class="top-row">
                     <div class="relative flex-grow">
@@ -235,7 +239,6 @@
                     </div>
                 </div>
             </div>
-            <!-- MODIFICATION END -->
 
             <div id="sidebar-items" class="flex flex-col"></div>
         </aside>
@@ -264,7 +267,7 @@
             <img id="player-album-art" src="https://placehold.co/60x60/222/fff?text=Pod" alt="單集圖片" class="w-16 h-16 rounded-lg flex-shrink-0">
             <div class="flex flex-col overflow-hidden">
                 <div id="player-title-container" class="player-title-container">
-                    <span id="player-title" class="font-bold whitespace-nowrap">尚未播放任何內容</span>
+                    <span id="player-title" class="font-bold whitespace-nowrap" title="尚未播放任何內容">尚未播放任何內容</span>
                 </div>
                 <span id="player-artist" class="text-sm text-gray-400 truncate"></span>
             </div>
@@ -321,7 +324,6 @@
             const sortIcon = document.getElementById('sort-icon');
             const themeToggleBtn = document.getElementById('theme-toggle-btn');
             const filterFavoritesBtn = document.getElementById('filter-favorites-btn');
-            // MODIFICATION: 獲取新功能元素
             const localSearchInput = document.getElementById('local-search-input');
             const viewModeListBtn = document.getElementById('view-mode-list');
             const viewModeGridBtn = document.getElementById('view-mode-grid');
@@ -381,20 +383,16 @@
                 item.title = `${podcast.collectionName} - ${podcast.artistName}`;
                 const trashSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.144-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.057-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>`;
                 const heartIconClass = podcast.isFavorite ? 'fas' : 'far';
-
                 item.innerHTML = `<span class="sidebar-item-number">${number}</span><img src="${podcast.artworkUrl600}" alt="" class="w-12 h-12 rounded-full flex-shrink-0"><div class="flex-1 overflow-hidden sidebar-item__text-wrapper"><div class="font-semibold text-sm">${podcast.collectionName}</div><div class="text-xs text-gray-400">${podcast.artistName}</div></div><div class="sidebar-item-actions"><button class="sidebar-action-btn fav-btn ${podcast.isFavorite ? 'is-favorite' : ''}" title="標記為最愛"><i class="${heartIconClass} fa-heart"></i></button><button class="sidebar-action-btn" title="從收藏移除">${trashSVG}</button></div>`;
-
                 item.addEventListener('click', (e) => {
                     if (e.target.closest('.sidebar-item-actions')) return;
                     document.querySelector('.sidebar-item.is-active')?.classList.remove('is-active');
                     item.classList.add('is-active');
                     fetchEpisodes(podcast.collectionId);
                 });
-
                 const [favBtn, deleteBtn] = item.querySelectorAll('.sidebar-action-btn');
                 favBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFavoriteStatus(podcast.collectionId); });
                 deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); removeFromCollection(podcast.collectionId); });
-
                 sidebarItemsContainer.appendChild(item);
             }
 
@@ -421,7 +419,7 @@
                         const isCollected = collection.some(p => p.collectionId === podcast.collectionId);
                         const item = document.createElement('div');
                         item.className = 'search-result-item';
-                        item.innerHTML = `<button class="add-to-fav-btn ${isCollected ? 'is-favorite' : ''}" data-id="${podcast.collectionId}" title="加入/移除收藏"><i class="${isCollected ? 'fas' : 'far'} fa-heart"></i></button><img src="${podcast.artworkUrl600}" class="w-full rounded-lg mb-2 shadow-lg"><span class="font-bold text-sm truncate w-full">${podcast.collectionName}</span><span class="text-xs text-gray-400 truncate w-full">${podcast.artistName}</span>`;
+                        item.innerHTML = `<button class="add-to-fav-btn ${isCollected ? 'is-favorite' : ''}" data-id="${podcast.collectionId}" title="加入/移除收藏"><i class="${isCollected ? 'fas' : 'far'} fa-heart"></i></button><img src="${podcast.artworkUrl600}" class="w-full rounded-lg mb-2 shadow-lg"><span class="font-bold text-sm truncate w-full" title="${podcast.collectionName}">${podcast.collectionName}</span><span class="text-xs text-gray-400 truncate w-full" title="${podcast.artistName}">${podcast.artistName}</span>`;
                         item.addEventListener('click', () => fetchEpisodes(podcast.collectionId));
                         const favBtn = item.querySelector('.add-to-fav-btn');
                         favBtn.addEventListener('click', (e) => { e.stopPropagation(); favBtn.classList.contains('is-favorite') ? removeFromCollection(podcast.collectionId) : addToCollection(podcast); });
@@ -429,59 +427,107 @@
                     });
                 } catch (error) { container.innerHTML = '<p class="text-center text-gray-400">搜尋失敗。請稍後再試。</p>'; }
             }
-
+            
+            // MODIFICATION START: 重構 fetchEpisodes 以實現分步載入
             async function fetchEpisodes(collectionId) {
-                document.getElementById('podcast-detail-view').innerHTML = `<div class="w-full h-full flex justify-center items-center"><div style="border:4px solid var(--color-border);border-radius:50%;border-top-color:#007AFF;width:40px;height:40px;animation:spin 1s linear infinite;"></div></div>`;
-                document.querySelectorAll('#main-content > div').forEach(d => d.style.display = 'none'); document.getElementById('podcast-detail-view').style.display='flex';
-                if (collectionCache[collectionId]) { renderPodcastContent(collectionCache[collectionId]); return; }
+                const showView = (v) => { document.querySelectorAll('#main-content > div').forEach(d => d.style.display = 'none'); document.getElementById(v).style.display = 'flex'; };
+                showView('podcast-detail-view');
+                
                 try {
-                    const iRes = await fetch(`https://itunes.apple.com/lookup?id=${collectionId}`);
-                    const iData = await iRes.json();
-                    if (iData.resultCount === 0 || !iData.results[0].feedUrl) throw new Error('No feed URL');
-                    const podcastInfo = iData.results[0];
+                    let podcastInfo;
+                    if (collectionCache[collectionId]) {
+                        podcastInfo = collectionCache[collectionId];
+                    } else {
+                        const iRes = await fetch(`https://itunes.apple.com/lookup?id=${collectionId}`);
+                        const iData = await iRes.json();
+                        if (iData.resultCount === 0 || !iData.results[0].feedUrl) throw new Error('No feed URL');
+                        podcastInfo = iData.results[0];
+                        collectionCache[collectionId] = podcastInfo;
+                    }
+
+                    renderPodcastShell(podcastInfo);
+
+                    if (podcastInfo.episodes) {
+                        populateEpisodesList(podcastInfo.episodes, podcastInfo);
+                        return;
+                    }
+
                     const rRes = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(podcastInfo.feedUrl)}`);
                     const rData = await rRes.json();
                     if (rData.status !== 'ok') throw new Error('RSS parse failed');
+                    
                     const episodes = rData.items.map(item => ({ trackId: item.guid, trackName: item.title, episodeUrl: item.enclosure.link, releaseDate: item.pubDate, artworkUrl60: item.thumbnail || podcastInfo.artworkUrl60, artworkUrl600: item.thumbnail || podcastInfo.artworkUrl600 }));
-                    collectionCache[collectionId] = { ...podcastInfo, episodes };
-                    renderPodcastContent(collectionCache[collectionId]);
-                } catch (error) { podcastDetailView.innerHTML = '<p class="text-center text-gray-400">載入單集失敗。請稍後再試。</p>'; }
+                    collectionCache[collectionId].episodes = episodes;
+                    populateEpisodesList(episodes, podcastInfo);
+                    
+                } catch (error) {
+                    podcastDetailView.innerHTML = '<p class="text-center text-gray-400">載入節目失敗。請檢查網路連線或稍後再試。</p>';
+                }
             }
-            
-            function renderPodcastContent(podcast) {
-                const escapeAttr = (str) => String(str).replace(/"/g, '&quot;');
-                const episodesHTML = podcast.episodes.map((ep, index) => {
-                    const safeFileName = `${ep.trackName.replace(/[/\\?%*:|"<>]/g, '-')}.mp3`;
-                    return `<div class="episode-item" data-episode-id="${escapeAttr(ep.trackId)}"><span class="episode-number">${index + 1}</span><div class="flex items-center gap-3 overflow-hidden flex-1"><img src="${ep.artworkUrl60}" class="flex-shrink-0"><div class="flex-1 overflow-hidden"><div class="font-semibold truncate" title="${escapeAttr(ep.trackName)}">${ep.trackName}</div><div class="text-sm truncate" title="${escapeAttr(podcast.artistName)}">${podcast.artistName}</div></div></div><span class="episode-date">${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</span><div class="episode-item-actions"><button class="episode-action-btn play-action-btn" title="播放"><i class="fas fa-play"></i></button><a href="${ep.episodeUrl}" download="${safeFileName}" class="episode-action-btn download-action-link" title="下載"><i class="fas fa-download"></i></a></div><div class="sound-icon-container">${soundIconSVG}</div></div>`;
-                }).join('');
 
-                podcastDetailView.innerHTML = `<div class="podcast-header"><img src="${podcast.artworkUrl600}"><div class="flex-1"><div class="flex items-center gap-4"><h1 class="text-xl font-bold">${podcast.collectionName}</h1><button id="add-to-collection-btn" class="bg-[#1DB954] text-white font-bold py-1 px-3 rounded-full text-sm">收藏</button><div class="ml-auto flex items-center gap-8" style="transform: translateX(-1cm);"><button id="detail-prev-btn" class="simple-control-btn detail-nav-btn" title="上一集"><i class="fas fa-backward-step"></i></button><button id="detail-next-btn" class="simple-control-btn detail-nav-btn" title="下一集"><i class="fas fa-forward-step"></i></button></div></div><p class="text-sm mt-1">${podcast.artistName}</p></div></div><h2 class="text-xl font-bold mt-4 mb-2">所有單集</h2><div class="podcast-episodes">${episodesHTML}</div>`;
-                
+            function renderPodcastShell(podcast) {
+                podcastDetailView.innerHTML = `
+                    <div class="podcast-header">
+                        <img src="${podcast.artworkUrl600}">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-4">
+                                <h1 class="text-xl font-bold">${podcast.collectionName}</h1>
+                                <button id="add-to-collection-btn" class="bg-[#1DB954] text-white font-bold py-1 px-3 rounded-full text-sm">收藏</button>
+                                <div class="ml-auto flex items-center gap-8" style="transform: translateX(-1cm);">
+                                    <button id="detail-prev-btn" class="simple-control-btn detail-nav-btn" title="上一集"><i class="fas fa-backward-step"></i></button>
+                                    <button id="detail-next-btn" class="simple-control-btn detail-nav-btn" title="下一集"><i class="fas fa-forward-step"></i></button>
+                                </div>
+                            </div>
+                            <p class="text-sm mt-1">${podcast.artistName}</p>
+                        </div>
+                    </div>
+                    <h2 class="text-xl font-bold mt-4 mb-2">所有單集</h2>
+                    <div id="episodes-placeholder">
+                        <div class="spinner"></div>
+                        <p>正在載入節目，請稍候...</p>
+                    </div>`;
                 document.getElementById('add-to-collection-btn').addEventListener('click', () => addToCollection(podcast));
                 document.getElementById('detail-prev-btn').addEventListener('click', () => playNextPrev(-1));
                 document.getElementById('detail-next-btn').addEventListener('click', () => playNextPrev(1));
+            }
+
+            function populateEpisodesList(episodes, podcast) {
+                const placeholder = document.getElementById('episodes-placeholder');
+                if (!placeholder) return;
+
+                const escapeAttr = (str) => String(str || '').replace(/"/g, '&quot;');
+                const episodesHTML = episodes.map((ep, index) => {
+                    const safeFileName = `${(ep.trackName || 'download').replace(/[/\\?%*:|"<>]/g, '-')}.mp3`;
+                    return `<div class="episode-item" data-episode-id="${escapeAttr(ep.trackId)}"><span class="episode-number">${index + 1}</span><div class="flex items-center gap-3 overflow-hidden flex-1"><img src="${ep.artworkUrl60}" class="flex-shrink-0"><div class="flex-1 overflow-hidden"><div class="font-semibold truncate" title="${escapeAttr(ep.trackName)}">${ep.trackName}</div><div class="text-sm truncate" title="${escapeAttr(podcast.artistName)}">${podcast.artistName}</div></div></div><span class="episode-date">${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</span><div class="episode-item-actions"><button class="episode-action-btn play-action-btn" title="播放"><i class="fas fa-play"></i></button><a href="${ep.episodeUrl}" download="${safeFileName}" class="episode-action-btn download-action-link" title="下載"><i class="fas fa-download"></i></a></div><div class="sound-icon-container">${soundIconSVG}</div></div>`;
+                }).join('');
+                
+                placeholder.outerHTML = `<div class="podcast-episodes">${episodesHTML}</div>`;
+
                 podcastDetailView.querySelectorAll('.episode-item').forEach(item => {
-                    const ep = podcast.episodes.find(e => e.trackId === item.dataset.episodeId);
+                    const ep = episodes.find(e => e.trackId === item.dataset.episodeId);
                     if (!ep) return;
-                    item.addEventListener('click', (e) => { if (!e.target.closest('.episode-item-actions')) playEpisode(ep, podcast.artistName, podcast.episodes); });
-                    item.querySelector('.play-action-btn').addEventListener('click', (e) => { e.stopPropagation(); playEpisode(ep, podcast.artistName, podcast.episodes); });
+                    item.addEventListener('click', (e) => { if (!e.target.closest('.episode-item-actions')) playEpisode(ep, podcast.artistName, episodes); });
+                    item.querySelector('.play-action-btn').addEventListener('click', (e) => { e.stopPropagation(); playEpisode(ep, podcast.artistName, episodes); });
                     item.querySelector('.download-action-link').addEventListener('click', (e) => e.stopPropagation());
                 });
                 syncPlayerUI();
             }
+            // MODIFICATION END
 
             const syncPlayerUI = () => {
                 const { currentEpisode, isPlaying, playbackRate, isRepeating } = playerState;
                 playerTitleContainer.classList.toggle('marquee', !!currentEpisode);
                 if (currentEpisode) {
                     playerTitle.textContent = currentEpisode.trackName;
+                    playerTitle.title = currentEpisode.trackName;
                     playerArtist.textContent = currentEpisode.artistName;
                     playerAlbumArt.src = currentEpisode.artworkUrl600;
                     downloadBtn.href = currentEpisode.episodeUrl;
-                    downloadBtn.setAttribute('download', `${currentEpisode.trackName.replace(/[/\\?%*:|"<>]/g, '-')}.mp3`);
+                    downloadBtn.setAttribute('download', `${(currentEpisode.trackName || 'download').replace(/[/\\?%*:|"<>]/g, '-')}.mp3`);
                     downloadBtn.classList.add('is-visible');
                 } else {
                     playerTitle.textContent = '尚未播放任何內容';
+                    playerTitle.title = '尚未播放任何內容';
                     playerArtist.textContent = '';
                     playerAlbumArt.src = 'https://placehold.co/60x60/222/fff?text=Pod';
                     downloadBtn.classList.remove('is-visible');
@@ -523,8 +569,6 @@
                 document.getElementById('progress-bar').addEventListener('click', (e) => { if (audio.duration) audio.currentTime = (e.offsetX / e.currentTarget.offsetWidth) * audio.duration; });
                 document.getElementById('playback-rate-btn').addEventListener('click', () => { let newRate = playerState.playbackRate + 0.5; if (newRate > 2.0) newRate = 0.5; playerState.playbackRate = newRate; audio.playbackRate = newRate; syncPlayerUI(); });
                 repeatBtn.addEventListener('click', () => { playerState.isRepeating = !playerState.isRepeating; syncPlayerUI(); });
-
-                // 新功能事件綁定
                 localSearchInput.addEventListener('input', (e) => {
                     const searchTerm = e.target.value.toLowerCase();
                     document.querySelectorAll('.sidebar-item').forEach(item => {
@@ -532,19 +576,10 @@
                         item.style.display = title.includes(searchTerm) ? '' : 'none';
                     });
                 });
-                viewModeListBtn.addEventListener('click', () => {
-                    sidebarItemsContainer.classList.remove('grid-view');
-                    viewModeListBtn.classList.add('active');
-                    viewModeGridBtn.classList.remove('active');
-                });
-                viewModeGridBtn.addEventListener('click', () => {
-                    sidebarItemsContainer.classList.add('grid-view');
-                    viewModeGridBtn.classList.add('active');
-                    viewModeListBtn.classList.remove('active');
-                });
+                viewModeListBtn.addEventListener('click', () => { sidebarItemsContainer.classList.remove('grid-view'); viewModeListBtn.classList.add('active'); viewModeGridBtn.classList.remove('active'); });
+                viewModeGridBtn.addEventListener('click', () => { sidebarItemsContainer.classList.add('grid-view'); viewModeGridBtn.classList.add('active'); viewModeListBtn.classList.remove('active'); });
                 filterFavoritesBtn.addEventListener('click', () => { isFavoritesFilterActive = !isFavoritesFilterActive; filterFavoritesBtn.classList.toggle('active', isFavoritesFilterActive); loadCollection(); });
                 sortDirectionBtn.addEventListener('click', () => { sortIcon.classList.toggle('fa-arrow-up-wide-short'); sortIcon.classList.toggle('fa-arrow-down-wide-short'); loadCollection(); });
-
                 const applyTheme = (theme) => { document.documentElement.setAttribute('data-theme', theme); themeToggleBtn.innerHTML = theme === 'dark' ? sunIconSVG : moonIconSVG; localStorage.setItem('theme', theme); };
                 themeToggleBtn.addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
                 applyTheme(localStorage.getItem('theme') || 'dark');
