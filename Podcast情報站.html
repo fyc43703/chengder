@@ -200,8 +200,8 @@
 
         /* RWD */
         @media (max-width: 1024px) { .container { grid-template-columns: 16rem 1fr; } }
-        @media (max-width: 768px) { .container { grid-template-columns: 1fr; padding: 0; padding-bottom: var(--player-height); } .sidebar, .main-container { border-radius: 0; } .player { padding: 0 1rem; gap: 0.75rem; } .player-info { flex-basis: 30%; } #player-album-art { width: 48px; height: 48px; } #player-artist { display: none; } .player-controls-wrapper { flex-basis: 45%; } .playback-controls { gap: 1rem; } .player-actions-wrapper { flex-basis: 25%; gap: 0.5rem; justify-content: flex-end; } #volume-slider { width: 80px; } }
-        @media (max-width: 640px) { .player { padding: 0 0.75rem; gap: 0.5rem; } .main-content { padding: 1rem; } h1.text-2xl { font-size: 1.25rem; } .player-info { flex-basis: 35%; } #player-album-art { width: 40px; height: 40px; } .player-controls-wrapper { flex-basis: 40%; } #current-time, #duration { display: none; } .progress-container { gap: 0; width: 100%; margin: 0 auto; } #progress-bar { margin: 0 0.5rem; } .playback-controls { gap: 0.75rem; } #play-pause-btn { width: 2.5rem; height: 2.5rem; } #play-pause-icon { font-size: 1rem; } .simple-control-btn i { font-size: 0.875rem; } .player-actions-wrapper { flex-basis: 25%; } #volume-slider { width: 60px; } }
+        @media (max-width: 768px) { .container { grid-template-columns: 1fr; padding: 0; padding-bottom: var(--player-height); } .sidebar, .main-container { border-radius: 0; } .player { padding: 0 1rem; gap: 0.75rem; } .player-info { flex-basis: 30%; } #player-album-art { width: 48px; height: 48px; } #player-artist { display: none; } .player-controls-wrapper { flex-basis: 45%; } .playback-controls { gap: 1rem; } .player-actions-wrapper { flex-basis: 25%; gap: 0.5rem; justify-content: flex-end; } }
+        @media (max-width: 640px) { .player { padding: 0 0.75rem; gap: 0.5rem; } .main-content { padding: 1rem; } h1.text-2xl { font-size: 1.25rem; } .player-info { flex-basis: 35%; } #player-album-art { width: 40px; height: 40px; } .player-controls-wrapper { flex-basis: 40%; } #current-time, #duration { display: none; } .progress-container { gap: 0; width: 100%; margin: 0 auto; } #progress-bar { margin: 0 0.5rem; } .playback-controls { gap: 0.75rem; } #play-pause-btn { width: 2.5rem; height: 2.5rem; } #play-pause-icon { font-size: 1rem; } .simple-control-btn i { font-size: 0.875rem; } .player-actions-wrapper { flex-basis: 25%; } }
     </style>
 </head>
 <body>
@@ -297,7 +297,7 @@
             <div id="volume-container" class="relative flex items-center">
                 <button id="volume-icon-btn" class="simple-control-btn mr-1"><i class="fas fa-volume-high"></i></button>
                 <span id="volume-tooltip">30%</span>
-                <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.3" class="w-24" title="調整音量">
+                <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.3" class="w-48" title="調整音量">
             </div>
         </div>
     </footer>
@@ -667,7 +667,62 @@
 
             function initialize() {
                 soundIconContainer.innerHTML = soundIconSVG;
-                audio.volume = document.getElementById('volume-slider').value;
+                
+                // --- START: NEW & FIXED VOLUME CONTROL LOGIC ---
+                const volumeSlider = document.getElementById('volume-slider');
+                const volumeIconBtn = document.getElementById('volume-icon-btn');
+                const volumeIcon = volumeIconBtn.querySelector('i');
+                const volumeTooltip = document.getElementById('volume-tooltip');
+                const volumeContainer = document.getElementById('volume-container');
+                let lastVolume = parseFloat(volumeSlider.value);
+
+                const updateVolumeUI = (vol) => {
+                    const volume = parseFloat(vol);
+                    const percentage = Math.round(volume * 100);
+                    volumeTooltip.textContent = `${percentage}%`;
+                    
+                    if (volume === 0) {
+                        volumeIcon.className = 'fas fa-volume-xmark';
+                    } else if (volume < 0.5) {
+                        volumeIcon.className = 'fas fa-volume-low';
+                    } else {
+                        volumeIcon.className = 'fas fa-volume-high';
+                    }
+                };
+
+                audio.volume = lastVolume;
+                updateVolumeUI(audio.volume);
+
+                volumeSlider.addEventListener('input', (e) => {
+                    const newVolume = parseFloat(e.target.value);
+                    audio.volume = newVolume;
+                    if (newVolume > 0) {
+                        lastVolume = newVolume;
+                    }
+                    updateVolumeUI(newVolume);
+                });
+
+                volumeIconBtn.addEventListener('click', () => {
+                    if (audio.volume > 0) {
+                        lastVolume = audio.volume;
+                        audio.volume = 0;
+                        volumeSlider.value = 0;
+                    } else {
+                        const restoreVolume = lastVolume > 0 ? lastVolume : 0.3;
+                        audio.volume = restoreVolume;
+                        volumeSlider.value = restoreVolume;
+                    }
+                    updateVolumeUI(audio.volume);
+                });
+
+                volumeContainer.addEventListener('mouseenter', () => {
+                    volumeTooltip.style.display = 'block';
+                });
+                volumeContainer.addEventListener('mouseleave', () => {
+                    volumeTooltip.style.display = 'none';
+                });
+                // --- END: NEW & FIXED VOLUME CONTROL LOGIC ---
+
                 audio.addEventListener('play', () => { playerState.isPlaying = true; syncPlayerUI(); });
                 audio.addEventListener('pause', () => { playerState.isPlaying = false; syncPlayerUI(); });
                 audio.addEventListener('ended', () => playerState.isRepeating ? (audio.currentTime = 0, audio.play()) : playNextPrev(1));
