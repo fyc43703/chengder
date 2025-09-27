@@ -1,325 +1,432 @@
-<!DOCTYPE html><html lang="zh-Hant"><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Podcast 搜尋與播放器</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
-<style>
-      /* General Styles */
-      html, body {
-        margin: 0;
-        padding: 24px;
-        background: #FFFFFF;
-        color: #1d1d1f;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        line-height: 1.6;
-        font-size: 15px;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-      h1, h2, h3, h4, h5, h6, b, strong {
-        font-weight: 600; /* Semibold for macOS look */
-      }
-      h1 { font-weight: 700; } /* Bold for main title */
-      
-      /* Explicit list styles for consistent rendering in html2canvas */
-      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; }
-      ul { list-style-type: disc; }
-      ol { list-style-type: decimal; }
-      li { display: list-item; }
-
-      .hljs-container {
-        padding: 1.5rem;
-        border-radius: .75rem;
-        overflow-x: auto;
-        background: #fcfcfd;
-        border: 1px solid #d2d2d7;
-      }
-      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
-      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
-    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Podcast 搜尋與播放器</title>
-    <!-- 引入 Tailwind CSS 以進行快速的 UI 開發 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Podcast探索家手機板</title>
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 Lucide Icons 以美化圖示 -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <!-- 引入 Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2eTDRqN5yI61Rz5oVn2uW/yTzQ1LzW4zLh1tM5hY6k8n+rE8f/a5iK4Xg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        /* 自訂美化滾動條樣式 */
-        ::-webkit-scrollbar {
-            width: 8px;
+        :root {
+            --color-bg: #000;
+            --color-surface: #121212;
+            --color-surface-hover: #282828;
+            --color-interactive-element: #242424;
+            --color-text-primary: #fff;
+            --color-text-secondary: #b3b3b3;
+            --player-height: 90px;
+            --nav-height: 60px;
         }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
+
+        html[data-theme="light"] {
+            --color-bg: #f0f2f5;
+            --color-surface: #ffffff;
+            --color-surface-hover: #f0f0f0;
+            --color-interactive-element: #e4e6e9;
+            --color-text-primary: #050505;
+            --color-text-secondary: #65676b;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text-primary);
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
+
+        /* 主應用程式容器 */
+        .app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: calc(var(--player-height) + var(--nav-height));
+            box-sizing: border-box;
         }
-        /* 讓佈局在小螢幕上更友善 */
-        .main-container {
-            grid-template-columns: 1fr;
+
+        /* 主要內容視圖 */
+        .app-view {
+            display: none; /* 預設隱藏 */
+            flex-grow: 1;
+            overflow-y: auto;
+            background-color: var(--color-bg);
+            padding: 1rem;
         }
-        @media (min-width: 1024px) {
-            .main-container {
-                grid-template-columns: 400px 1fr;
-            }
+        .app-view.active {
+            display: flex; /* 顯示當前視圖 */
+            flex-direction: column;
         }
+        
+        /* 底部導覽列 */
+        .bottom-nav {
+            position: fixed;
+            bottom: var(--player-height);
+            left: 0;
+            right: 0;
+            height: var(--nav-height);
+            background-color: var(--color-surface);
+            border-top: 1px solid var(--color-interactive-element);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--color-text-secondary);
+            border: none;
+            background: none;
+            padding: 8px;
+            font-size: 0.75rem;
+            width: 80px;
+        }
+        .nav-item.active {
+            color: #3b82f6; /* Tailwind blue-500 */
+        }
+
+        /* 底部播放器 */
+        .player {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: var(--player-height);
+            background-color: var(--color-surface);
+            border-top: 1px solid var(--color-interactive-element);
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            padding: 0.5rem 1rem;
+            gap: 0.25rem;
+        }
+        .player-info { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+        #player-album-art { width: 40px; height: 40px; border-radius: 0.25rem; flex-shrink: 0; }
+        .player-controls { display: flex; align-items: center; justify-content: space-evenly; width: 100%; }
+        .player-controls button { color: var(--color-text-primary); font-size: 1.25rem; }
+        .play-pause-btn { width: 2.5rem; height: 2.5rem; border-radius: 50%; background-color: var(--color-text-primary); color: var(--color-bg); display: flex; align-items: center; justify-content: center; }
+        .progress-container { display: flex; align-items: center; gap: 0.5rem; width: 100%; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; }
+        #progress-bar { width: 100%; height: 100%; background-color: var(--color-interactive-element); }
+        #progress { height: 100%; background-color: #3b82f6; width: 0%; }
+
+        /* 搜尋視圖 */
+        #search-input { background-color: var(--color-interactive-element); border: none; }
+        #search-results-podcasts { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+
+        /* 收藏庫視圖 */
+        #library-controls button { background-color: var(--color-interactive-element); }
+        #library-controls button.active { background-color: #3b82f6; color: white; }
+        #library-items.grid-view { grid-template-columns: repeat(3, 1fr); }
+        .sidebar-item { background-color: var(--color-surface); border-radius: 0.5rem; padding: 0.5rem; }
+        
+        /* 詳情視圖 */
+        #detail-view .header { display: flex; align-items: center; gap: 1rem; padding: 1rem 0; }
+        .episode-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--color-interactive-element); }
+        .episode-item.is-playing-item { color: #3b82f6; }
+
+        /* Spinner */
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--color-surface-hover); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans">
-    <div class="container mx-auto p-4 max-w-7xl">
+<body class="antialiased">
 
-        <!-- 頁首和搜尋欄 -->
-        <header class="bg-white rounded-xl shadow-md p-6 mb-6">
-            <h1 class="text-3xl font-bold text-center text-indigo-600 mb-4">Podcast 探索家</h1>
-            <form id="search-form" class="flex flex-col sm:flex-row gap-3">
-                <input type="text" id="search-input" placeholder="例如：百靈果、科技島讀..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300" required>
-                <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-300 flex items-center justify-center gap-2">
-                    <i data-lucide="search" class="w-5 h-5"></i>
-                    <span>搜尋</span>
-                </button>
-            </form>
-        </header>
-        
-        <!-- 載入狀態提示 -->
-        <div id="loader" class="text-center p-10 hidden">
-            <div role="status" class="flex justify-center items-center">
-                <svg aria-hidden="true" class="w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-indigo-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
-                    <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0492C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
-                </svg>
-                <span class="sr-only">載入中...</span>
+    <div class="app-container">
+        <!-- 搜尋視圖 -->
+        <div id="search-view" class="app-view active">
+            <header class="mb-4">
+                <h1 class="text-3xl font-bold mb-4">探索</h1>
+                <form id="search-form" class="flex gap-2">
+                    <input type="text" id="search-input" placeholder="搜尋 Podcast..." class="w-full px-4 py-2 rounded-full text-lg" required>
+                    <button type="submit" class="bg-blue-500 text-white px-5 py-2 rounded-full font-semibold">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </header>
+            <div id="search-results-podcasts" class="grid flex-grow">
+                <p class="col-span-2 text-center text-gray-500 mt-8">尋找您最愛的 Podcast 節目。</p>
             </div>
-            <p class="mt-2 text-gray-600">正在努力搜尋中...</p>
         </div>
 
-        <!-- 主要內容區：左側為搜尋結果，右側為單集列表 -->
-        <main id="main-content" class="main-container grid gap-6">
-            <!-- Podcast 搜尋結果 -->
-            <div id="podcast-results" class="bg-white rounded-xl shadow-md p-4 overflow-y-auto" style="max-height: 70vh;">
-                <h2 class="text-xl font-bold mb-4 border-b pb-2 text-gray-700">搜尋結果</h2>
-                <div id="podcast-list" class="space-y-3">
-                    <p class="text-gray-500 text-center pt-8">請先搜尋您感興趣的 Podcast。</p>
-                </div>
-            </div>
+        <!-- 收藏庫視圖 -->
+        <div id="library-view" class="app-view">
+             <header class="mb-4">
+                 <h1 class="text-3xl font-bold">收藏庫</h1>
+                 <div id="library-controls" class="flex items-center gap-2 mt-4">
+                    <input type="text" id="local-search-input" placeholder="篩選..." class="flex-grow bg-gray-700 px-4 py-2 rounded-full">
+                    <button id="view-mode-toggle" class="p-2 rounded-full w-10 h-10"><i class="fas fa-grip"></i></button>
+                    <button id="filter-favorites-btn" class="p-2 rounded-full w-10 h-10"><i class="fas fa-heart"></i></button>
+                 </div>
+            </header>
+            <div id="library-items" class="grid grid-cols-1 gap-4"></div>
+        </div>
 
-            <!-- 單集列表 -->
-            <div id="episodes-container" class="bg-white rounded-xl shadow-md p-4 overflow-y-auto" style="max-height: 70vh;">
-                <div id="podcast-detail-header" class="text-center mb-4 hidden">
-                    <img id="detail-artwork" src="" alt="Podcast Artwork" class="w-32 h-32 mx-auto rounded-lg shadow-lg mb-3">
-                    <h2 id="detail-title" class="text-2xl font-bold text-gray-800"></h2>
-                    <p id="detail-artist" class="text-md text-gray-500"></p>
-                </div>
-                <h3 class="text-xl font-bold mb-4 border-b pb-2 text-gray-700">單集列表</h3>
-                <div id="episode-list" class="space-y-2">
-                    <p class="text-gray-500 text-center pt-8">請先從左側選擇一個 Podcast 以顯示單集列表。</p>
-                </div>
-            </div>
-        </main>
-        
-        <!-- 底部固定音訊播放器 -->
-        <footer id="audio-player-container" class="sticky bottom-0 left-0 right-0 mt-6 bg-white/80 backdrop-blur-sm rounded-t-xl shadow-2xl p-4 transition-transform translate-y-full duration-500">
-            <div class="flex items-center gap-4">
-                <div class="flex-grow">
-                    <p class="font-semibold text-gray-800 truncate" id="now-playing-title">未選擇音訊</p>
-                    <audio id="audio-player" controls class="w-full mt-2"></audio>
-                </div>
-            </div>
-        </footer>
-
+        <!-- Podcast 詳情視圖 -->
+        <div id="detail-view" class="app-view">
+            <!-- 內容由 JS 動態生成 -->
+        </div>
     </div>
+    
+    <!-- 底部導覽 -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-view="search-view">
+            <i class="fas fa-search text-2xl"></i>
+            <span>探索</span>
+        </button>
+        <button class="nav-item" data-view="library-view">
+            <i class="fas fa-layer-group text-2xl"></i>
+            <span>收藏庫</span>
+        </button>
+    </nav>
+
+    <!-- 底部播放器 -->
+    <footer class="player" id="player">
+        <div class="player-info">
+            <img id="player-album-art" src="https://placehold.co/40x40/222/fff?text=P" alt="專輯封面">
+            <div class="flex-1 overflow-hidden">
+                <p id="player-title" class="font-bold whitespace-nowrap text-sm truncate">未選擇音訊</p>
+                <p id="player-artist" class="text-xs text-gray-400 truncate"></p>
+            </div>
+            <button id="theme-toggle-btn" class="text-xl w-10 h-10"><i class="fas fa-sun"></i></button>
+        </div>
+        <div class="player-controls">
+            <button id="skip-backward-btn"><i class="fas fa-backward"></i></button>
+            <button id="play-pause-btn" class="play-pause-btn">
+                <i id="play-pause-icon" class="fas fa-play text-lg"></i>
+            </button>
+            <button id="skip-forward-btn"><i class="fas fa-forward"></i></button>
+        </div>
+        <div class="progress-container">
+            <div id="progress-bar">
+                <div id="progress"></div>
+            </div>
+        </div>
+    </footer>
 
     <script>
-        // DOM 元素選擇
-        const searchForm = document.getElementById('search-form');
-        const searchInput = document.getElementById('search-input');
-        const loader = document.getElementById('loader');
-        const mainContent = document.getElementById('main-content');
-        const podcastList = document.getElementById('podcast-list');
-        const episodeList = document.getElementById('episode-list');
-        const audioPlayerContainer = document.getElementById('audio-player-container');
-        const audioPlayer = document.getElementById('audio-player');
-        const nowPlayingTitle = document.getElementById('now-playing-title');
-        
-        // Podcast 詳情 header
-        const podcastDetailHeader = document.getElementById('podcast-detail-header');
-        const detailArtwork = document.getElementById('detail-artwork');
-        const detailTitle = document.getElementById('detail-title');
-        const detailArtist = document.getElementById('detail-artist');
+        document.addEventListener('DOMContentLoaded', () => {
+            // CORS 代理服務設定
+            const CORS_PROXY = 'https://corsproxy.io/?';
 
-        // CORS 代理，用來解決跨域請求 RSS feed 的問題
-        const CORS_PROXY = 'https://corsproxy.io/?';
-        
-        // 初始化 Lucide Icons
-        lucide.createIcons();
-
-        // 搜尋表單提交事件監聽
-        searchForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const searchTerm = searchInput.value.trim();
-            if (searchTerm) {
-                await searchPodcasts(searchTerm);
-            }
-        });
-
-        // 函式：搜尋 Podcast
-        async function searchPodcasts(term) {
-            // 清空舊內容並顯示載入提示
-            podcastList.innerHTML = '';
-            episodeList.innerHTML = '<p class="text-gray-500 text-center pt-8">請先從左側選擇一個 Podcast 以顯示單集列表。</p>';
-            podcastDetailHeader.classList.add('hidden');
-            mainContent.classList.add('hidden');
-            loader.classList.remove('hidden');
-
-            const originalSearchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=podcast&entity=podcast&country=TW&limit=50`;
-            const searchUrl = `${CORS_PROXY}${encodeURIComponent(originalSearchUrl)}`;
+            // DOM 元素
+            const views = document.querySelectorAll('.app-view');
+            const navItems = document.querySelectorAll('.nav-item');
+            const searchForm = document.getElementById('search-form');
+            const searchInput = document.getElementById('search-input');
+            const searchResultsContainer = document.getElementById('search-results-podcasts');
+            const libraryItemsContainer = document.getElementById('library-items');
+            const detailViewContainer = document.getElementById('detail-view');
             
-            try {
-                const response = await fetch(searchUrl);
-                if (!response.ok) {
-                    throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
+            const player = document.getElementById('player');
+            const playPauseIcon = document.getElementById('play-pause-icon');
+            const playerTitle = document.getElementById('player-title');
+            const playerArtist = document.getElementById('player-artist');
+            const playerAlbumArt = document.getElementById('player-album-art');
+            const progress = document.getElementById('progress');
+            const themeToggleBtn = document.getElementById('theme-toggle-btn');
+
+            const audio = new Audio();
+            const collectionCache = {};
+            let playerState = { currentEpisode: null, isPlaying: false };
+            let currentView = 'search-view';
+            
+            // --- 核心功能 ---
+            const getCollection = () => JSON.parse(localStorage.getItem('podcastCollection') || '[]');
+            const saveCollection = (collection) => localStorage.setItem('podcastCollection', JSON.stringify(collection));
+
+            // 顯示指定視圖
+            function showView(viewId) {
+                views.forEach(view => view.classList.toggle('active', view.id === viewId));
+                navItems.forEach(item => item.classList.toggle('active', item.dataset.view === viewId));
+                currentView = viewId;
+            }
+            
+            // 搜尋 Podcast
+            async function searchPodcasts(term) {
+                searchResultsContainer.innerHTML = `<div class="col-span-2 flex justify-center mt-8"><div class="spinner"></div></div>`;
+                const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=podcast&entity=podcast&country=TW&limit=20`;
+
+                try {
+                    const response = await fetch(searchUrl);
+                    if (!response.ok) throw new Error('搜尋請求失敗');
+                    const data = await response.json();
+                    displaySearchResults(data.results);
+                } catch (error) {
+                    console.error('搜尋失敗:', error);
+                    searchResultsContainer.innerHTML = `<p class="col-span-2 text-center text-red-500">搜尋失敗，請稍後再試。</p>`;
                 }
-                const data = await response.json();
-                displayPodcasts(data.results);
-            } catch (error) {
-                console.error('搜尋 Podcast 時發生錯誤:', error);
-                podcastList.innerHTML = `<p class="text-red-500 text-center">搜尋失敗，請稍後再試。</p>`;
-            } finally {
-                // 隱藏載入提示並顯示內容
-                loader.classList.add('hidden');
-                mainContent.classList.remove('hidden');
             }
-        }
-
-        // 函式：顯示 Podcast 搜尋結果
-        function displayPodcasts(podcasts) {
-            podcastList.innerHTML = '';
-            if (podcasts.length === 0) {
-                podcastList.innerHTML = `<p class="text-gray-500 text-center">找不到相關的 Podcast。</p>`;
-                return;
+            
+            // 顯示搜尋結果
+            function displaySearchResults(podcasts) {
+                searchResultsContainer.innerHTML = '';
+                if (podcasts.length === 0) {
+                    searchResultsContainer.innerHTML = `<p class="col-span-2 text-center text-gray-500">找不到相關的 Podcast。</p>`;
+                    return;
+                }
+                podcasts.forEach(podcast => {
+                    const item = document.createElement('div');
+                    item.className = 'flex flex-col items-center text-center cursor-pointer';
+                    item.innerHTML = `
+                        <img src="${podcast.artworkUrl600}" alt="${podcast.collectionName}" class="w-full rounded-lg mb-2 aspect-square object-cover">
+                        <p class="font-semibold text-sm truncate w-full">${podcast.collectionName}</p>
+                        <p class="text-xs text-gray-400 truncate w-full">${podcast.artistName}</p>
+                    `;
+                    item.addEventListener('click', () => fetchEpisodes(podcast));
+                    searchResultsContainer.appendChild(item);
+                });
             }
 
-            podcasts.forEach(podcast => {
-                const podcastItem = document.createElement('div');
-                podcastItem.className = 'flex items-center gap-4 p-3 rounded-lg hover:bg-gray-200 cursor-pointer transition duration-300';
-                podcastItem.innerHTML = `
-                    <img src="${podcast.artworkUrl100}" alt="${podcast.collectionName}" class="w-16 h-16 rounded-md object-cover shadow-sm">
-                    <div class="flex-grow overflow-hidden">
-                        <h4 class="font-semibold text-gray-900 truncate">${podcast.collectionName}</h4>
-                        <p class="text-sm text-gray-500 truncate">${podcast.artistName}</p>
+            // 獲取單集列表
+            async function fetchEpisodes(podcastInfo) {
+                showView('detail-view');
+                detailViewContainer.innerHTML = `<div class="flex-grow flex justify-center items-center"><div class="spinner"></div></div>`;
+
+                const proxyUrl = `${CORS_PROXY}${encodeURIComponent(podcastInfo.feedUrl)}`;
+                
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
+                    const xmlText = await response.text();
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+                    
+                    const parseError = xmlDoc.querySelector("parsererror");
+                    if (parseError) throw new Error("無法解析 RSS feed。");
+
+                    const items = Array.from(xmlDoc.querySelectorAll("item")).map(item => ({
+                        title: item.querySelector("title")?.textContent || '無標題',
+                        audioUrl: item.querySelector("enclosure")?.getAttribute("url"),
+                        pubDate: item.querySelector("pubDate")?.textContent
+                    })).filter(item => item.audioUrl);
+                    
+                    displayEpisodes(podcastInfo, items);
+                } catch (error) {
+                    console.error('獲取單集列表時發生錯誤:', error);
+                    detailViewContainer.innerHTML = `
+                        <div class="text-center text-red-500 p-4">
+                            <p class="font-bold">無法載入單集列表</p>
+                            <p class="text-sm mt-2">${error.message}</p>
+                            <button id="back-btn" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded-full">返回</button>
+                        </div>`;
+                    detailViewContainer.querySelector('#back-btn').addEventListener('click', () => showView('search-view'));
+                }
+            }
+            
+            // 顯示單集列表
+            function displayEpisodes(podcast, episodes) {
+                detailViewContainer.innerHTML = `
+                    <div class="header">
+                        <button id="back-btn" class="text-2xl"><i class="fas fa-chevron-left"></i></button>
+                        <img src="${podcast.artworkUrl100}" class="w-16 h-16 rounded-lg">
+                        <div>
+                            <h2 class="text-xl font-bold">${podcast.collectionName}</h2>
+                            <p class="text-sm text-gray-400">${podcast.artistName}</p>
+                        </div>
+                    </div>
+                    <div class="flex-grow overflow-y-auto">
+                        ${episodes.map(ep => `
+                            <div class="episode-item" data-url="${ep.audioUrl}" data-title="${ep.title}">
+                                <div class="flex-1">
+                                    <p class="font-semibold">${ep.title}</p>
+                                    <p class="text-xs text-gray-500 mt-1">${new Date(ep.pubDate).toLocaleDateString()}</p>
+                                </div>
+                                <button class="play-ep-btn text-2xl text-blue-500"><i class="far fa-play-circle"></i></button>
+                            </div>
+                        `).join('')}
                     </div>
                 `;
-                // 點擊 podcast 項目時，獲取其單集列表
-                podcastItem.addEventListener('click', () => {
-                    // 標記選中的項目
-                    document.querySelectorAll('#podcast-list .bg-indigo-100').forEach(el => el.classList.remove('bg-indigo-100', 'text-indigo-800'));
-                    podcastItem.classList.add('bg-indigo-100', 'text-indigo-800');
-                    
-                    // 更新右側的 Podcast 詳情
-                    detailArtwork.src = podcast.artworkUrl100;
-                    detailTitle.textContent = podcast.collectionName;
-                    detailArtist.textContent = podcast.artistName;
-                    podcastDetailHeader.classList.remove('hidden');
-
-                    fetchEpisodes(podcast.feedUrl);
-                });
-                podcastList.appendChild(podcastItem);
-            });
-        }
-
-        // 函式：獲取單集列表 (透過 RSS Feed)
-        async function fetchEpisodes(feedUrl) {
-            episodeList.innerHTML = `
-                <div class="flex justify-center items-center h-full pt-8">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-                    <p class="ml-3 text-gray-600">正在載入單集...</p>
-                </div>
-            `;
-            const proxyUrl = `${CORS_PROXY}${encodeURIComponent(feedUrl)}`;
-            
-            try {
-                const response = await fetch(proxyUrl);
-                 if (!response.ok) {
-                    throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
-                }
-                const xmlText = await response.text();
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, "application/xml");
                 
-                // 檢查是否有解析錯誤
-                const parseError = xmlDoc.querySelector("parsererror");
-                if (parseError) {
-                    console.error("XML 解析錯誤:", parseError);
-                    throw new Error("無法解析 RSS feed。");
-                }
-
-                const items = xmlDoc.querySelectorAll("item");
-                displayEpisodes(items);
-            } catch (error) {
-                console.error('獲取單集列表時發生錯誤:', error);
-                episodeList.innerHTML = `<p class="text-red-500 text-center">無法載入單集列表。可能是來源的 RSS Feed 有問題或網路不穩定。</p>`;
-            }
-        }
-        
-        // 函式：顯示單集列表
-        function displayEpisodes(items) {
-            episodeList.innerHTML = '';
-            if (items.length === 0) {
-                episodeList.innerHTML = `<p class="text-gray-500 text-center">這個 Podcast 沒有可用的單集。</p>`;
-                return;
-            }
-
-            items.forEach(item => {
-                const title = item.querySelector("title")?.textContent || '無標題';
-                const enclosure = item.querySelector("enclosure");
-                const audioUrl = enclosure ? enclosure.getAttribute("url") : null;
-
-                if (audioUrl) {
-                    const episodeItem = document.createElement('div');
-                    episodeItem.className = 'p-3 border-b border-gray-200 last:border-b-0 flex justify-between items-center gap-3';
-                    episodeItem.innerHTML = `
-                        <p class="flex-grow text-sm text-gray-700">${title}</p>
-                        <div class="flex-shrink-0 flex gap-2">
-                             <button class="play-btn p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition duration-300" title="播放">
-                                <i data-lucide="play-circle" class="w-6 h-6"></i>
-                            </button>
-                            <a href="${audioUrl}" download="${title.replace(/[^a-zA-Z0-9\s]/g, '')}.mp3" class="download-btn p-2 text-green-600 hover:bg-green-100 rounded-full transition duration-300" title="下載">
-                                <i data-lucide="download" class="w-6 h-6"></i>
-                            </a>
-                        </div>
-                    `;
-                    // 播放按鈕事件
-                    episodeItem.querySelector('.play-btn').addEventListener('click', () => {
-                        playEpisode(audioUrl, title);
+                detailViewContainer.querySelector('#back-btn').addEventListener('click', () => showView(currentView));
+                detailViewContainer.querySelectorAll('.episode-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        playEpisode(item.dataset.url, item.dataset.title, podcast.artworkUrl100, podcast.artistName);
                     });
-                    episodeList.appendChild(episodeItem);
+                });
+            }
+
+            // 播放單集
+            function playEpisode(url, title, artwork, artist) {
+                audio.src = url;
+                audio.play();
+                playerState = { currentEpisode: { url, title, artwork, artist }, isPlaying: true };
+                updatePlayerUI();
+            }
+
+            // 更新播放器 UI
+            function updatePlayerUI() {
+                const { currentEpisode, isPlaying } = playerState;
+                if (currentEpisode) {
+                    playerTitle.textContent = currentEpisode.title;
+                    playerArtist.textContent = currentEpisode.artist;
+                    playerAlbumArt.src = currentEpisode.artwork;
+                }
+                playPauseIcon.className = `fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-lg`;
+            }
+
+            // 切換播放/暫停
+            function togglePlayPause() {
+                if (!playerState.currentEpisode) return;
+                if (audio.paused) {
+                    audio.play();
+                } else {
+                    audio.pause();
+                }
+            }
+
+            // 設定主題
+            const applyTheme = (theme) => {
+                document.documentElement.setAttribute('data-theme', theme);
+                themeToggleBtn.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                localStorage.setItem('theme', theme);
+            };
+
+            // --- 事件監聽 ---
+            searchForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const searchTerm = searchInput.value.trim();
+                if (searchTerm) searchPodcasts(searchTerm);
+            });
+
+            navItems.forEach(item => {
+                item.addEventListener('click', () => showView(item.dataset.view));
+            });
+
+            document.getElementById('play-pause-btn').addEventListener('click', togglePlayPause);
+            document.getElementById('skip-forward-btn').addEventListener('click', () => audio.currentTime += 15);
+            document.getElementById('skip-backward-btn').addEventListener('click', () => audio.currentTime -= 15);
+
+            audio.addEventListener('play', () => {
+                playerState.isPlaying = true;
+                updatePlayerUI();
+            });
+            audio.addEventListener('pause', () => {
+                playerState.isPlaying = false;
+                updatePlayerUI();
+            });
+            audio.addEventListener('timeupdate', () => {
+                if (audio.duration) {
+                    progress.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
                 }
             });
-            // 重新渲染圖示
-            lucide.createIcons();
-        }
+             audio.addEventListener('ended', () => {
+                playerState.isPlaying = false;
+                updatePlayerUI();
+            });
 
-        // 函式：播放指定的單集
-        function playEpisode(url, title) {
-            audioPlayer.src = url;
-            nowPlayingTitle.textContent = title;
-            audioPlayer.play();
-            // 顯示播放器
-            audioPlayerContainer.classList.remove('translate-y-full');
-        }
+            themeToggleBtn.addEventListener('click', () => {
+                const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                applyTheme(newTheme);
+            });
 
+            // 初始化
+            applyTheme(localStorage.getItem('theme') || 'dark');
+            showView('search-view');
+        });
     </script>
 </body>
 </html>
-
-
-</div></body></html>
