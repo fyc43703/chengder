@@ -4,23 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Podcast 搜尋與播放器</title>
-    <!-- 引入 Tailwind CSS 以進行快速的 UI 開發 -->
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 Lucide Icons 以美化圖示 -->
+    <!-- 引入 Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <!-- 引入 SortableJS 以實現拖曳排序 -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         /* --- macOS 風格化樣式 --- */
-
-        /* 定義系統顏色變數 */
         :root {
             --system-blue: #007aff;
+            --system-yellow: #ffcc00;
             --system-background: #f5f5f7;
             --traffic-light-red: #ff5f56;
             --traffic-light-yellow: #ffbd2e;
             --traffic-light-green: #27c93f;
         }
 
-        /* 全局字體與背景設定 */
         body {
             background-color: var(--system-background);
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Arial", sans-serif;
@@ -28,325 +28,374 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* 選取文字時的顏色 */
-        ::selection {
-            background-color: var(--system-blue);
-            color: white;
-        }
+        ::selection { background-color: var(--system-blue); color: white; }
 
-        /* 美化滾動條樣式 */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 0, 0, 0.4);
-        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.4); }
         
-        /* 統一定義毛玻璃效果 class */
         .glass-panel {
             background-color: rgba(255, 255, 255, 0.75);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            border-radius: 12px; /* macOS 標準圓角 */
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 0, 0, 0.05); border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
         }
         
-        /* RWD 響應式佈局設定 */
-        .main-container {
-            display: grid;
-            gap: 1.5rem;
-            grid-template-columns: 1fr;
-        }
-        #podcast-results, #episodes-container {
-            height: auto;
-            max-height: 80vh; /* 調整高度以適應各種螢幕 */
-        }
+        .main-container { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
         
         @media (min-width: 1024px) {
-            .main-container {
-                grid-template-columns: 400px 1fr;
-            }
-            #podcast-results, #episodes-container {
-                max-height: 70vh; /* 在大螢幕上恢復原來的最大高度 */
-            }
+            .main-container { grid-template-columns: 400px 1fr; }
         }
+
+        .favorite-btn.favorited svg { fill: var(--system-yellow); stroke: var(--system-yellow); }
+        
+        #tooltip { transition: opacity 0.2s; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+
+        /* 拖曳排序相關樣式 */
+        .sortable-ghost { opacity: 0.4; background: rgba(0, 122, 255, 0.2); }
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
+
+        /* 分類標題 */
+        .category-header {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #8a8a8e; /* a bit darker gray */
+            text-transform: uppercase;
+            padding: 12px 8px 4px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            position: sticky;
+            top: -16px; /* Match panel padding */
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+
     </style>
 </head>
-<body class="text-gray-800">
-    <div class="container mx-auto p-4 max-w-7xl">
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
+    <div id="tooltip" class="hidden fixed z-50 p-3 rounded-lg bg-black/80 text-white text-sm shadow-lg max-w-sm pointer-events-none">
+        <h5 id="tooltip-title" class="font-bold mb-1 line-clamp-2"></h5>
+        <p id="tooltip-description" class="text-xs opacity-80 max-h-24 overflow-hidden text-ellipsis"></p>
+    </div>
 
-        <!-- 頁首和搜尋欄 -->
-        <header class="glass-panel p-4 mb-6">
+    <div class="container mx-auto p-4 max-w-7xl flex-grow flex flex-col">
+        <header class="glass-panel p-4 mb-6 flex-shrink-0">
             <div class="flex items-center mb-4">
-                 <!-- macOS 視窗按鈕 -->
                 <div class="flex space-x-2 mr-4">
                     <span class="block w-3 h-3 rounded-full" style="background-color: var(--traffic-light-red);"></span>
                     <span class="block w-3 h-3 rounded-full" style="background-color: var(--traffic-light-yellow);"></span>
                     <span class="block w-3 h-3 rounded-full" style="background-color: var(--traffic-light-green);"></span>
                 </div>
-                <h1 class="flex-grow text-2xl font-bold text-center text-black">Podcast 探索家</h1>
+                <div class="flex-grow text-center">
+                    <h1 class="text-xl font-bold text-black">Podcast 探索家</h1>
+                    <p class="text-xs text-gray-500 mt-1">製作者：陳政德</p>
+                </div>
             </div>
             <form id="search-form" class="flex flex-col sm:flex-row gap-3">
-                <input type="text" id="search-input" placeholder="例如：百靈果、科技島讀..." class="w-full px-4 py-2.5 bg-gray-200/80 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--system-blue)] transition duration-300" required>
-                <button type="submit" class="bg-[var(--system-blue)] text-white px-6 py-2.5 rounded-lg font-semibold hover:opacity-90 transition duration-300 flex items-center justify-center gap-2">
+                <input type="text" id="search-input" placeholder="例如：百靈果、科技島讀..." class="w-full px-4 py-1.5 bg-gray-200/80 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--system-blue)] transition duration-300" required>
+                <button type="submit" class="bg-[var(--system-blue)] text-white px-5 py-1.5 rounded-lg font-semibold hover:opacity-90 transition duration-300 flex flex-row items-center justify-center gap-2 whitespace-nowrap">
                     <i data-lucide="search" class="w-5 h-5"></i>
                     <span>搜尋</span>
                 </button>
             </form>
         </header>
         
-        <!-- 載入狀態提示 -->
         <div id="loader" class="text-center p-10 hidden">
              <div class="glass-panel inline-block p-8">
                 <div role="status" class="flex justify-center items-center flex-col">
-                    <svg aria-hidden="true" class="w-10 h-10 text-gray-300 animate-spin fill-[var(--system-blue)]" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
-                        <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0492C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
-                    </svg>
-                    <span class="sr-only">載入中...</span>
+                    <svg aria-hidden="true" class="w-10 h-10 text-gray-300 animate-spin fill-[var(--system-blue)]" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/><path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0492C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/></svg>
                     <p class="mt-4 text-gray-600">正在努力搜尋中...</p>
                 </div>
             </div>
         </div>
 
-        <!-- 主要內容區：左側為搜尋結果，右側為單集列表 -->
-        <main id="main-content" class="main-container">
-            <!-- Podcast 搜尋結果 -->
+        <main id="main-content" class="main-container flex-grow min-h-0">
             <div id="podcast-results" class="glass-panel p-4 overflow-y-auto">
-                <h2 class="text-xl font-bold mb-3 border-b border-gray-200/80 pb-3 text-black">搜尋結果</h2>
-                <div id="podcast-list" class="space-y-2">
-                    <p class="text-gray-500 text-center pt-8">請先搜尋您感興趣的 Podcast。</p>
+                <div class="flex border-b border-gray-200/80 mb-2">
+                    <button id="tab-search-results" class="tab-btn px-4 py-2 font-semibold text-sm border-b-2">搜尋結果</button>
+                    <button id="tab-favorites" class="tab-btn px-4 py-2 font-semibold text-sm border-b-2">我的最愛</button>
+                </div>
+                <div id="podcast-list-container" class="space-y-1">
+                    <div id="podcast-list">
+                        <p class="text-gray-500 text-center pt-8">請先搜尋您感興趣的 Podcast。</p>
+                    </div>
+                </div>
+                <div id="favorite-podcast-list-container" class="hidden">
+                    <div id="favorite-podcast-list"></div>
                 </div>
             </div>
 
-            <!-- 單集列表 -->
-            <div id="episodes-container" class="glass-panel p-4 overflow-y-auto hidden lg:block">
-                 <!-- 行動版返回按鈕 -->
-                <button id="back-to-results-btn" class="lg:hidden flex items-center gap-2 mb-3 text-sm font-semibold text-[var(--system-blue)]">
-                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                    返回搜尋結果
-                </button>
-                <div id="podcast-detail-header" class="text-center mb-4 hidden">
-                    <img id="detail-artwork" src="" alt="Podcast Artwork" class="w-32 h-32 mx-auto rounded-lg shadow-lg mb-3">
-                    <h2 id="detail-title" class="text-2xl font-bold text-black"></h2>
-                    <p id="detail-artist" class="text-md text-gray-500"></p>
+            <div id="episodes-container" class="glass-panel p-4 overflow-y-auto hidden lg:flex lg:flex-col">
+                <button id="back-to-results-btn" class="lg:hidden flex items-center gap-2 mb-3 text-sm font-semibold text-[var(--system-blue)]"><i data-lucide="arrow-left" class="w-4 h-4"></i>返回搜尋結果</button>
+                <div id="podcast-detail-header" class="mb-2 hidden items-center gap-4 flex-shrink-0">
+                    <img id="detail-artwork" src="" alt="Podcast Artwork" class="w-12 h-12 rounded-lg shadow-md flex-shrink-0">
+                    <div class="text-left overflow-hidden">
+                        <div class="flex items-center gap-2">
+                            <h2 id="detail-title" class="text-lg font-bold text-black truncate"></h2>
+                            <button id="favorite-podcast-btn" class="favorite-btn text-gray-400 hover:text-[var(--system-yellow)] transition-colors flex-shrink-0" title="收藏此 Podcast">
+                                <i data-lucide="star" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                        <p id="detail-artist" class="text-sm text-gray-500 truncate"></p>
+                    </div>
                 </div>
-                <h3 class="text-xl font-bold mb-3 border-b border-gray-200/80 pb-3 text-black">單集列表</h3>
-                <div id="episode-list" class="space-y-1">
+                <h3 class="text-lg font-bold mb-2 border-b border-gray-200/80 pb-2 text-black flex-shrink-0">單集列表</h3>
+                <div id="episode-list" class="space-y-0 overflow-y-auto">
                     <p class="text-gray-500 text-center pt-8">請先從左側選擇一個 Podcast 以顯示單集列表。</p>
                 </div>
             </div>
         </main>
         
-        <!-- 底部固定音訊播放器 -->
-        <footer id="audio-player-container" class="sticky bottom-0 left-0 right-0 mt-6 glass-panel p-4 transition-transform translate-y-full duration-500">
-            <div class="flex items-center gap-4">
+        <footer id="audio-player-container" class="sticky bottom-0 left-0 right-0 glass-panel p-4 transition-transform translate-y-full duration-500 flex-shrink-0 mt-4">
+            <div class="flex items-center gap-2 sm:gap-4">
+                <button id="prev-episode-btn" title="上一集" class="p-2 text-gray-600 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"><i data-lucide="skip-back" class="w-5 h-5"></i></button>
                 <div class="flex-grow">
                     <p class="font-semibold text-black truncate" id="now-playing-title">未選擇音訊</p>
-                    <audio id="audio-player" controls class="w-full mt-2"></audio>
+                    <audio id="audio-player" controls class="w-full mt-1"></audio>
                 </div>
+                <button id="next-episode-btn" title="下一集" class="p-2 text-gray-600 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"><i data-lucide="skip-forward" class="w-5 h-5"></i></button>
             </div>
         </footer>
     </div>
 
     <script>
-        // DOM 元素選擇
-        const searchForm = document.getElementById('search-form');
-        const searchInput = document.getElementById('search-input');
-        const loader = document.getElementById('loader');
-        const mainContent = document.getElementById('main-content');
-        const podcastResults = document.getElementById('podcast-results');
-        const episodesContainer = document.getElementById('episodes-container');
-        const podcastList = document.getElementById('podcast-list');
-        const episodeList = document.getElementById('episode-list');
-        const audioPlayerContainer = document.getElementById('audio-player-container');
-        const audioPlayer = document.getElementById('audio-player');
-        const nowPlayingTitle = document.getElementById('now-playing-title');
-        
-        const podcastDetailHeader = document.getElementById('podcast-detail-header');
-        const detailArtwork = document.getElementById('detail-artwork');
-        const detailTitle = document.getElementById('detail-title');
-        const detailArtist = document.getElementById('detail-artist');
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM元素選擇 ---
+            const allDOMElements = {
+                searchForm: document.getElementById('search-form'),
+                searchInput: document.getElementById('search-input'),
+                loader: document.getElementById('loader'),
+                mainContent: document.getElementById('main-content'),
+                podcastResults: document.getElementById('podcast-results'),
+                episodesContainer: document.getElementById('episodes-container'),
+                podcastListContainer: document.getElementById('podcast-list-container'),
+                favoritePodcastListContainer: document.getElementById('favorite-podcast-list-container'),
+                podcastList: document.getElementById('podcast-list'),
+                favoritePodcastList: document.getElementById('favorite-podcast-list'),
+                episodeList: document.getElementById('episode-list'),
+                audioPlayerContainer: document.getElementById('audio-player-container'),
+                audioPlayer: document.getElementById('audio-player'),
+                nowPlayingTitle: document.getElementById('now-playing-title'),
+                podcastDetailHeader: document.getElementById('podcast-detail-header'),
+                detailArtwork: document.getElementById('detail-artwork'),
+                detailTitle: document.getElementById('detail-title'),
+                detailArtist: document.getElementById('detail-artist'),
+                backToResultsBtn: document.getElementById('back-to-results-btn'),
+                tabSearchResults: document.getElementById('tab-search-results'),
+                tabFavorites: document.getElementById('tab-favorites'),
+                favoritePodcastBtn: document.getElementById('favorite-podcast-btn'),
+                prevEpisodeBtn: document.getElementById('prev-episode-btn'),
+                nextEpisodeBtn: document.getElementById('next-episode-btn'),
+                tooltip: document.getElementById('tooltip'),
+                tooltipTitle: document.getElementById('tooltip-title'),
+                tooltipDescription: document.getElementById('tooltip-description')
+            };
+            const { searchForm, searchInput, loader, mainContent, podcastResults, episodesContainer, podcastListContainer, favoritePodcastListContainer, podcastList, favoritePodcastList, episodeList, audioPlayerContainer, audioPlayer, nowPlayingTitle, podcastDetailHeader, detailArtwork, detailTitle, detailArtist, backToResultsBtn, tabSearchResults, tabFavorites, favoritePodcastBtn, prevEpisodeBtn, nextEpisodeBtn, tooltip, tooltipTitle, tooltipDescription } = allDOMElements;
 
-        const backToResultsBtn = document.getElementById('back-to-results-btn');
+            const CORS_PROXY = 'https://corsproxy.io/?';
 
-        const CORS_PROXY = 'https://corsproxy.io/?';
-        
-        lucide.createIcons();
+            // --- 應用程式狀態 ---
+            let favoritePodcasts = [], currentPodcast = null, currentEpisodeList = [], currentEpisodeIndex = -1, sortableInstance = null;
 
-        // RWD 相關函式
-        const showResultsView = () => {
-            if (window.innerWidth < 1024) {
-                podcastResults.classList.remove('hidden');
-                episodesContainer.classList.add('hidden');
-            }
-        };
+            // --- 工具 & 輔助函式 ---
+            const sanitizeHTML = (str) => { const temp = document.createElement('div'); temp.textContent = str; return temp.innerHTML; };
+            const cleanDescription = (desc) => desc.replace(/<[^>]+>/g, '').replace(/(\r\n|\n|\r)/gm, " ").trim();
 
-        const showEpisodesView = () => {
-            if (window.innerWidth < 1024) {
-                podcastResults.classList.add('hidden');
-                episodesContainer.classList.remove('hidden');
-            }
-        };
-
-        searchForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const searchTerm = searchInput.value.trim();
-            if (searchTerm) {
-                showResultsView(); // 在搜尋時確保行動版顯示結果列表
-                await searchPodcasts(searchTerm);
-            }
-        });
-        
-        backToResultsBtn.addEventListener('click', showResultsView);
-
-        async function searchPodcasts(term) {
-            podcastList.innerHTML = '';
-            episodeList.innerHTML = '<p class="text-gray-500 text-center pt-8">請先從左側選擇一個 Podcast 以顯示單集列表。</p>';
-            podcastDetailHeader.classList.add('hidden');
-            mainContent.classList.add('hidden');
-            loader.classList.remove('hidden');
-
-            const originalSearchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=podcast&entity=podcast&country=TW&limit=50`;
-            const searchUrl = `${CORS_PROXY}${encodeURIComponent(originalSearchUrl)}`;
+            // --- 我的最愛 (LocalStorage) ---
+            const loadFavorites = () => { favoritePodcasts = JSON.parse(localStorage.getItem('favoritePodcasts')) || []; displayFavoritePodcasts(); };
+            const saveFavorites = () => { localStorage.setItem('favoritePodcasts', JSON.stringify(favoritePodcasts)); displayFavoritePodcasts(); updateFavoriteButtonState(); };
+            const isPodcastFavorited = (podcast) => favoritePodcasts.some(p => p.collectionId === podcast.collectionId);
+            const toggleFavoritePodcast = () => {
+                if (!currentPodcast) return;
+                const index = favoritePodcasts.findIndex(p => p.collectionId === currentPodcast.collectionId);
+                if (index > -1) { favoritePodcasts.splice(index, 1); } else { favoritePodcasts.push(currentPodcast); }
+                saveFavorites();
+            };
+            const updateFavoriteButtonState = () => {
+                if (!currentPodcast) return;
+                favoritePodcastBtn.classList.toggle('favorited', isPodcastFavorited(currentPodcast));
+            };
             
-            try {
-                const response = await fetch(searchUrl);
-                if (!response.ok) {
-                    throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
-                }
-                const data = await response.json();
-                displayPodcasts(data.results);
-            } catch (error) {
-                console.error('搜尋 Podcast 時發生錯誤:', error);
-                podcastList.innerHTML = `<p class="text-red-500 text-center">搜尋失敗，請稍後再試。</p>`;
-            } finally {
-                loader.classList.add('hidden');
-                mainContent.classList.remove('hidden');
-            }
-        }
+            // --- RWD 響應式檢視切換 ---
+            const showResultsView = () => { if (window.innerWidth < 1024) { podcastResults.classList.remove('hidden'); episodesContainer.classList.add('hidden'); } };
+            const showEpisodesView = () => { if (window.innerWidth < 1024) { podcastResults.classList.add('hidden'); episodesContainer.classList.remove('hidden'); } };
+            
+            // --- 介面渲染 ---
+            const setActiveTab = (activeTab) => {
+                [tabSearchResults, tabFavorites].forEach(tab => { tab.style.borderColor = 'transparent'; tab.style.color = '#6b7280'; });
+                activeTab.style.borderColor = 'var(--system-blue)'; activeTab.style.color = 'var(--system-blue)';
+            };
 
-        function displayPodcasts(podcasts) {
-            podcastList.innerHTML = '';
-            if (podcasts.length === 0) {
-                podcastList.innerHTML = `<p class="text-gray-500 text-center">找不到相關的 Podcast。</p>`;
-                return;
-            }
-
-            podcasts.forEach(podcast => {
-                const podcastItem = document.createElement('div');
-                podcastItem.className = 'flex items-center gap-4 p-2.5 rounded-lg hover:bg-gray-200/80 cursor-pointer transition duration-200';
-                podcastItem.innerHTML = `
-                    <img src="${podcast.artworkUrl100}" alt="${podcast.collectionName}" class="w-14 h-14 rounded-md object-cover">
+            const createPodcastItem = (podcast, isFavorite = false) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center gap-3 p-2 rounded-lg hover:bg-gray-200/80 transition duration-200';
+                item.dataset.id = podcast.collectionId;
+                item.innerHTML = `
+                    ${isFavorite ? '<i data-lucide="grip-vertical" class="drag-handle w-5 h-5 text-gray-400"></i>' : ''}
+                    <img src="${podcast.artworkUrl100}" alt="${sanitizeHTML(podcast.collectionName)}" class="w-12 h-12 rounded-md object-cover flex-shrink-0">
                     <div class="flex-grow overflow-hidden">
-                        <h4 class="font-semibold text-black truncate">${podcast.collectionName}</h4>
-                        <p class="text-sm text-gray-500 truncate">${podcast.artistName}</p>
+                        <h4 class="font-semibold text-black truncate text-sm">${sanitizeHTML(podcast.collectionName)}</h4>
+                        <p class="text-xs text-gray-500 truncate">${sanitizeHTML(podcast.artistName)}</p>
+                        <p class="text-xs text-gray-400 truncate mt-0.5">${sanitizeHTML(podcast.primaryGenreName)}</p>
                     </div>
+                    ${isFavorite ? '<button class="delete-favorite-btn p-1.5 text-gray-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>' : ''}
                 `;
-                podcastItem.addEventListener('click', () => {
-                    document.querySelectorAll('#podcast-list .selected-item').forEach(el => {
-                        el.classList.remove('selected-item');
-                        el.style.backgroundColor = '';
-                    });
-                    podcastItem.classList.add('selected-item');
-                    podcastItem.style.backgroundColor = 'rgba(0, 122, 255, 0.2)'; 
-                    
-                    detailArtwork.src = podcast.artworkUrl100;
-                    detailTitle.textContent = podcast.collectionName;
-                    detailArtist.textContent = podcast.artistName;
-                    podcastDetailHeader.classList.remove('hidden');
-
-                    fetchEpisodes(podcast.feedUrl);
-                    showEpisodesView(); // 點擊後，在行動版上切換到單集列表
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.selected-item').forEach(el => { el.classList.remove('selected-item'); el.style.backgroundColor = ''; });
+                    item.classList.add('selected-item'); item.style.backgroundColor = 'rgba(0, 122, 255, 0.2)';
+                    currentPodcast = podcast;
+                    detailArtwork.src = podcast.artworkUrl100; detailTitle.textContent = podcast.collectionName; detailArtist.textContent = podcast.artistName;
+                    updateFavoriteButtonState(); podcastDetailHeader.classList.remove('hidden'); podcastDetailHeader.classList.add('flex');
+                    fetchEpisodes(podcast.feedUrl); showEpisodesView();
                 });
-                podcastList.appendChild(podcastItem);
-            });
-        }
-
-        async function fetchEpisodes(feedUrl) {
-            episodeList.innerHTML = `
-                <div class="flex justify-center items-center h-full pt-8">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2" style="border-color: var(--system-blue);"></div>
-                    <p class="ml-3 text-gray-600">正在載入單集...</p>
-                </div>
-            `;
-            const proxyUrl = `${CORS_PROXY}${encodeURIComponent(feedUrl)}`;
-            
-            try {
-                const response = await fetch(proxyUrl);
-                 if (!response.ok) {
-                    throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
-                }
-                const xmlText = await response.text();
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, "application/xml");
-                
-                const parseError = xmlDoc.querySelector("parsererror");
-                if (parseError) {
-                    console.error("XML 解析錯誤:", parseError);
-                    throw new Error("無法解析 RSS feed。");
-                }
-
-                const items = xmlDoc.querySelectorAll("item");
-                displayEpisodes(items);
-            } catch (error)
-            {
-                console.error('獲取單集列表時發生錯誤:', error);
-                episodeList.innerHTML = `<p class="text-red-500 text-center">無法載入單集列表。可能是來源的 RSS Feed 有問題或網路不穩定。</p>`;
-            }
-        }
-        
-        function displayEpisodes(items) {
-            episodeList.innerHTML = '';
-            if (items.length === 0) {
-                episodeList.innerHTML = `<p class="text-gray-500 text-center">這個 Podcast 沒有可用的單集。</p>`;
-                return;
-            }
-
-            items.forEach(item => {
-                const title = item.querySelector("title")?.textContent || '無標題';
-                const enclosure = item.querySelector("enclosure");
-                const audioUrl = enclosure ? enclosure.getAttribute("url") : null;
-
-                if (audioUrl) {
-                    const episodeItem = document.createElement('div');
-                    episodeItem.className = 'p-2.5 border-b border-gray-200/60 last:border-b-0 flex justify-between items-center gap-3 hover:bg-gray-200/60 rounded-lg';
-                    episodeItem.innerHTML = `
-                        <p class="flex-grow text-sm text-gray-700">${title}</p>
-                        <div class="flex-shrink-0 flex gap-1">
-                             <button class="play-btn p-2 rounded-full transition duration-300" title="播放" style="color: var(--system-blue);">
-                                <i data-lucide="play-circle" class="w-6 h-6"></i>
-                            </button>
-                            <a href="${audioUrl}" download="${title.replace(/[^a-zA-Z0-9\s]/g, '')}.mp3" class="download-btn p-2 text-gray-500 hover:text-gray-800 rounded-full transition duration-300" title="下載">
-                                <i data-lucide="download" class="w-6 h-6"></i>
-                            </a>
-                        </div>
-                    `;
-                    episodeItem.querySelector('.play-btn').addEventListener('click', () => {
-                        playEpisode(audioUrl, title);
+                if (isFavorite) {
+                    item.querySelector('.delete-favorite-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        favoritePodcasts = favoritePodcasts.filter(p => p.collectionId !== podcast.collectionId);
+                        saveFavorites();
                     });
-                    episodeList.appendChild(episodeItem);
                 }
-            });
-            lucide.createIcons();
-        }
+                return item;
+            };
 
-        function playEpisode(url, title) {
-            audioPlayer.src = url;
-            nowPlayingTitle.textContent = title;
-            audioPlayer.play();
-            audioPlayerContainer.classList.remove('translate-y-full');
-        }
+            const displayPodcasts = (podcasts) => {
+                podcastList.innerHTML = '';
+                if (podcasts.length === 0) { podcastList.innerHTML = `<p class="text-gray-500 text-center pt-8">找不到相關的 Podcast。</p>`; return; }
+                podcasts.forEach(podcast => podcastList.appendChild(createPodcastItem(podcast)));
+                lucide.createIcons();
+            };
+            
+            const displayFavoritePodcasts = () => {
+                favoritePodcastList.innerHTML = '';
+                if (favoritePodcasts.length === 0) { favoritePodcastList.innerHTML = `<p class="text-gray-500 text-center pt-8">尚無收藏的 Podcast。</p>`; return; }
+                
+                const grouped = favoritePodcasts.reduce((acc, podcast) => {
+                    const genre = podcast.primaryGenreName || '未分類';
+                    if (!acc[genre]) acc[genre] = [];
+                    acc[genre].push(podcast);
+                    return acc;
+                }, {});
 
+                Object.keys(grouped).sort().forEach(genre => {
+                    const header = document.createElement('h3');
+                    header.className = 'category-header';
+                    header.textContent = genre;
+                    favoritePodcastList.appendChild(header);
+                    
+                    const groupContainer = document.createElement('div');
+                    groupContainer.dataset.genre = genre;
+                    grouped[genre].forEach(podcast => groupContainer.appendChild(createPodcastItem(podcast, true)));
+                    favoritePodcastList.appendChild(groupContainer);
+                });
+
+                initSortable();
+                lucide.createIcons();
+            };
+
+            const initSortable = () => {
+                if (sortableInstance) sortableInstance.destroy();
+                const groups = favoritePodcastList.querySelectorAll('[data-genre]');
+                groups.forEach(group => {
+                    new Sortable(group, {
+                        group: 'favorites',
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        handle: '.drag-handle',
+                        onEnd: (evt) => {
+                            const podcastId = evt.item.dataset.id;
+                            const movedPodcast = favoritePodcasts.find(p => p.collectionId == podcastId);
+                            
+                            // Reorder logic
+                            const allIdsInOrder = Array.from(favoritePodcastList.querySelectorAll('[data-id]')).map(el => el.dataset.id);
+                            favoritePodcasts.sort((a, b) => allIdsInOrder.indexOf(String(a.collectionId)) - allIdsInOrder.indexOf(String(b.collectionId)));
+
+                            localStorage.setItem('favoritePodcasts', JSON.stringify(favoritePodcasts));
+                        }
+                    });
+                });
+            };
+
+            async function fetchEpisodes(feedUrl) {
+                episodeList.innerHTML = `<div class="flex justify-center items-center h-full pt-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2" style="border-color: var(--system-blue);"></div><p class="ml-3 text-gray-600">正在載入單集...</p></div>`;
+                try {
+                    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(feedUrl)}`);
+                    if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
+                    const xmlText = await response.text();
+                    const xmlDoc = new DOMParser().parseFromString(xmlText, "application/xml");
+                    if (xmlDoc.querySelector("parsererror")) throw new Error("無法解析 RSS feed。");
+                    currentEpisodeList = Array.from(xmlDoc.querySelectorAll("item")).map(item => ({ title: item.querySelector("title")?.textContent || '無標題', description: cleanDescription(item.querySelector("description")?.textContent || ''), audioUrl: item.querySelector("enclosure")?.getAttribute("url") })).filter(item => item.audioUrl);
+                    renderEpisodes(currentEpisodeList);
+                } catch (error) { console.error('獲取單集列表時發生錯誤:', error); episodeList.innerHTML = `<p class="text-red-500 text-center">無法載入單集列表。</p>`; currentEpisodeList = []; }
+                updatePlayerButtons();
+            }
+
+            const renderEpisodes = (items) => {
+                episodeList.innerHTML = '';
+                if (items.length === 0) { episodeList.innerHTML = `<p class="text-gray-500 text-center">這個 Podcast 沒有可用的單集。</p>`; return; }
+                items.forEach((item, index) => {
+                    const episodeItem = document.createElement('div');
+                    episodeItem.className = 'episode-item py-1 px-2 border-b border-gray-200/60 last:border-b-0 flex justify-between items-center gap-2 hover:bg-gray-200/60 rounded-lg';
+                    episodeItem.innerHTML = `<p class="flex-grow text-sm text-gray-700 truncate">${sanitizeHTML(item.title)}</p><button class="play-btn p-1.5 rounded-full" title="播放" style="color: var(--system-blue);"><i data-lucide="play-circle" class="w-5 h-5"></i></button>`;
+                    episodeItem.querySelector('.play-btn').addEventListener('click', (e) => { e.stopPropagation(); playEpisode(index); });
+                    episodeItem.addEventListener('mouseenter', (e) => showTooltip(e, item.title, item.description));
+                    episodeItem.addEventListener('mouseleave', hideTooltip);
+                    episodeItem.addEventListener('mousemove', updateTooltipPosition);
+                    episodeList.appendChild(episodeItem);
+                });
+                lucide.createIcons();
+            };
+
+            // --- 播放器邏輯 ---
+            const playEpisode = (index) => {
+                if (index < 0 || index >= currentEpisodeList.length) return;
+                currentEpisodeIndex = index;
+                const episode = currentEpisodeList[index];
+                audioPlayer.src = episode.audioUrl;
+                nowPlayingTitle.textContent = episode.title;
+                audioPlayer.play().catch(e => console.error("播放失敗:", e));
+                audioPlayerContainer.classList.remove('translate-y-full');
+                updatePlayerButtons();
+            };
+            const updatePlayerButtons = () => { prevEpisodeBtn.disabled = currentEpisodeIndex <= 0; nextEpisodeBtn.disabled = currentEpisodeIndex >= currentEpisodeList.length - 1; };
+            const playNext = () => playEpisode(currentEpisodeIndex + 1);
+            const playPrev = () => playEpisode(currentEpisodeIndex - 1);
+
+            // --- Tooltip 邏輯 ---
+            const showTooltip = (event, title, description) => { tooltipTitle.textContent = title; tooltipDescription.textContent = description || '無描述'; tooltip.classList.remove('hidden'); updateTooltipPosition(event); };
+            const hideTooltip = () => tooltip.classList.add('hidden');
+            const updateTooltipPosition = (event) => { tooltip.style.left = `${event.clientX + 15}px`; tooltip.style.top = `${event.clientY + 15}px`; };
+
+            // --- API 呼叫 ---
+            async function searchPodcasts(term) {
+                podcastList.innerHTML = ''; episodeList.innerHTML = '<p class="text-gray-500 text-center pt-8">請先選擇 Podcast。</p>';
+                podcastDetailHeader.classList.add('hidden'); podcastDetailHeader.classList.remove('flex');
+                mainContent.classList.add('hidden'); loader.classList.remove('hidden'); currentPodcast = null;
+                try {
+                    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=podcast&entity=podcast&country=TW&limit=50`)}`);
+                    if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
+                    const data = await response.json();
+                    displayPodcasts(data.results);
+                } catch (error) { console.error('搜尋 Podcast 時發生錯誤:', error); podcastList.innerHTML = `<p class="text-red-500 text-center">搜尋失敗，請稍後再試。</p>`;
+                } finally { loader.classList.add('hidden'); mainContent.classList.remove('hidden'); }
+            }
+
+            // --- 事件監聽器 ---
+            searchForm.addEventListener('submit', async (e) => { e.preventDefault(); const term = searchInput.value.trim(); if (term) { tabSearchResults.click(); showResultsView(); await searchPodcasts(term); } });
+            backToResultsBtn.addEventListener('click', showResultsView);
+            favoritePodcastBtn.addEventListener('click', toggleFavoritePodcast);
+            prevEpisodeBtn.addEventListener('click', playPrev);
+            nextEpisodeBtn.addEventListener('click', playNext);
+            audioPlayer.addEventListener('ended', playNext);
+            tabSearchResults.addEventListener('click', () => { setActiveTab(tabSearchResults); podcastListContainer.classList.remove('hidden'); favoritePodcastListContainer.classList.add('hidden'); });
+            tabFavorites.addEventListener('click', () => { setActiveTab(tabFavorites); podcastListContainer.classList.add('hidden'); favoritePodcastListContainer.classList.remove('hidden'); displayFavoritePodcasts(); });
+
+            // --- 初始化 ---
+            const init = () => { lucide.createIcons(); loadFavorites(); tabSearchResults.click(); updatePlayerButtons(); };
+            init();
+        });
     </script>
 </body>
 </html>
