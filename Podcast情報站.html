@@ -131,6 +131,14 @@
         #filter-favorites-btn, #sort-direction-btn { background-color: var(--color-interactive-element); color: var(--color-text-primary); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
         #filter-favorites-btn.active { background-color: #ff3b30; color: white; }
 
+        /* 類別篩選下拉選單 */
+        .genre-filter-container { position: relative; margin-bottom: 1rem; }
+        #genre-filter-btn { background-color: #007AFF; color: white; border: none; border-radius: 0.5rem; padding: 0.5rem 1rem; width: 100%; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+        #genre-filter-list { display: none; position: absolute; top: 100%; left: 0; right: 0; background-color: var(--color-surface-hover); border-radius: 0.5rem; margin-top: 0.25rem; max-height: 250px; overflow-y: auto; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.4); border: 1px solid var(--color-interactive-element); }
+        #genre-filter-list a { display: flex; align-items: center; padding: 0.5rem 1rem; color: var(--color-text-primary); text-decoration: none; user-select: none; }
+        #genre-filter-list a:hover { background-color: #007AFF; color: white; }
+        #genre-filter-list a.dragging { opacity: 0.5; }
+
         /* 側邊欄項目 */
         #sidebar-items.grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.75rem; }
         .sidebar-item { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 0.5rem; position: relative; }
@@ -216,33 +224,21 @@
         #modal-description { flex-grow: 1; overflow-y: auto; margin-top: 1rem; line-height: 1.7; }
         #modal-description a { color: #A0C4FF; text-decoration: underline; }
 
-        /* 新增導航按鈕樣式 */
+        /* 導航按鈕樣式 */
         .nav-button {
-            background-color: var(--color-interactive-element);
-            color: var(--color-text-primary);
-            border-radius: 9999px;
-            padding: 0.5rem;
+            background-color: transparent;
+            border: none;
+            padding: 0;
             cursor: pointer;
-            transition: all 0.2s ease-in-out;
+            transition: opacity 0.2s ease-in-out;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid transparent;
         }
-        .nav-button:hover {
-            background-color: var(--color-surface-hover);
-            border-color: var(--color-text-secondary);
-        }
-        .nav-button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            background-color: var(--color-interactive-element);
-            border-color: transparent;
-        }
-        .nav-button svg {
-            width: 1.5rem;
-            height: 1.5rem;
-        }
+        .nav-button:hover { opacity: 0.8; }
+        .nav-button:disabled { opacity: 0.3; cursor: not-allowed; }
+        .nav-button svg { width: 2.25rem; height: 2.25rem; }
+
     </style>
 </head>
 <body>
@@ -262,10 +258,18 @@
                     <i class="fas fa-search text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10"></i>
                     <input type="text" placeholder="搜尋 iTunes..." id="search-input" class="bg-[var(--color-interactive-element)] text-[var(--color-text-primary)] py-2 pl-10 pr-4 rounded-full border-none w-full">
                 </div>
-                <button id="search-btn" class="bg-[#A0C4FF] text-white py-2 px-4 rounded-full border-none cursor-pointer flex-shrink-0 font-semibold">搜尋</button>
+                <button id="search-btn" class="bg-[#27C93F] text-white py-2 px-4 rounded-full border-none cursor-pointer flex-shrink-0 font-semibold">搜尋</button>
+            </div>
+            
+            <div class="genre-filter-container mt-4">
+                <button id="genre-filter-btn">
+                    <span id="genre-filter-btn-text">所有類別</span>
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </button>
+                <div id="genre-filter-list"></div>
             </div>
 
-            <div class="sidebar-controls mt-4">
+            <div class="sidebar-controls">
                 <div class="relative flex-grow">
                      <i class="fas fa-filter text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10 text-sm"></i>
                     <input type="text" id="local-search-input" placeholder="篩選收藏庫...">
@@ -396,6 +400,9 @@
             const localSearchInput = document.getElementById('local-search-input');
             const viewModeListBtn = document.getElementById('view-mode-list');
             const viewModeGridBtn = document.getElementById('view-mode-grid');
+            const genreFilterBtn = document.getElementById('genre-filter-btn');
+            const genreFilterList = document.getElementById('genre-filter-list');
+            const genreFilterBtnText = document.getElementById('genre-filter-btn-text');
             
             // Modal elements
             const modalOverlay = document.getElementById('modal-overlay');
@@ -410,10 +417,18 @@
             const collectionCache = {};
             let playerState = { currentEpisode: null, playlist: [], currentIndex: -1, isPlaying: false, playbackRate: 1.0, isRepeating: false, _playbackAttempt: 'direct' };
             let isFavoritesFilterActive = false;
+            let currentGenreFilter = 'All';
             let isFetchingDetails = false;
             let lastProgressUpdateTime = 0;
             let currentViewSource = 'sidebar';
             let searchState = { term: '', results: [], currentIndex: -1, offset: 0, limit: 50 };
+
+            const GENRES = {
+                'All': '所有類別', 'True Crime': '犯罪紀實', 'Comedy': '喜劇', 'Society & Culture': '社會與文化', 'News': '新聞', 
+                'Health & Fitness': '健康與瘦身', 'Sports': '運動', 'Business': '商業', 'Education': '教育', 'Arts': '藝術', 
+                'Science': '科學', 'History': '歷史', 'Religion & Spirituality': '宗教與精神生活', 'Kids & Family': '兒童與家庭', 
+                'Music': '音樂', 'TV & Film': '電視與電影', 'Technology': '科技', 'Leisure': '休閒', 'Fiction': '小說', 'Government': '政府'
+            };
 
             const getCollection = () => JSON.parse(localStorage.getItem('podcastCollection') || '[]');
             const saveCollection = (collection) => localStorage.setItem('podcastCollection', JSON.stringify(collection));
@@ -426,13 +441,21 @@
                 localStorage.setItem('playbackProgress', JSON.stringify(progressData));
             };
 
-
             const loadCollection = () => {
                 sidebarItemsContainer.innerHTML = '';
                 let collection = getCollection();
-                if (isFavoritesFilterActive) collection = collection.filter(p => p.isFavorite);
+
+                if (isFavoritesFilterActive) {
+                    collection = collection.filter(p => p.isFavorite);
+                }
+
+                if (currentGenreFilter !== 'All') {
+                    collection = collection.filter(p => p.primaryGenreName === currentGenreFilter);
+                }
+
                 const isAsc = sortIcon.classList.contains('fa-arrow-up-wide-short');
                 collection.sort((a, b) => isAsc ? a.collectionName.localeCompare(b.collectionName, 'zh-Hant') : b.collectionName.localeCompare(a.collectionName, 'zh-Hant'));
+                
                 collection.forEach((podcast, index) => renderCollectionItem(podcast, index + 1));
             };
 
@@ -672,14 +695,14 @@
                     navHeaderHTML = `
                         <div id="detail-view-nav" class="flex items-center justify-between mb-4 flex-shrink-0">
                             <button id="detail-nav-back" class="nav-button" title="返回搜尋結果">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
+                                <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="18" fill="#007AFF"/><path d="M22 18H12M12 18L17 13M12 18L17 23" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             </button>
                             <div class="flex items-center gap-2">
                                 <button id="detail-nav-prev-podcast" class="nav-button" title="上一個節目">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+                                     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="18" fill="#8E8E93"/><path d="M20.25 24L14.25 18L20.25 12" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                 </button>
                                 <button id="detail-nav-next-podcast" class="nav-button" title="下一個節目">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+                                    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="18" fill="#8E8E93"/><path d="M15.75 12L21.75 18L15.75 24" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                 </button>
                             </div>
                         </div>`;
@@ -930,6 +953,39 @@
                 };
             }
 
+            function saveGenreOrder() {
+                const order = Array.from(genreFilterList.querySelectorAll('a')).map(a => a.dataset.genre);
+                localStorage.setItem('genreOrder', JSON.stringify(order));
+            }
+
+            function populateGenreFilter() {
+                const savedOrder = JSON.parse(localStorage.getItem('genreOrder')) || Object.keys(GENRES);
+                genreFilterList.innerHTML = '';
+                
+                savedOrder.forEach(key => {
+                    if (!GENRES[key]) return; // Safety check for deleted/old genres
+                    const value = GENRES[key];
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.innerHTML = `<i class="fas fa-grip-vertical" style="margin-right: 8px; color: var(--color-text-secondary); cursor: grab;"></i> ${value}`;
+                    link.dataset.genre = key;
+                    link.draggable = true;
+
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (e.target.tagName === 'I') { // Don't trigger filter when clicking handle
+                            return;
+                        }
+                        currentGenreFilter = e.currentTarget.dataset.genre;
+                        genreFilterBtnText.textContent = GENRES[currentGenreFilter];
+                        genreFilterList.style.display = 'none';
+                        loadCollection();
+                    });
+                    genreFilterList.appendChild(link);
+                });
+            }
+
+
             function initialize() {
                 soundIconContainer.innerHTML = soundIconSVG;
                 
@@ -986,8 +1042,8 @@
                         console.log(`[Player] Attempt 2 (Proxy): ${proxyUrl}`);
                         const currentTime = audio.currentTime; 
                         audio.src = proxyUrl;
-                        audio.currentTime = currentTime;
-                        audio.load(); // Important: call load() when changing src
+                        audio.load(); 
+                        if(currentTime > 0) audio.currentTime = currentTime;
                         audio.play().catch(err => console.error("Proxy play() failed immediately.", err));
                         return; 
                     }
@@ -1048,9 +1104,48 @@
                 const applyTheme = (theme) => { document.documentElement.setAttribute('data-theme', theme); themeToggleBtn.innerHTML = theme === 'dark' ? sunIconSVG : moonIconSVG; localStorage.setItem('theme', theme); };
                 themeToggleBtn.addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
                 
+                // Genre Filter Logic
+                populateGenreFilter();
+                genreFilterBtn.addEventListener('click', () => {
+                    genreFilterList.style.display = genreFilterList.style.display === 'block' ? 'none' : 'block';
+                });
+                
+                let draggedItem = null;
+                genreFilterList.addEventListener('dragstart', (e) => {
+                    draggedItem = e.target.closest('a');
+                    setTimeout(() => { if(draggedItem) draggedItem.classList.add('dragging'); }, 0);
+                });
+                genreFilterList.addEventListener('dragend', (e) => {
+                    if(draggedItem) draggedItem.classList.remove('dragging');
+                    draggedItem = null;
+                });
+                genreFilterList.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    const target = e.target.closest('a');
+                    if (target && draggedItem && target !== draggedItem) {
+                        const rect = target.getBoundingClientRect();
+                        const next = (e.clientY - rect.top) / rect.height > 0.5;
+                        genreFilterList.insertBefore(draggedItem, next ? target.nextSibling : target);
+                    }
+                });
+                genreFilterList.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if(draggedItem) {
+                       draggedItem.classList.remove('dragging');
+                       saveGenreOrder();
+                    }
+                });
+
                 // Modal close events
                 modalCloseBtn.addEventListener('click', () => modalOverlay.style.display = 'none');
                 modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.style.display = 'none'; });
+
+                // Close dropdown if clicked outside
+                window.addEventListener('click', (e) => {
+                    if (!genreFilterBtn.contains(e.target)) {
+                        genreFilterList.style.display = 'none';
+                    }
+                });
 
                 applyTheme(localStorage.getItem('theme') || 'dark');
                 loadCollection();
