@@ -111,9 +111,9 @@
         .play-pause-btn:active { transform: scale(0.95); }
         .play-pause-btn i { color: #A0C4FF; font-size: 0.875rem; }
         .progress-container { display: flex; align-items: center; gap: 0.5rem; width: 100%; }
-        #download-btn { display: none; color: #A0C4FF; }
+        #download-btn { display: none; color: #27C93F; } /* MODIFIED: Changed color to green */
         #download-btn.is-visible { display: inline-block; }
-        #download-btn:hover { color: #8EB8FF; }
+        #download-btn:hover { color: #22a936; } /* MODIFIED: Changed hover color to darker green */
 
         /* 側邊欄 */
         .sidebar { background-color: var(--color-surface); border-radius: 0.5rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.25rem; overflow-y: auto; }
@@ -178,8 +178,8 @@
         .episode-item-actions { display: none; align-items: center; gap: 0.75rem; }
         .episode-action-btn { background-color: transparent; border: 1px solid var(--color-text-secondary); color: var(--color-text-secondary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .episode-action-btn:hover { background-color: var(--color-text-secondary); color: var(--color-surface); }
-        .episode-action-btn.download-action-link { color: #A0C4FF; border-color: #A0C4FF; }
-        .episode-action-btn.download-action-link:hover { background-color: #A0C4FF; color: white; }
+        .episode-action-btn.download-action-link { color: #27C93F; border-color: #27C93F; } /* MODIFIED: Changed color to green */
+        .episode-action-btn.download-action-link:hover { background-color: #27C93F; color: white; } /* MODIFIED: Changed hover color to green */
         .episode-item:not(.is-playing-item):hover .episode-metadata { display: none; }
         .episode-item:not(.is-playing-item):hover .episode-item-actions { display: flex; }
         .episode-date { font-size: 0.75rem; color: var(--color-text-secondary); white-space: nowrap; }
@@ -450,7 +450,8 @@
                 }
 
                 if (currentGenreFilter !== 'All') {
-                    collection = collection.filter(p => p.primaryGenreName === currentGenreFilter);
+                    // MODIFIED: Changed from '===' to 'includes()' for smart filtering
+                    collection = collection.filter(p => p.primaryGenreName && p.primaryGenreName.includes(currentGenreFilter));
                 }
 
                 const isAsc = sortIcon.classList.contains('fa-arrow-up-wide-short');
@@ -511,7 +512,7 @@
                 const searchItemBtn = document.querySelector(`.add-to-fav-btn[data-id="${collectionId}"]`);
                 if (searchItemBtn) {
                     searchItemBtn.classList.toggle('is-favorite', isCollected);
-                    searchItemBtn.querySelector('i').className = isCollected ? 'fas fa-heart' : 'far fa-heart';
+                    searchItemBtn.querySelector('i').className = isCollected ? 'fas' : 'far';
                 }
             }
             
@@ -561,7 +562,7 @@
             }
             
             async function fetchWithTimeout(resource, options = {}) {
-                const { timeout = 8000 } = options; // 8 second default timeout
+                const { timeout = 10000 } = options; // 10 second default timeout
                 const controller = new AbortController();
                 const id = setTimeout(() => {
                     controller.abort();
@@ -575,7 +576,7 @@
                     return response;
                 } catch (error) {
                     if (error.name === 'AbortError') {
-                        throw new Error(`Request timed out after ${timeout}ms`);
+                        throw new Error(`請求超時 (超過 ${timeout/1000} 秒)`);
                     }
                     throw error;
                 } finally {
@@ -584,78 +585,48 @@
             }
 
             async function parseFeed(feedUrl, podcastInfo) {
-                const rawXmlProxies = [
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`,
-                    `https://thingproxy.freeboard.io/fetch/${feedUrl}`
-                ];
-                const rss2jsonProxy = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`;
-
-                for (const url of rawXmlProxies) {
-                    const proxyName = new URL(url).hostname;
-                    try {
-                        console.log(`[Feed Parser] Attempting raw XML fetch via ${proxyName}...`);
-                        const res = await fetchWithTimeout(url, { timeout: 8000 });
-                        if (!res.ok) throw new Error(`Proxy responded with status: ${res.status}`);
-                        
-                        const xmlText = await res.text();
-                        const doc = new DOMParser().parseFromString(xmlText, "application/xml");
-                        if (doc.querySelector("parsererror")) throw new Error('Failed to parse XML from response.');
-                        
-                        const episodes = Array.from(doc.querySelectorAll("item")).map(item => {
-                            const enclosure = item.querySelector("enclosure");
-                            if (!enclosure || !enclosure.getAttribute("url")) return null;
-                            return {
-                                trackId: item.querySelector("guid")?.textContent || enclosure.getAttribute("url"),
-                                trackName: item.querySelector("title")?.textContent || 'Untitled',
-                                episodeUrl: enclosure.getAttribute("url"),
-                                releaseDate: item.querySelector("pubDate")?.textContent || new Date().toISOString(),
-                                description: item.querySelector("description")?.textContent || '',
-                                artworkUrl60: item.querySelector('itunes\\:image, image')?.getAttribute('href') || podcastInfo.artworkUrl60,
-                                artworkUrl600: item.querySelector('itunes\\:image, image')?.getAttribute('href') || podcastInfo.artworkUrl600,
-                                duration: item.querySelector("itunes\\:duration, duration")?.textContent || 0,
-                                fileSize: enclosure.getAttribute("length") || 0,
-                            };
-                        }).filter(Boolean);
-                        
-                        if (episodes.length > 0) {
-                            console.log(`[Feed Parser] SUCCESS: Parsed ${episodes.length} episodes via ${proxyName}.`);
-                            return episodes;
-                        }
-                        throw new Error('No valid <item> tags with enclosures found in XML.');
-                    } catch (error) {
-                        console.warn(`[Feed Parser] FAILED: ${proxyName} - ${error.message}`);
-                    }
-                }
-
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(feedUrl)}`;
                 try {
-                    console.log("[Feed Parser] Falling back to rss2json proxy...");
-                    const res = await fetchWithTimeout(rss2jsonProxy, { timeout: 8000 });
-                    if (!res.ok) throw new Error(`Request failed with status: ${res.status}`);
-                    
-                    const data = await res.json();
-                    if (data.status !== 'ok') throw new Error(`API returned error: ${data.message}`);
-                    
-                    const episodes = data.items.map(item => ({
-                        trackId: item.guid,
-                        trackName: item.title,
-                        episodeUrl: item.enclosure.link,
-                        releaseDate: item.pubDate,
-                        description: item.description || '',
-                        artworkUrl60: item.thumbnail || podcastInfo.artworkUrl60,
-                        artworkUrl600: item.thumbnail || podcastInfo.artworkUrl600,
-                        duration: item.itunes_duration || (item.enclosure && item.enclosure.duration) || 0,
-                        fileSize: (item.enclosure && item.enclosure.length) || 0
-                    })).filter(ep => ep.episodeUrl);
-
-                    if (episodes.length > 0) {
-                        console.log(`[Feed Parser] SUCCESS: Parsed ${episodes.length} episodes via rss2json.`);
-                        return episodes;
+                    console.log(`[Feed Parser] Attempting to fetch feed via corsproxy.io...`);
+                    const res = await fetchWithTimeout(proxyUrl, { timeout: 10000 });
+                    if (!res.ok) {
+                        throw new Error(`代理伺服器回應錯誤，狀態碼: ${res.status}。代理可能暫時失效或來源 Feed 無效。`);
                     }
-                } catch (error) {
-                     console.warn(`[Feed Parser] FAILED: rss2json fallback - ${error.message}`);
-                }
+                    
+                    const xmlText = await res.text();
+                    const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+                    
+                    if (doc.querySelector("parsererror")) {
+                        throw new Error('解析 XML 失敗。來源 Feed 格式可能不正確。');
+                    }
+                    
+                    const episodes = Array.from(doc.querySelectorAll("item")).map(item => {
+                        const enclosure = item.querySelector("enclosure");
+                        if (!enclosure || !enclosure.getAttribute("url")) return null;
+                        return {
+                            trackId: item.querySelector("guid")?.textContent || enclosure.getAttribute("url"),
+                            trackName: item.querySelector("title")?.textContent || 'Untitled Episode',
+                            episodeUrl: enclosure.getAttribute("url"),
+                            releaseDate: item.querySelector("pubDate")?.textContent || new Date().toISOString(),
+                            description: item.querySelector("description")?.textContent || '',
+                            artworkUrl60: item.querySelector('itunes\\:image, image')?.getAttribute('href') || podcastInfo.artworkUrl60,
+                            artworkUrl600: item.querySelector('itunes\\:image, image')?.getAttribute('href') || podcastInfo.artworkUrl600,
+                            duration: item.querySelector("itunes\\:duration, duration")?.textContent || 0,
+                            fileSize: enclosure.getAttribute("length") || 0,
+                        };
+                    }).filter(Boolean);
+                    
+                    if (episodes.length === 0) {
+                        throw new Error('成功解析 RSS Feed，但未找到任何包含音訊檔案的有效單集。');
+                    }
+                    
+                    console.log(`[Feed Parser] SUCCESS: Parsed ${episodes.length} episodes via corsproxy.io.`);
+                    return episodes;
 
-                throw new Error('All proxy attempts failed. Check network, ad blockers, or console for errors.');
+                } catch (error) {
+                    console.error(`[Feed Parser] FAILED: ${error.message}`);
+                    throw new Error(`無法載入 Feed: ${error.message}`);
+                }
             }
 
             async function fetchEpisodes(collectionId) {
@@ -697,12 +668,12 @@
                             <button id="detail-nav-back" class="nav-button" title="返回搜尋結果">
                                 <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="18" fill="#007AFF"/><path d="M22 18H12M12 18L17 13M12 18L17 23" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             </button>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-4">
                                 <button id="detail-nav-prev-podcast" class="nav-button" title="上一個節目">
-                                     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="18" fill="#8E8E93"/><path d="M20.25 24L14.25 18L20.25 12" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="18" fill="#007AFF"/><path d="M20.25 24L14.25 18L20.25 12" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                 </button>
                                 <button id="detail-nav-next-podcast" class="nav-button" title="下一個節目">
-                                    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="18" fill="#8E8E93"/><path d="M15.75 12L21.75 18L15.75 24" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="18" fill="#007AFF"/><path d="M15.75 12L21.75 18L15.75 24" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                 </button>
                             </div>
                         </div>`;
@@ -717,15 +688,17 @@
                             <div class="flex items-center gap-4">
                                 <h1 class="text-xl font-bold truncate">${podcast.collectionName}</h1>
                                 <button id="add-to-collection-btn" style="background-color: ${btnColor};" class="text-white font-bold py-1 px-3 rounded-full text-sm ml-4 flex-shrink-0" ${btnDisabled}>${btnText}</button>
-                                <div class="ml-auto flex items-center gap-4 flex-shrink-0">
-                                    <button id="detail-prev-btn" class="simple-control-btn detail-nav-btn" title="上一集"><i class="fas fa-backward-step"></i></button>
-                                    <button id="detail-next-btn" class="simple-control-btn detail-nav-btn" title="下一集"><i class="fas fa-forward-step"></i></button>
-                                </div>
                             </div>
                             <p class="text-sm mt-1 truncate">${podcast.artistName}</p>
                         </div>
                     </div>
-                    <h2 class="text-xl font-bold mt-4 mb-2">最新單集</h2>
+                    <div class="flex items-center justify-between mt-4 mb-2">
+                        <h2 class="text-xl font-bold">最新單集</h2>
+                        <div class="flex items-center gap-4">
+                            <button id="detail-prev-btn" class="simple-control-btn detail-nav-btn" title="上一集"><i class="fas fa-backward-step"></i></button>
+                            <button id="detail-next-btn" class="simple-control-btn detail-nav-btn" title="下一集"><i class="fas fa-forward-step"></i></button>
+                        </div>
+                    </div>
                     <div id="episodes-placeholder"><div class="spinner"></div><p>正在載入節目...</p></div>`;
                 
                 if (currentViewSource === 'search') {
