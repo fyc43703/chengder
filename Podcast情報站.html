@@ -117,7 +117,7 @@
 
         /* 側邊欄 */
         .sidebar { background-color: var(--color-surface); border-radius: 0.5rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.25rem; overflow-y: auto; }
-        .library-title-styled { background-color: #A0C4FF; color: white; padding: 0.25rem 0.75rem; border-radius: 0.5rem; display: inline-block; cursor: pointer; align-self: center; }
+        .library-title-styled { background-color: #007AFF; color: white; padding: 0.25rem 0.75rem; border-radius: 0.5rem; display: inline-block; cursor: pointer; align-self: center; }
         .main-container { display: flex; flex-direction: column; gap: 0.5rem; overflow: hidden; }
         .main-content { background-color: var(--color-surface); border-radius: 0.5rem; padding: 1.5rem; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         #theme-toggle-btn { background-color: transparent !important; color: var(--color-text-secondary); width: 44px; height: 44px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
@@ -160,8 +160,10 @@
         .podcast-header { display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0; }
         .podcast-header img { width: 4.5rem; height: 4.5rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4); flex-shrink: 0; }
         .podcast-episodes { display: flex; flex-direction: column; gap: 0.1rem; flex-grow: 1; overflow-y: auto; }
-        .episode-item { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer; }
-        .episode-item img { width: 2rem; height: 2rem; border-radius: 0.25rem; flex-shrink: 0; }
+        .episode-item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; }
+        .episode-thumbnail-btn { position: relative; width: 2rem; height: 2rem; border-radius: 0.25rem; flex-shrink: 0; cursor: pointer; overflow: hidden; }
+        .episode-thumbnail-btn img { width: 100%; height: 100%; object-fit: cover; }
+        .episode-main-content { flex: 1; display: flex; align-items: center; gap: 0.75rem; overflow: hidden; cursor: pointer;}
         .episode-number { width: 2.5rem; text-align: right; padding-right: 1rem; color: var(--color-text-secondary); flex-shrink: 0; font-size: 0.875rem; }
         .episode-item:hover { background-color: var(--color-surface-hover); }
         .episode-item-actions { display: none; align-items: center; gap: 0.75rem; }
@@ -177,6 +179,8 @@
         #episodes-placeholder { display: flex; flex-direction: column; justify-content: center; align-items: center; flex-grow: 1; gap: 1rem; color: var(--color-text-secondary); }
         .spinner { width: 40px; height: 40px; border: 4px solid var(--color-surface-hover); border-top-color: #A0C4FF; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .small-spinner { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.4); border-top-color: #ffffff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .loading-spinner-overlay { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; }
 
         /* 播放動畫與狀態 */
         .player-title-container.marquee #player-title { display: inline-block; padding-left: 100%; animation: scroll-text 15s linear infinite; }
@@ -189,7 +193,7 @@
         .sound-wave { transform-origin: 50% 100%; animation: sound-wave-pulse 1.2s ease-in-out infinite; }
         .sound-wave-1 { animation-delay: 0s; } .sound-wave-2 { animation-delay: 0.2s; } .sound-wave-3 { animation-delay: 0.4s; }
         .episode-item.is-playing-item { background-color: #A0C4FF; color: white; }
-        .episode-item.is-playing-item .text-sm, .episode-item.is-playing-item .episode-number { color: rgba(255, 255, 255, 0.85); font-weight: 700; }
+        .episode-item.is-playing-item .text-sm, .episode-item.is-playing-item .episode-number, .episode-item.is-playing-item .text-secondary-color { color: rgba(255, 255, 255, 0.85); font-weight: 700; }
         .episode-item.is-playing-item .episode-date, .episode-item.is-playing-item:hover .episode-item-actions { display: none; }
         .episode-item.is-playing-item .sound-icon-container { display: flex; }
         .episode-item.is-playing-item .sound-icon-container svg { width: 24px; height: 24px; color: white; }
@@ -197,27 +201,17 @@
         #volume-tooltip { position: absolute; bottom: 150%; left: 50%; transform: translateX(-50%); background-color: var(--color-interactive-element); color: var(--color-text-primary); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; display: none; white-space: nowrap; pointer-events: none; }
         #volume-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border-width: 5px; border-style: solid; border-color: var(--color-interactive-element) transparent transparent transparent; }
 
-        /* RWD */
-        @media (max-width: 1024px) { .container { grid-template-columns: 16rem 1fr; } }
-        @media (max-width: 768px) { .container { grid-template-columns: 1fr; padding: 0; padding-bottom: var(--player-height); } .sidebar, .main-container { border-radius: 0; } .player { padding: 0 1rem; gap: 0.75rem; } .player-info { flex-basis: 30%; } #player-album-art { width: 48px; height: 48px; } #player-artist { display: none; } .player-controls-wrapper { flex-basis: 45%; } .playback-controls { gap: 1rem; } .player-actions-wrapper { flex-basis: 25%; gap: 0.5rem; justify-content: flex-end; } }
-        @media (max-width: 640px) { .player { padding: 0 0.75rem; gap: 0.5rem; } .main-content { padding: 1rem; } h1.text-2xl { font-size: 1.25rem; } .player-info { flex-basis: 35%; } #player-album-art { width: 40px; height: 40px; } .player-controls-wrapper { flex-basis: 40%; } #current-time, #duration { display: none; } .progress-container { gap: 0; width: 100%; margin: 0 auto; } #progress-bar { margin: 0 0.5rem; } .playback-controls { gap: 0.75rem; } #play-pause-btn { width: 2.5rem; height: 2.5rem; } #play-pause-icon { font-size: 1rem; } .simple-control-btn i { font-size: 0.875rem; } .player-actions-wrapper { flex-basis: 25%; } }
-    
         /* 進度條優化 */
-        #progress-bar { position: relative; height: 4px; }
+        #progress-bar { position: relative; height: 8px; }
         #progress-bar:hover #progress-handle { opacity: 1; }
-        #progress-handle { 
-            width: 0.75rem; 
-            height: 0.75rem; 
-            background-color: white; 
-            border-radius: 50%; 
-            position: absolute; 
-            right: 0; 
-            top: 50%; 
-            transform: translate(50%, -50%); 
-            opacity: 0; 
-            transition: opacity 0.2s;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
-        }
+        #progress-handle { width: 0.75rem; height: 0.75rem; background-color: white; border-radius: 50%; position: absolute; right: 0; top: 50%; transform: translate(50%, -50%); opacity: 0; transition: opacity 0.2s; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
+
+        /* Modal 樣式 */
+        #modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        #episode-modal { background-color: var(--color-surface); border-radius: 0.75rem; padding: 1.5rem; max-width: 600px; width: 90%; max-height: 80vh; display: flex; flex-direction: column; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        #modal-close-btn { position: absolute; top: 1rem; right: 1rem; background: var(--color-interactive-element); border: none; color: var(--color-text-primary); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+        #modal-description { flex-grow: 1; overflow-y: auto; margin-top: 1rem; line-height: 1.7; }
+        #modal-description a { color: #A0C4FF; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -319,10 +313,30 @@
             <div id="volume-container" class="relative flex items-center">
                 <button id="volume-icon-btn" class="simple-control-btn mr-1"><i class="fas fa-volume-high text-base"></i></button>
                 <span id="volume-tooltip">30%</span>
-                <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.3" class="w-24" title="調整音量">
+                <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.3" class="w-72" title="調整音量">
             </div>
         </div>
     </footer>
+    
+    <!-- Modal HTML Structure -->
+    <div id="modal-overlay">
+        <div id="episode-modal">
+            <button id="modal-close-btn" title="關閉"><i class="fas fa-times"></i></button>
+            <div class="flex items-start gap-4 flex-shrink-0">
+                <img id="modal-artwork" src="" class="w-24 h-24 rounded-lg flex-shrink-0">
+                <div class="flex-1">
+                    <p id="modal-date" class="text-xs text-gray-400 mb-1"></p>
+                    <h3 id="modal-title" class="text-lg font-bold"></h3>
+                    <p id="modal-artist" class="text-sm text-gray-300"></p>
+                    <button id="modal-play-btn" class="mt-3 bg-[#A0C4FF] text-white font-bold py-2 px-6 rounded-full text-sm">
+                        <i class="fas fa-play mr-2"></i>播放
+                    </button>
+                </div>
+            </div>
+            <div id="modal-description"></div>
+        </div>
+    </div>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -349,6 +363,11 @@
             const viewModeListBtn = document.getElementById('view-mode-list');
             const viewModeGridBtn = document.getElementById('view-mode-grid');
             
+            // Modal elements
+            const modalOverlay = document.getElementById('modal-overlay');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+            const modalPlayBtn = document.getElementById('modal-play-btn');
+
             const soundIconSVG = `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect class="sound-wave sound-wave-1" x="4" y="8" width="4" height="8" rx="1"></rect><rect class="sound-wave sound-wave-2" x="10" y="5" width="4" height="14" rx="1"></rect><rect class="sound-wave sound-wave-3" x="16" y="8" width="4" height="8" rx="1"></rect></svg>`;
             const sunIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-6.364-.386l1.591-1.591M3 12h2.25m.386-6.364l1.591 1.591M12 12a6 6 0 100-12 6 6 0 000 12z" /></svg>`;
             const moonIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25c0 5.385 4.365 9.75 9.75 9.75 2.572 0 4.92-.99 6.697-2.648z" /></svg>`;
@@ -357,7 +376,7 @@
             const collectionCache = {};
             let playerState = { currentEpisode: null, playlist: [], currentIndex: -1, isPlaying: false, playbackRate: 1.0, isRepeating: false };
             let isFavoritesFilterActive = false;
-            let isFetchingDetails = false; // 新增：請求鎖定旗標
+            let isFetchingDetails = false;
 
             const getCollection = () => JSON.parse(localStorage.getItem('podcastCollection') || '[]');
             const saveCollection = (collection) => localStorage.setItem('podcastCollection', JSON.stringify(collection));
@@ -450,137 +469,95 @@
                 } catch (error) { container.innerHTML = '<p class="text-center text-gray-400">搜尋失敗。請稍後再試。</p>'; }
             }
             
-            // --- START: 全新、極致穩健的核心演算法 ---
-
-            // 輔助函式：取得 Podcast 基本資訊 (含快取)
             async function getPodcastInfo(collectionId) {
-                if (collectionCache[collectionId] && collectionCache[collectionId].feedUrl) {
-                    return collectionCache[collectionId];
-                }
-                const response = await fetch(`https://itunes.apple.com/lookup?id=${collectionId}`);
-                if (!response.ok) throw new Error(`iTunes API request failed with status ${response.status}`);
-                const data = await response.json();
-                if (data.resultCount === 0 || !data.results[0].feedUrl) {
-                    throw new Error('Podcast not found or does not have a valid feed URL.');
-                }
+                if (collectionCache[collectionId] && collectionCache[collectionId].feedUrl) return collectionCache[collectionId];
+                const res = await fetch(`https://itunes.apple.com/lookup?id=${collectionId}`);
+                if (!res.ok) throw new Error(`iTunes API request failed: ${res.status}`);
+                const data = await res.json();
+                if (data.resultCount === 0 || !data.results[0].feedUrl) throw new Error('Podcast not found or has no feed URL.');
                 collectionCache[collectionId] = data.results[0];
                 return data.results[0];
             }
+            
+            async function parseFeed(feedUrl, podcastInfo) {
+                const proxies = [
+                    { name: 'rss2json', url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}` },
+                    { name: 'allorigins', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}` },
+                    { name: 'thingproxy', url: `https://thingproxy.freeboard.io/fetch/${feedUrl}` }
+                ];
 
-            // 主要方法：使用 rss2json API
-            async function fetchWithRss2Json(feedUrl, podcastInfo) {
-                const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`);
-                if (!response.ok) throw new Error(`rss2json API request failed with status ${response.status}`);
-                const data = await response.json();
-                if (data.status !== 'ok') throw new Error(`rss2json failed to parse feed: ${data.message}`);
-                
-                return data.items.map(item => ({
-                    trackId: item.guid,
-                    trackName: item.title,
-                    episodeUrl: item.enclosure.link,
-                    releaseDate: item.pubDate,
-                    artworkUrl60: item.thumbnail || podcastInfo.artworkUrl60,
-                    artworkUrl600: item.thumbnail || podcastInfo.artworkUrl600
-                })).filter(ep => ep.episodeUrl); // 確保有音檔連結
-            }
+                for (const proxy of proxies) {
+                    try {
+                        console.log(`Attempting to fetch feed via ${proxy.name}...`);
+                        const res = await fetch(proxy.url);
+                        if (!res.ok) throw new Error(`Proxy ${proxy.name} failed with status: ${res.status}`);
 
-            // 備援方法：使用 AllOrigins + DOMParser
-            async function fetchWithAllOrigins(feedUrl, podcastInfo) {
-                const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`);
-                if (!response.ok) throw new Error(`AllOrigins proxy request failed with status ${response.status}`);
-                const xmlText = await response.text();
-                
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(xmlText, "application/xml");
-                const errorNode = doc.querySelector("parsererror");
-                if (errorNode) throw new Error(`DOMParser failed to parse XML: ${errorNode.textContent}`);
-
-                const episodes = [];
-                doc.querySelectorAll("item").forEach(item => {
-                    const enclosure = item.querySelector("enclosure");
-                    if (enclosure && enclosure.getAttribute("url")) {
-                        episodes.push({
-                            trackId: item.querySelector("guid")?.textContent || enclosure.getAttribute("url"),
-                            trackName: item.querySelector("title")?.textContent || 'Untitled Episode',
-                            episodeUrl: enclosure.getAttribute("url"),
-                            releaseDate: item.querySelector("pubDate")?.textContent || new Date().toISOString(),
-                            artworkUrl60: item.querySelector('itunes\\:image, image')?.getAttribute('href') || podcastInfo.artworkUrl60,
-                            artworkUrl600: item.querySelector('itunes\\:image, image')?.getAttribute('href') || podcastInfo.artworkUrl600,
-                        });
+                        if (proxy.name === 'rss2json') {
+                            const data = await res.json();
+                            if (data.status !== 'ok') throw new Error(`rss2json parsing failed: ${data.message}`);
+                            return data.items.map(item => ({
+                                trackId: item.guid,
+                                trackName: item.title,
+                                episodeUrl: item.enclosure.link,
+                                releaseDate: item.pubDate,
+                                description: item.description || '',
+                                artworkUrl60: item.thumbnail || podcastInfo.artworkUrl60,
+                                artworkUrl600: item.thumbnail || podcastInfo.artworkUrl600
+                            })).filter(ep => ep.episodeUrl);
+                        } else {
+                            const xmlText = await res.text();
+                            const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+                            if (doc.querySelector("parsererror")) throw new Error('DOMParser failed to parse XML.');
+                            const episodes = [];
+                            doc.querySelectorAll("item").forEach(item => {
+                                const enclosure = item.querySelector("enclosure");
+                                if (enclosure && enclosure.getAttribute("url")) {
+                                    episodes.push({
+                                        trackId: item.querySelector("guid")?.textContent || enclosure.getAttribute("url"),
+                                        trackName: item.querySelector("title")?.textContent || 'Untitled',
+                                        episodeUrl: enclosure.getAttribute("url"),
+                                        releaseDate: item.querySelector("pubDate")?.textContent || new Date().toISOString(),
+                                        description: item.querySelector("description")?.textContent || '',
+                                        artworkUrl60: item.querySelector('itunes\\:image, image')?.getAttribute('href') || podcastInfo.artworkUrl60,
+                                        artworkUrl600: item.querySelector('itunes\\:image, image')?.getAttribute('href') || podcastInfo.artworkUrl600,
+                                    });
+                                }
+                            });
+                            if (episodes.length > 0) return episodes;
+                            throw new Error('No episodes found in XML feed.');
+                        }
+                    } catch (error) {
+                        console.warn(`Proxy ${proxy.name} failed:`, error.message);
                     }
-                });
-                return episodes;
+                }
+                // If all proxies fail
+                throw new Error('All proxy services failed to fetch or parse the feed.');
             }
 
-            // 核心演算法主函式
-            async function fetchEpisodes(collectionId) {
-                if (isFetchingDetails) {
-                    console.warn("A fetch operation is already in progress.");
-                    return;
-                }
-                isFetchingDetails = true;
 
+            async function fetchEpisodes(collectionId) {
+                if (isFetchingDetails) return;
+                isFetchingDetails = true;
                 const showView = (v) => { document.querySelectorAll('#main-content > div').forEach(d => d.style.display = 'none'); document.getElementById(v).style.display = 'flex'; };
                 showView('podcast-detail-view');
                 
-                let podcastInfo;
                 try {
-                    // 步驟 1: 獲取 Podcast 基本資訊
-                    podcastInfo = await getPodcastInfo(collectionId);
-                    renderPodcastShell(podcastInfo); // 立即渲染外殼，提升體驗
-
-                    // 檢查快取中是否已有單集列表
+                    const podcastInfo = await getPodcastInfo(collectionId);
+                    renderPodcastShell(podcastInfo);
                     if (podcastInfo.episodes) {
                         populateEpisodesList(podcastInfo.episodes, podcastInfo);
-                        isFetchingDetails = false;
-                        return;
+                    } else {
+                        const episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
+                        if (!episodes || episodes.length === 0) throw new Error("No valid episodes found in feed.");
+                        collectionCache[collectionId].episodes = episodes;
+                        populateEpisodesList(episodes, podcastInfo);
                     }
-
-                    // 步驟 2: 備援鏈解析
-                    let episodes;
-                    try {
-                        // 主要方法
-                        console.log(`Attempting to fetch [${podcastInfo.collectionName}] with PRIMARY method (rss2json)...`);
-                        episodes = await fetchWithRss2Json(podcastInfo.feedUrl, podcastInfo);
-                    } catch (primaryError) {
-                        console.warn(`Primary method failed: ${primaryError.message}. Falling back to SECONDARY method.`);
-                        try {
-                            // 備援方法
-                            console.log(`Attempting to fetch [${podcastInfo.collectionName}] with FALLBACK method (AllOrigins + DOMParser)...`);
-                            episodes = await fetchWithAllOrigins(podcastInfo.feedUrl, podcastInfo);
-                        } catch (fallbackError) {
-                            console.error(`Fallback method also failed: ${fallbackError.message}`);
-                            // 當所有方法都失敗時，拋出最終錯誤
-                            throw new Error("Both primary and fallback methods failed to retrieve and parse the feed.");
-                        }
-                    }
-
-                    if (!episodes || episodes.length === 0) {
-                        throw new Error("Feed was retrieved, but no valid episodes could be found.");
-                    }
-                    
-                    // 步驟 3: 成功後快取並渲染
-                    console.log(`Successfully fetched ${episodes.length} episodes for [${podcastInfo.collectionName}].`);
-                    collectionCache[collectionId].episodes = episodes;
-                    populateEpisodesList(episodes, podcastInfo);
-
                 } catch (error) {
                     console.error(`[CRITICAL] Failed to load podcast (ID: ${collectionId}):`, error);
-                    displayFetchError(podcastDetailView, error.message);
+                    podcastDetailView.innerHTML = `<div class="text-center text-[var(--color-text-secondary)] m-auto"><p class="font-bold text-lg mb-2">無法載入節目資訊</p><p class="text-sm">${error.message}</p></div>`;
                 } finally {
-                    isFetchingDetails = false; // 釋放鎖定
+                    isFetchingDetails = false;
                 }
-            }
-
-            // 輔助函式：顯示錯誤訊息
-            function displayFetchError(container, message) {
-                container.innerHTML = `<div class="text-center text-[var(--color-text-secondary)] m-auto">
-                    <p class="font-bold text-lg mb-2">無法載入節目資訊</p>
-                    <p class="text-sm">${message || '請檢查您的網路連線，或該節目來源可能已失效。'}</p>
-                    <button id="retry-fetch-btn" class="mt-4 bg-[#A0C4FF] text-white font-bold py-2 px-4 rounded-full">重試</button>
-                </div>`;
-                // 注意：這裡未實現重試按鈕的功能，因為需要傳遞 collectionId。
-                // 為了簡化，使用者可以點擊側邊欄項目來重試。
             }
 
             function renderPodcastShell(podcast) {
@@ -589,10 +566,10 @@
                     <div class="podcast-header">
                         <img src="${podcast.artworkUrl600}" alt="${podcast.collectionName} cover" title="${tooltipText}">
                         <div class="flex-1 overflow-hidden">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-4">
                                 <h1 class="text-xl font-bold truncate">${podcast.collectionName}</h1>
-                                <button id="add-to-collection-btn" class="bg-[#A0C4FF] text-white font-bold py-1 px-3 rounded-full text-sm flex-shrink-0">收藏</button>
                                 <div class="ml-auto flex items-center gap-4 flex-shrink-0">
+                                    <button id="add-to-collection-btn" class="bg-[#A0C4FF] text-white font-bold py-1 px-3 rounded-full text-sm">收藏</button>
                                     <button id="detail-prev-btn" class="simple-control-btn detail-nav-btn" title="上一集"><i class="fas fa-backward-step"></i></button>
                                     <button id="detail-next-btn" class="simple-control-btn detail-nav-btn" title="下一集"><i class="fas fa-forward-step"></i></button>
                                 </div>
@@ -601,10 +578,7 @@
                         </div>
                     </div>
                     <h2 class="text-xl font-bold mt-4 mb-2">最新單集</h2>
-                    <div id="episodes-placeholder" class="flex flex-col justify-center items-center flex-grow-1 gap-4 text-[var(--color-text-secondary)]">
-                        <div class="spinner"></div>
-                        <p>正在載入節目，請稍候...</p>
-                    </div>`;
+                    <div id="episodes-placeholder"><div class="spinner"></div><p>正在載入節目...</p></div>`;
                 document.getElementById('add-to-collection-btn').addEventListener('click', () => addToCollection(podcast));
                 document.getElementById('detail-prev-btn').addEventListener('click', () => playNextPrev(-1));
                 document.getElementById('detail-next-btn').addEventListener('click', () => playNextPrev(1));
@@ -613,40 +587,47 @@
             function populateEpisodesList(episodes, podcast) {
                 const placeholder = document.getElementById('episodes-placeholder');
                 if (!placeholder) return;
-
                 const escapeAttr = (str) => String(str || '').replace(/"/g, '&quot;');
-                const episodesHTML = episodes.slice(0, 20).map((ep, index) => {
-                    const safeFileName = `${(ep.trackName || 'download').replace(/[/\\?%*:|"<>]/g, '-')}.mp3`;
-                    return `<div class="episode-item" data-episode-id="${escapeAttr(ep.trackId)}" title="${escapeAttr(ep.trackName)} - ${escapeAttr(podcast.artistName)}">
-                                <span class="episode-number">${index + 1}</span>
-                                <div class="flex items-center gap-3 overflow-hidden flex-1">
-                                    <img src="${ep.artworkUrl60}" class="flex-shrink-0" alt="Episode thumbnail">
-                                    <div class="flex-1 overflow-hidden">
-                                        <div class="font-semibold truncate" title="${escapeAttr(ep.trackName)}">${ep.trackName}</div>
-                                        <div class="text-sm truncate" title="${escapeAttr(podcast.artistName)}">${podcast.artistName}</div>
-                                    </div>
-                                </div>
-                                <span class="episode-date">${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</span>
-                                <div class="episode-item-actions">
-                                    <button class="episode-action-btn play-action-btn" title="播放"><i class="fas fa-play"></i></button>
-                                    <a href="${ep.episodeUrl}" download="${safeFileName}" class="episode-action-btn download-action-link" title="下載"><i class="fas fa-download"></i></a>
-                                </div>
-                                <div class="sound-icon-container">${soundIconSVG}</div>
-                            </div>`;
-                }).join('');
-                
+                const episodesHTML = episodes.slice(0, 20).map((ep, index) => `
+                    <div class="episode-item" data-episode-id="${escapeAttr(ep.trackId)}">
+                        <span class="episode-number">${index + 1}</span>
+                        <div class="episode-thumbnail-btn">
+                           <img src="${ep.artworkUrl60}" alt="Episode thumbnail">
+                           <div class="loading-spinner-overlay"><div class="small-spinner"></div></div>
+                        </div>
+                        <div class="episode-main-content">
+                             <div class="flex-1 overflow-hidden">
+                                <div class="font-semibold truncate" title="${escapeAttr(ep.trackName)}">${ep.trackName}</div>
+                                <div class="text-sm truncate text-secondary-color" style="color: var(--color-text-secondary);" title="${escapeAttr(podcast.artistName)}">${podcast.artistName}</div>
+                            </div>
+                        </div>
+                        <span class="episode-date">${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</span>
+                        <div class="episode-item-actions">
+                            <a href="${ep.episodeUrl}" download="${escapeAttr(ep.trackName)}.mp3" class="episode-action-btn download-action-link" title="下載"><i class="fas fa-download"></i></a>
+                        </div>
+                        <div class="sound-icon-container">${soundIconSVG}</div>
+                    </div>`).join('');
                 placeholder.outerHTML = `<div class="podcast-episodes">${episodesHTML}</div>`;
 
                 podcastDetailView.querySelectorAll('.episode-item').forEach(item => {
                     const ep = episodes.find(e => e.trackId === item.dataset.episodeId);
                     if (!ep) return;
-                    item.addEventListener('click', (e) => { if (!e.target.closest('.episode-item-actions')) playEpisode(ep, podcast.artistName, episodes); });
-                    item.querySelector('.play-action-btn').addEventListener('click', (e) => { e.stopPropagation(); playEpisode(ep, podcast.artistName, episodes); });
-                    item.querySelector('.download-action-link').addEventListener('click', (e) => e.stopPropagation());
+                    item.querySelector('.episode-main-content').addEventListener('click', () => playEpisode(ep, podcast.artistName, episodes));
+                    item.querySelector('.episode-thumbnail-btn').addEventListener('click', (e) => { e.stopPropagation(); openEpisodeModal(ep, podcast, episodes); });
+                    item.querySelector('.download-action-link')?.addEventListener('click', (e) => e.stopPropagation());
                 });
                 syncPlayerUI();
             }
-            // --- END: 全新、極致穩健的核心演算法 ---
+            
+            function openEpisodeModal(episode, podcast, playlist) {
+                document.getElementById('modal-artwork').src = episode.artworkUrl600 || podcast.artworkUrl600;
+                document.getElementById('modal-date').textContent = new Date(episode.releaseDate).toLocaleDateString();
+                document.getElementById('modal-title').textContent = episode.trackName;
+                document.getElementById('modal-artist').textContent = podcast.artistName;
+                document.getElementById('modal-description').innerHTML = episode.description;
+                modalPlayBtn.onclick = () => { playEpisode(episode, podcast.artistName, playlist); modalOverlay.style.display = 'none'; };
+                modalOverlay.style.display = 'flex';
+            }
 
             const syncPlayerUI = () => {
                 const { currentEpisode, isPlaying, playbackRate, isRepeating } = playerState;
@@ -675,8 +656,15 @@
             };
 
             const playEpisode = (episode, host, playlist) => {
+                // Show spinner on the clicked item
+                document.querySelectorAll('.loading-spinner-overlay').forEach(spinner => spinner.style.display = 'none');
+                const episodeItem = document.querySelector(`.episode-item[data-episode-id="${CSS.escape(String(episode.trackId))}"]`);
+                if (episodeItem) {
+                    const spinnerContainer = episodeItem.querySelector('.episode-thumbnail-btn .loading-spinner-overlay');
+                    if(spinnerContainer) spinnerContainer.style.display = 'flex';
+                }
+
                 if (playerState.currentEpisode?.trackId === episode.trackId) { togglePlayPause(); return; }
-                const reversedPlaylist = [...playlist].reverse();
                 playerState = { ...playerState, currentEpisode: { ...episode, artistName: host }, playlist: playlist, currentIndex: playlist.findIndex(e => e.trackId === episode.trackId), isPlaying: true };
                 audio.src = episode.episodeUrl;
                 audio.playbackRate = playerState.playbackRate;
@@ -691,62 +679,29 @@
             function initialize() {
                 soundIconContainer.innerHTML = soundIconSVG;
                 
-                // --- START: NEW & FIXED VOLUME CONTROL LOGIC ---
-                const volumeSlider = document.getElementById('volume-slider');
-                const volumeIconBtn = document.getElementById('volume-icon-btn');
-                const volumeIcon = volumeIconBtn.querySelector('i');
-                const volumeTooltip = document.getElementById('volume-tooltip');
-                const volumeContainer = document.getElementById('volume-container');
+                const volumeSlider = document.getElementById('volume-slider'), volumeIconBtn = document.getElementById('volume-icon-btn'), volumeIcon = volumeIconBtn.querySelector('i'), volumeTooltip = document.getElementById('volume-tooltip'), volumeContainer = document.getElementById('volume-container');
                 let lastVolume = parseFloat(volumeSlider.value);
-
                 const updateVolumeUI = (vol) => {
-                    const volume = parseFloat(vol);
-                    const percentage = Math.round(volume * 100);
+                    const volume = parseFloat(vol), percentage = Math.round(volume * 100);
                     volumeTooltip.textContent = `${percentage}%`;
-                    
-                    if (volume === 0) {
-                        volumeIcon.className = 'fas fa-volume-xmark text-base';
-                    } else if (volume < 0.5) {
-                        volumeIcon.className = 'fas fa-volume-low text-base';
-                    } else {
-                        volumeIcon.className = 'fas fa-volume-high text-base';
-                    }
+                    if (volume === 0) volumeIcon.className = 'fas fa-volume-xmark text-base';
+                    else if (volume < 0.5) volumeIcon.className = 'fas fa-volume-low text-base';
+                    else volumeIcon.className = 'fas fa-volume-high text-base';
                 };
-
-                audio.volume = lastVolume;
-                updateVolumeUI(audio.volume);
-
-                volumeSlider.addEventListener('input', (e) => {
-                    const newVolume = parseFloat(e.target.value);
-                    audio.volume = newVolume;
-                    if (newVolume > 0) {
-                        lastVolume = newVolume;
-                    }
-                    updateVolumeUI(newVolume);
-                });
-
-                volumeIconBtn.addEventListener('click', () => {
-                    if (audio.volume > 0) {
-                        lastVolume = audio.volume;
-                        audio.volume = 0;
-                        volumeSlider.value = 0;
-                    } else {
-                        const restoreVolume = lastVolume > 0 ? lastVolume : 0.3;
-                        audio.volume = restoreVolume;
-                        volumeSlider.value = restoreVolume;
-                    }
-                    updateVolumeUI(audio.volume);
-                });
-
-                volumeContainer.addEventListener('mouseenter', () => {
-                    volumeTooltip.style.display = 'block';
-                });
-                volumeContainer.addEventListener('mouseleave', () => {
-                    volumeTooltip.style.display = 'none';
-                });
-                // --- END: NEW & FIXED VOLUME CONTROL LOGIC ---
+                audio.volume = lastVolume; updateVolumeUI(audio.volume);
+                volumeSlider.addEventListener('input', (e) => { const newVolume = parseFloat(e.target.value); audio.volume = newVolume; if (newVolume > 0) lastVolume = newVolume; updateVolumeUI(newVolume); });
+                volumeIconBtn.addEventListener('click', () => { if (audio.volume > 0) { lastVolume = audio.volume; audio.volume = 0; volumeSlider.value = 0; } else { const restoreVolume = lastVolume > 0 ? lastVolume : 0.3; audio.volume = restoreVolume; volumeSlider.value = restoreVolume; } updateVolumeUI(audio.volume); });
+                volumeContainer.addEventListener('mouseenter', () => volumeTooltip.style.display = 'block');
+                volumeContainer.addEventListener('mouseleave', () => volumeTooltip.style.display = 'none');
 
                 audio.addEventListener('play', () => { playerState.isPlaying = true; syncPlayerUI(); });
+                audio.addEventListener('playing', () => { 
+                    const playingItem = document.querySelector('.episode-item.is-playing-item');
+                    if(playingItem) {
+                       const spinnerContainer = playingItem.querySelector('.episode-thumbnail-btn .loading-spinner-overlay');
+                       if (spinnerContainer) spinnerContainer.style.display = 'none';
+                    }
+                });
                 audio.addEventListener('pause', () => { playerState.isPlaying = false; syncPlayerUI(); });
                 audio.addEventListener('ended', () => playerState.isRepeating ? (audio.currentTime = 0, audio.play()) : playNextPrev(1));
                 audio.addEventListener('timeupdate', () => { if (isNaN(audio.duration)) return; progress.style.width = `${(audio.currentTime / audio.duration) * 100}%`; currentTimeEl.textContent = formatTime(audio.currentTime); durationEl.textContent = formatTime(audio.duration); });
@@ -759,19 +714,18 @@
                 document.getElementById('progress-bar').addEventListener('click', (e) => { if (audio.duration) audio.currentTime = (e.offsetX / e.currentTarget.offsetWidth) * audio.duration; });
                 document.getElementById('playback-rate-btn').addEventListener('click', () => { let newRate = playerState.playbackRate + 0.5; if (newRate > 2.0) newRate = 0.5; playerState.playbackRate = newRate; audio.playbackRate = newRate; syncPlayerUI(); });
                 repeatBtn.addEventListener('click', () => { playerState.isRepeating = !playerState.isRepeating; syncPlayerUI(); });
-                localSearchInput.addEventListener('input', (e) => {
-                    const searchTerm = e.target.value.toLowerCase();
-                    document.querySelectorAll('.sidebar-item').forEach(item => {
-                        const title = item.title.toLowerCase();
-                        item.style.display = title.includes(searchTerm) ? '' : 'none';
-                    });
-                });
+                localSearchInput.addEventListener('input', (e) => { const searchTerm = e.target.value.toLowerCase(); document.querySelectorAll('.sidebar-item').forEach(item => { item.style.display = item.title.toLowerCase().includes(searchTerm) ? '' : 'none'; }); });
                 viewModeListBtn.addEventListener('click', () => { sidebarItemsContainer.classList.remove('grid-view'); viewModeListBtn.classList.add('active'); viewModeGridBtn.classList.remove('active'); });
                 viewModeGridBtn.addEventListener('click', () => { sidebarItemsContainer.classList.add('grid-view'); viewModeGridBtn.classList.add('active'); viewModeListBtn.classList.remove('active'); });
                 filterFavoritesBtn.addEventListener('click', () => { isFavoritesFilterActive = !isFavoritesFilterActive; filterFavoritesBtn.classList.toggle('active', isFavoritesFilterActive); loadCollection(); });
                 sortDirectionBtn.addEventListener('click', () => { sortIcon.classList.toggle('fa-arrow-up-wide-short'); sortIcon.classList.toggle('fa-arrow-down-wide-short'); loadCollection(); });
                 const applyTheme = (theme) => { document.documentElement.setAttribute('data-theme', theme); themeToggleBtn.innerHTML = theme === 'dark' ? sunIconSVG : moonIconSVG; localStorage.setItem('theme', theme); };
                 themeToggleBtn.addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+                
+                // Modal close events
+                modalCloseBtn.addEventListener('click', () => modalOverlay.style.display = 'none');
+                modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.style.display = 'none'; });
+
                 applyTheme(localStorage.getItem('theme') || 'dark');
                 loadCollection();
                 syncPlayerUI();
