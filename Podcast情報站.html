@@ -131,14 +131,14 @@
         #filter-favorites-btn, #sort-direction-btn { background-color: var(--color-interactive-element); color: var(--color-text-primary); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
         #filter-favorites-btn.active { background-color: #ff3b30; color: white; }
 
-        /* MODIFIED: 新增分類標題樣式 */
+        /* MODIFIED: 優化分類標題樣式 */
         .sidebar-genre-header {
             padding: 1.25rem 0.5rem 0.25rem;
-            font-size: 0.75rem;
+            font-size: 0.875rem; /* 加大字體 */
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: var(--color-text-secondary);
+            color: #007AFF; /* 改為蘋果藍 */
         }
 
         /* 側邊欄項目 */
@@ -149,7 +149,7 @@
         .sidebar-item.is-active .text-xs, .sidebar-item.is-active .text-sky-500 { color: rgba(255,255,255,0.8); }
         #sidebar-items.grid-view .sidebar-item { flex-direction: column; padding: 0.5rem; height: auto; align-items: flex-start; }
         #sidebar-items.grid-view .sidebar-item-number, #sidebar-items.grid-view .sidebar-item__text-wrapper { display: block; }
-        #sidebar-items.grid-view .sidebar-item__text-wrapper .text-xs { display: none; } /* 在網格視圖中隱藏作者 */
+        #sidebar-items.grid-view .sidebar-item__text-wrapper .text-xs.text-gray-400 { display: none; } /* 在網格視圖中僅隱藏作者 */
         #sidebar-items.grid-view .sidebar-item img { width: 100%; height: auto; aspect-ratio: 1/1; border-radius: 0.5rem; margin-bottom: 0.5rem; }
         #sidebar-items.grid-view .sidebar-item-actions { top: 0.5rem; right: 0.5rem; transform: none; }
         .sidebar-item-actions { position: absolute; top: 50%; right: 0.75rem; transform: translateY(-50%); display: flex; align-items: center; gap: 0.5rem; opacity: 0; visibility: hidden; transition: all 0.2s; }
@@ -157,8 +157,19 @@
         .sidebar-action-btn { background-color: rgba(0,0,0,0.5); border: none; color: white; cursor: pointer; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 10; transition: all 0.2s; }
         .sidebar-action-btn:hover { background-color: #ff3b30; }
         .sidebar-action-btn.fav-btn.is-favorite, .sidebar-action-btn.fav-btn:hover { background-color: #ff3b30; }
-        /* MODIFIED: 移除固定高度，讓內容自動撐開 */
         .sidebar-item__text-wrapper { line-height: 1.4; overflow: hidden; }
+
+        /* MODIFIED: 新增網格視圖標題截斷樣式 */
+        #sidebar-items.grid-view .sidebar-item__text-wrapper .font-semibold {
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* 限制為兩行 */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: normal;
+            word-break: break-all;
+            min-height: 2.8em; /* line-height * 2 */
+        }
         
         /* 搜尋結果 */
         .search-result-item { position: relative; background-color: var(--color-surface-hover); padding: 0.75rem; border-radius: 0.5rem; display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; }
@@ -407,7 +418,6 @@
             const sunIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-6.364-.386l1.591-1.591M3 12h2.25m.386-6.364l1.591 1.591M12 12a6 6 0 100-12 6 6 0 000 12z" /></svg>`;
             const moonIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25c0 5.385 4.365 9.75 9.75 9.75 2.572 0 4.92-.99 6.697-2.648z" /></svg>`;
             
-            // ADDED: 統一的 CORS 代理伺服器
             const CORS_PROXY = 'https://corsproxy.io/?';
 
             const audio = new Audio();
@@ -418,8 +428,6 @@
             let lastProgressUpdateTime = 0;
             let currentViewSource = 'sidebar';
             let searchState = { term: '', results: [], currentIndex: -1, offset: 0, limit: 50 };
-
-            // REMOVED: 移除舊的靜態 GENRES 物件
 
             const getCollection = () => JSON.parse(localStorage.getItem('podcastCollection') || '[]');
             const saveCollection = (collection) => localStorage.setItem('podcastCollection', JSON.stringify(collection));
@@ -432,7 +440,6 @@
                 localStorage.setItem('playbackProgress', JSON.stringify(progressData));
             };
 
-            // MODIFIED: 重構 loadCollection 以實現自動分類
             const loadCollection = () => {
                 sidebarItemsContainer.innerHTML = '';
                 let collection = getCollection();
@@ -441,7 +448,6 @@
                     collection = collection.filter(p => p.isFavorite);
                 }
 
-                // 按類別分組
                 const groupedByGenre = collection.reduce((acc, podcast) => {
                     const genre = podcast.primaryGenreName || '未分類';
                     if (!acc[genre]) {
@@ -453,7 +459,6 @@
 
                 const isAsc = sortIcon.classList.contains('fa-arrow-up-wide-short');
                 
-                // 按類別名稱排序
                 const sortedGenres = Object.keys(groupedByGenre).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
                 
                 if (sortedGenres.length === 0 && (localSearchInput.value || isFavoritesFilterActive)) {
@@ -502,7 +507,6 @@
                 }
             };
             
-            // MODIFIED: 重構 renderCollectionItem 以顯示類別並移除編號
             function renderCollectionItem(podcast) {
                 const item = document.createElement('div');
                 item.className = 'sidebar-item';
@@ -510,10 +514,11 @@
                 item.title = `${podcast.collectionName} - ${podcast.artistName}`;
                 const trashSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.144-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.057-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>`;
                 const heartIconClass = podcast.isFavorite ? 'fas' : 'far';
+                // MODIFIED: 調整圖片大小、圓角；移除標題的 truncate class
                 item.innerHTML = `
-                    <img src="${podcast.artworkUrl600}" alt="${podcast.collectionName}" class="w-12 h-12 rounded-lg flex-shrink-0">
+                    <img src="${podcast.artworkUrl600}" alt="${podcast.collectionName}" class="w-6 h-6 rounded-md flex-shrink-0">
                     <div class="flex-1 overflow-hidden sidebar-item__text-wrapper">
-                        <div class="font-semibold text-sm truncate">${podcast.collectionName}</div>
+                        <div class="font-semibold text-sm">${podcast.collectionName}</div>
                         <div class="text-xs text-sky-500 font-medium">${podcast.primaryGenreName || '未分類'}</div>
                         <div class="text-xs text-gray-400 truncate">${podcast.artistName}</div>
                     </div>
@@ -548,9 +553,8 @@
                 showView('search-results-view');
                 const container = document.getElementById('search-results-podcasts');
                 container.innerHTML = `<div class="w-full flex justify-center mt-8"><div class="spinner"></div></div>`;
-                document.getElementById('search-pagination-controls').innerHTML = ''; // Clear pagination
+                document.getElementById('search-pagination-controls').innerHTML = '';
                 try {
-                    // MODIFIED: 使用 CORS 代理
                     const targetUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=podcast&limit=${searchState.limit}&offset=${newOffset}`;
                     const res = await fetch(CORS_PROXY + encodeURIComponent(targetUrl));
                     const data = await res.json();
@@ -581,7 +585,6 @@
             
             async function getPodcastInfo(collectionId) {
                 if (collectionCache[collectionId] && collectionCache[collectionId].feedUrl) return collectionCache[collectionId];
-                // MODIFIED: 使用 CORS 代理
                 const targetUrl = `https://itunes.apple.com/lookup?id=${collectionId}`;
                 const res = await fetch(CORS_PROXY + encodeURIComponent(targetUrl));
                 if (!res.ok) throw new Error(`iTunes API request failed: ${res.status}`);
@@ -592,7 +595,7 @@
             }
             
             async function fetchWithTimeout(resource, options = {}) {
-                const { timeout = 10000 } = options; // 10 second default timeout
+                const { timeout = 10000 } = options;
                 const controller = new AbortController();
                 const id = setTimeout(() => {
                     controller.abort();
@@ -615,7 +618,6 @@
             }
 
             async function parseFeed(feedUrl, podcastInfo) {
-                // MODIFIED: 確保 RSS Feed 也使用統一的代理
                 const proxyUrl = CORS_PROXY + encodeURIComponent(feedUrl);
                 try {
                     console.log(`[Feed Parser] Attempting to fetch feed via corsproxy.io...`);
@@ -860,7 +862,7 @@
                     playlist: playlist,
                     currentIndex: playlist.findIndex(e => e.trackId === episode.trackId),
                     isPlaying: true,
-                    _playbackAttempt: 'direct' // Reset attempt state for new episode
+                    _playbackAttempt: 'direct'
                 };
 
                 console.log(`[Player] Attempt 1 (Direct): ${episode.episodeUrl}`);
@@ -987,7 +989,7 @@
                 audio.addEventListener('ended', () => {
                     if (playerState.currentEpisode) {
                         const { trackId } = playerState.currentEpisode;
-                        savePlaybackProgress(trackId, audio.duration, audio.duration); // Mark as fully played
+                        savePlaybackProgress(trackId, audio.duration, audio.duration);
                         const epItem = document.querySelector(`.episode-item[data-episode-id="${CSS.escape(String(trackId))}"]`);
                         if (epItem) {
                            epItem.classList.add('is-listened');
@@ -1009,7 +1011,6 @@
                     if (_playbackAttempt === 'direct') {
                         console.warn("[Player] Direct playback failed. Attempting fallback via proxy.");
                         playerState._playbackAttempt = 'proxy';
-                        // MODIFIED: 統一使用 CORS_PROXY
                         const proxyUrl = CORS_PROXY + encodeURIComponent(currentEpisode.episodeUrl);
                         console.log(`[Player] Attempt 2 (Proxy): ${proxyUrl}`);
                         const currentTime = audio.currentTime; 
@@ -1076,9 +1077,6 @@
                 const applyTheme = (theme) => { document.documentElement.setAttribute('data-theme', theme); themeToggleBtn.innerHTML = theme === 'dark' ? sunIconSVG : moonIconSVG; localStorage.setItem('theme', theme); };
                 themeToggleBtn.addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
                 
-                // REMOVED: 移除舊的 Genre Filter 邏輯
-
-                // Modal close events
                 modalCloseBtn.addEventListener('click', () => modalOverlay.style.display = 'none');
                 modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.style.display = 'none'; });
 
