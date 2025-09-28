@@ -73,6 +73,17 @@
             z-index: 10;
         }
 
+        /* 播放器顯示/隱藏邏輯 */
+        #audio-player-container.is-hidden {
+            display: none;
+        }
+        @media (min-width: 1024px) {
+            #audio-player-container.is-hidden {
+                display: block;
+                transform: translateY(100%);
+            }
+        }
+
     </style>
 </head>
 <body class="text-gray-800 lg:h-screen lg:flex lg:flex-col">
@@ -149,7 +160,7 @@
             </div>
         </main>
         
-        <footer id="audio-player-container" class="sticky bottom-0 left-0 right-0 glass-panel p-4 transition-transform translate-y-full duration-500 flex-shrink-0 mt-4">
+        <footer id="audio-player-container" class="is-hidden relative lg:sticky lg:bottom-0 lg:left-0 lg:right-0 glass-panel p-4 transition-transform duration-500 flex-shrink-0 mt-4">
             <div class="flex items-center gap-2 sm:gap-4">
                 <button id="prev-episode-btn" title="上一集" class="p-2 text-gray-600 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"><i data-lucide="skip-back" class="w-5 h-5"></i></button>
                 <div class="flex-grow">
@@ -356,7 +367,10 @@
                 audioPlayer.src = episode.audioUrl;
                 nowPlayingTitle.textContent = episode.title;
                 audioPlayer.play().catch(e => console.error("播放失敗:", e));
-                audioPlayerContainer.classList.remove('translate-y-full');
+                
+                // 顯示播放器
+                audioPlayerContainer.classList.remove('is-hidden');
+
                 updatePlayerButtons();
             };
             const updatePlayerButtons = () => { prevEpisodeBtn.disabled = currentEpisodeIndex <= 0; nextEpisodeBtn.disabled = currentEpisodeIndex >= currentEpisodeList.length - 1; };
@@ -364,7 +378,13 @@
             const playPrev = () => playEpisode(currentEpisodeIndex - 1);
 
             // --- Tooltip 邏輯 ---
-            const showTooltip = (event, title, description) => { tooltipTitle.textContent = title; tooltipDescription.textContent = description || '無描述'; tooltip.classList.remove('hidden'); updateTooltipPosition(event); };
+            const showTooltip = (event, title, description) => {
+                if (window.innerWidth < 1024) return; // For mobile devices, disable tooltip
+                tooltipTitle.textContent = title;
+                tooltipDescription.textContent = description || '無描述';
+                tooltip.classList.remove('hidden');
+                updateTooltipPosition(event);
+            };
             const hideTooltip = () => tooltip.classList.add('hidden');
             const updateTooltipPosition = (event) => { tooltip.style.left = `${event.clientX + 15}px`; tooltip.style.top = `${event.clientY + 15}px`; };
 
