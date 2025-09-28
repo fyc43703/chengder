@@ -520,19 +520,40 @@
 
     async function tryPlayUrl(urlsToTry) { return new Promise(async (resolve, reject) => { if (!urlsToTry || urlsToTry.length === 0) return reject(new Error("No valid URLs provided.")); let lastError = null; for (const url of urlsToTry) { try { await new Promise((resolveAttempt, rejectAttempt) => { const timeout = setTimeout(() => rejectAttempt(new Error(`連線超時`)), 8000); const cleanup = (listeners) => { clearTimeout(timeout); listeners.forEach(([event, handler]) => videoPlayer.removeEventListener(event, handler)); }; const successCallback = () => { cleanup(listeners); resolveAttempt(); }; const errorCallback = (e) => { cleanup(listeners); rejectAttempt(e || new Error('Playback error')); }; const listeners = [['canplay', successCallback], ['loadedmetadata', successCallback], ['error', errorCallback]]; if (hlsInstance) hlsInstance.destroy(); videoPlayer.src = ''; videoPlayer.load(); if (url.includes('.m3u8') && Hls.isSupported()) { hlsInstance = new Hls({ enableWorker: true }); hlsInstance.loadSource(url); hlsInstance.attachMedia(videoPlayer); hlsInstance.once(Hls.Events.MANIFEST_PARSED, successCallback); hlsInstance.once(Hls.Events.ERROR, (event, data) => errorCallback(data)); } else { videoPlayer.src = url; listeners.forEach(([event, handler]) => videoPlayer.addEventListener(event, handler, { once: true })); } }); return resolve(url); } catch (error) { console.warn(`Attempt failed for ${url}:`, error.details || error.message); lastError = error; } } return reject(lastError); }); }
     async function playRadioStream(station) { if (isPlaying) pause(); videoPlayer.crossOrigin = 'anonymous'; currentMode = 'radio'; updateControlsState(); currentStation = station; if (AC.state === 'suspended') { await AC.resume(); } updateAllLists(); titlesH1.textContent = station.name; titlesH2.textContent = "網路廣播"; videoPlayer.style.display = 'none'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); videoOverlay.innerHTML = `📡<br>正在連接到<br>${station.name}...`; videoOverlay.style.display = 'flex'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; try { const urlsToTry = [station.url_resolved, station.url].filter((url, index, self) => url && self.indexOf(url) === index && url.startsWith('https')); if (urlsToTry.length === 0) throw new Error("無安全 (HTTPS) 的串流網址可用。"); await tryPlayUrl(urlsToTry); videoPlayer.play(); setupVisualizer(); cancelAnimationFrame(visualizerFrameId); if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.display = 'none'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; videoOverlay.innerHTML = `📡<br>正在播放<br>${station.name}`; videoOverlay.style.display = 'flex'; } stationStatusCache[station.stationuuid] = 'success'; sessionStorage.setItem('stationStatusCache', JSON.stringify(stationStatusCache)); updateStationItemStatus(station.stationuuid, 'success'); } catch (error) { pause(); videoOverlay.innerHTML = `❌<br>無法播放 ${station.name}`; alert(`無法播放電台：${station.name}\n\n此電台目前可能無訊號或網址已失效。\n錯誤: ${error.message}`); stationStatusCache[station.stationuuid] = 'failed'; sessionStorage.setItem('stationStatusCache', JSON.stringify(stationStatusCache)); updateStationItemStatus(station.stationuuid, 'failed'); currentStation = null; updateAllLists(); } }
-    async function fetchStations() { radioList.innerHTML = '<li class="list-spinner"><div class="spinner"></div></li>'; const API_URL = 'https://de1.api.radio-browser.info/json/stations/search?countrycode=TW&limit=300&order=clickcount&reverse=true&hidebroken=true&is_https=true'; try { const response = await fetch(API_URL); if (!response.ok) throw new Error('API request failed'); let data = await response.json(); let fetchedStations = data.filter(s => s.url_resolved && s.url_resolved.startsWith('https')); 
-    
-        const keywordsToExclude = ['世新', '教育', '桃園', 'TAIWAN LOUNGE RADIO', 'Taiwan Plus', 'FM104', 'Boss Online Radio', 'Classical 古典音樂台 FM 97.7', '古典音樂台', '大苗栗廣播', '神州', '大樹下', '鳳鳴', '民本', 'BRAVO', '台海', '栗子', 'AM', '佳音', 'Rti', '星蹤之愛', '南投', 'Phate', '臺東', 'CanCheers'];
-        fetchedStations = fetchedStations.filter(station => !keywordsToExclude.some(keyword => station.name.toUpperCase().includes(keyword.toUpperCase())));
+    async function fetchStations() {
+        radioList.innerHTML = '<li class="list-spinner"><div class="spinner"></div></li>';
+        const API_URL = 'https://all.api.radio-browser.info/json/stations/search?countrycode=TW&limit=300&order=clickcount&reverse=true&hidebroken=true&is_https=true';
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error('API request failed');
+            let data = await response.json();
+            let fetchedStations = data.filter(s => s.url_resolved && s.url_resolved.startsWith('https'));
 
-        if (fetchedStations.length === 0) { radioList.innerHTML = `<li style="padding: 1rem; color: var(--muted); cursor: default;">找不到可用的台灣電台。</li>`; return; } 
-        const keywords = ['中廣', '警廣', 'ICRT', 'Hit FM', '飛碟', '愛樂', 'Kiss']; 
-        let prioritizedStations = [], otherStations = []; 
-        fetchedStations.forEach(station => { if (keywords.some(k => station.name.includes(k))) { prioritizedStations.push(station); } else { otherStations.push(station); } }); 
-        allStations = [...prioritizedStations, ...otherStations]; 
-        originalStationOrder = [...allStations]; updateAllLists(); 
-        if (!isRadioListExpanded) radioMainContainer.classList.add('collapsed'); 
-    } catch (error) { console.error('Failed to fetch stations:', error); radioList.innerHTML = `<li style="padding: 1rem; color: var(--muted); cursor: default;">獲取電台列表失敗。</li>`; } }
+            const keywordsToExclude = ['世新', '教育', '桃園', 'TAIWAN LOUNGE RADIO', 'Taiwan Plus', 'FM104', 'Boss Online Radio', 'Classical 古典音樂台 FM 97.7', '古典音樂台', '大苗栗廣播', '神州', '大樹下', '鳳鳴', '民本', 'BRAVO', '台海', '栗子', 'AM', '佳音', 'Rti', '星蹤之愛', '南投', 'Phate', '臺東', 'CanCheers'];
+            fetchedStations = fetchedStations.filter(station => !keywordsToExclude.some(keyword => station.name.toUpperCase().includes(keyword.toUpperCase())));
+
+            if (fetchedStations.length === 0) {
+                radioList.innerHTML = `<li style="padding: 1rem; color: var(--muted); cursor: default;">找不到可用的台灣電台。</li>`;
+                return;
+            }
+            const keywords = ['中廣', '警廣', 'ICRT', 'Hit FM', '飛碟', '愛樂', 'Kiss'];
+            let prioritizedStations = [], otherStations = [];
+            fetchedStations.forEach(station => {
+                if (keywords.some(k => station.name.includes(k))) {
+                    prioritizedStations.push(station);
+                } else {
+                    otherStations.push(station);
+                }
+            });
+            allStations = [...prioritizedStations, ...otherStations];
+            originalStationOrder = [...allStations];
+            updateAllLists();
+            if (!isRadioListExpanded) radioMainContainer.classList.add('collapsed');
+        } catch (error) {
+            console.error('Failed to fetch stations:', error);
+            radioList.innerHTML = `<li style="padding: 1rem; color: var(--muted); cursor: default;">獲取電台列表失敗。請檢查您的網路連線後再試。</li>`;
+        }
+    }
     
     function createRadioListItem(station) {
         const li = document.createElement('li');
