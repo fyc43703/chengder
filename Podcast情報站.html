@@ -270,13 +270,14 @@
         /* MODIFIED: 優化說明頁面樣式 */
         #default-view {
             overflow: hidden;
-            align-items: flex-start; /* 改為靠上對齊 */
+            align-items: flex-start;
+            justify-content: flex-start;
         }
         #default-view-content {
             padding: 1rem;
-            width: 100%; /* 寬度佔滿 */
+            width: 100%;
             max-width: 800px;
-            margin: 0; /* 移除 auto 使其靠左 */
+            margin: 0;
             color: var(--color-text-primary);
             overflow-y: auto;
             max-height: 100%;
@@ -304,7 +305,7 @@
         }
         .intro-text {
             line-height: 1.7;
-            font-size: 16px; /* 加大內文 */
+            font-size: 16px;
             color: var(--color-text-secondary);
         }
         .intro-text strong {
@@ -364,7 +365,7 @@
         <div class="main-container">
             <div id="app-header" class="bg-[var(--color-surface)] p-2 rounded-lg flex items-center justify-between">
                 <div class="flex-1 text-center">
-                    <h1 class="text-2xl font-bold">Podcast 導航站</h1>
+                    <h1 class="text-2xl font-bold">Podcast導航站</h1>
                     <p class="text-sm text-[var(--color-text-primary)]">Podcasts 搜尋使用 Apple iTunes Search API ，能隨時聆聽豐富多元的主題節目，並提供下載音訊檔功能</p>
                     <p class="text-xs text-gray-500 mt-1">製作者：陳政德</p>
                 </div>
@@ -392,7 +393,7 @@
                             <div>
                                 <h3 class="intro-title">本程式的運作核心</h3>
                                 <p class="intro-text">
-                                    「Podcast 導航站」的核心是建立在強大且豐富的 <strong>Apple iTunes Search API</strong> 之上，讓您能夠搜尋並存取全球數以萬計的 Podcast 節目。為了確保在任何網路環境下都能穩定、快速地載入節目資訊與音訊檔案，本程式特別透過一個名為 <strong>`corsproxy.io` 的代理伺服器</strong>來處理所有網路請求。這個代理伺服器扮演著一個可靠的中間人角色，協助我們的應用程式順利地從 iTunes 和各個 Podcast 的主機上抓取資料，完美繞過了瀏覽器的安全限制，大幅提升了資料讀取的成功率與穩定性。
+                                    「Podcast導航站」的核心是建立在強大且豐富的 <strong>Apple iTunes Search API</strong> 之上，讓您能夠搜尋並存取全球數以萬計的 Podcast 節目。為了確保在任何網路環境下都能穩定、快速地載入節目資訊與音訊檔案，本程式特別透過一個名為 <strong>`corsproxy.io` 的代理伺服器</strong>來處理所有網路請求。這個代理伺服器扮演著一個可靠的中間人角色，協助我們的應用程式順利地從 iTunes 和各個 Podcast 的主機上抓取資料，完美繞過了瀏覽器的安全限制，大幅提升了資料讀取的成功率與穩定性。
                                 </p>
                             </div>
                         </div>
@@ -588,12 +589,6 @@
                 
                 const sortedGenres = Object.keys(groupedByGenre).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
                 
-                if (getCollection().length === 0) {
-                     document.getElementById('default-view').style.display = 'flex';
-                } else {
-                     document.getElementById('default-view').style.display = 'none';
-                }
-
                 if (sortedGenres.length === 0 && (localSearchInput.value || isFavoritesFilterActive)) {
                      sidebarItemsContainer.innerHTML = `<p class="text-center text-sm text-[var(--color-text-secondary)] p-4">沒有符合篩選條件的項目。</p>`;
                 } else if (sortedGenres.length > 0) {
@@ -619,6 +614,7 @@
                     saveCollection(collection);
                     loadCollection();
                     updateSearchItemUI(podcast.collectionId, true);
+                    document.getElementById('default-view').style.display = 'none'; // Hide intro when adding first item
                 }
             };
 
@@ -627,6 +623,9 @@
                 saveCollection(collection);
                 loadCollection();
                 updateSearchItemUI(collectionId, false);
+                 if (getCollection().length === 0) {
+                    document.getElementById('default-view').style.display = 'flex';
+                }
             };
 
             const toggleFavoriteStatus = (collectionId) => {
@@ -680,7 +679,7 @@
             async function searchPodcasts(term, newOffset = 0) {
                 const showView = (v) => { document.querySelectorAll('#main-content > div').forEach(d => d.style.display = 'none'); document.getElementById(v).style.display='flex'; };
                 if (!term) { 
-                    if (getCollection().length === 0) showView('default-view');
+                    showView('default-view');
                     return; 
                 }
                 showView('search-results-view');
@@ -1224,7 +1223,7 @@
                 loadCollection();
                 syncPlayerUI();
                 
-                // Set the initial view
+                // MODIFIED: Ensure default view is always shown on init
                 document.getElementById('search-results-view').style.display = 'none';
                 document.getElementById('podcast-detail-view').style.display = 'none';
                 document.getElementById('default-view').style.display = 'flex';
