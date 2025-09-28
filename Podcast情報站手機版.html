@@ -1,28 +1,85 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Podcast 探索家</title>
+    <title>Podcast導航站</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入 Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <!-- 引入 SortableJS 以實現拖曳排序 -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+        // 用於初始化 TailwindCSS 的明暗模式設定
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
     <style>
         /* --- macOS 風格化樣式 --- */
         :root {
             --system-blue: #007aff;
             --system-yellow: #ffcc00;
-            --system-background: #f5f5f7;
+            --system-background-light: #f5f5f7;
+            --system-background-dark: #1c1c1e;
+            --glass-panel-bg-light: rgba(255, 255, 255, 0.75);
+            --glass-panel-bg-dark: rgba(28, 28, 30, 0.75);
+            --text-primary-light: #1d1d1f;
+            --text-primary-dark: #f5f5f7;
+            --text-secondary-light: #6b7280;
+            --text-secondary-dark: #8e8e93;
+            --border-light: rgba(0, 0, 0, 0.1);
+            --border-dark: rgba(255, 255, 255, 0.15);
             --traffic-light-red: #ff5f56;
             --traffic-light-yellow: #ffbd2e;
             --traffic-light-green: #27c93f;
         }
 
+        /* Light Mode (Default) */
         body {
-            background-color: var(--system-background);
+            background-color: var(--system-background-light);
+            color: var(--text-primary-light);
+        }
+        .glass-panel {
+            background-color: var(--glass-panel-bg-light);
+            border-color: var(--border-light);
+        }
+        .category-header { color: #8a8a8e; border-bottom-color: var(--border-light); background: var(--glass-panel-bg-light); }
+        .tab-btn { color: var(--text-secondary-light); }
+        .selected-item { background-color: rgba(0, 122, 255, 0.2) !important; }
+        .episode-item.playing { background-color: rgba(0, 122, 255, 0.15); }
+        .episode-title, .podcast-title, .text-black { color: var(--text-primary-light); }
+        .text-gray-500 { color: var(--text-secondary-light); }
+        #player-progress-bar { background: rgba(0,0,0,0.15); }
+        .border-gray-200\/80 { border-color: var(--border-light); }
+        .border-gray-200\/60 { border-color: var(--border-light); }
+        .text-gray-700 { color: var(--text-primary-light); }
+
+        /* Dark Mode */
+        html.dark body {
+            background-color: var(--system-background-dark);
+            color: var(--text-primary-dark);
+        }
+        html.dark .glass-panel {
+            background-color: var(--glass-panel-bg-dark);
+            border-color: var(--border-dark);
+        }
+        html.dark .category-header { color: var(--text-secondary-dark); border-bottom-color: var(--border-dark); background: var(--glass-panel-bg-dark); }
+        html.dark .tab-btn { color: var(--text-secondary-dark); }
+        html.dark .selected-item { background-color: rgba(10, 132, 255, 0.3) !important; }
+        html.dark .episode-item.playing { background-color: rgba(10, 132, 255, 0.25); }
+        html.dark .episode-title, html.dark .podcast-title, html.dark .text-black { color: var(--text-primary-dark); }
+        html.dark .text-gray-500 { color: var(--text-secondary-dark); }
+        html.dark #player-progress-bar { background: rgba(255,255,255,0.15); }
+        html.dark .hover\:bg-gray-200\/80:hover { background-color: rgba(255, 255, 255, 0.1); }
+        html.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); }
+        html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
+        html.dark .border-gray-200\/80 { border-color: var(--border-dark); }
+        html.dark .border-gray-200\/60 { border-color: var(--border-dark); }
+        html.dark .text-gray-700 { color: var(--text-primary-dark); }
+
+        body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Arial", sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -32,20 +89,17 @@
 
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.4); }
         
         .glass-panel {
-            background-color: rgba(255, 255, 255, 0.75);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 0, 0, 0.05); border-radius: 12px;
+            border: 1px solid; border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
         }
         
-        .main-container { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+        .main-container { display: grid; gap: 1rem; grid-template-columns: 1fr; }
         
         @media (min-width: 1024px) {
-            .main-container { grid-template-columns: 400px 1fr; }
+            .main-container { grid-template-columns: 380px 1fr; gap: 1.5rem; }
         }
 
         .favorite-btn.favorited svg { fill: var(--system-yellow); stroke: var(--system-yellow); }
@@ -57,20 +111,17 @@
         .drag-handle:active { cursor: grabbing; }
 
         .category-header {
-            font-size: 0.75rem; font-weight: 600; color: #8a8a8e; text-transform: uppercase;
-            padding: 12px 8px 4px; border-bottom: 1px solid rgba(0,0,0,0.1);
+            font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+            padding: 12px 8px 4px; border-bottom: 1px solid;
             position: sticky; top: -16px; /* Match panel padding */
-            background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: 10;
+            z-index: 10;
         }
         
-        /* -- 行動裝置優化 -- */
         #audio-player-container.is-hidden { display: none; }
         @media (min-width: 1024px) {
             #audio-player-container.is-hidden { display: block; transform: translateY(100%); }
         }
         
-        /* -- 播放狀態優化 -- */
-        .episode-item.playing { background-color: rgba(0, 122, 255, 0.15); }
         .episode-item.playing .episode-title { font-weight: 600; color: var(--system-blue); }
         .episode-item .play-btn { display: block; }
         .episode-item .sound-wave-container { display: none; }
@@ -81,17 +132,16 @@
         .sound-wave { transform-origin: 50% 100%; animation: sound-wave-pulse 1.2s ease-in-out infinite; fill: var(--system-blue); }
         .sound-wave-1 { animation-delay: 0s; } .sound-wave-2 { animation-delay: 0.2s; } .sound-wave-3 { animation-delay: 0.4s; }
 
-        /* -- 單集進度條 -- */
         .episode-progress-bar-container { position: absolute; bottom: 2px; left: 8px; right: 8px; height: 3px; background-color: rgba(0,0,0,0.1); border-radius: 3px; overflow: hidden; }
         .episode-progress-bar { height: 100%; background-color: var(--system-blue); width: 0%; transition: width 0.2s linear; }
         
-        /* -- 播放器進度條優化 -- */
-        #player-progress-bar { -webkit-appearance: none; appearance: none; width: 100%; height: 5px; background: rgba(0,0,0,0.15); border-radius: 5px; outline: none; cursor: pointer; }
+        #player-progress-bar { -webkit-appearance: none; appearance: none; width: 100%; height: 5px; border-radius: 5px; outline: none; cursor: pointer; }
         #player-progress-bar::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; background: white; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer; }
         #player-progress-bar::-moz-range-thumb { width: 14px; height: 14px; background: white; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer; border: none; }
 
-        /* -- 載入動畫 -- */
-        .spinner { width: 32px; height: 32px; border: 4px solid rgba(0,0,0,0.1); border-top-color: var(--system-blue); border-radius: 50%; animation: spin 1s linear infinite; }
+        .spinner { width: 32px; height: 32px; border: 4px solid; border-top-color: var(--system-blue); border-radius: 50%; animation: spin 1s linear infinite; }
+        html.light .spinner { border-color: rgba(0,0,0,0.1); border-top-color: var(--system-blue); }
+        html.dark .spinner { border-color: rgba(255,255,255,0.1); border-top-color: var(--system-blue); }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -101,8 +151,13 @@
         <p id="tooltip-description" class="text-xs opacity-80 max-h-24 overflow-hidden text-ellipsis"></p>
     </div>
 
-    <div class="container mx-auto p-4 max-w-7xl flex-grow flex flex-col">
-        <header class="glass-panel p-4 mb-6 flex-shrink-0">
+    <div class="container mx-auto p-4 max-w-7xl flex-grow flex flex-col relative">
+        <button id="theme-toggle-btn" class="absolute top-6 right-6 z-20 p-2 rounded-full bg-gray-200/80 dark:bg-gray-700/80">
+            <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
+            <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+        </button>
+
+        <header class="glass-panel p-4 mb-4 flex-shrink-0">
             <div class="flex items-center mb-4">
                 <div class="flex space-x-2 mr-4">
                     <span class="block w-3 h-3 rounded-full" style="background-color: var(--traffic-light-red);"></span>
@@ -110,12 +165,13 @@
                     <span class="block w-3 h-3 rounded-full" style="background-color: var(--traffic-light-green);"></span>
                 </div>
                 <div class="flex-grow text-center">
-                    <h1 class="text-xl font-bold text-black">Podcast 探索家</h1>
+                    <h1 class="text-xl font-bold text-black podcast-title">Podcast 導航站</h1>
                     <p class="text-xs text-gray-500 mt-1">製作者：陳政德</p>
                 </div>
+                <div class="w-14"></div> <!-- Placeholder to balance the theme toggle button -->
             </div>
             <form id="search-form" class="flex flex-col sm:flex-row gap-3">
-                <input type="text" id="search-input" placeholder="例如：百靈果、科技島讀..." class="w-full px-4 py-1.5 bg-gray-200/80 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--system-blue)] transition duration-300" required>
+                <input type="text" id="search-input" placeholder="例如：百靈果、科技島讀..." class="w-full px-4 py-1.5 bg-gray-200/80 dark:bg-gray-800/80 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--system-blue)] transition duration-300" required>
                 <button type="submit" class="bg-[var(--system-blue)] text-white px-5 py-1.5 rounded-lg font-semibold hover:opacity-90 transition duration-300 flex flex-row items-center justify-center gap-2 whitespace-nowrap">
                     <i data-lucide="search" class="w-5 h-5"></i>
                     <span>搜尋</span>
@@ -126,8 +182,8 @@
         <div id="loader" class="text-center p-10 hidden">
              <div class="glass-panel inline-block p-8">
                 <div role="status" class="flex justify-center items-center flex-col">
-                    <svg aria-hidden="true" class="w-10 h-10 text-gray-300 animate-spin fill-[var(--system-blue)]" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/><path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0492C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/></svg>
-                    <p class="mt-4 text-gray-600">正在努力搜尋中...</p>
+                     <div class="spinner"></div>
+                    <p class="mt-4 text-gray-500">正在努力搜尋中...</p>
                 </div>
             </div>
         </div>
@@ -138,8 +194,8 @@
                     <button id="tab-search-results" class="tab-btn px-4 py-2 font-semibold text-sm border-b-2">搜尋結果</button>
                     <button id="tab-favorites" class="tab-btn px-4 py-2 font-semibold text-sm border-b-2">我的最愛</button>
                 </div>
-                <div id="podcast-list-container" class="space-y-1">
-                    <div id="podcast-list">
+                <div id="podcast-list-container">
+                    <div id="podcast-list" class="space-y-0.5">
                         <p class="text-gray-500 text-center pt-8">請先搜尋您感興趣的 Podcast。</p>
                     </div>
                 </div>
@@ -150,19 +206,19 @@
 
             <div id="episodes-container" class="glass-panel p-4 overflow-y-auto hidden lg:flex lg:flex-col">
                 <button id="back-to-results-btn" class="lg:hidden flex items-center gap-2 mb-3 text-sm font-semibold text-[var(--system-blue)]"><i data-lucide="arrow-left" class="w-4 h-4"></i>返回搜尋結果</button>
-                <div id="podcast-detail-header" class="mb-2 hidden items-center gap-4 flex-shrink-0">
-                    <img id="detail-artwork" src="" alt="Podcast Artwork" class="w-12 h-12 rounded-lg shadow-md flex-shrink-0">
+                <div id="podcast-detail-header" class="mb-2 hidden items-center gap-3 flex-shrink-0">
+                    <img id="detail-artwork" src="" alt="Podcast Artwork" class="w-10 h-10 rounded-lg shadow-md flex-shrink-0">
                     <div class="text-left overflow-hidden">
                         <div class="flex items-center gap-2">
-                            <h2 id="detail-title" class="text-lg font-bold text-black truncate"></h2>
+                            <h2 id="detail-title" class="text-base font-bold text-black podcast-title truncate"></h2>
                             <button id="favorite-podcast-btn" class="favorite-btn text-gray-400 hover:text-[var(--system-yellow)] transition-colors flex-shrink-0" title="收藏此 Podcast">
                                 <i data-lucide="star" class="w-5 h-5"></i>
                             </button>
                         </div>
-                        <p id="detail-artist" class="text-sm text-gray-500 truncate"></p>
+                        <p id="detail-artist" class="text-xs text-gray-500 truncate"></p>
                     </div>
                 </div>
-                <h3 class="text-lg font-bold mb-2 border-b border-gray-200/80 pb-2 text-black flex-shrink-0">單集列表</h3>
+                <h3 class="text-base font-bold mb-2 border-b border-gray-200/80 pb-2 text-black flex-shrink-0">單集列表</h3>
                 <div id="episode-list" class="space-y-0 overflow-y-auto">
                     <p class="text-gray-500 text-center pt-8">請先從左側選擇一個 Podcast 以顯示單集列表。</p>
                 </div>
@@ -174,22 +230,22 @@
             <div class="flex items-center gap-3">
                 <img id="player-artwork" src="https://placehold.co/48x48/f5f5f7/333?text=?" alt="Now Playing Artwork" class="w-12 h-12 rounded-md flex-shrink-0">
                 <div class="flex-grow min-w-0">
-                    <p class="font-semibold text-black truncate text-sm" id="now-playing-title">未選擇音訊</p>
+                    <p class="font-semibold text-black podcast-title truncate text-sm" id="now-playing-title">未選擇音訊</p>
                     <p class="text-xs text-gray-500 truncate" id="now-playing-artist"></p>
                     <div class="flex items-center gap-2 mt-1.5">
-                        <span id="current-time" class="text-xs text-gray-600 font-mono">0:00</span>
+                        <span id="current-time" class="text-xs text-gray-500 font-mono">0:00</span>
                         <input type="range" id="player-progress-bar" min="0" max="100" value="0" class="w-full">
-                        <span id="duration" class="text-xs text-gray-600 font-mono">0:00</span>
+                        <span id="duration" class="text-xs text-gray-500 font-mono">0:00</span>
                     </div>
                 </div>
             </div>
             <div class="flex justify-around items-center mt-2">
-                <button id="playback-rate-btn" title="播放速度" class="p-2 text-gray-600 hover:text-black w-12 text-center font-mono text-xs font-bold">1.0x</button>
-                <button id="rewind-btn" title="倒退 15 秒" class="p-2 text-gray-600 hover:text-black"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></button>
-                <button id="prev-episode-btn" title="上一集" class="p-2 text-gray-600 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"><i data-lucide="skip-back" class="w-6 h-6"></i></button>
+                <button id="playback-rate-btn" title="播放速度" class="p-2 text-gray-500 hover:text-black w-12 text-center font-mono text-xs font-bold">1.0x</button>
+                <button id="rewind-btn" title="倒退 15 秒" class="p-2 text-gray-500 hover:text-black"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></button>
+                <button id="prev-episode-btn" title="上一集" class="p-2 text-gray-500 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"><i data-lucide="skip-back" class="w-6 h-6"></i></button>
                 <button id="play-pause-btn" title="播放/暫停" class="p-2 bg-[var(--system-blue)] text-white rounded-full w-12 h-12 flex items-center justify-center mx-2 shadow-lg"><i data-lucide="play" class="w-7 h-7"></i></button>
-                <button id="next-episode-btn" title="下一集" class="p-2 text-gray-600 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"><i data-lucide="skip-forward" class="w-6 h-6"></i></button>
-                <button id="fast-forward-btn" title="快進 15 秒" class="p-2 text-gray-600 hover:text-black"><i data-lucide="rotate-cw" class="w-5 h-5"></i></button>
+                <button id="next-episode-btn" title="下一集" class="p-2 text-gray-500 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"><i data-lucide="skip-forward" class="w-6 h-6"></i></button>
+                <button id="fast-forward-btn" title="快進 15 秒" class="p-2 text-gray-500 hover:text-black"><i data-lucide="rotate-cw" class="w-5 h-5"></i></button>
                 <button id="placeholder-btn" class="p-2 w-12"></button> <!-- Placeholder for symmetry -->
             </div>
         </footer>
@@ -224,6 +280,7 @@
                 tooltip: document.getElementById('tooltip'),
                 tooltipTitle: document.getElementById('tooltip-title'),
                 tooltipDescription: document.getElementById('tooltip-description'),
+                themeToggleBtn: document.getElementById('theme-toggle-btn'),
                 
                 // -- 新增的播放器元素 --
                 playerArtwork: document.getElementById('player-artwork'),
@@ -238,7 +295,7 @@
                 currentTime: document.getElementById('current-time'),
                 duration: document.getElementById('duration'),
             };
-            const { searchForm, searchInput, loader, mainContent, podcastResults, episodesContainer, podcastListContainer, favoritePodcastListContainer, podcastList, favoritePodcastList, episodeList, audioPlayerContainer, audioPlayer, nowPlayingTitle, podcastDetailHeader, detailArtwork, detailTitle, detailArtist, backToResultsBtn, tabSearchResults, tabFavorites, favoritePodcastBtn, tooltip, tooltipTitle, tooltipDescription, playerArtwork, nowPlayingArtist, playPauseBtn, prevEpisodeBtn, nextEpisodeBtn, rewindBtn, fastForwardBtn, playbackRateBtn, playerProgressBar, currentTime, duration } = allDOMElements;
+            const { searchForm, searchInput, loader, mainContent, podcastResults, episodesContainer, podcastListContainer, favoritePodcastListContainer, podcastList, favoritePodcastList, episodeList, audioPlayerContainer, audioPlayer, nowPlayingTitle, podcastDetailHeader, detailArtwork, detailTitle, detailArtist, backToResultsBtn, tabSearchResults, tabFavorites, favoritePodcastBtn, tooltip, tooltipTitle, tooltipDescription, themeToggleBtn, playerArtwork, nowPlayingArtist, playPauseBtn, prevEpisodeBtn, nextEpisodeBtn, rewindBtn, fastForwardBtn, playbackRateBtn, playerProgressBar, currentTime, duration } = allDOMElements;
 
             const CORS_PROXY = 'https://corsproxy.io/?';
 
@@ -246,12 +303,10 @@
             const playbackRates = [1.0, 1.2, 1.5, 2.0, 0.8];
             let currentRateIndex = 0;
 
-            // --- 工具 & 輔助函式 ---
             const sanitizeHTML = (str) => { const temp = document.createElement('div'); temp.textContent = str; return temp.innerHTML; };
             const cleanDescription = (desc) => desc.replace(/<[^>]+>/g, '').replace(/(\r\n|\n|\r)/gm, " ").trim();
             const formatTime = (s) => isNaN(s) ? '0:00' : `${Math.floor(s/60)}:${(Math.floor(s%60)<10?'0':'')+Math.floor(s%60)}`;
 
-            // --- 播放進度 (LocalStorage) ---
             const getPlaybackProgress = () => JSON.parse(localStorage.getItem('playbackProgress')) || '{}';
             const savePlaybackProgress = (episodeId, time, duration) => {
                 if (!episodeId || !duration) return;
@@ -278,27 +333,29 @@
             const showEpisodesView = () => { if (window.innerWidth < 1024) { podcastResults.classList.add('hidden'); episodesContainer.classList.remove('hidden'); } };
             
             const setActiveTab = (activeTab) => {
-                [tabSearchResults, tabFavorites].forEach(tab => { tab.style.borderColor = 'transparent'; tab.style.color = '#6b7280'; });
+                [tabSearchResults, tabFavorites].forEach(tab => { tab.style.borderColor = 'transparent'; tab.style.color = ''; });
                 activeTab.style.borderColor = 'var(--system-blue)'; activeTab.style.color = 'var(--system-blue)';
             };
-
+            
+            // --- UI 渲染函式 (優化版) ---
             const createPodcastItem = (podcast, isFavorite = false) => {
                 const item = document.createElement('div');
-                item.className = 'flex items-center gap-3 p-2 rounded-lg hover:bg-gray-200/80 transition duration-200';
+                // 優化：減少 padding, gap，使列表更緊湊
+                item.className = 'flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-200/80 dark:hover:bg-gray-700/60 transition duration-200';
                 item.dataset.id = podcast.collectionId;
                 item.innerHTML = `
                     ${isFavorite ? '<i data-lucide="grip-vertical" class="drag-handle w-5 h-5 text-gray-400"></i>' : ''}
-                    <img src="${podcast.artworkUrl100}" alt="${sanitizeHTML(podcast.collectionName)}" class="w-12 h-12 rounded-md object-cover flex-shrink-0">
+                    <img src="${podcast.artworkUrl60}" alt="${sanitizeHTML(podcast.collectionName)}" class="w-10 h-10 rounded-md object-cover flex-shrink-0">
                     <div class="flex-grow overflow-hidden">
-                        <h4 class="font-semibold text-black truncate text-sm">${sanitizeHTML(podcast.collectionName)}</h4>
+                        <h4 class="font-semibold podcast-title truncate text-sm">${sanitizeHTML(podcast.collectionName)}</h4>
                         <p class="text-xs text-gray-500 truncate">${sanitizeHTML(podcast.artistName)}</p>
-                        <p class="text-xs text-gray-400 truncate mt-0.5">${sanitizeHTML(podcast.primaryGenreName)}</p>
+                        <p class="text-xs text-gray-500 truncate mt-0.5">${sanitizeHTML(podcast.primaryGenreName)}</p>
                     </div>
                     ${isFavorite ? '<button class="delete-favorite-btn p-1.5 text-gray-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>' : ''}
                 `;
                 item.addEventListener('click', () => {
-                    document.querySelectorAll('.selected-item').forEach(el => { el.classList.remove('selected-item'); el.style.backgroundColor = ''; });
-                    item.classList.add('selected-item'); item.style.backgroundColor = 'rgba(0, 122, 255, 0.2)';
+                    document.querySelectorAll('.selected-item').forEach(el => el.classList.remove('selected-item'));
+                    item.classList.add('selected-item');
                     currentPodcast = podcast;
                     detailArtwork.src = podcast.artworkUrl100; detailTitle.textContent = podcast.collectionName; detailArtist.textContent = podcast.artistName;
                     updateFavoriteButtonState(); podcastDetailHeader.classList.remove('hidden'); podcastDetailHeader.classList.add('flex');
@@ -337,6 +394,7 @@
                     favoritePodcastList.appendChild(header);
                     const groupContainer = document.createElement('div');
                     groupContainer.dataset.genre = genre;
+                    groupContainer.className = 'space-y-0.5';
                     grouped[genre].forEach(podcast => groupContainer.appendChild(createPodcastItem(podcast, true)));
                     favoritePodcastList.appendChild(groupContainer);
                 });
@@ -361,7 +419,7 @@
 
             async function fetchEpisodes(feedUrl) {
                 if (mainContent.parentElement) { mainContent.parentElement.appendChild(audioPlayerContainer); }
-                episodeList.innerHTML = `<div class="flex justify-center items-center h-full pt-8"><div class="spinner"></div><p class="ml-3 text-gray-600">正在載入單集...</p></div>`;
+                episodeList.innerHTML = `<div class="flex justify-center items-center h-full pt-8"><div class="spinner"></div><p class="ml-3 text-gray-500">正在載入單集...</p></div>`;
                 try {
                     const response = await fetch(`${CORS_PROXY}${encodeURIComponent(feedUrl)}`);
                     if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
@@ -391,14 +449,15 @@
                 const progressData = getPlaybackProgress();
                 items.forEach((item, index) => {
                     const episodeItem = document.createElement('div');
-                    episodeItem.className = 'episode-item relative py-2 px-2 border-b border-gray-200/60 last:border-b-0 flex justify-between items-center gap-2 hover:bg-gray-200/60 rounded-lg';
+                    // 優化：減少 padding, 使文字更小
+                    episodeItem.className = 'episode-item relative py-1.5 px-2 border-b border-gray-200/60 last:border-b-0 flex justify-between items-center gap-2 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 rounded-lg';
                     episodeItem.dataset.index = index;
                     
                     const progress = progressData[item.guid];
                     const progressPercent = progress && progress.duration ? (progress.currentTime / progress.duration) * 100 : 0;
                     
                     episodeItem.innerHTML = `
-                        <p class="flex-grow text-sm text-gray-700 truncate episode-title">${sanitizeHTML(item.title)}</p>
+                        <p class="flex-grow text-xs text-gray-700 truncate episode-title">${sanitizeHTML(item.title)}</p>
                         <button class="play-btn p-1.5 rounded-full text-[var(--system-blue)]" title="播放"><i data-lucide="play-circle" class="w-5 h-5"></i></button>
                         <div class="sound-wave-container w-6 h-6 items-center justify-center">
                             <svg viewBox="0 0 24 24" class="w-5 h-5">
@@ -465,8 +524,10 @@
             
             const togglePlayPause = () => {
                 if(audioPlayer.paused) {
-                    audioPlayer.play();
-                    playPauseBtn.innerHTML = `<i data-lucide="pause" class="w-7 h-7"></i>`;
+                    if (audioPlayer.src) {
+                        audioPlayer.play();
+                        playPauseBtn.innerHTML = `<i data-lucide="pause" class="w-7 h-7"></i>`;
+                    }
                 } else {
                     audioPlayer.pause();
                     playPauseBtn.innerHTML = `<i data-lucide="play" class="w-7 h-7"></i>`;
@@ -522,6 +583,15 @@
                 if(!isNaN(audioPlayer.duration)) audioPlayer.currentTime = (e.target.value / 100) * audioPlayer.duration;
             });
 
+            audioPlayer.addEventListener('play', () => {
+                playPauseBtn.innerHTML = `<i data-lucide="pause" class="w-7 h-7"></i>`;
+                lucide.createIcons();
+            });
+            audioPlayer.addEventListener('pause', () => {
+                playPauseBtn.innerHTML = `<i data-lucide="play" class="w-7 h-7"></i>`;
+                lucide.createIcons();
+            });
+
             audioPlayer.addEventListener('ended', playNext);
             audioPlayer.addEventListener('loadedmetadata', () => {
                 duration.textContent = formatTime(audioPlayer.duration);
@@ -529,8 +599,9 @@
             audioPlayer.addEventListener('timeupdate', () => {
                  if (isNaN(audioPlayer.duration)) return;
                  currentTime.textContent = formatTime(audioPlayer.currentTime);
-                 playerProgressBar.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
-
+                 if (document.activeElement !== playerProgressBar) {
+                     playerProgressBar.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                 }
                  const episode = currentEpisodeList[currentEpisodeIndex];
                  if (episode) {
                      savePlaybackProgress(episode.guid, audioPlayer.currentTime, audioPlayer.duration);
@@ -544,8 +615,33 @@
             tabSearchResults.addEventListener('click', () => { setActiveTab(tabSearchResults); podcastListContainer.classList.remove('hidden'); favoritePodcastListContainer.classList.add('hidden'); });
             tabFavorites.addEventListener('click', () => { setActiveTab(tabFavorites); podcastListContainer.classList.add('hidden'); favoritePodcastListContainer.classList.remove('hidden'); displayFavoritePodcasts(); });
 
+            // --- 明暗主題切換 ---
+            const applyTheme = (theme) => {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.add('light');
+                }
+                localStorage.setItem('theme', theme);
+                lucide.createIcons();
+            };
+
+            themeToggleBtn.addEventListener('click', () => {
+                const currentTheme = localStorage.getItem('theme') || 'light';
+                applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+            });
+
+
             // --- 初始化 ---
-            const init = () => { lucide.createIcons(); loadFavorites(); tabSearchResults.click(); updatePlayerButtons(); };
+            const init = () => {
+                const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                applyTheme(savedTheme);
+                loadFavorites(); 
+                tabSearchResults.click(); 
+                updatePlayerButtons(); 
+            };
             init();
         });
     </script>
