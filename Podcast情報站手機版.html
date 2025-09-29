@@ -143,9 +143,77 @@
         html.light .spinner { border-color: rgba(0,0,0,0.1); border-top-color: var(--system-blue); }
         html.dark .spinner { border-color: rgba(255,255,255,0.1); border-top-color: var(--system-blue); }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* [新增] Toast 通知樣式 */
+        #toast-container {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            pointer-events: none;
+        }
+        @media (min-width: 1024px) {
+            #toast-container {
+                bottom: calc(4rem + 100px); /* 播放器高度 + 間距 */
+            }
+        }
+        .toast {
+            background-color: #27C93F;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease-out;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast.error {
+            background-color: #ff3b30;
+        }
+
+        /* [新增] 歡迎表單樣式 */
+        #welcome-modal {
+            transform: translateY(20px);
+            opacity: 0;
+            animation: welcome-modal-anim 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        @keyframes welcome-modal-anim {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
     </style>
 </head>
 <body class="text-gray-800 lg:h-screen lg:flex lg:flex-col">
+    <!-- [新增] 歡迎表單 Modal -->
+    <div id="welcome-modal-overlay" class="fixed inset-0 bg-black/80 flex justify-center items-center z-[2001]" style="display: none;">
+        <div id="welcome-modal" class="bg-[var(--glass-panel-bg-light)] dark:bg-[var(--glass-panel-bg-dark)] backdrop-blur-xl rounded-xl p-8 max-w-md w-11/12 text-center shadow-2xl transition-all duration-300">
+            <h2 class="text-2xl font-bold mb-2 text-black dark:text-white">歡迎使用 Podcast 導航站</h2>
+            <p class="text-gray-500 dark:text-gray-400 mb-6">請輸入您的暱稱，打造您專屬的私藏 Podcast。<br>點擊「略過」後將不再顯示此提示。</p>
+            <form id="welcome-form" class="flex flex-col">
+                <input type="text" id="nickname-input" placeholder="您的暱稱或姓名" class="w-full bg-gray-200/80 dark:bg-gray-800/80 text-black dark:text-white py-3 px-4 rounded-lg border-none mb-4 focus:ring-2 focus:ring-[var(--system-blue)] focus:outline-none transition-shadow">
+                <button type="submit" class="w-full bg-[var(--system-blue)] text-white font-bold py-3 px-4 rounded-lg mb-2 hover:opacity-90 transition-colors duration-200">設定暱稱</button>
+                <button type="button" id="skip-welcome-btn" class="w-full bg-transparent text-gray-500 dark:text-gray-400 py-2 px-4 rounded-lg hover:bg-gray-200/60 dark:hover:bg-gray-700/60 transition-colors duration-200">略過</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- [新增] Toast 通知的容器 -->
+    <div id="toast-container"></div>
+
     <div id="tooltip" class="hidden fixed z-50 p-3 rounded-lg bg-black/80 text-white text-sm shadow-lg max-w-sm pointer-events-none">
         <h5 id="tooltip-title" class="font-bold mb-1 line-clamp-2"></h5>
         <p id="tooltip-description" class="text-xs opacity-80 max-h-24 overflow-hidden text-ellipsis"></p>
@@ -165,7 +233,7 @@
                     <span class="block w-3 h-3 rounded-full" style="background-color: var(--traffic-light-green);"></span>
                 </div>
                 <div class="flex-grow text-center">
-                    <h1 class="text-xl font-bold text-black podcast-title">Podcast 導航站</h1>
+                    <h1 id="main-title" class="text-xl font-bold text-black podcast-title">Podcast 導航站</h1>
                     <p class="text-xs text-gray-500 mt-1">製作者：陳政德</p>
                 </div>
                 <div class="w-14"></div> <!-- Placeholder to balance the theme toggle button -->
@@ -254,7 +322,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const allDOMElements = {
-                // ... (原有元素)
                 searchForm: document.getElementById('search-form'),
                 searchInput: document.getElementById('search-input'),
                 loader: document.getElementById('loader'),
@@ -281,8 +348,6 @@
                 tooltipTitle: document.getElementById('tooltip-title'),
                 tooltipDescription: document.getElementById('tooltip-description'),
                 themeToggleBtn: document.getElementById('theme-toggle-btn'),
-                
-                // -- 新增的播放器元素 --
                 playerArtwork: document.getElementById('player-artwork'),
                 nowPlayingArtist: document.getElementById('now-playing-artist'),
                 playPauseBtn: document.getElementById('play-pause-btn'),
@@ -294,18 +359,38 @@
                 playerProgressBar: document.getElementById('player-progress-bar'),
                 currentTime: document.getElementById('current-time'),
                 duration: document.getElementById('duration'),
+                // [新增] 歡迎表單和 Toast 相關元素
+                toastContainer: document.getElementById('toast-container'),
+                welcomeModalOverlay: document.getElementById('welcome-modal-overlay'),
+                welcomeForm: document.getElementById('welcome-form'),
+                nicknameInput: document.getElementById('nickname-input'),
+                skipWelcomeBtn: document.getElementById('skip-welcome-btn'),
+                mainTitle: document.getElementById('main-title'),
             };
-            const { searchForm, searchInput, loader, mainContent, podcastResults, episodesContainer, podcastListContainer, favoritePodcastListContainer, podcastList, favoritePodcastList, episodeList, audioPlayerContainer, audioPlayer, nowPlayingTitle, podcastDetailHeader, detailArtwork, detailTitle, detailArtist, backToResultsBtn, tabSearchResults, tabFavorites, favoritePodcastBtn, tooltip, tooltipTitle, tooltipDescription, themeToggleBtn, playerArtwork, nowPlayingArtist, playPauseBtn, prevEpisodeBtn, nextEpisodeBtn, rewindBtn, fastForwardBtn, playbackRateBtn, playerProgressBar, currentTime, duration } = allDOMElements;
+            const { searchForm, searchInput, loader, mainContent, podcastResults, episodesContainer, podcastListContainer, favoritePodcastListContainer, podcastList, favoritePodcastList, episodeList, audioPlayerContainer, audioPlayer, nowPlayingTitle, podcastDetailHeader, detailArtwork, detailTitle, detailArtist, backToResultsBtn, tabSearchResults, tabFavorites, favoritePodcastBtn, tooltip, tooltipTitle, tooltipDescription, themeToggleBtn, playerArtwork, nowPlayingArtist, playPauseBtn, prevEpisodeBtn, nextEpisodeBtn, rewindBtn, fastForwardBtn, playbackRateBtn, playerProgressBar, currentTime, duration, toastContainer, welcomeModalOverlay, welcomeForm, nicknameInput, skipWelcomeBtn, mainTitle } = allDOMElements;
 
             const CORS_PROXY = 'https://corsproxy.io/?';
 
-            let favoritePodcasts = [], currentPodcast = null, currentEpisodeList = [], currentEpisodeIndex = -1, sortableInstance = null;
+            let favoritePodcasts = [], currentPodcast = null, currentEpisodeList = [], currentEpisodeIndex = -1, sortableInstance = null, _playbackAttempt = 'direct';
             const playbackRates = [1.0, 1.2, 1.5, 2.0, 0.8];
             let currentRateIndex = 0;
 
             const sanitizeHTML = (str) => { const temp = document.createElement('div'); temp.textContent = str; return temp.innerHTML; };
             const cleanDescription = (desc) => desc.replace(/<[^>]+>/g, '').replace(/(\r\n|\n|\r)/gm, " ").trim();
             const formatTime = (s) => isNaN(s) ? '0:00' : `${Math.floor(s/60)}:${(Math.floor(s%60)<10?'0':'')+Math.floor(s%60)}`;
+
+            // [新增] Toast 通知函式
+            const showToast = (message, type = 'success') => {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.textContent = message;
+                toastContainer.appendChild(toast);
+                setTimeout(() => toast.classList.add('show'), 10);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    toast.addEventListener('transitionend', () => toast.remove());
+                }, 3000);
+            };
 
             const getPlaybackProgress = () => JSON.parse(localStorage.getItem('playbackProgress')) || '{}';
             const savePlaybackProgress = (episodeId, time, duration) => {
@@ -318,10 +403,17 @@
             const loadFavorites = () => { favoritePodcasts = JSON.parse(localStorage.getItem('favoritePodcasts')) || []; displayFavoritePodcasts(); };
             const saveFavorites = () => { localStorage.setItem('favoritePodcasts', JSON.stringify(favoritePodcasts)); displayFavoritePodcasts(); updateFavoriteButtonState(); };
             const isPodcastFavorited = (podcast) => favoritePodcasts.some(p => p.collectionId === podcast.collectionId);
+            
             const toggleFavoritePodcast = () => {
                 if (!currentPodcast) return;
                 const index = favoritePodcasts.findIndex(p => p.collectionId === currentPodcast.collectionId);
-                if (index > -1) { favoritePodcasts.splice(index, 1); } else { favoritePodcasts.push(currentPodcast); }
+                if (index > -1) { 
+                    favoritePodcasts.splice(index, 1);
+                    showToast(`已將「${currentPodcast.collectionName}」從最愛移除`, 'error');
+                } else { 
+                    favoritePodcasts.push(currentPodcast);
+                    showToast(`已將「${currentPodcast.collectionName}」加入最愛`);
+                }
                 saveFavorites();
             };
             const updateFavoriteButtonState = () => {
@@ -337,10 +429,8 @@
                 activeTab.style.borderColor = 'var(--system-blue)'; activeTab.style.color = 'var(--system-blue)';
             };
             
-            // --- UI 渲染函式 (優化版) ---
             const createPodcastItem = (podcast, isFavorite = false) => {
                 const item = document.createElement('div');
-                // 優化：減少 padding, gap，使列表更緊湊
                 item.className = 'flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-200/80 dark:hover:bg-gray-700/60 transition duration-200';
                 item.dataset.id = podcast.collectionId;
                 item.innerHTML = `
@@ -359,11 +449,13 @@
                     currentPodcast = podcast;
                     detailArtwork.src = podcast.artworkUrl100; detailTitle.textContent = podcast.collectionName; detailArtist.textContent = podcast.artistName;
                     updateFavoriteButtonState(); podcastDetailHeader.classList.remove('hidden'); podcastDetailHeader.classList.add('flex');
-                    fetchEpisodes(podcast.feedUrl); showEpisodesView();
+                    fetchEpisodes(podcast); // [修改] 傳入整個 podcast 物件
+                    showEpisodesView();
                 });
                 if (isFavorite) {
                     item.querySelector('.delete-favorite-btn').addEventListener('click', (e) => {
                         e.stopPropagation();
+                        showToast(`已移除「${podcast.collectionName}」`, 'error');
                         favoritePodcasts = favoritePodcasts.filter(p => p.collectionId !== podcast.collectionId);
                         saveFavorites();
                     });
@@ -417,30 +509,73 @@
                 });
             };
 
-            async function fetchEpisodes(feedUrl) {
+            // [新增] 帶超時的 fetch
+            const fetchWithTimeout = async (resource, options = {}) => {
+                const { timeout = 10000 } = options;
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), timeout);
+                try {
+                    const response = await fetch(resource, { ...options, signal: controller.signal });
+                    return response;
+                } catch (error) {
+                    if (error.name === 'AbortError') throw new Error(`請求超時 (超過 ${timeout/1000} 秒)`);
+                    throw error;
+                } finally { clearTimeout(id); }
+            }
+
+            // [修改] 全面替換為新的 fetchEpisodes 和 parseFeed 邏輯
+            async function fetchEpisodes(podcastInfo) {
+                if (!podcastInfo || !podcastInfo.feedUrl) {
+                    episodeList.innerHTML = `<p class="text-red-500 text-center">無法找到此 Podcast 的 Feed URL。</p>`;
+                    return;
+                }
+                
                 if (mainContent.parentElement) { mainContent.parentElement.appendChild(audioPlayerContainer); }
                 episodeList.innerHTML = `<div class="flex justify-center items-center h-full pt-8"><div class="spinner"></div><p class="ml-3 text-gray-500">正在載入單集...</p></div>`;
+                
                 try {
-                    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(feedUrl)}`);
-                    if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
-                    const xmlText = await response.text();
-                    const xmlDoc = new DOMParser().parseFromString(xmlText, "application/xml");
-                    if (xmlDoc.querySelector("parsererror")) throw new Error("無法解析 RSS feed。");
-                    
-                    const progressData = getPlaybackProgress();
-                    currentEpisodeList = Array.from(xmlDoc.querySelectorAll("item")).map((item, index) => {
-                        const guid = item.querySelector("guid")?.textContent || item.querySelector("enclosure")?.getAttribute("url") || `ep-${index}`;
-                        return { 
-                            guid: guid,
-                            title: item.querySelector("title")?.textContent || '無標題', 
-                            description: cleanDescription(item.querySelector("description")?.textContent || ''), 
-                            audioUrl: item.querySelector("enclosure")?.getAttribute("url")
-                        }
-                    }).filter(item => item.audioUrl);
-                    
+                    currentEpisodeList = await parseFeed(podcastInfo.feedUrl, podcastInfo);
                     renderEpisodes(currentEpisodeList);
-                } catch (error) { console.error('獲取單集列表時發生錯誤:', error); episodeList.innerHTML = `<p class="text-red-500 text-center">無法載入單集列表。</p>`; currentEpisodeList = []; }
+                } catch (error) {
+                    console.error('獲取單集列表時發生錯誤:', error);
+                    episodeList.innerHTML = `<p class="text-red-500 text-center pt-8">無法載入單集列表。<br><span class="text-xs text-gray-500">${error.message}</span></p>`;
+                    currentEpisodeList = [];
+                }
                 updatePlayerButtons();
+            }
+
+            async function parseFeed(feedUrl, podcastInfo) {
+                const urlWithCacheBuster = new URL(feedUrl);
+                urlWithCacheBuster.searchParams.set('_', new Date().getTime());
+                const proxyUrl = CORS_PROXY + encodeURIComponent(urlWithCacheBuster.toString());
+                
+                try {
+                    const res = await fetchWithTimeout(proxyUrl, { timeout: 10000, cache: 'no-cache' });
+                    if (!res.ok) throw new Error(`代理伺服器回應錯誤，狀態碼: ${res.status}。`);
+                    
+                    const xmlText = await res.text();
+                    const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+                    
+                    if (doc.querySelector("parsererror")) throw new Error('解析 XML 失敗，Feed 格式可能不正確。');
+                    
+                    const episodes = Array.from(doc.querySelectorAll("item")).map((item, index) => {
+                        const enclosure = item.querySelector("enclosure");
+                        if (!enclosure || !enclosure.getAttribute("url")) return null;
+                        
+                        return {
+                            guid: item.querySelector("guid")?.textContent || enclosure.getAttribute("url") || `ep-${podcastInfo.collectionId}-${index}`,
+                            title: item.querySelector("title")?.textContent || '無標題',
+                            description: cleanDescription(item.querySelector("description")?.textContent || ''),
+                            audioUrl: enclosure.getAttribute("url"),
+                        };
+                    }).filter(Boolean);
+                    
+                    if (episodes.length === 0) throw new Error('成功解析 RSS Feed，但未找到任何有效的單集。');
+                    
+                    return episodes;
+                } catch (error) {
+                    throw new Error(`無法載入 Feed: ${error.message}`);
+                }
             }
 
             const renderEpisodes = (items) => {
@@ -449,7 +584,6 @@
                 const progressData = getPlaybackProgress();
                 items.forEach((item, index) => {
                     const episodeItem = document.createElement('div');
-                    // 優化：減少 padding, 使文字更小
                     episodeItem.className = 'episode-item relative py-1.5 px-2 border-b border-gray-200/60 last:border-b-0 flex justify-between items-center gap-2 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 rounded-lg';
                     episodeItem.dataset.index = index;
                     
@@ -499,6 +633,7 @@
                 currentEpisodeIndex = index;
                 const episode = currentEpisodeList[index];
                 
+                _playbackAttempt = 'direct'; // [新增] 重置播放嘗試
                 audioPlayer.src = episode.audioUrl;
                 nowPlayingTitle.textContent = episode.title;
                 nowPlayingArtist.textContent = currentPodcast.artistName;
@@ -592,6 +727,28 @@
                 lucide.createIcons();
             });
 
+            // [新增] 增強的錯誤處理
+            audioPlayer.addEventListener('error', (e) => {
+                console.error("[Audio Error]", audioPlayer.error);
+                const episode = currentEpisodeList[currentEpisodeIndex];
+                if (!episode) return; 
+
+                if (_playbackAttempt === 'direct') {
+                    console.log("直接播放失敗，嘗試代理播放...");
+                    _playbackAttempt = 'proxy';
+                    const proxyUrl = CORS_PROXY + encodeURIComponent(episode.audioUrl);
+                    const currentTime = audioPlayer.currentTime; 
+                    audioPlayer.src = proxyUrl;
+                    if(currentTime > 0) audioPlayer.currentTime = currentTime;
+                    audioPlayer.play().catch(err => console.error("代理播放也失敗了:", err));
+                    return; 
+                }
+
+                if (_playbackAttempt === 'proxy') {
+                     showToast(`無法載入音訊檔案，來源可能已失效`, 'error');
+                }
+            });
+
             audioPlayer.addEventListener('ended', playNext);
             audioPlayer.addEventListener('loadedmetadata', () => {
                 duration.textContent = formatTime(audioPlayer.duration);
@@ -615,15 +772,9 @@
             tabSearchResults.addEventListener('click', () => { setActiveTab(tabSearchResults); podcastListContainer.classList.remove('hidden'); favoritePodcastListContainer.classList.add('hidden'); });
             tabFavorites.addEventListener('click', () => { setActiveTab(tabFavorites); podcastListContainer.classList.add('hidden'); favoritePodcastListContainer.classList.remove('hidden'); displayFavoritePodcasts(); });
 
-            // --- 明暗主題切換 ---
             const applyTheme = (theme) => {
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                    document.documentElement.classList.remove('light');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                    document.documentElement.classList.add('light');
-                }
+                if (theme === 'dark') { document.documentElement.classList.add('dark'); document.documentElement.classList.remove('light');
+                } else { document.documentElement.classList.remove('dark'); document.documentElement.classList.add('light'); }
                 localStorage.setItem('theme', theme);
                 lucide.createIcons();
             };
@@ -632,10 +783,40 @@
                 const currentTheme = localStorage.getItem('theme') || 'light';
                 applyTheme(currentTheme === 'light' ? 'dark' : 'light');
             });
-
+            
+            // [新增] 歡迎表單的標題更新函式
+            const updateLibraryTitle = (name) => {
+                if (name) { mainTitle.textContent = `${name}的 Podcast 導航站`; } 
+                else { mainTitle.textContent = 'Podcast 導航站'; }
+            };
 
             // --- 初始化 ---
             const init = () => {
+                // [新增] 歡迎表單邏輯
+                const savedNickname = localStorage.getItem('podcastNickname');
+                const welcomeSkipped = localStorage.getItem('welcomeSkipped');
+
+                if (savedNickname) { updateLibraryTitle(savedNickname); } 
+                else if (!welcomeSkipped) { if (welcomeModalOverlay) { welcomeModalOverlay.style.display = 'flex'; }}
+
+                if(welcomeForm) {
+                    welcomeForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const nickname = nicknameInput.value.trim();
+                        if (nickname) {
+                            localStorage.setItem('podcastNickname', nickname);
+                            updateLibraryTitle(nickname);
+                            welcomeModalOverlay.style.display = 'none';
+                        } else { nicknameInput.focus(); }
+                    });
+                }
+                if(skipWelcomeBtn) {
+                    skipWelcomeBtn.addEventListener('click', () => {
+                        localStorage.setItem('welcomeSkipped', 'true');
+                        welcomeModalOverlay.style.display = 'none';
+                    });
+                }
+
                 const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
                 applyTheme(savedTheme);
                 loadFavorites(); 
