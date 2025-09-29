@@ -1,4 +1,44 @@
-<!DOCTYPE html>
+<!DOCTYPE html><html lang="zh-Hant"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Podcast導航站</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
+<style>
+      /* General Styles */
+      html, body {
+        margin: 0;
+        padding: 24px;
+        background: #FFFFFF;
+        color: #1d1d1f;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        font-size: 15px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      h1, h2, h3, h4, h5, h6, b, strong {
+        font-weight: 600; /* Semibold for macOS look */
+      }
+      h1 { font-weight: 700; } /* Bold for main title */
+      
+      /* Explicit list styles for consistent rendering in html2canvas */
+      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; }
+      ul { list-style-type: disc; }
+      ol { list-style-type: decimal; }
+      li { display: list-item; }
+
+      .hljs-container {
+        padding: 1.5rem;
+        border-radius: .75rem;
+        overflow-x: auto;
+        background: #fcfcfd;
+        border: 1px solid #d2d2d7;
+      }
+      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
+      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
+    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -279,9 +319,35 @@
             background-color: #ff3b30;
         }
 
+        /* [新增] 歡迎表單樣式 */
+        #welcome-modal {
+            transform: translateY(20px);
+            opacity: 0;
+            animation: welcome-modal-anim 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        @keyframes welcome-modal-anim {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
     </style>
 </head>
 <body>
+    <!-- [新增] 歡迎表單 Modal -->
+    <div id="welcome-modal-overlay" class="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-[2001]" style="display: none;">
+        <div id="welcome-modal" class="bg-[var(--color-surface)] rounded-xl p-8 max-w-md w-11/12 text-center shadow-2xl transition-all duration-300">
+            <h2 class="text-2xl font-bold mb-2 text-[var(--color-text-primary)]">歡迎使用 Podcast 導航站</h2>
+            <p class="text-[var(--color-text-secondary)] mb-6">請輸入您的暱稱，這個程式就是您專屬的私藏 Podcast。</p>
+            <form id="welcome-form" class="flex flex-col">
+                <input type="text" id="nickname-input" placeholder="您的暱稱或姓名" class="w-full bg-[var(--color-interactive-element)] text-[var(--color-text-primary)] py-3 px-4 rounded-lg border-none mb-4 focus:ring-2 focus:ring-[#007AFF] focus:outline-none transition-shadow">
+                <button type="submit" class="w-full bg-[#007AFF] text-white font-bold py-3 px-4 rounded-lg mb-2 hover:bg-[#0056b3] transition-colors duration-200">設定暱稱</button>
+                <button type="button" id="skip-welcome-btn" class="w-full bg-transparent text-[var(--color-text-secondary)] py-2 px-4 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors duration-200">略過</button>
+            </form>
+        </div>
+    </div>
+    
     <!-- [優化] 新增 Toast 通知的容器 -->
     <div id="toast-container"></div>
 
@@ -557,7 +623,13 @@
                 volumeSlider: document.getElementById('volume-slider'),
                 volumeIconBtn: document.getElementById('volume-icon-btn'),
                 volumeTooltip: document.getElementById('volume-tooltip'),
-                volumeContainer: document.getElementById('volume-container')
+                volumeContainer: document.getElementById('volume-container'),
+                // [新增] 歡迎表單 DOM 元素
+                welcomeModalOverlay: document.getElementById('welcome-modal-overlay'),
+                welcomeModal: document.getElementById('welcome-modal'),
+                welcomeForm: document.getElementById('welcome-form'),
+                nicknameInput: document.getElementById('nickname-input'),
+                skipWelcomeBtn: document.getElementById('skip-welcome-btn'),
             };
 
             const soundIconSVG = `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect class="sound-wave sound-wave-1" x="4" y="8" width="4" height="8" rx="1"></rect><rect class="sound-wave sound-wave-2" x="10" y="5" width="4" height="14" rx="1"></rect><rect class="sound-wave sound-wave-3" x="16" y="8" width="4" height="8" rx="1"></rect></svg>`;
@@ -591,6 +663,19 @@
             let lastProgressUpdateTime = 0;
             let currentViewSource = 'sidebar';
             let searchState = { term: '', results: [], currentIndex: -1, offset: 0, limit: 50 };
+
+            // [新增] 更新標題的函式
+            const updateLibraryTitle = (name) => {
+                if (name) {
+                    // 使用 textContent 以防止 XSS 攻擊
+                    const titleEl = document.createElement('span');
+                    titleEl.textContent = `${name}的私藏Podcast`;
+                    domElements.libraryTitle.innerHTML = ''; // 清空舊內容
+                    domElements.libraryTitle.appendChild(titleEl);
+                } else {
+                    domElements.libraryTitle.textContent = '我的私藏Podcast';
+                }
+            };
 
             // [優化] Toast 通知函式
             const showToast = (message, type = 'success') => {
@@ -1164,6 +1249,36 @@
             }
 
             function initialize() {
+                // [新增] 歡迎表單邏輯
+                const savedNickname = localStorage.getItem('podcastNickname');
+                if (savedNickname) {
+                    updateLibraryTitle(savedNickname);
+                } else {
+                    if(domElements.welcomeModalOverlay) {
+                        domElements.welcomeModalOverlay.style.display = 'flex';
+                    }
+                }
+
+                if(domElements.welcomeForm) {
+                    domElements.welcomeForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const nickname = domElements.nicknameInput.value.trim();
+                        if (nickname) {
+                            localStorage.setItem('podcastNickname', nickname);
+                            updateLibraryTitle(nickname);
+                            domElements.welcomeModalOverlay.style.display = 'none';
+                        } else {
+                            domElements.nicknameInput.focus();
+                        }
+                    });
+                }
+
+                if(domElements.skipWelcomeBtn) {
+                    domElements.skipWelcomeBtn.addEventListener('click', () => {
+                        domElements.welcomeModalOverlay.style.display = 'none';
+                    });
+                }
+                
                 domElements.soundIconContainer.innerHTML = soundIconSVG;
                 
                 const savedSettings = getPlayerSettings();
@@ -1351,3 +1466,4 @@
     </script>
 </body>
 </html>
+</div></body></html>
