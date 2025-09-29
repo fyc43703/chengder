@@ -874,9 +874,14 @@
             }
 
             async function parseFeed(feedUrl, podcastInfo) {
-                const proxyUrl = CORS_PROXY + encodeURIComponent(feedUrl);
+                // [修改] 增加 cache-busting 參數，強制取得最新資料
+                // 透過在原始 Feed URL 後面加上一個獨一無二的時間戳，來繞過所有層級的快取
+                const urlWithCacheBuster = new URL(feedUrl);
+                urlWithCacheBuster.searchParams.set('_', new Date().getTime());
+
+                const proxyUrl = CORS_PROXY + encodeURIComponent(urlWithCacheBuster.toString());
                 try {
-                    // [修改] 新增 cache: 'no-cache' 選項，防止瀏覽器快取 RSS Feed
+                    // 保留 'no-cache' 選項作為雙重保險
                     const res = await fetchWithTimeout(proxyUrl, { timeout: 10000, cache: 'no-cache' });
                     if (!res.ok) throw new Error(`代理伺服器回應錯誤，狀態碼: ${res.status}。`);
                     
@@ -1433,4 +1438,4 @@
         });
     </script>
 </body>
-</html>
+</html></div></body></html>
