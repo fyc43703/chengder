@@ -876,7 +876,8 @@
             async function parseFeed(feedUrl, podcastInfo) {
                 const proxyUrl = CORS_PROXY + encodeURIComponent(feedUrl);
                 try {
-                    const res = await fetchWithTimeout(proxyUrl, { timeout: 10000 });
+                    // [修改] 新增 cache: 'no-cache' 選項，防止瀏覽器快取 RSS Feed
+                    const res = await fetchWithTimeout(proxyUrl, { timeout: 10000, cache: 'no-cache' });
                     if (!res.ok) throw new Error(`代理伺服器回應錯誤，狀態碼: ${res.status}。`);
                     
                     const xmlText = await res.text();
@@ -921,13 +922,17 @@
                 try {
                     const podcastInfo = await getPodcastInfo(collectionId);
                     renderPodcastShell(podcastInfo);
-                    if (podcastInfo.episodes) {
-                        populateEpisodesList(podcastInfo.episodes, podcastInfo);
-                    } else {
-                        const episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
+                    
+                    // [修改] 移除單集列表的快取邏輯，確保每次點擊都重新抓取最新的 Feed 內容
+                    const episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
+                    
+                    // 雖然每次都重新抓取，但仍然更新快取，供播放器等其他功能使用
+                    if (collectionCache[collectionId]) {
                         collectionCache[collectionId].episodes = episodes;
-                        populateEpisodesList(episodes, podcastInfo);
                     }
+                    
+                    populateEpisodesList(episodes, podcastInfo);
+
                 } catch (error) {
                     domElements.podcastDetailView.innerHTML = `<div class="text-center text-[var(--color-text-secondary)] m-auto"><p class="font-bold text-lg mb-2">哎呀！節目資訊載入失敗了</p><p class="text-sm">${error.message}</p><p class="text-xs mt-2">可能是對方的伺服器有點問題，或是您的網路不太穩定。請稍後再試試看。</p></div>`;
                 } finally {
