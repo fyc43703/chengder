@@ -1,44 +1,4 @@
-<!DOCTYPE html><html lang="zh-Hant"><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Podcast導航站</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
-<style>
-      /* General Styles */
-      html, body {
-        margin: 0;
-        padding: 24px;
-        background: #FFFFFF;
-        color: #1d1d1f;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        line-height: 1.6;
-        font-size: 15px;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-      h1, h2, h3, h4, h5, h6, b, strong {
-        font-weight: 600; /* Semibold for macOS look */
-      }
-      h1 { font-weight: 700; } /* Bold for main title */
-      
-      /* Explicit list styles for consistent rendering in html2canvas */
-      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; }
-      ul { list-style-type: disc; }
-      ol { list-style-type: decimal; }
-      li { display: list-item; }
-
-      .hljs-container {
-        padding: 1.5rem;
-        border-radius: .75rem;
-        overflow-x: auto;
-        background: #fcfcfd;
-        border: 1px solid #d2d2d7;
-      }
-      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
-      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
-    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -488,7 +448,7 @@
                                 <div class="intro-text">
                                      <p>「Podcast導航站」為您量身打造了一套完整、直覺且功能強大的工具，讓您能輕鬆徜徉在 Podcast 的聲音世界中。以下是各項核心功能的詳細操作說明：</p>
                                     <ul>
-                                        <!-- [新增] 雲端同步功能說明 -->
+                                        <!-- [修改] 雲端同步功能說明 -->
                                         <li>
                                             <strong><i class="fas fa-cloud text-[#007AFF]"></i><span style="color:#007AFF;"> 雲端同步與跨裝置作業</span></strong>
                                             <div class="li-sub-text">
@@ -497,11 +457,8 @@
                                                 2. 程式會自動為您產生一組獨一無二的「使用者ID」，並顯示在按鈕下方。<br>
                                                 3. <strong>請務必複製並妥善保管您的使用者ID！</strong>這是您未來在新裝置上回復資料的唯一憑證。
                                                 </p>
-                                                <p class="mt-2"><strong>在新裝置上同步：</strong><br>
-                                                1. 在新的電腦上打開本程式，同樣點擊「啟用雲端同步」。<br>
-                                                2. 在彈出的輸入框中，貼上您先前保管好的「使用者ID」。<br>
-                                                3. 按下確定後，您所有的收藏庫資料就會立刻同步到這台新電腦上。
-                                                </p>
+                                                <p class="mt-2"><strong>跨裝置使用：</strong><br>
+                                                雲端同步功能會為您的每一台裝置產生一組專屬ID，並將該裝置的收藏庫獨立儲存。目前尚不支援在不同裝置間自動同步資料，但您可以利用顯示的ID來辨識與管理您在不同裝置上的收藏庫。</p>
                                             </div>
                                         </li>
                                         <li>
@@ -1363,29 +1320,24 @@
                         }
                     });
                 } catch (e) {
-                    console.error("Firebase 初始化失敗，請檢查設定。");
+                    console.error("Firebase 初始化失敗。這通常是因為缺少有效的設定資訊。", e);
                     domElements.authButton.textContent = "同步功能載入失敗";
                     domElements.authButton.disabled = true;
+                    showToast('同步功能因設定無效而無法使用。', 'error');
                 }
 
+                // [修改] 簡化 authButton 的事件監聽器
                 domElements.authButton.addEventListener('click', async () => {
-                    const storedId = localStorage.getItem('podcastUserID');
-                    const inputId = prompt("請輸入您的使用者ID以同步資料，或留白以產生新的ID：", storedId || "");
-                    
-                    if (inputId === null) return;
-
-                    if (inputId.trim() !== "") {
-                        // 這裡無法直接用 ID 登入，因為 Firebase Auth 的安全機制。
-                        // 讓使用者知道這個限制，並引導他們先匿名登入來取得ID。
-                        alert("基於安全考量，無法直接使用舊ID登入。請先在新裝置上點擊「啟用雲端同步」並產生一組新的ID，然後手動將舊裝置的收藏加入新裝置。");
-                    } else {
-                        try {
-                            await signInAnonymously(auth);
-                            showToast('已產生新的使用者ID並啟用同步！請妥善保管您的ID。');
-                        } catch (error) {
-                            console.error("匿名登入失敗: ", error);
-                            showToast('啟用同步失敗，請稍後再試', 'error');
-                        }
+                    try {
+                        domElements.authButton.disabled = true;
+                        domElements.authButton.textContent = "啟用中...";
+                        await signInAnonymously(auth);
+                        showToast('已產生新的使用者ID並啟用同步！請妥善保管您的ID。');
+                    } catch (error) {
+                        console.error("匿名登入失敗: ", error);
+                        showToast('啟用同步失敗，請稍後再試', 'error');
+                        domElements.authButton.disabled = false;
+                        domElements.authButton.textContent = "啟用雲端同步";
                     }
                 });
 
