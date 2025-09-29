@@ -10,6 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2eTDRqN5yI61Rz5oVn2uW/yTzQ1LzW4zLh1tM5hY6k8n+rE8f/a5iK4Xg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- [新增] 引入 SortableJS 用於拖曳排序 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" xintegrity="sha512-TelkP3PCMJv+QzVYLEBBcMh5yGzBscUAc3Jy/BSoJxyD/GxFMLRxEunHk+KdaNf1rBzmSAUGeBCDOKWIDmbpGA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         /* 自定義樣式 */
         :root {
@@ -158,6 +160,54 @@
         #sidebar-items.grid-view .sidebar-item-actions { top: 0.5rem; right: 0.5rem; transform: none; }
         #sidebar-items.grid-view .sidebar-item__text-wrapper .font-semibold { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; white-space: normal; word-break: break-all; min-height: 2.8em; }
         
+        /* [新增] 拖曳排序相關樣式 */
+        .sortable-ghost {
+            background: var(--color-surface-hover);
+            opacity: 0.4;
+            border-radius: 0.5rem;
+            border: 1px dashed var(--color-text-secondary);
+        }
+
+        .drag-handle {
+            opacity: 0;
+            cursor: grab;
+            color: var(--color-text-secondary);
+            transition: opacity 0.2s;
+            padding: 0 0.5rem;
+            align-self: stretch;
+            display: flex;
+            align-items: center;
+            margin-left: -0.5rem;
+        }
+
+        #sidebar-items:not(.is-sorting-disabled) .sidebar-item:hover .drag-handle {
+            opacity: 0.6;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        #sidebar-items.grid-view .sidebar-item .drag-handle {
+            display: none;
+        }
+
+        #sidebar-items.is-sorting-disabled .sidebar-item {
+            cursor: pointer;
+        }
+
+        #sidebar-items.grid-view.is-sorting-disabled .sidebar-item {
+            cursor: pointer;
+        }
+
+        #sidebar-items.grid-view:not(.is-sorting-disabled) .sidebar-item {
+            cursor: grab;
+        }
+        #sidebar-items.grid-view:not(.is-sorting-disabled) .sidebar-item:active {
+            cursor: grabbing;
+        }
+
+
         /* 搜尋結果 */
         .search-result-item { position: relative; background-color: var(--color-surface-hover); padding: 0.75rem; border-radius: 0.5rem; display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; }
         .add-to-fav-btn { position: absolute; top: 0.5rem; right: 0.5rem; width: 32px; height: 32px; border-radius: 50%; background-color: rgba(0, 0, 0, 0.6); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; border: none; opacity: 0; transform: scale(0.8); z-index: 5; }
@@ -428,8 +478,9 @@
                                                 在搜尋結果中，將滑鼠移至節目封面上，點擊出現的 <i class="far fa-heart" style="color: #FF453A;"></i> 愛心圖示即可收藏。在收藏庫中，同樣將滑鼠移至節目上方，點擊 <i class="fas fa-trash-alt" style="color: #8E8E93;"></i> 垃圾桶圖示即可移除。您的收藏庫會被保存在瀏覽器中，下次開啟時依然存在。</p>
                                                 <p class="mt-2"><strong>自動分類與篩選：</strong><br>
                                                 收藏的節目會自動依照官方類型分組。您可以使用上方的篩選框快速查找，或點擊 <i class="fas fa-heart" style="color: #FF453A;"></i> 按鈕只顯示標記為「最愛」的節目。</p>
+                                                <!-- [修改] 更新排序功能說明 -->
                                                 <p class="mt-2"><strong>個人化視圖與排序：</strong><br>
-                                                透過 <i class="fas fa-list" style="color: #007AFF;"></i> 和 <i class="fas fa-grip" style="color: #007AFF;"></i> 圖示在「列表」與「網格」模式間切換。點擊 <i class="fas fa-arrow-up-wide-short" style="color: #007AFF;"></i> 圖示可改變節目排序，完全符合您的瀏覽習慣。</p>
+                                                透過 <i class="fas fa-list" style="color: #007AFF;"></i> 和 <i class="fas fa-grip" style="color: #007AFF;"></i> 圖示在「列表」與「網格」模式間切換。點擊排序圖示可在三種模式間循環切換：「手動排序」(<i class="fas fa-grip-vertical" style="color: #007AFF;"></i>)、「A-Z 升序」(<i class="fas fa-arrow-up-wide-short" style="color: #007AFF;"></i>) 與「Z-A 降序」(<i class="fas fa-arrow-down-wide-short" style="color: #007AFF;"></i>)。在「手動排序」模式下，您可以直接拖曳節目來自由排列順序，打造最符合您習慣的收藏庫。</p>
                                             </div>
                                         </li>
                         
@@ -439,10 +490,11 @@
                                                 <p><strong>操作步驟：</strong><br>
                                                 進入任一收藏的節目後，點擊單集列表中的任一集即可開始播放。所有控制功能都集中在畫面底部的播放器。</p>
                                                 <p class="mt-2"><strong>高階播放功能：</strong></p>
+                                                <!-- [修改] 減少列表垂直間距 -->
                                                 <ul class="list-disc pl-5 opacity-90">
-                                                    <li class="mb-1"><strong>進度記憶：</strong>自動記錄每一集的收聽進度，下次回來從上次中斷處繼續聽。</li>
-                                                    <li class="mb-1"><strong>精準快轉：</strong><i class="fas fa-rotate-left" style="color: #A0C4FF;"></i> / <i class="fas fa-rotate-right" style="color: #A0C4FF;"></i> 按鈕可前後快轉 15 秒，方便跳過不感興趣的片段。</li>
-                                                    <li class="mb-1"><strong>變速播放：</strong>可在 0.5x 至 2.0x 之間調整語速，滿足高效學習或放鬆聆聽的需求。</li>
+                                                    <li><strong>進度記憶：</strong>自動記錄每一集的收聽進度，下次回來從上次中斷處繼續聽。</li>
+                                                    <li><strong>精準快轉：</strong><i class="fas fa-rotate-left" style="color: #A0C4FF;"></i> / <i class="fas fa-rotate-right" style="color: #A0C4FF;"></i> 按鈕可前後快轉 15 秒，方便跳過不感興趣的片段。</li>
+                                                    <li><strong>變速播放：</strong>可在 0.5x 至 2.0x 之間調整語速，滿足高效學習或放鬆聆聽的需求。</li>
                                                     <li><strong>單集下載：</strong>點擊 <i class="fas fa-download" style="color: #27C93F;"></i> 圖示，即可將音訊檔下載至您的電腦中，實現真正的離線收聽。</li>
                                                 </ul>
                                             </div>
@@ -623,6 +675,10 @@
             let lastProgressUpdateTime = 0;
             let currentViewSource = 'sidebar';
             let searchState = { term: '', results: [], currentIndex: -1, offset: 0, limit: 50 };
+            
+            // [新增] 排序相關狀態
+            let sortableInstance = null;
+            let sortMode = 'manual'; // 'manual', 'asc', 'desc'
 
             // [新增] 更新標題的函式
             const updateLibraryTitle = (name) => {
@@ -699,29 +755,43 @@
                     domElements.sidebarItemsContainer.innerHTML = `<p class="text-center text-sm text-[var(--color-text-secondary)] p-4">沒有符合篩選條件的項目。</p>`;
                     return;
                 }
-
-                const groupedByGenre = filteredCollection.reduce((acc, podcast) => {
-                    const genre = podcast.primaryGenreName || '未分類';
-                    if (!acc[genre]) { acc[genre] = []; }
-                    acc[genre].push(podcast);
-                    return acc;
-                }, {});
-
-                const isAsc = domElements.sortIcon.classList.contains('fa-arrow-up-wide-short');
-                const sortedGenres = Object.keys(groupedByGenre).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
                 
-                sortedGenres.forEach(genre => {
-                    const header = document.createElement('h3');
-                    header.className = 'sidebar-genre-header';
-                    const iconSVG = GENRE_ICONS[genre] || GENRE_ICONS['Default'];
-                    header.innerHTML = `${iconSVG}<span class="genre-text">${genre}</span>`;
-                    domElements.sidebarItemsContainer.appendChild(header);
+                // [修改] 根據 sortMode 決定是否分組
+                if (sortMode === 'manual' && !searchTerm && !isFavoritesFilterActive) {
+                    // 在手動排序、無篩選、無過濾最愛時，直接渲染列表
+                    filteredCollection.forEach(podcast => renderCollectionItem(podcast));
+                } else {
+                    // 其他情況下 (自動排序、搜尋、篩選最愛)，進行分組
+                    const groupedByGenre = filteredCollection.reduce((acc, podcast) => {
+                        const genre = podcast.primaryGenreName || '未分類';
+                        if (!acc[genre]) { acc[genre] = []; }
+                        acc[genre].push(podcast);
+                        return acc;
+                    }, {});
 
-                    const podcastsInGenre = groupedByGenre[genre];
-                    podcastsInGenre.sort((a, b) => isAsc ? a.collectionName.localeCompare(b.collectionName, 'zh-Hant') : b.collectionName.localeCompare(a.collectionName, 'zh-Hant'));
+                    const sortedGenres = Object.keys(groupedByGenre).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
                     
-                    podcastsInGenre.forEach(podcast => renderCollectionItem(podcast));
-                });
+                    sortedGenres.forEach(genre => {
+                        const header = document.createElement('h3');
+                        header.className = 'sidebar-genre-header';
+                        const iconSVG = GENRE_ICONS[genre] || GENRE_ICONS['Default'];
+                        header.innerHTML = `${iconSVG}<span class="genre-text">${genre}</span>`;
+                        domElements.sidebarItemsContainer.appendChild(header);
+
+                        const podcastsInGenre = groupedByGenre[genre];
+                        
+                        if (sortMode !== 'manual') {
+                            const isAsc = sortMode === 'asc';
+                            podcastsInGenre.sort((a, b) => 
+                                isAsc 
+                                ? a.collectionName.localeCompare(b.collectionName, 'zh-Hant') 
+                                : b.collectionName.localeCompare(a.collectionName, 'zh-Hant')
+                            );
+                        }
+                        
+                        podcastsInGenre.forEach(podcast => renderCollectionItem(podcast));
+                    });
+                }
             };
             
             const addToCollection = (podcast) => {
@@ -776,7 +846,9 @@
                 item.title = `${podcast.collectionName} - ${podcast.artistName}`;
                 const trashSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.144-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.057-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>`;
                 const heartIconClass = podcast.isFavorite ? 'fas' : 'far';
+                // [修改] 新增拖曳桿元素
                 item.innerHTML = `
+                    <span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>
                     <img src="${podcast.artworkUrl600}" alt="${podcast.collectionName}" class="w-12 h-12 rounded-lg flex-shrink-0">
                     <div class="flex-1 overflow-hidden sidebar-item__text-wrapper">
                         <div class="font-semibold text-sm">${podcast.collectionName}</div>
@@ -787,7 +859,7 @@
                         <button class="sidebar-action-btn" title="從收藏移除">${trashSVG}</button>
                     </div>`;
                 item.addEventListener('click', (e) => {
-                    if (e.target.closest('.sidebar-item-actions')) return;
+                    if (e.target.closest('.sidebar-item-actions') || e.target.closest('.drag-handle')) return;
                     document.querySelector('.sidebar-item.is-active')?.classList.remove('is-active');
                     item.classList.add('is-active');
                     currentViewSource = 'sidebar';
@@ -1218,6 +1290,56 @@
                 };
             }
 
+            // [新增] 更新排序按鈕及容器樣式的函式
+            const updateSortUI = () => {
+                const isManualSortPossible = !isFavoritesFilterActive && !domElements.localSearchInput.value;
+                if (sortMode === 'manual' && isManualSortPossible) {
+                    domElements.sortIcon.className = 'fas fa-grip-vertical';
+                    domElements.sortDirectionBtn.title = '手動排序';
+                    domElements.sidebarItemsContainer.classList.remove('is-sorting-disabled');
+                    if (sortableInstance) sortableInstance.option('disabled', false);
+                } else if (sortMode === 'asc' || (sortMode === 'manual' && !isManualSortPossible)) {
+                    domElements.sortIcon.className = 'fas fa-arrow-up-wide-short';
+                    domElements.sortDirectionBtn.title = '升序 (A-Z)';
+                    domElements.sidebarItemsContainer.classList.add('is-sorting-disabled');
+                    if (sortableInstance) sortableInstance.option('disabled', true);
+                } else { // 'desc'
+                    domElements.sortIcon.className = 'fas fa-arrow-down-wide-short';
+                    domElements.sortDirectionBtn.title = '降序 (Z-A)';
+                    domElements.sidebarItemsContainer.classList.add('is-sorting-disabled');
+                    if (sortableInstance) sortableInstance.option('disabled', true);
+                }
+            };
+
+            // [新增] 初始化拖曳排序功能的函式
+            const initializeSorting = () => {
+                if (sortableInstance) {
+                    sortableInstance.destroy();
+                }
+
+                sortableInstance = new Sortable(domElements.sidebarItemsContainer, {
+                    animation: 150,
+                    handle: '.drag-handle', // [修改] 指定拖曳桿
+                    filter: '.sidebar-genre-header',
+                    preventOnFilter: true,
+                    ghostClass: 'sortable-ghost',
+                    disabled: sortMode !== 'manual',
+                    onEnd: (evt) => {
+                        if (sortMode !== 'manual') return;
+
+                        const collection = getCollection();
+                        const reorderedIds = Array.from(domElements.sidebarItemsContainer.querySelectorAll('.sidebar-item')).map(item => item.dataset.id);
+                        
+                        const idMap = new Map(collection.map(p => [String(p.collectionId), p]));
+                        const reorderedCollection = reorderedIds.map(id => idMap.get(id)).filter(Boolean);
+
+                        saveCollection(reorderedCollection);
+                        // 不重新載入以維持視覺上的順暢
+                    }
+                });
+                updateSortUI();
+            };
+
             function initialize() {
                 // [修改] 歡迎表單邏輯
                 const savedNickname = localStorage.getItem('podcastNickname');
@@ -1405,11 +1527,29 @@
                     savePlayerSettings();
                 });
 
-                domElements.localSearchInput.addEventListener('input', loadCollection);
+                domElements.localSearchInput.addEventListener('input', () => { loadCollection(); updateSortUI(); });
                 domElements.viewModeListBtn.addEventListener('click', () => { domElements.sidebarItemsContainer.classList.remove('grid-view'); domElements.viewModeListBtn.classList.add('active'); domElements.viewModeGridBtn.classList.remove('active'); });
                 domElements.viewModeGridBtn.addEventListener('click', () => { domElements.sidebarItemsContainer.classList.add('grid-view'); domElements.viewModeGridBtn.classList.add('active'); domElements.viewModeListBtn.classList.remove('active'); });
-                domElements.filterFavoritesBtn.addEventListener('click', () => { isFavoritesFilterActive = !isFavoritesFilterActive; domElements.filterFavoritesBtn.classList.toggle('active', isFavoritesFilterActive); loadCollection(); });
-                domElements.sortDirectionBtn.addEventListener('click', () => { domElements.sortIcon.classList.toggle('fa-arrow-up-wide-short'); domElements.sortIcon.classList.toggle('fa-arrow-down-wide-short'); loadCollection(); });
+                domElements.filterFavoritesBtn.addEventListener('click', () => { isFavoritesFilterActive = !isFavoritesFilterActive; domElements.filterFavoritesBtn.classList.toggle('active', isFavoritesFilterActive); loadCollection(); updateSortUI(); });
+                
+                // [修改] 排序按鈕事件監聽器
+                domElements.sortDirectionBtn.addEventListener('click', () => {
+                    const isManualPossible = !isFavoritesFilterActive && !domElements.localSearchInput.value;
+                    let modes = isManualPossible ? ['manual', 'asc', 'desc'] : ['asc', 'desc'];
+                    
+                    let currentModeForCycle = sortMode;
+                    if (!isManualPossible && sortMode === 'manual') {
+                        currentModeForCycle = 'asc'; 
+                    }
+
+                    const currentIndex = modes.indexOf(currentModeForCycle);
+                    sortMode = modes[(currentIndex + 1) % modes.length];
+                    
+                    localStorage.setItem('podcastSortMode', sortMode);
+                    updateSortUI();
+                    loadCollection();
+                });
+
                 
                 const applyTheme = (theme) => { document.documentElement.setAttribute('data-theme', theme); domElements.themeToggleBtn.innerHTML = theme === 'dark' ? sunIconSVG : moonIconSVG; localStorage.setItem('theme', theme); };
                 domElements.themeToggleBtn.addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
@@ -1428,7 +1568,12 @@
                 });
 
                 applyTheme(localStorage.getItem('theme') || 'dark');
+                
+                // [修改] 初始化排序功能
+                sortMode = localStorage.getItem('podcastSortMode') || 'manual';
+                
                 loadCollection();
+                initializeSorting();
                 syncPlayerUI();
                 
                 domElements.mainContent.querySelectorAll(':scope > div').forEach(d => d.style.display = 'none');
@@ -1438,4 +1583,4 @@
         });
     </script>
 </body>
-</html></div></body></html>
+</html>
