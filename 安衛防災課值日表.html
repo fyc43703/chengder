@@ -1,0 +1,397 @@
+<!DOCTYPE html><html lang="zh-Hant"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>安衛防災課值日表</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
+<style>
+      /* General Styles */
+      html, body {
+        margin: 0;
+        padding: 24px;
+        background: #FFFFFF;
+        color: #1d1d1f;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        font-size: 15px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      h1, h2, h3, h4, h5, h6, b, strong {
+        font-weight: 600; /* Semibold for macOS look */
+      }
+      h1 { font-weight: 700; } /* Bold for main title */
+      
+      /* Explicit list styles for consistent rendering in html2canvas */
+      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; }
+      ul { list-style-type: disc; }
+      ol { list-style-type: decimal; }
+      li { display: list-item; }
+
+      .hljs-container {
+        padding: 1.5rem;
+        border-radius: .75rem;
+        overflow-x: auto;
+        background: #fcfcfd;
+        border: 1px solid #d2d2d7;
+      }
+      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
+      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
+    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公司值日表產生器</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --primary-blue: #007aff;
+            --light-gray: #e5e5ea;
+            --text-color: #1d1d1f;
+            --red-dot: #ff5f56;
+            --yellow-dot: #ffbd2e;
+            --green-dot: #27c93f;
+            --holiday-red: #ff3b30;
+            --weekend-gray: #8e8e93;
+            --print-button-bg: #f0f0f0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0.5rem;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Arial", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 2600px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+        }
+
+        .title-bar {
+            display: flex; align-items: center; padding: 0 12px; height: 80px;
+            background: rgba(240, 240, 240, 0.7); border-bottom: 1px solid rgba(0, 0, 0, 0.1); position: relative;
+        }
+        .title-input { 
+            width: 100%; text-align: center; font-weight: 600; font-size: 36px; color: #333;
+            background: transparent; border: none; outline: none; padding: 4px 0;
+        }
+        
+        .content-area { padding: 20px; }
+
+        .settings-panel {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 16px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        
+        /* --- 姓名輸入表格 --- */
+        .names-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px 16px;
+        }
+        .name-entry {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .name-number {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--weekend-gray);
+        }
+        .name-input-field {
+            padding: 8px 10px; font-size: 14px; border-radius: 6px;
+            border: 1px solid var(--light-gray); background-color: rgba(255, 255, 255, 0.9);
+            width: 100%;
+            flex-grow: 1;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .controls { display: flex; flex-direction: column; gap: 10px; }
+        .date-selector { display: flex; gap: 8px; }
+        .custom-select {
+            padding: 10px 12px; font-size: 14px; border-radius: 8px;
+            border: 1px solid var(--light-gray); background-color: #fff;
+        }
+        .action-buttons { display: flex; gap: 8px; }
+        .action-button {
+            flex-grow: 1; padding: 10px 15px; font-size: 14px; font-weight: 500;
+            border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.2s;
+        }
+        .generate-button { background-color: var(--primary-blue); color: white; }
+        .generate-button:hover { background-color: #006ae0; }
+        .print-button { background-color: var(--print-button-bg); color: var(--text-color); }
+        .print-button:hover { background-color: #e0e0e0; }
+        
+        .calendar-container {
+            border-top: 1px solid var(--light-gray);
+            padding-top: 12px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: var(--light-gray);
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .calendar-header {
+            text-align: center;
+            padding: 8px 4px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #f9f9f9;
+        }
+        .calendar-day {
+            min-height: 40px;
+            padding: 8px;
+            background-color: #fff;
+            position: relative;
+        }
+        .calendar-day.other-month { background-color: #f9f9f9; }
+        .day-number { font-weight: bold; font-size: 16px; }
+        
+        .calendar-day.weekend .day-number { color: var(--weekend-gray); }
+        .calendar-day.holiday .day-number { color: var(--holiday-red); }
+        .calendar-day.holiday::before {
+            content: attr(data-holiday);
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            font-size: 11px;
+            color: var(--holiday-red);
+            font-weight: 500;
+        }
+
+        .duty-person {
+            margin-top: 6px;
+            padding: 4px 8px;
+            color: white;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        /* --- 列印樣式 --- */
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 15mm;
+            }
+            body { padding: 0; background-color: #fff; -webkit-print-color-adjust: exact; color-adjust: exact; }
+            .app-container { box-shadow: none; border: none; backdrop-filter: none; background: none; max-width: 100%; }
+            .title-bar, .settings-panel { display: none; }
+            .content-area { padding: 0; }
+            #calendarContainer::before {
+                content: attr(data-print-title);
+                display: block;
+                font-size: 24px;
+                font-weight: bold;
+                text-align: center;
+                margin-bottom: 16px;
+            }
+            .calendar-container { border-top: none; padding-top: 0; }
+            .calendar-grid { gap: 0; border: none; }
+            .calendar-day { border: 1px solid var(--light-gray); min-height: 60px; } /* Adjust height for landscape */
+            .duty-person { 
+                color: black !important; 
+                text-shadow: none !important; 
+                border: 1px solid #ddd; 
+                background-image: none !important;
+                font-size: 14px !important;
+                font-weight: bold !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="title-bar">
+            <input type="text" id="rosterTitle" class="title-input" value="安衛防災課值日表">
+        </header>
+
+        <main class="content-area">
+            <div class="settings-panel">
+                <div class="names-grid">
+                    <div class="name-entry"><span class="name-number">1</span><input type="text" class="name-input-field"></div>
+                    <div class="name-entry"><span class="name-number">2</span><input type="text" class="name-input-field"></div>
+                    <div class="name-entry"><span class="name-number">3</span><input type="text" class="name-input-field"></div>
+                    <div class="name-entry"><span class="name-number">4</span><input type="text" class="name-input-field"></div>
+                    <div class="name-entry"><span class="name-number">5</span><input type="text" class="name-input-field"></div>
+                    <div class="name-entry"><span class="name-number">6</span><input type="text" class="name-input-field"></div>
+                    <div class="name-entry"><span class="name-number">7</span><input type="text" class="name-input-field"></div>
+                    <div class="name-entry"><span class="name-number">8</span><input type="text" class="name-input-field"></div>
+                    <div class="name-entry"><span class="name-number">9</span><input type="text" class="name-input-field"></div>
+                </div>
+                <div class="controls">
+                    <div class="date-selector">
+                        <select id="yearSelect" class="custom-select"></select>
+                        <select id="monthSelect" class="custom-select"></select>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="generateBtn" class="action-button generate-button">產生</button>
+                        <button id="printBtn" class="action-button print-button">列印</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="calendarContainer" class="calendar-container">
+                 <!-- Calendar will be generated here -->
+            </div>
+        </main>
+    </div>
+
+<script>
+// --- 台灣國定假日與補班日資料 ---
+const TAIWAN_HOLIDAYS = {
+    '2024': { "01-01": "元旦", "02-08": "除夕", "02-09": "春節", "02-10": "春節", "02-11": "春節", "02-12": "春節", "02-13": "春節", "02-14": "春節", "02-28": "和平紀念日", "04-04": "兒童節", "04-05": "清明節", "06-10": "端午節", "09-17": "中秋節", "10-10": "國慶日" },
+    '2025': { "01-01": "元旦", "01-27": "春節調整", "01-28": "除夕", "01-29": "春節", "01-30": "春節", "01-31": "春節", "02-28": "和平紀念日", "04-03": "兒童節", "04-04": "清明節", "05-01": "勞動節", "05-31": "端午節", "10-06": "中秋節", "10-10": "國慶日" },
+    '2026': { "01-01": "元旦", "02-16": "除夕", "02-17": "春節", "02-18": "春節", "02-19": "春節", "02-20": "春節", "02-28": "和平紀念日", "03-02": "和平紀念日補假", "04-03": "清明節補假", "04-04": "兒童節", "06-19": "端午節", "09-25": "中秋節", "10-09": "國慶日補假", "10-10": "國慶日" }
+};
+const ADJUSTED_WORKDAYS = { '2024': { "02-17": "補班" }, '2025': { "02-08": "補班" } };
+
+// --- DOM 元素 ---
+const yearSelect = document.getElementById('yearSelect');
+const monthSelect = document.getElementById('monthSelect');
+const generateBtn = document.getElementById('generateBtn');
+const printBtn = document.getElementById('printBtn');
+const calendarContainer = document.getElementById('calendarContainer');
+const rosterTitle = document.getElementById('rosterTitle');
+
+// --- 初始化 ---
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+
+    for (let i = currentYear - 2; i <= currentYear + 3; i++) {
+        yearSelect.add(new Option(i + ' 年', i, false, i === currentYear));
+    }
+    for (let i = 1; i <= 12; i++) {
+        monthSelect.add(new Option(i + ' 月', i, false, i === currentMonth));
+    }
+    
+    generateBtn.addEventListener('click', generateRoster);
+    printBtn.addEventListener('click', () => {
+        const selectedYear = yearSelect.options[yearSelect.selectedIndex].text;
+        const selectedMonth = monthSelect.options[monthSelect.selectedIndex].text;
+        const printTitle = `${rosterTitle.value} (${selectedYear}${selectedMonth})`;
+        calendarContainer.setAttribute('data-print-title', printTitle);
+        document.title = printTitle;
+        window.print();
+    });
+    
+    // 預載入範例
+    const sampleNames = ["陳小明", "林美麗", "黃大為", "張雅婷", "王志偉", "李心怡"];
+    const nameInputs = document.querySelectorAll('.names-grid .name-input-field');
+    sampleNames.forEach((name, i) => {
+        if(nameInputs[i]) nameInputs[i].value = name;
+    });
+    generateRoster();
+});
+
+
+// --- 顏色管理 ---
+function generateColorPalette(numColors) {
+    const colors = [];
+    const saturation = 70;
+    const lightness = 60;
+    for (let i = 0; i < numColors; i++) {
+        const hue = (i * (360 / numColors) + 15) % 360; // Offset hue for better colors
+        colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+    }
+    return colors;
+}
+
+// --- 主要功能 ---
+function generateRoster() {
+    const nameInputs = document.querySelectorAll('.names-grid .name-input-field');
+    const names = Array.from(nameInputs).map(input => input.value.trim()).filter(name => name);
+    
+    if (names.length === 0) {
+        calendarContainer.innerHTML = '<p style="text-align:center;">請至少輸入一位同事的姓名。</p>';
+        return;
+    }
+
+    const colors = generateColorPalette(names.length);
+    const nameColorMap = new Map(names.map((name, i) => [name, colors[i]]));
+
+    const year = parseInt(yearSelect.value);
+    const month = parseInt(monthSelect.value);
+    
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0);
+    const daysInMonth = lastDay.getDate();
+    
+    let html = '<div class="calendar-grid">';
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    weekdays.forEach(day => { html += `<div class="calendar-header">${day}</div>`; });
+    
+    const startDayOfWeek = firstDay.getDay();
+    for (let i = 0; i < startDayOfWeek; i++) { html += '<div class="calendar-day other-month"></div>'; }
+
+    let dutyIndex = 0;
+    for (let day = 1; day <= daysInMonth; day++) {
+        const currentDate = new Date(year, month - 1, day);
+        const dayOfWeek = currentDate.getDay();
+        const dateString = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        
+        let classes = ['calendar-day'];
+        let holidayName = '';
+        let dutyPersonHTML = '';
+        
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isHoliday = TAIWAN_HOLIDAYS[year]?.[dateString];
+        const isAdjustedWorkday = ADJUSTED_WORKDAYS[year]?.[dateString];
+
+        if (isHoliday) {
+            classes.push('holiday');
+            holidayName = TAIWAN_HOLIDAYS[year][dateString];
+        } else if (isWeekend && !isAdjustedWorkday) {
+            classes.push('weekend');
+        }
+
+        if ((!isWeekend && !isHoliday) || isAdjustedWorkday) {
+            const dutyPerson = names[dutyIndex % names.length];
+            const bgColor = nameColorMap.get(dutyPerson);
+            dutyPersonHTML = `<div class="duty-person" style="background-color: ${bgColor};">${dutyPerson}</div>`;
+            dutyIndex++;
+        }
+
+        html += `<div class="${classes.join(' ')}" data-holiday="${holidayName}"><div class="day-number">${day}</div>${dutyPersonHTML}</div>`;
+    }
+    
+    const endDayOfWeek = lastDay.getDay();
+    for (let i = endDayOfWeek; i < 6; i++) { html += '<div class="calendar-day other-month"></div>'; }
+
+    html += '</div>';
+    calendarContainer.innerHTML = html;
+}
+</script>
+</body>
+</html></div></body></html>
