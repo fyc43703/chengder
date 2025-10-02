@@ -11,18 +11,19 @@
             --text-color: #1d1d1f;
             --holiday-red: #ff3b30;
             --weekend-gray: #8e8e93;
+            --today-bg: #007aff;
         }
 
         body {
             margin: 0;
-            padding: 1rem; /* Minimal border for screen */
+            padding: 1rem;
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Arial", sans-serif;
-            background-color: #fff; /* Removed gray background */
+            background-color: #fff;
             color: var(--text-color);
             display: flex;
             justify-content: center;
-            align-items: center; /* Center vertically and horizontally */
-            min-height: calc(100vh - 2rem); /* Full height minus padding */
+            align-items: center;
+            min-height: calc(100vh - 2rem);
             box-sizing: border-box;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -30,28 +31,56 @@
 
         .app-container {
             width: 100%;
-            max-width: 960px; /* Changed from 1200px to 960px (80%) */
+            max-width: 960px;
             height: 100%;
-            aspect-ratio: 297 / 210; /* A4 Landscape ratio */
+            aspect-ratio: 297 / 210;
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             border: 1px solid rgba(0, 0, 0, 0.05);
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(25px) saturate(180%);
-            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
             display: flex;
             flex-direction: column;
+            transition: all 0.3s ease;
         }
 
         .title-bar {
-            display: flex; align-items: center; justify-content: center; padding: 5px 12px 0; height: 12%; /* Use percentage for scaling */
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding: 8px 16px;
             box-sizing: border-box;
-            background: rgba(240, 240, 240, 0.7); border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            background: rgba(240, 240, 240, 0.7);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
             flex-shrink: 0;
         }
+        
+        .nav-controls, .date-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .date-selector {
+            justify-content: flex-end;
+        }
+        .nav-btn {
+            background: #e9e9eb;
+            border: 1px solid #dcdce1;
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .nav-btn:hover {
+            background: #dcdce1;
+        }
+
         .title-input { 
-            width: 100%; text-align: center; font-weight: 600; font-size: 2.5vw; /* Responsive font size */
+            text-align: center; font-weight: 600; font-size: 2.2vw;
             color: #333;
             background: transparent; border: none; outline: none; padding: 4px 0;
         }
@@ -65,19 +94,15 @@
         }
 
         .settings-panel {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 16px;
-            align-items: end;
+            padding: 10px 0;
             margin-bottom: 1.5%;
             flex-shrink: 0;
         }
         
-        /* --- 姓名輸入表格 (3x2) --- */
         .names-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 4px 16px;
+            gap: 8px 16px;
         }
         .name-entry { display: flex; align-items: center; gap: 8px; }
         .name-number { font-size: 1.2vw; font-weight: bold; color: var(--weekend-gray); }
@@ -89,31 +114,20 @@
             box-sizing: border-box;
             text-align: center;
         }
-
-        .controls { display: flex; flex-direction: column; gap: 10px; }
-        .date-selector { display: flex; gap: 8px; }
+        
         .custom-select {
-            padding: 1.2%;
-            font-size: 1.3vw;
+            padding: 0.8%;
+            font-size: 1.2vw;
             font-weight: 500;
             border-radius: 8px;
             border: 1px solid var(--light-gray);
             background-color: #fff;
         }
-        .action-buttons { display: flex; }
-        .generate-button {
-            width: 100%;
-            padding: 10px 15px; font-size: 14px; font-weight: 500;
-            border: none; border-radius: 8px; cursor: pointer; transition: background-color: 0.2s;
-            background-color: var(--primary-blue); color: white;
-        }
-        .generate-button:hover { background-color: #006ae0; }
         
         .calendar-container {
-            border-top: 1px solid var(--light-gray);
-            padding-top: 1%;
             flex-grow: 1;
             overflow: hidden;
+            transition: opacity 0.3s ease;
         }
 
         .calendar-grid {
@@ -143,9 +157,28 @@
             flex-direction: column;
         }
         .calendar-day.other-month { background-color: #f9f9f9; }
-        .day-number { font-weight: bold; font-size: 1.3vw; }
+        
+        .day-number-wrapper {
+            display: flex;
+            justify-content: flex-start;
+        }
+        
+        .day-number { font-weight: bold; font-size: 1.3vw; transition: all 0.2s; }
+
+        .calendar-day.today .day-number {
+             background-color: var(--today-bg);
+             color: white;
+             border-radius: 50%;
+             width: 1.8em;
+             height: 1.8em;
+             display: inline-flex;
+             align-items: center;
+             justify-content: center;
+             line-height: 1;
+        }
         
         .calendar-day.weekend .day-number { color: var(--weekend-gray); }
+        .calendar-day.today.weekend .day-number { color: white; }
         .calendar-day.holiday .day-number { color: var(--holiday-red); }
         
         .holiday-name {
@@ -167,110 +200,68 @@
             line-height: 1.2;
         }
 
-        #printTitleForPDF {
-             display: none;
-        }
+        #printTitleForPDF { display: none; }
 
-        /* --- Print Styles --- */
         @media print {
-            @page {
-                size: A4 landscape;
-                margin: 0; 
-            }
-
+            @page { size: A4 landscape; margin: 0; }
             html, body {
-                height: 100%;
-                width: 100%;
-                padding: 0;
-                margin: 0;
-                -webkit-print-color-adjust: exact;
-                color-adjust: exact;
-                background: #fff;
-                overflow: hidden; /* Prevent scrollbars in print */
-                display: flex;
-                justify-content: center;
-                align-items: center;
+                height: 100%; width: 100%; padding: 0; margin: 0;
+                -webkit-print-color-adjust: exact; color-adjust: exact;
+                background: #fff; overflow: hidden;
+                display: flex; justify-content: center; align-items: center;
             }
-
             .app-container {
-                width: 80% !important; /* Scale down to 80% */
-                height: 80% !important; /* Scale down to 80% */
-                max-width: none !important;
-                aspect-ratio: auto !important; /* CRITICAL: Remove aspect ratio for printing */
-                box-shadow: none !important;
-                border: none !important;
-                background: none !important;
-                padding: 0 !important;
-                display: flex !important;
-                flex-direction: column !important;
+                width: 80% !important; height: 80% !important;
+                max-width: none !important; aspect-ratio: auto !important;
+                box-shadow: none !important; border: none !important;
+                background: none !important; padding: 0 !important;
+                display: flex !important; flex-direction: column !important;
                 overflow: hidden !important;
             }
-
-            .settings-panel { display: none !important; }
-            
-            .title-input { display: none !important; } /* Hide screen title */
-
+            .settings-panel, .title-input, .nav-controls, .date-selector { display: none !important; }
             #printTitleForPDF {
-                display: block !important;
-                text-align: center;
-                font-size: 32pt !important; 
-                font-weight: bold !important;
-                color: #333;
-                padding: 0 !important;
-                margin: 0 !important; /* The key fix for spacing */
+                display: block !important; text-align: center;
+                font-size: 32pt !important; font-weight: bold !important;
+                color: #333; padding: 0 !important; margin: 0 !important;
             }
-
             .title-bar {
-                height: auto !important;
-                border-bottom: 2px solid #000 !important;
-                padding: 0 0 2pt 0 !important; /* Remove all padding except for a tiny space for the border */
-                margin: 0 !important;
-                flex-shrink: 0 !important;
-                background: none !important;
-                justify-content: center; /* Center the content (the h1) */
+                height: auto !important; border-bottom: 2px solid #000 !important;
+                padding: 0 0 2pt 0 !important; margin: 0 !important;
+                flex-shrink: 0 !important; background: none !important;
+                justify-content: center !important;
             }
-            
-            .content-area {
-                flex-grow: 1 !important;
-                display: flex !important;
-                flex-direction: column !important;
-                padding: 0 !important;
-                margin-top: 0 !important; /* Set to 0 spacing */
+            .content-area, .calendar-container {
+                flex-grow: 1 !important; display: flex !important;
+                flex-direction: column !important; padding: 0 !important;
+                margin-top: 0 !important; border-top: none !important;
             }
-            
-            .calendar-container {
-                flex-grow: 1 !important;
-                display: flex !important;
-                border-top: none !important;
-                padding-top: 0 !important;
-            }
-            
             .calendar-grid {
-                flex-grow: 1 !important;
-                border: 1px solid #000 !important;
+                flex-grow: 1 !important; border: 1px solid #000 !important;
                 gap: 0 !important;
-                grid-template-rows: auto repeat(6, 1fr) !important; /* Header + 6 flexible rows */
+                grid-template-rows: auto repeat(6, 1fr) !important;
             }
-
-            .calendar-day {
-                border: 1px solid #aaa !important;
-                padding: 4pt !important;
-            }
-            
-            /* Use absolute units for printing - slightly reduced */
+            .calendar-day { border: 1px solid #aaa !important; padding: 4pt !important; }
             .calendar-header { font-size: 15pt !important; padding: 5pt !important; font-weight: bold !important;}
             .day-number { font-size: 15pt !important; font-weight: bold !important; }
             .duty-person { font-size: 13pt !important; padding: 5pt !important; font-weight: bold !important; }
             .holiday-name { font-size: 9pt !important; }
         }
-        
     </style>
 </head>
 <body>
     <div id="captureArea" class="app-container">
         <header class="title-bar">
+            <div class="nav-controls">
+                <button id="prevMonthBtn" class="nav-btn">&lt;</button>
+                <button id="nextMonthBtn" class="nav-btn">&gt;</button>
+                <button id="todayBtn" class="nav-btn">今天</button>
+            </div>
             <input type="text" id="rosterTitle" class="title-input" value="安衛防災課值日表">
-            <h1 id="printTitleForPDF"></h1>
+             <h1 id="printTitleForPDF"></h1>
+            <div class="date-selector">
+                <select id="yearSelect" class="custom-select"></select>
+                <select id="monthSelect" class="custom-select"></select>
+            </div>
         </header>
 
         <main class="content-area">
@@ -283,15 +274,6 @@
                     <div class="name-entry"><span class="name-number">5</span><input type="text" class="name-input-field"></div>
                     <div class="name-entry"><span class="name-number">6</span><input type="text" class="name-input-field"></div>
                 </div>
-                <div class="controls">
-                    <div class="date-selector">
-                        <select id="yearSelect" class="custom-select"></select>
-                        <select id="monthSelect" class="custom-select"></select>
-                    </div>
-                    <div class="action-buttons">
-                        <button id="generateBtn" class="generate-button">產生</button>
-                    </div>
-                </div>
             </div>
 
             <div id="calendarContainer" class="calendar-container">
@@ -302,7 +284,6 @@
 
 <script>
 // --- 台灣國定假日與補班日資料 (更新至 2028) ---
-// 註：2027年後的假日為根據現行規定推算，可能因未來法規變動而調整
 const TAIWAN_HOLIDAYS = {
     '2025': { "01-01": "元旦", "01-28": "除夕", "01-29": "春節", "01-30": "春節", "01-31": "春節", "02-01": "春節", "02-02": "春節", "02-28": "和平紀念日", "04-04": "兒童節", "04-05": "清明節", "05-01": "勞動節", "05-31": "端午節", "10-06": "中秋節", "10-10": "國慶日" },
     '2026': { "01-01": "元旦", "02-16": "除夕", "02-17": "春節", "02-18": "春節", "02-19": "春節", "02-20": "春節", "02-27": "和平紀念日補假", "02-28": "和平紀念日", "04-03": "兒童/清明", "04-04": "兒童/清明", "05-01": "勞動節", "06-19": "端午節", "09-25": "中秋節", "10-09": "國慶補假", "10-10": "國慶日" },
@@ -314,161 +295,190 @@ const ADJUSTED_WORKDAYS = { '2025': { "02-08": "補班" }, '2026': { "02-21": "�
 // --- DOM 元素 ---
 const yearSelect = document.getElementById('yearSelect');
 const monthSelect = document.getElementById('monthSelect');
-const generateBtn = document.getElementById('generateBtn');
 const calendarContainer = document.getElementById('calendarContainer');
 const rosterTitle = document.getElementById('rosterTitle');
 const nameInputs = document.querySelectorAll('.names-grid .name-input-field');
 const printTitleForPDF = document.getElementById('printTitleForPDF');
+const prevMonthBtn = document.getElementById('prevMonthBtn');
+const nextMonthBtn = document.getElementById('nextMonthBtn');
+const todayBtn = document.getElementById('todayBtn');
+
 
 // --- 初始化 ---
 document.addEventListener('DOMContentLoaded', () => {
     const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1;
+    populateYearSelect(today.getFullYear());
+    populateMonthSelect(today.getMonth() + 1);
+    
+    loadNames(); 
+    generateRoster();
 
-    // Populate Year Select with Minguo Year
-    for (let i = currentYear - 3; i <= currentYear + 4; i++) {
+    // Event Listeners
+    [yearSelect, monthSelect, ...nameInputs].forEach(el => {
+        el.addEventListener('change', generateRoster);
+    });
+    
+    prevMonthBtn.addEventListener('click', () => navigateMonth(-1));
+    nextMonthBtn.addEventListener('click', () => navigateMonth(1));
+    todayBtn.addEventListener('click', navigateToToday);
+});
+
+function populateYearSelect(currentYear) {
+     for (let i = currentYear - 3; i <= currentYear + 4; i++) {
         const minguoYear = i - 1911;
         yearSelect.add(new Option('民國 ' + minguoYear + ' 年', i, false, i === currentYear));
     }
+}
+function populateMonthSelect(currentMonth) {
     for (let i = 1; i <= 12; i++) {
         monthSelect.add(new Option(i + ' 月', i, false, i === currentMonth));
     }
+}
+
+function navigateMonth(direction) {
+    let year = parseInt(yearSelect.value);
+    let month = parseInt(monthSelect.value);
     
-    loadNames(); // Load names from localStorage
+    month += direction;
+    if (month > 12) {
+        month = 1;
+        year++;
+    } else if (month < 1) {
+        month = 12;
+        year--;
+    }
+    
+    yearSelect.value = year;
+    monthSelect.value = month;
     generateRoster();
+}
 
-    generateBtn.addEventListener('click', generateRoster);
-});
+function navigateToToday() {
+    const today = new Date();
+    yearSelect.value = today.getFullYear();
+    monthSelect.value = today.getMonth() + 1;
+    generateRoster();
+}
 
-// --- 姓名記憶功能 (localStorage) ---
 function saveNames() {
     const names = Array.from(nameInputs).map(input => input.value.trim());
-    localStorage.setItem('dutyRosterNames_v2', JSON.stringify(names)); // Use a new key to invalidate old data
+    localStorage.setItem('dutyRosterNames_v3', JSON.stringify(names));
 }
 
 function loadNames() {
-    const savedNames = localStorage.getItem('dutyRosterNames_v2'); // Use a new key to invalidate old data
+    const savedNames = localStorage.getItem('dutyRosterNames_v3');
     if (savedNames) {
         const names = JSON.parse(savedNames);
         names.forEach((name, i) => {
-            if (nameInputs[i]) {
-                nameInputs[i].value = name;
-            }
+            if (nameInputs[i]) nameInputs[i].value = name;
         });
     } else {
-        // 預載入範例 if no saved names
-        const sampleNames = ["劉清蘭", "周月華", "文翊瑋", "張吉安", "陳政德", ""];
+        const sampleNames = ["劉清蘭", "周月華", "文翊瑋", "張吉安", "陳政德", "護理師"];
         sampleNames.forEach((name, i) => {
             if(nameInputs[i]) nameInputs[i].value = name;
         });
     }
 }
 
-// --- 顏色管理 (動態產生) ---
-function generateColorPalette(numColors) {
-    const colors = [];
-    const saturation = 70;
-    const lightness = 60;
-    for (let i = 0; i < numColors; i++) {
-        const hue = (i * (360 / numColors) + 15) % 360; // Offset hue for better colors
-        colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-    }
-    return colors;
-}
-
-// --- 主要功能 ---
 function generateRoster() {
-    saveNames(); // Save names every time a new roster is generated
-    const names = Array.from(nameInputs).map(input => input.value.trim()).filter(name => name);
-    
-    if (names.length === 0) {
-        calendarContainer.innerHTML = '<p style="text-align:center;">請至少輸入一位同事的姓名。</p>';
-        return;
-    }
-
-    const colors = generateColorPalette(names.length);
-    const nameColorMap = new Map(names.map((name, i) => [name, colors[i]]));
-
-    const year = parseInt(yearSelect.value);
-    const month = parseInt(monthSelect.value);
-
-    // Update document title for printing filename suggestion AND the visible PDF title
-    const minguoYearText = yearSelect.options[yearSelect.selectedIndex].text.replace('民國 ', '').replace(' 年', '');
-    const monthText = monthSelect.options[monthSelect.selectedIndex].text.replace(' 月', '');
-    const mainTitle = document.getElementById('rosterTitle').value;
-    const fullTitle = `${minguoYearText}年${monthText}月 ${mainTitle}`;
-    
-    document.title = fullTitle;
-    printTitleForPDF.textContent = fullTitle;
-    
-    const firstDay = new Date(year, month - 1, 1);
-    const lastDay = new Date(year, month, 0);
-    const daysInMonth = lastDay.getDate();
-    
-    let html = '<div class="calendar-grid">';
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-    weekdays.forEach(day => { html += `<div class="calendar-header">${day}</div>`; });
-    
-    const startDayOfWeek = firstDay.getDay();
-    // Previous month's days
-    const prevLastDay = new Date(year, month - 1, 0).getDate();
-    for (let i = startDayOfWeek - 1; i >= 0; i--) {
-        html += `<div class="calendar-day other-month"><div class="day-number" style="color: #ccc;">${prevLastDay - i}</div></div>`;
-    }
-
-    let dutyIndex = 0;
-    for (let day = 1; day <= daysInMonth; day++) {
-        const currentDate = new Date(year, month - 1, day);
-        const dayOfWeek = currentDate.getDay();
-        const dateString = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    calendarContainer.style.opacity = 0;
+    setTimeout(() => {
+        saveNames();
+        const names = Array.from(nameInputs).map(input => input.value.trim()).filter(name => name);
         
-        let holidayName = '';
-        let dutyPersonHTML = '';
-        
-        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        const isHoliday = TAIWAN_HOLIDAYS[year]?.[dateString];
-        const isAdjustedWorkday = ADJUSTED_WORKDAYS[year]?.[dateString];
-
-        let dayContentHTML = `<div class="day-number">${day}</div>`;
-
-        if (isHoliday) {
-            holidayName = TAIWAN_HOLIDAYS[year][dateString];
-            dayContentHTML += `<div class="holiday-name">${holidayName}</div>`;
+        if (names.length === 0) {
+            calendarContainer.innerHTML = '<p style="text-align:center;">請至少輸入一位同事的姓名。</p>';
+            calendarContainer.style.opacity = 1;
+            return;
         }
 
-        if ((!isWeekend && !isHoliday) || isAdjustedWorkday) {
-            const dutyPerson = names[dutyIndex % names.length];
-            const bgColor = nameColorMap.get(dutyPerson);
-            dutyPersonHTML = `<div class="duty-person" style="background-color: ${bgColor};">${dutyPerson}</div>`;
-            dayContentHTML += dutyPersonHTML;
-            dutyIndex++;
+        const PREDEFINED_COLORS = { '劉清蘭': '#f6ad49', '周月華': '#f4b3c2', '文翊瑋': '#8c6450', '張吉安': '#69b076', '陳政德': '#4d5aaf', '護理師': '#895b8a' };
+        const nameColorMap = new Map();
+        names.forEach((name, i) => {
+            if (PREDEFINED_COLORS[name]) {
+                nameColorMap.set(name, PREDEFINED_COLORS[name]);
+            } else {
+                const hue = (i * 60) % 360; 
+                nameColorMap.set(name, `hsl(${hue}, 70%, 60%)`);
+            }
+        });
+
+        const year = parseInt(yearSelect.value);
+        const month = parseInt(monthSelect.value);
+        
+        const today = new Date();
+        const todayDateString = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+
+        const minguoYearText = yearSelect.options[yearSelect.selectedIndex].text.replace('民國 ', '').replace(' 年', '');
+        const monthText = monthSelect.options[monthSelect.selectedIndex].text.replace(' 月', '');
+        const mainTitle = document.getElementById('rosterTitle').value;
+        const fullTitle = `${minguoYearText}年${monthText}月 ${mainTitle}`;
+        document.title = fullTitle;
+        printTitleForPDF.textContent = fullTitle;
+        
+        const firstDay = new Date(year, month - 1, 1);
+        const lastDay = new Date(year, month, 0);
+        const daysInMonth = lastDay.getDate();
+        
+        let html = '<div class="calendar-grid">';
+        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        weekdays.forEach(day => { html += `<div class="calendar-header">${day}</div>`; });
+        
+        const startDayOfWeek = firstDay.getDay();
+        const prevLastDay = new Date(year, month - 1, 0).getDate();
+        for (let i = startDayOfWeek - 1; i >= 0; i--) {
+            html += `<div class="calendar-day other-month"><div class="day-number-wrapper"><div class="day-number" style="color: #ccc;">${prevLastDay - i}</div></div></div>`;
+        }
+
+        let dutyIndex = 0;
+        for (let day = 1; day <= daysInMonth; day++) {
+            const currentDate = new Date(year, month - 1, day);
+            const dayOfWeek = currentDate.getDay();
+            const dateString = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const currentDateString = `${year}-${month}-${day}`;
+            
+            let holidayName = '';
+            let dutyPersonHTML = '';
+            
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const isHoliday = TAIWAN_HOLIDAYS[year]?.[dateString];
+            const isAdjustedWorkday = ADJUSTED_WORKDAYS[year]?.[dateString];
+
+            let dayContentHTML = `<div class="day-number-wrapper"><div class="day-number">${day}</div></div>`;
+
+            if (isHoliday) {
+                holidayName = TAIWAN_HOLIDAYS[year][dateString];
+                dayContentHTML += `<div class="holiday-name">${holidayName}</div>`;
+            }
+
+            if ((!isWeekend && !isHoliday) || isAdjustedWorkday) {
+                const dutyPerson = names[dutyIndex % names.length];
+                const bgColor = nameColorMap.get(dutyPerson);
+                dutyPersonHTML = `<div class="duty-person" style="background-color: ${bgColor};">${dutyPerson}</div>`;
+                dayContentHTML += dutyPersonHTML;
+                dutyIndex++;
+            }
+            
+            let classes = 'calendar-day';
+            if (isHoliday) classes += ' holiday';
+            else if (isWeekend && !isAdjustedWorkday) classes += ' weekend';
+            if (currentDateString === todayDateString) classes += ' today';
+
+            html += `<div class="${classes}">${dayContentHTML}</div>`;
         }
         
-        let classes = 'calendar-day';
-        if (isHoliday) {
-            classes += ' holiday';
-        } else if (isWeekend && !isAdjustedWorkday) {
-            classes += ' weekend';
+        const totalCells = startDayOfWeek + daysInMonth;
+        let requiredRows = Math.ceil(totalCells / 7);
+        if (requiredRows < 6) requiredRows = 6;
+        const remainingCells = (requiredRows * 7) - totalCells;
+        for (let i = 1; i <= remainingCells; i++) {
+            html += `<div class="calendar-day other-month"><div class="day-number-wrapper"><div class="day-number" style="color: #ccc;">${i}</div></div></div>`;
         }
 
-        html += `<div class="${classes}">${dayContentHTML}</div>`;
-    }
-    
-    // Next month's days
-    const totalCells = startDayOfWeek + daysInMonth;
-    let requiredRows = Math.ceil(totalCells / 7);
-    if (requiredRows < 6) requiredRows = 6;
-
-
-    const remainingCells = (requiredRows * 7) - totalCells;
-    for (let i = 1; i <= remainingCells; i++) {
-        html += `<div class="calendar-day other-month"><div class="day-number" style="color: #ccc;">${i}</div></div>`;
-    }
-
-
-    html += '</div>';
-    calendarContainer.innerHTML = html;
+        html += '</div>';
+        calendarContainer.innerHTML = html;
+        calendarContainer.style.opacity = 1;
+    }, 150);
 }
 </script>
 </body>
