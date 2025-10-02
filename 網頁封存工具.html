@@ -1,0 +1,267 @@
+<!DOCTYPE html><html lang="zh-Hant"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>網頁封存工具</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
+<style>
+      /* General Styles */
+      html, body {
+        margin: 0;
+        padding: 24px;
+        background: #FFFFFF;
+        color: #1d1d1f;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        font-size: 15px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      h1, h2, h3, h4, h5, h6, b, strong {
+        font-weight: 600; /* Semibold for macOS look */
+      }
+      h1 { font-weight: 700; } /* Bold for main title */
+      
+      /* Explicit list styles for consistent rendering in html2canvas */
+      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; }
+      ul { list-style-type: disc; }
+      ol { list-style-type: decimal; }
+      li { display: list-item; }
+
+      .hljs-container {
+        padding: 1.5rem;
+        border-radius: .75rem;
+        overflow-x: auto;
+        background: #fcfcfd;
+        border: 1px solid #d2d2d7;
+      }
+      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
+      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
+    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>網頁封存工具</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --text-color: #1d1d1f;
+            --text-color-secondary: #6e6e73;
+            --window-bg: rgba(255, 255, 255, 0.6);
+            --card-bg: rgba(255, 255, 255, 0.5);
+            --border-color: rgba(0, 0, 0, 0.1);
+            --accent-color: #007aff;
+            --accent-color-hover: #0071e3;
+        }
+
+        body.dark {
+            --bg-color: #1a1a1c;
+            --text-color: #f5f5f7;
+            --text-color-secondary: #a1a1a6;
+            --window-bg: rgba(30, 30, 30, 0.5);
+            --card-bg: rgba(50, 50, 50, 0.5);
+            --border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .macos-window {
+            background-color: var(--window-bg);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transition: background-color 0.3s ease;
+        }
+
+        .traffic-dots span {
+            display: block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        #theme-toggle .sun, #theme-toggle .moon {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        body.dark #theme-toggle .sun { opacity: 0; transform: rotate(90deg); }
+        body:not(.dark) #theme-toggle .moon { opacity: 0; transform: rotate(-90deg); }
+
+        /* SVG Animation Styles */
+        .drag-animation #drag-group {
+            animation: drag-animation-move 4s ease-in-out infinite;
+            animation-delay: 0.5s;
+        }
+        .drag-animation #cursor {
+            animation: click-animation 4s ease-in-out infinite;
+            animation-delay: 0.5s;
+            transform-origin: 205.5px 107.2px; /* Adjusted for new translated position */
+        }
+        .drag-animation #bookmark-plus {
+            animation: plus-pop 4s ease-in-out infinite;
+            transform-origin: center;
+            opacity: 0;
+            animation-delay: 0.5s;
+        }
+
+        @keyframes drag-animation-move {
+            0%, 20% { transform: translate(0, 0); }
+            30% { transform: translate(0, 0); }
+            70% { transform: translate(0, -85px); }
+            80%, 100% { transform: translate(0, -85px); }
+        }
+        @keyframes click-animation {
+            0%, 20% { transform: scale(1); }
+            25% { transform: scale(0.9); }
+            30%, 100% { transform: scale(1); }
+        }
+        @keyframes plus-pop {
+            0%, 70% { opacity: 0; transform: scale(0.5); }
+            75% { opacity: 1; transform: scale(1.2); }
+            85%, 100% { opacity: 0; transform: scale(1); }
+        }
+
+    </style>
+</head>
+<body class="min-h-screen flex items-start justify-center p-4">
+
+    <!-- Theme Toggle -->
+    <button id="theme-toggle" class="fixed top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-500/10 transition-colors">
+        <div class="relative w-6 h-6">
+             <i data-lucide="sun" class="sun absolute inset-0 text-yellow-500"></i>
+             <i data-lucide="moon" class="moon absolute inset-0 text-indigo-400"></i>
+        </div>
+    </button>
+
+    <div class="w-full max-w-5xl mx-auto mt-8">
+        <div class="macos-window rounded-2xl">
+            <!-- Title Bar -->
+            <div class="h-14 flex items-center justify-center relative border-b border-[var(--border-color)]">
+                <div class="traffic-dots absolute left-4 flex space-x-2">
+                    <span style="background-color: #ff5f56;"></span>
+                    <span style="background-color: #ffbd2e;"></span>
+                    <span style="background-color: #27c93f;"></span>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="p-6 md:p-8">
+                <div class="text-center mb-8">
+                    <h1 class="text-4xl font-bold mb-6">網頁封存工具</h1>
+
+                    <!-- SVG Drag Animation -->
+                    <div class="flex justify-center my-6">
+                        <svg class="drag-animation" width="280" height="160" viewBox="0 0 280 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Background: Bookmark bar -->
+                            <rect x="10" y="10" width="260" height="35" rx="8" fill="currentColor" class="text-gray-200 dark:text-gray-700"/>
+                            <text x="140" y="32" text-anchor="middle" font-size="14" fill="currentColor" class="text-gray-500 dark:text-gray-400" font-weight="500">書籤列</text>
+                            
+                            <!-- Animated plus sign -->
+                            <path id="bookmark-plus" d="M140 25V31M137 28H143" stroke="var(--accent-color)" stroke-width="2.5" stroke-linecap="round"/>
+                            
+                            <!-- Animated group for button and cursor -->
+                            <g id="drag-group">
+                                <!-- The button is drawn first -->
+                                <rect x="30" y="95" width="220" height="40" rx="10" fill="var(--accent-color)"/>
+                                <text x="140" y="118" text-anchor="middle" font-size="14" fill="white" font-weight="600">滑鼠拖曳按鈕到書籤列</text>
+
+                                <!-- The cursor is drawn second (on top) and shifted to the right -->
+                                <g id="cursor" transform="translate(70, 0)">
+                                     <path d="M135.5 107.2L135.5 128.8L142.3 124.5L147.2 131.6L151.7 129.9L146.8 122.8L154.9 121.1Z" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
+                                </g>
+                            </g>
+                        </svg>
+                    </div>
+
+                    <p style="color: var(--text-color-secondary);">請將您需要的工具按鈕拖曳到瀏覽器的書籤列上即可安裝。</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                    <!-- Card 1: Save as Image -->
+                    <div class="rounded-xl p-6 flex flex-col" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
+                        <div class="flex items-center mb-3">
+                            <i data-lucide="image" class="w-6 h-6 text-purple-400 mr-3"></i>
+                            <h3 class="font-semibold text-xl">儲存為圖片</h3>
+                        </div>
+                        <p class="text-sm flex-grow mb-4" style="color: var(--text-color-secondary);">將整個網頁擷取為一張高解析度 PNG 圖片，完美保留視覺樣貌。</p>
+                        <a id="bookmarklet-image" href="#" class="bg-purple-600 hover:bg-purple-700 transition-transform duration-200 hover:-translate-y-0.5 cursor-grab active:cursor-grabbing mt-auto inline-block text-center text-white font-semibold py-2.5 px-4 rounded-lg">
+                            網頁儲存為圖片
+                        </a>
+                    </div>
+
+                    <!-- Card 2: Save as HTML -->
+                    <div class="rounded-xl p-6 flex flex-col" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
+                        <div class="flex items-center mb-3">
+                            <i data-lucide="link" class="w-6 h-6 text-teal-400 mr-3"></i>
+                            <h3 class="font-semibold text-xl">儲存為HTML</h3>
+                        </div>
+                        <p class="text-sm flex-grow mb-4" style="color: var(--text-color-secondary);">儲存網頁結構，需連網才能顯示圖片，但幾乎適用於所有網站。</p>
+                        <a id="bookmarklet-basic" href="#" class="bg-teal-600 hover:bg-teal-700 transition-transform duration-200 hover:-translate-y-0.5 cursor-grab active:cursor-grabbing mt-auto inline-block text-center text-white font-semibold py-2.5 px-4 rounded-lg">
+                            網頁儲存為HTML
+                        </a>
+                    </div>
+                </div>
+                <p class="text-xs text-center mt-6" style="color: var(--text-color-secondary);">提示：如果書籤列沒顯示，請按 <kbd class="px-1.5 py-1 text-xs rounded-md" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">Ctrl+Shift+B</kbd> 開啟。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logic Scripts (Hidden) -->
+    <script id="logic-image" type="text/plain">
+    (function(){let e=document.createElement("div");e.style.cssText="position:fixed;top:20px;right:20px;padding:12px 24px;background-color:rgba(0,0,0,.85);color:#fff;z-index:99999999;border-radius:8px;backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.2);font-family:sans-serif;font-size:16px",e.textContent="正在準備擷取畫面...",document.body.appendChild(e);function t(o,c){let n=document.createElement("script");n.src=o,n.onload=c,n.onerror=function(){e.textContent="錯誤：無法載入必要資源！",setTimeout(()=>document.body.removeChild(e),3e3)},document.head.appendChild(n)}t("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",function(){e.textContent="正在擷取畫面，請稍候...",html2canvas(document.body,{useCORS:!0,scale:2,windowWidth:document.documentElement.scrollWidth,windowHeight:document.documentElement.scrollHeight,backgroundColor:"#ffffff"}).then(t=>{e.textContent="正在產生圖片檔案...";let o=document.createElement("a"),c=document.title?document.title.replace(/[^a-z0-9]/gi,"_").toLowerCase():"capture";o.download=`${c}.png`,o.href=t.toDataURL("image/png"),document.body.appendChild(o),o.click(),document.body.removeChild(o),e.textContent="儲存成功！"}).catch(t=>{console.error("擷取失敗:",t),e.textContent="儲存失敗！請查看控制台。"}).finally(()=>{setTimeout(()=>document.body.removeChild(e),3e3)})})})();
+    </script>
+    <script id="logic-basic" type="text/plain">
+    (function(){let e=document.createElement("div");e.style.cssText="position:fixed;top:20px;right:20px;padding:12px 24px;background-color:rgba(0,0,0,.85);color:#fff;z-index:99999999;border-radius:8px;backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.2);font-family:sans-serif;font-size:16px",e.textContent="正在準備連結儲存...",document.body.appendChild(e);try{e.textContent="複製頁面結構...";let t=document.documentElement.cloneNode(!0);e.textContent="正在轉換資源路徑...";let o=t.querySelector("head"),r=o.querySelector("base");r||(r=document.createElement("base"),r.href=window.location.href,o.prepend(r)),t.querySelectorAll("script, noscript").forEach(e=>e.remove()),e.textContent="正在產生檔案...";let n=document.title?document.title.replace(/[^a-z0-9]/gi,"_").toLowerCase():"saved_page",c=new Blob([`<!DOCTYPE html>\n${t.outerHTML}`],{type:"text/html"}),a=URL.createObjectURL(c),s=document.createElement("a");s.href=a,s.download=`${n}_linked.html`,document.body.appendChild(s),s.click(),document.body.removeChild(s),URL.revokeObjectURL(a),e.textContent="連結儲存成功！"}catch(l){console.error("連結儲存時發生錯誤:",l),e.textContent="儲存失敗！請查看控制台。"}finally{setTimeout(()=>document.body.removeChild(e),3e3)}})();
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+
+            // --- Theme Toggle Logic ---
+            const themeToggle = document.getElementById('theme-toggle');
+            const body = document.body;
+            
+            // Apply saved theme on load
+            if (localStorage.getItem('theme') === 'dark') {
+                body.classList.add('dark');
+            }
+
+            themeToggle.addEventListener('click', () => {
+                body.classList.toggle('dark');
+                if (body.classList.contains('dark')) {
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+
+            // --- Bookmarklet Setup Logic ---
+            function setupBookmarklet(buttonId, logicId) {
+                const logic = document.getElementById(logicId).textContent.trim();
+                const link = document.getElementById(buttonId);
+                link.href = 'javascript:' + encodeURIComponent(logic);
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    alert('安裝方式：請用滑鼠將此按鈕「拖曳」到您的書籤列上。');
+                });
+            }
+
+            setupBookmarklet('bookmarklet-image', 'logic-image');
+            setupBookmarklet('bookmarklet-basic', 'logic-basic');
+        });
+    </script>
+
+</body>
+</html></div></body></html>
