@@ -168,13 +168,20 @@
         .calendar-day.today .day-number {
              background-color: var(--today-bg);
              color: white;
-             border-radius: 50%;
-             width: 1.8em;
-             height: 1.8em;
+             border-radius: 1em; /* Pill shape */
+             width: auto;
+             height: auto;
+             padding: 0.3em 0.8em;
              display: inline-flex;
-             align-items: center;
+             align-items: baseline;
              justify-content: center;
              line-height: 1;
+        }
+        
+        .today-text {
+            font-size: 0.7em;
+            font-weight: 500;
+            margin-left: 4px;
         }
         
         .calendar-day.weekend .day-number { color: var(--weekend-gray); }
@@ -314,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
     generateRoster();
 
     // Event Listeners
-    [yearSelect, monthSelect, ...nameInputs].forEach(el => {
+    [yearSelect, monthSelect, ...nameInputs, rosterTitle].forEach(el => {
         el.addEventListener('change', generateRoster);
     });
     
@@ -436,6 +443,7 @@ function generateRoster() {
             const dayOfWeek = currentDate.getDay();
             const dateString = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const currentDateString = `${year}-${month}-${day}`;
+            const isToday = currentDateString === todayDateString;
             
             let holidayName = '';
             let dutyPersonHTML = '';
@@ -444,7 +452,7 @@ function generateRoster() {
             const isHoliday = TAIWAN_HOLIDAYS[year]?.[dateString];
             const isAdjustedWorkday = ADJUSTED_WORKDAYS[year]?.[dateString];
 
-            let dayContentHTML = `<div class="day-number-wrapper"><div class="day-number">${day}</div></div>`;
+            let dayContentHTML = `<div class="day-number-wrapper"><div class="day-number">${day}${isToday ? '<span class="today-text">,今日</span>' : ''}</div></div>`;
 
             if (isHoliday) {
                 holidayName = TAIWAN_HOLIDAYS[year][dateString];
@@ -462,7 +470,7 @@ function generateRoster() {
             let classes = 'calendar-day';
             if (isHoliday) classes += ' holiday';
             else if (isWeekend && !isAdjustedWorkday) classes += ' weekend';
-            if (currentDateString === todayDateString) classes += ' today';
+            if (isToday) classes += ' today';
 
             html += `<div class="${classes}">${dayContentHTML}</div>`;
         }
