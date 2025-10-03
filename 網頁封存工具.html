@@ -55,53 +55,49 @@
         }
         body.dark #theme-toggle .sun { opacity: 0; transform: rotate(90deg); }
         body:not(.dark) #theme-toggle .moon { opacity: 0; transform: rotate(-90deg); }
+        
+        .apple-blue { color: #007aff; }
+        body.dark .apple-blue { color: #0a84ff; }
 
-        /* SVG Animation Styles */
-        .drag-animation #drag-group {
-            animation: drag-animation-move 4s ease-in-out infinite 0.5s;
-        }
-        .drag-animation #cursor {
-            animation: cursor-click-animation 4s ease-in-out infinite 0.5s;
-            transform-origin: 245px 130px; 
-        }
-        .drag-animation #bookmark-plus {
-            animation: plus-pop-animation 4s ease-in-out infinite 0.5s;
-            transform-origin: center;
-            opacity: 0;
-        }
+        /* --- Animation Styles --- */
+        .drag-animation #drag-group { animation: drag-animation-move 4s ease-in-out infinite 0.5s; }
+        .drag-animation #cursor { animation: cursor-click-animation 4s ease-in-out infinite 0.5s; transform-origin: 245px 90px; }
+        .drag-animation #bookmark-plus { animation: plus-pop-animation 4s ease-in-out infinite 0.5s; transform-origin: center; opacity: 0; }
+        .drag-animation.is-dragging #bookmark-bar { animation: bookmark-flash 1.5s ease-in-out infinite; }
 
         @keyframes drag-animation-move {
             0%, 30%   { transform: translate(0, 0); }
-            70%       { transform: translate(0, -85px); } /* Centered drop */
-            80%, 100% { transform: translate(0, -85px); opacity: 1; }
+            70%       { transform: translate(0, -53px); }
+            80%, 100% { transform: translate(0, -53px); opacity: 1; }
             80.01%, 99.99% { opacity: 0; }
         }
-
         @keyframes cursor-click-animation {
             0%, 25%     { transform: scale(1); }
             28%         { transform: scale(0.9); }
             32%, 100%   { transform: scale(1); }
         }
-
         @keyframes plus-pop-animation {
             0%, 70% { opacity: 0; transform: scale(0.5); }
             75%     { opacity: 1; transform: scale(1.2); }
             85%, 100% { opacity: 0; transform: scale(1); }
         }
-
+        @keyframes bookmark-flash {
+            0%, 100% { filter: drop-shadow(0 0 1px rgba(0,122,255,0.5)); }
+            50% { filter: drop-shadow(0 0 8px rgba(0,122,255,1)); }
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 sm:p-6 md:p-8">
 
     <!-- Theme Toggle -->
-    <button id="theme-toggle" class="fixed top-4 right-4 md:top-6 md:right-6 w-10 h-10 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-500/10 transition-colors z-20">
+    <button id="theme-toggle" class="fixed top-4 right-4 md:top-6 md-right-6 w-10 h-10 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-500/10 transition-colors z-20">
         <div class="relative w-6 h-6">
              <i data-lucide="sun" class="sun absolute inset-0 text-yellow-500"></i>
              <i data-lucide="moon" class="moon absolute inset-0 text-indigo-400"></i>
         </div>
     </button>
 
-    <div class="w-full max-w-5xl mx-auto">
+    <div class="w-full max-w-7xl mx-auto">
         <div class="macos-window rounded-xl md:rounded-2xl">
             <!-- Title Bar -->
             <header class="h-14 flex items-center justify-center relative border-b border-[var(--border-color)]">
@@ -111,68 +107,93 @@
                     <span style="background-color: #27c93f;"></span>
                 </div>
                 <div class="text-center">
-                    <h1 class="text-lg font-semibold">網頁封存工具</h1>
+                    <h1 class="text-3xl font-semibold">網頁封存工具</h1>
                 </div>
             </header>
 
             <!-- Content -->
             <main class="p-6 md:p-8">
-                <div class="text-center mb-6 md:mb-8">
-                    
-                    <!-- SVG Drag Animation -->
+                <div class="text-center mb-8">
                     <div class="flex justify-center my-4 md:my-6">
-                        <svg class="drag-animation w-full max-w-xs sm:max-w-sm" viewBox="0 0 280 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <!-- Background: Bookmark bar -->
-                            <rect x="10" y="10" width="260" height="35" rx="8" fill="currentColor" class="text-gray-200 dark:text-gray-700"/>
-                            <text x="140" y="32" text-anchor="middle" font-size="14" fill="currentColor" class="text-gray-500 dark:text-gray-400" font-weight="500">書籤列</text>
-                            
-                            <!-- Animated plus sign -->
-                            <path id="bookmark-plus" d="M140 25V31M137 28H143" stroke="#007aff" stroke-width="2.5" stroke-linecap="round"/>
-                            
-                            <!-- Animated group for button and cursor -->
+                        <svg id="drag-animation-svg" class="drag-animation w-full max-w-xs sm:max-w-sm" viewBox="0 0 280 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <g id="bookmark-bar">
+                                <rect x="10" y="2" width="260" height="35" rx="8" fill="currentColor" class="text-gray-200 dark:text-gray-700"/>
+                                <text x="140" y="24" text-anchor="middle" font-size="14" fill="currentColor" class="text-gray-500 dark:text-gray-400" font-weight="500">書籤列</text>
+                            </g>
+                            <path id="bookmark-plus" d="M140 17V23M137 20H143" stroke="#007aff" stroke-width="2.5" stroke-linecap="round"/>
                             <g id="drag-group">
-                                <!-- The button -->
-                                <rect x="30" y="95" width="220" height="40" rx="10" fill="#007aff"/>
-                                <text x="140" y="121" text-anchor="middle" font-size="16" fill="white" font-weight="600">滑鼠拖曳按鈕到書籤列</text>
-                                
-                                <!-- The cursor, drawn on top -->
-                                <g id="cursor">
-                                    <path d="M0 -22.8L0 0.8L6.8 -3.5L11.7 3.6L16.2 1.9L11.3 -5.2L19.4 -6.9Z" transform="translate(245, 130)" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
-                                </g>
+                                <rect x="30" y="55" width="220" height="40" rx="10" fill="#007aff"/>
+                                <text x="140" y="81" text-anchor="middle" font-size="16" fill="white" font-weight="600">滑鼠拖曳按鈕到書籤列</text>
+                                <g id="cursor"><path d="M0 -22.8L0 0.8L6.8 -3.5L11.7 3.6L16.2 1.9L11.3 -5.2L19.4 -6.9Z" transform="translate(245, 90)" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round"/></g>
                             </g>
                         </svg>
                     </div>
-
-                    <h2 class="text-2xl sm:text-3xl font-bold mb-2">安裝您的存檔工具</h2>
-                    <p style="color: var(--text-color-secondary);">請將下方您需要的工具按鈕，拖曳到瀏覽器的書籤列上即可安裝。</p>
+                    <h2 class="text-lg sm:text-xl font-bold mb-2">安裝您的存檔工具</h2>
+                    <p class="max-w-xl mx-auto" style="color: var(--text-color-secondary);">這是一個<strong class="apple-blue">書籤小工具</strong>。安裝方式很特別：請直接用<strong class="apple-blue">滑鼠按住</strong>下方您偏好的工具按鈕，將它<strong class="apple-blue">拖曳</strong>到您瀏覽器頂端的「<strong class="apple-blue">書籤列</strong>」上<strong class="apple-blue">放開</strong>，即可<strong class="apple-blue">完成安裝</strong>。未來在任何網頁<strong class="apple-blue">點擊這個書籤</strong>，就能立刻<strong class="apple-blue">啟動存檔功能</strong>。</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-left">
                     <!-- Card 1: Save as Image -->
                     <div class="rounded-xl p-5 sm:p-6 flex flex-col" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
-                        <div class="flex items-center mb-3">
-                            <i data-lucide="image" class="w-6 h-6 text-purple-400 mr-3"></i>
-                            <h3 class="font-semibold text-xl">儲存為圖片</h3>
-                        </div>
-                        <p class="text-base flex-grow mb-4" style="color: var(--text-color-secondary);">將整個網頁擷取為一張高解析度 PNG 圖片，完美保留視覺樣貌。</p>
-                        <a id="bookmarklet-image" href="#" class="bg-purple-600 hover:bg-purple-700 transition-transform duration-200 hover:-translate-y-0.5 cursor-grab active:cursor-grabbing mt-auto inline-block text-center text-white font-semibold py-2.5 px-4 rounded-lg">
-                            網頁儲存為圖片
+                        <div class="flex items-center mb-3"><i data-lucide="image" class="w-6 h-6 text-purple-400 mr-3"></i><h3 class="font-semibold text-xl">儲存為圖片</h3></div>
+                        <p class="text-base flex-grow mb-4" style="color: var(--text-color-secondary);">將<strong class="apple-blue">整個網頁</strong>擷取為一張<strong class="apple-blue">高解析度 PNG 圖片</strong>。最能確保儲存結果與您看到的<strong class="apple-blue">畫面完全相同</strong>，適合<strong class="apple-blue">保存視覺設計</strong>。</p>
+                        <a id="bookmarklet-image" href="#" class="bookmarklet-btn bg-purple-600 hover:bg-purple-700 active:scale-95 transition-transform duration-200 hover:-translate-y-0.5 cursor-grab active:cursor-grabbing mt-auto inline-flex items-center justify-center text-center text-white font-semibold py-2.5 px-4 rounded-lg">
+                            <i data-lucide="image" class="w-4 h-4 mr-2"></i><span class="btn-text">網頁儲存為圖片</span>
                         </a>
                     </div>
-
                     <!-- Card 2: Save as HTML -->
                     <div class="rounded-xl p-5 sm:p-6 flex flex-col" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
-                        <div class="flex items-center mb-3">
-                            <i data-lucide="link" class="w-6 h-6 text-teal-400 mr-3"></i>
-                            <h3 class="font-semibold text-xl">儲存為HTML</h3>
-                        </div>
-                        <p class="text-base flex-grow mb-4" style="color: var(--text-color-secondary);">儲存網頁結構，需連網才能顯示圖片，但幾乎適用於所有網站。</p>
-                        <a id="bookmarklet-basic" href="#" class="bg-teal-600 hover:bg-teal-700 transition-transform duration-200 hover:-translate-y-0.5 cursor-grab active:cursor-grabbing mt-auto inline-block text-center text-white font-semibold py-2.5 px-4 rounded-lg">
-                            網頁儲存為HTML
+                        <div class="flex items-center mb-3"><i data-lucide="link" class="w-6 h-6 text-teal-400 mr-3"></i><h3 class="font-semibold text-xl">儲存為HTML</h3></div>
+                        <p class="text-base flex-grow mb-4" style="color: var(--text-color-secondary);">僅儲存網頁的 <strong class="apple-blue">HTML 結構</strong>，資源從原始網站載入，<strong class="apple-blue">需要連網</strong>才能完整顯示。檔案<strong class="apple-blue">極小</strong>且<strong class="apple-blue">相容性最高</strong>。</p>
+                        <a id="bookmarklet-basic" href="#" class="bookmarklet-btn bg-teal-600 hover:bg-teal-700 active:scale-95 transition-transform duration-200 hover:-translate-y-0.5 cursor-grab active:cursor-grabbing mt-auto inline-flex items-center justify-center text-center text-white font-semibold py-2.5 px-4 rounded-lg">
+                            <i data-lucide="link" class="w-4 h-4 mr-2"></i><span class="btn-text">網頁儲存為HTML</span>
+                        </a>
+                    </div>
+                    <!-- Card 3: Save as Markdown -->
+                     <div class="rounded-xl p-5 sm:p-6 flex flex-col" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
+                        <div class="flex items-center mb-3"><i data-lucide="clipboard-copy" class="w-6 h-6 text-sky-400 mr-3"></i><h3 class="font-semibold text-xl">複製為 Markdown</h3></div>
+                        <p class="text-base flex-grow mb-4" style="color: var(--text-color-secondary);">擷取頁面<strong class="apple-blue">主要內容</strong>並轉換為 <strong class="apple-blue">Markdown 格式</strong>，再<strong class="apple-blue">自動複製</strong>到剪貼簿。適合快速轉貼文章到<strong class="apple-blue">筆記軟體</strong>或部落格。</p>
+                        <a id="bookmarklet-markdown" href="#" class="bookmarklet-btn bg-sky-600 hover:bg-sky-700 active:scale-95 transition-transform duration-200 hover:-translate-y-0.5 cursor-grab active:cursor-grabbing mt-auto inline-flex items-center justify-center text-center text-white font-semibold py-2.5 px-4 rounded-lg">
+                           <i data-lucide="clipboard-copy" class="w-4 h-4 mr-2"></i><span class="btn-text">複製為 Markdown</span>
+                        </a>
+                    </div>
+                    <!-- Card 4: Save Offline HTML -->
+                    <div class="rounded-xl p-5 sm:p-6 flex flex-col" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
+                        <div class="flex items-center mb-3"><i data-lucide="package-check" class="w-6 h-6 text-orange-400 mr-3"></i><h3 class="font-semibold text-xl">離線儲存 (HTML)</h3></div>
+                        <p class="text-base flex-grow mb-4" style="color: var(--text-color-secondary);">將<strong class="apple-blue">所有圖片與樣式</strong>嵌入檔案中，打包成一個<strong class="apple-blue">單一、可離線瀏覽</strong>的 HTML 檔案。檔案較大，且可能因網站安全限制而<strong class="apple-blue">不保證成功</strong>。</p>
+                        <a id="bookmarklet-offline" href="#" class="bookmarklet-btn bg-orange-600 hover:bg-orange-700 active:scale-95 transition-transform duration-200 hover:-translate-y-0.5 cursor-grab active:cursor-grabbing mt-auto inline-flex items-center justify-center text-center text-white font-semibold py-2.5 px-4 rounded-lg">
+                           <i data-lucide="package-check" class="w-4 h-4 mr-2"></i><span class="btn-text">離線儲存 (HTML)</span>
                         </a>
                     </div>
                 </div>
-                <p class="text-xs text-center mt-6" style="color: var(--text-color-secondary);">提示：如果書籤列沒顯示，請按 <kbd class="px-1.5 py-1 text-xs rounded-md" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">Ctrl+Shift+B</kbd> 開啟。</p>
+
+                <!-- How to Use Section -->
+                <div class="mt-10 pt-8 border-t border-[var(--border-color)]">
+                    <h3 class="text-center text-2xl font-bold mb-6">如何使用</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                        <div class="flex flex-col items-center">
+                            <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center mb-4">
+                                <i data-lucide="globe" class="w-8 h-8 text-blue-500"></i>
+                            </div>
+                            <h4 class="font-semibold mb-1">Step 1: 瀏覽網頁</h4>
+                            <p style="color: var(--text-color-secondary);">前往任何您想存檔的網站。</p>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="w-16 h-16 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center mb-4">
+                               <i data-lucide="bookmark" class="w-8 h-8 text-green-500"></i>
+                            </div>
+                            <h4 class="font-semibold mb-1">Step 2: 點擊書籤</h4>
+                            <p style="color: var(--text-color-secondary);">點擊您書籤列上的存檔工具。</p>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="w-16 h-16 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center mb-4">
+                               <i data-lucide="download" class="w-8 h-8 text-purple-500"></i>
+                            </div>
+                            <h4 class="font-semibold mb-1">Step 3: 等待下載</h4>
+                            <p style="color: var(--text-color-secondary);">檔案將自動產生並下載。</p>
+                        </div>
+                    </div>
+                </div>
             </main>
         </div>
     </div>
@@ -184,6 +205,12 @@
     <script id="logic-basic" type="text/plain">
     (function(){let e=document.createElement("div");e.style.cssText="position:fixed;top:20px;right:20px;padding:12px 24px;background-color:rgba(0,0,0,.85);color:#fff;z-index:99999999;border-radius:8px;backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.2);font-family:sans-serif;font-size:16px",e.textContent="正在準備連結儲存...",document.body.appendChild(e);try{e.textContent="複製頁面結構...";let t=document.documentElement.cloneNode(!0);e.textContent="正在轉換資源路徑...";let o=t.querySelector("head"),r=o.querySelector("base");r||(r=document.createElement("base"),r.href=window.location.href,o.prepend(r)),t.querySelectorAll("script, noscript").forEach(e=>e.remove()),e.textContent="正在產生檔案...";let n=document.title?document.title.replace(/[^a-z0-9]/gi,"_").toLowerCase():"saved_page",c=new Blob([`<!DOCTYPE html>\n${t.outerHTML}`],{type:"text/html"}),a=URL.createObjectURL(c),s=document.createElement("a");s.href=a,s.download=`${n}_linked.html`,document.body.appendChild(s),s.click(),document.body.removeChild(s),URL.revokeObjectURL(a),e.textContent="連結儲存成功！"}catch(l){console.error("連結儲存時發生錯誤:",l),e.textContent="儲存失敗！請查看控制台。"}finally{setTimeout(()=>document.body.removeChild(e),3e3)}})();
     </script>
+    <script id="logic-markdown" type="text/plain">
+    (function(){let e=document.createElement("div");e.style.cssText="position:fixed;top:20px;right:20px;padding:12px 24px;background-color:rgba(0,0,0,.85);color:#fff;z-index:99999999;border-radius:8px;backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.2);font-family:sans-serif;font-size:16px",e.textContent="正在載入轉換工具...",document.body.appendChild(e);function t(c,o){let n=document.createElement("script");n.src=c,n.onload=o,n.onerror=function(){e.textContent="錯誤：無法載入必要資源！",setTimeout(()=>document.body.removeChild(e),3e3)},document.head.appendChild(n)}t("https://unpkg.com/turndown/dist/turndown.js",function(){try{e.textContent="正在轉換內容...";let c=new TurndownService({headingStyle:"atx",hr:"---",bulletListMarker:"-",codeBlockStyle:"fenced"}),o=c.turndown(document.body);navigator.clipboard.writeText(o).then(function(){e.textContent="成功複製到剪貼簿！"}).catch(function(c){console.error("複製失敗:",c),e.textContent="複製失敗！請查看控制台。"}).finally(()=>{setTimeout(()=>document.body.removeChild(e),3e3)})}catch(n){console.error("轉換失敗:",n),e.textContent="轉換失敗！請查看控制台。",setTimeout(()=>document.body.removeChild(e),3e3)}})})();
+    </script>
+    <script id="logic-offline" type="text/plain">
+    (async function(){let e=document.createElement("div");e.style.cssText="position:fixed;top:20px;right:20px;padding:12px 24px;background-color:rgba(0,0,0,.85);color:#fff;z-index:99999999;border-radius:8px;backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.2);font-family:sans-serif;font-size:16px",e.textContent="正在準備離線儲存...",document.body.appendChild(e);try{async function t(e){try{let t=await fetch(e,{cache:"force-cache"}),o=await t.blob();return await new Promise((e,t)=>{let n=new FileReader;n.onloadend=()=>e(n.result),n.onerror=t,n.readAsDataURL(o)})}catch(c){return console.warn(`無法載入資源: ${e}`),Promise.resolve(e)}}let o=document.documentElement.cloneNode(!0);e.textContent="正在內嵌樣式表 (CSS)...";let n=Array.from(o.querySelectorAll('link[rel="stylesheet"]')).map(async e=>{try{let o=await fetch(e.href),n=await o.text(),c=document.createElement("style");c.textContent=n,e.parentNode.replaceChild(c,e)}catch(a){console.warn("無法內嵌樣式表:",e.href)}});await Promise.all(n),e.textContent="正在內嵌圖片...";let c=Array.from(o.querySelectorAll("img")).map(async e=>{if(e.src&&!e.src.startsWith("data:")){let o=await t(e.src);e.src=o}});await Promise.all(c),e.textContent="正在產生檔案...";o.querySelectorAll("script, noscript").forEach(e=>e.remove());let a=document.title?document.title.replace(/[^a-z0-9]/gi,"_").toLowerCase():"saved_page_offline",r=new Blob([`<!DOCTYPE html>\n${o.outerHTML}`],{type:"text/html"}),l=URL.createObjectURL(r),d=document.createElement("a");d.href=l,d.download=`${a}.html`,document.body.appendChild(d),d.click(),document.body.removeChild(d),URL.revokeObjectURL(l),e.textContent="離線儲存成功！"}catch(s){console.error("離線儲存時發生錯誤:",s),e.textContent="儲存失敗！詳情請查看控制台。"}finally{setTimeout(()=>document.body.removeChild(e),3e3)}})();
+    </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -191,26 +218,17 @@
 
             // --- Theme Toggle Logic ---
             const themeToggle = document.getElementById('theme-toggle');
-            const body = document.body;
-            
-            // Apply saved theme on load
-            if (localStorage.getItem('theme') === 'dark') {
-                body.classList.add('dark');
-            }
-
+            if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
             themeToggle.addEventListener('click', () => {
-                body.classList.toggle('dark');
-                if (body.classList.contains('dark')) {
-                    localStorage.setItem('theme', 'dark');
-                } else {
-                    localStorage.setItem('theme', 'light');
-                }
+                document.body.classList.toggle('dark');
+                localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
             });
 
             // --- Bookmarklet Setup Logic ---
             function setupBookmarklet(buttonId, logicId) {
-                const logic = document.getElementById(logicId).textContent.trim();
                 const link = document.getElementById(buttonId);
+                if (!link) return;
+                const logic = document.getElementById(logicId).textContent.trim();
                 link.href = 'javascript:' + encodeURIComponent(logic);
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -218,8 +236,22 @@
                 });
             }
 
-            setupBookmarklet('bookmarklet-image', 'logic-image');
-            setupBookmarklet('bookmarklet-basic', 'logic-basic');
+            ['image', 'basic', 'markdown', 'offline'].forEach(type => {
+                setupBookmarklet(`bookmarklet-${type}`, `logic-${type}`);
+            });
+
+            // --- Drag Feedback Logic ---
+            const svg = document.getElementById('drag-animation-svg');
+            document.querySelectorAll('.bookmarklet-btn').forEach(btn => {
+                const originalText = btn.querySelector('.btn-text').textContent;
+                btn.addEventListener('dragstart', () => svg.classList.add('is-dragging'));
+                btn.addEventListener('dragend', () => {
+                    svg.classList.remove('is-dragging');
+                    const textSpan = btn.querySelector('.btn-text');
+                    textSpan.textContent = '安裝成功！';
+                    setTimeout(() => { textSpan.textContent = originalText; }, 2000);
+                });
+            });
         });
     </script>
 
