@@ -1,44 +1,4 @@
-<!DOCTYPE html><html lang="zh-Hant"><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>網頁封存工具</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
-<style>
-      /* General Styles */
-      html, body {
-        margin: 0;
-        padding: 24px;
-        background: #FFFFFF;
-        color: #1d1d1f;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        line-height: 1.6;
-        font-size: 15px;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-      h1, h2, h3, h4, h5, h6, b, strong {
-        font-weight: 600; /* Semibold for macOS look */
-      }
-      h1 { font-weight: 700; } /* Bold for main title */
-      
-      /* Explicit list styles for consistent rendering in html2canvas */
-      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; }
-      ul { list-style-type: disc; }
-      ol { list-style-type: decimal; }
-      li { display: list-item; }
-
-      .hljs-container {
-        padding: 1.5rem;
-        border-radius: .75rem;
-        overflow-x: auto;
-        background: #fcfcfd;
-        border: 1px solid #d2d2d7;
-      }
-      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
-      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
-    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -56,8 +16,6 @@
             --window-bg: rgba(255, 255, 255, 0.6);
             --card-bg: rgba(255, 255, 255, 0.5);
             --border-color: rgba(0, 0, 0, 0.1);
-            --accent-color: #007aff;
-            --accent-color-hover: #0071e3;
         }
 
         body.dark {
@@ -100,120 +58,122 @@
 
         /* SVG Animation Styles */
         .drag-animation #drag-group {
-            animation: drag-animation-move 4s ease-in-out infinite;
-            animation-delay: 0.5s;
+            animation: drag-animation-move 4s ease-in-out infinite 0.5s;
         }
         .drag-animation #cursor {
-            animation: click-animation 4s ease-in-out infinite;
-            animation-delay: 0.5s;
-            transform-origin: 205.5px 107.2px; /* Adjusted for new translated position */
+            animation: cursor-click-animation 4s ease-in-out infinite 0.5s;
+            transform-origin: 245px 130px; 
         }
         .drag-animation #bookmark-plus {
-            animation: plus-pop 4s ease-in-out infinite;
+            animation: plus-pop-animation 4s ease-in-out infinite 0.5s;
             transform-origin: center;
             opacity: 0;
-            animation-delay: 0.5s;
         }
 
         @keyframes drag-animation-move {
-            0%, 20% { transform: translate(0, 0); }
-            30% { transform: translate(0, 0); }
-            70% { transform: translate(0, -85px); }
-            80%, 100% { transform: translate(0, -85px); }
+            0%, 30%   { transform: translate(0, 0); }
+            70%       { transform: translate(0, -85px); } /* Centered drop */
+            80%, 100% { transform: translate(0, -85px); opacity: 1; }
+            80.01%, 99.99% { opacity: 0; }
         }
-        @keyframes click-animation {
-            0%, 20% { transform: scale(1); }
-            25% { transform: scale(0.9); }
-            30%, 100% { transform: scale(1); }
+
+        @keyframes cursor-click-animation {
+            0%, 25%     { transform: scale(1); }
+            28%         { transform: scale(0.9); }
+            32%, 100%   { transform: scale(1); }
         }
-        @keyframes plus-pop {
+
+        @keyframes plus-pop-animation {
             0%, 70% { opacity: 0; transform: scale(0.5); }
-            75% { opacity: 1; transform: scale(1.2); }
+            75%     { opacity: 1; transform: scale(1.2); }
             85%, 100% { opacity: 0; transform: scale(1); }
         }
 
     </style>
 </head>
-<body class="min-h-screen flex items-start justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-4 sm:p-6 md:p-8">
 
     <!-- Theme Toggle -->
-    <button id="theme-toggle" class="fixed top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-500/10 transition-colors">
+    <button id="theme-toggle" class="fixed top-4 right-4 md:top-6 md:right-6 w-10 h-10 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-500/10 transition-colors z-20">
         <div class="relative w-6 h-6">
              <i data-lucide="sun" class="sun absolute inset-0 text-yellow-500"></i>
              <i data-lucide="moon" class="moon absolute inset-0 text-indigo-400"></i>
         </div>
     </button>
 
-    <div class="w-full max-w-5xl mx-auto mt-8">
-        <div class="macos-window rounded-2xl">
+    <div class="w-full max-w-5xl mx-auto">
+        <div class="macos-window rounded-xl md:rounded-2xl">
             <!-- Title Bar -->
-            <div class="h-14 flex items-center justify-center relative border-b border-[var(--border-color)]">
+            <header class="h-14 flex items-center justify-center relative border-b border-[var(--border-color)]">
                 <div class="traffic-dots absolute left-4 flex space-x-2">
                     <span style="background-color: #ff5f56;"></span>
                     <span style="background-color: #ffbd2e;"></span>
                     <span style="background-color: #27c93f;"></span>
                 </div>
-            </div>
+                <div class="text-center">
+                    <h1 class="text-lg font-semibold">網頁封存工具</h1>
+                </div>
+            </header>
 
             <!-- Content -->
-            <div class="p-6 md:p-8">
-                <div class="text-center mb-8">
-                    <h1 class="text-4xl font-bold mb-6">網頁封存工具</h1>
-
+            <main class="p-6 md:p-8">
+                <div class="text-center mb-6 md:mb-8">
+                    
                     <!-- SVG Drag Animation -->
-                    <div class="flex justify-center my-6">
-                        <svg class="drag-animation" width="280" height="160" viewBox="0 0 280 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <div class="flex justify-center my-4 md:my-6">
+                        <svg class="drag-animation w-full max-w-xs sm:max-w-sm" viewBox="0 0 280 180" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <!-- Background: Bookmark bar -->
                             <rect x="10" y="10" width="260" height="35" rx="8" fill="currentColor" class="text-gray-200 dark:text-gray-700"/>
                             <text x="140" y="32" text-anchor="middle" font-size="14" fill="currentColor" class="text-gray-500 dark:text-gray-400" font-weight="500">書籤列</text>
                             
                             <!-- Animated plus sign -->
-                            <path id="bookmark-plus" d="M140 25V31M137 28H143" stroke="var(--accent-color)" stroke-width="2.5" stroke-linecap="round"/>
+                            <path id="bookmark-plus" d="M140 25V31M137 28H143" stroke="#007aff" stroke-width="2.5" stroke-linecap="round"/>
                             
                             <!-- Animated group for button and cursor -->
                             <g id="drag-group">
-                                <!-- The button is drawn first -->
-                                <rect x="30" y="95" width="220" height="40" rx="10" fill="var(--accent-color)"/>
-                                <text x="140" y="118" text-anchor="middle" font-size="14" fill="white" font-weight="600">滑鼠拖曳按鈕到書籤列</text>
-
-                                <!-- The cursor is drawn second (on top) and shifted to the right -->
-                                <g id="cursor" transform="translate(70, 0)">
-                                     <path d="M135.5 107.2L135.5 128.8L142.3 124.5L147.2 131.6L151.7 129.9L146.8 122.8L154.9 121.1Z" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
+                                <!-- The button -->
+                                <rect x="30" y="95" width="220" height="40" rx="10" fill="#007aff"/>
+                                <text x="140" y="121" text-anchor="middle" font-size="16" fill="white" font-weight="600">滑鼠拖曳按鈕到書籤列</text>
+                                
+                                <!-- The cursor, drawn on top -->
+                                <g id="cursor">
+                                    <path d="M0 -22.8L0 0.8L6.8 -3.5L11.7 3.6L16.2 1.9L11.3 -5.2L19.4 -6.9Z" transform="translate(245, 130)" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
                                 </g>
                             </g>
                         </svg>
                     </div>
 
-                    <p style="color: var(--text-color-secondary);">請將您需要的工具按鈕拖曳到瀏覽器的書籤列上即可安裝。</p>
+                    <h2 class="text-2xl sm:text-3xl font-bold mb-2">安裝您的存檔工具</h2>
+                    <p style="color: var(--text-color-secondary);">請將下方您需要的工具按鈕，拖曳到瀏覽器的書籤列上即可安裝。</p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-left">
                     <!-- Card 1: Save as Image -->
-                    <div class="rounded-xl p-6 flex flex-col" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
+                    <div class="rounded-xl p-5 sm:p-6 flex flex-col" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
                         <div class="flex items-center mb-3">
                             <i data-lucide="image" class="w-6 h-6 text-purple-400 mr-3"></i>
                             <h3 class="font-semibold text-xl">儲存為圖片</h3>
                         </div>
-                        <p class="text-sm flex-grow mb-4" style="color: var(--text-color-secondary);">將整個網頁擷取為一張高解析度 PNG 圖片，完美保留視覺樣貌。</p>
+                        <p class="text-base flex-grow mb-4" style="color: var(--text-color-secondary);">將整個網頁擷取為一張高解析度 PNG 圖片，完美保留視覺樣貌。</p>
                         <a id="bookmarklet-image" href="#" class="bg-purple-600 hover:bg-purple-700 transition-transform duration-200 hover:-translate-y-0.5 cursor-grab active:cursor-grabbing mt-auto inline-block text-center text-white font-semibold py-2.5 px-4 rounded-lg">
                             網頁儲存為圖片
                         </a>
                     </div>
 
                     <!-- Card 2: Save as HTML -->
-                    <div class="rounded-xl p-6 flex flex-col" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
+                    <div class="rounded-xl p-5 sm:p-6 flex flex-col" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
                         <div class="flex items-center mb-3">
                             <i data-lucide="link" class="w-6 h-6 text-teal-400 mr-3"></i>
                             <h3 class="font-semibold text-xl">儲存為HTML</h3>
                         </div>
-                        <p class="text-sm flex-grow mb-4" style="color: var(--text-color-secondary);">儲存網頁結構，需連網才能顯示圖片，但幾乎適用於所有網站。</p>
+                        <p class="text-base flex-grow mb-4" style="color: var(--text-color-secondary);">儲存網頁結構，需連網才能顯示圖片，但幾乎適用於所有網站。</p>
                         <a id="bookmarklet-basic" href="#" class="bg-teal-600 hover:bg-teal-700 transition-transform duration-200 hover:-translate-y-0.5 cursor-grab active:cursor-grabbing mt-auto inline-block text-center text-white font-semibold py-2.5 px-4 rounded-lg">
                             網頁儲存為HTML
                         </a>
                     </div>
                 </div>
                 <p class="text-xs text-center mt-6" style="color: var(--text-color-secondary);">提示：如果書籤列沒顯示，請按 <kbd class="px-1.5 py-1 text-xs rounded-md" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">Ctrl+Shift+B</kbd> 開啟。</p>
-            </div>
+            </main>
         </div>
     </div>
 
@@ -264,4 +224,4 @@
     </script>
 
 </body>
-</html></div></body></html>
+</html>
