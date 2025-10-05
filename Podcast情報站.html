@@ -895,7 +895,7 @@
                 localStorage.setItem('playerSettings', JSON.stringify(settings));
             };
             
-            // [修正與強化] RTF 檔案下載功能
+            // [修正與強化] 下載節目表功能 (輸出為 HTML)
             const downloadCollectionAsRtf = () => {
                 const collection = getCollection();
                 if (collection.length === 0) {
@@ -903,71 +903,57 @@
                     return;
                 }
 
-                // 步驟 1: 參照 AI 語句潤飾工具的技巧，建立一個能正確處理中文的 RTF 轉換函式
-                const convertToRtfUnicode = (text) => {
-                    if (!text) return '';
-                    let rtf = '';
-                    for (const char of text) {
-                        const code = char.charCodeAt(0);
-                        if (code > 127) {
-                            // 對於所有非 ASCII 字元（包含中文），使用 \u{charCode}? 格式
-                            rtf += `\\u${code}?`;
-                        } else if (char === '\\' || char === '{' || char === '}') {
-                            // 跳脫 RTF 的特殊符號
-                            rtf += `\\${char}`;
-                        } else if (char === '\n') {
-                             // 將換行符轉換為 RTF 的 \par
-                            rtf += '\\par ';
-                        } else {
-                            rtf += char;
-                        }
-                    }
-                    return rtf;
-                };
-
-                // 步驟 2: 建立包含中文設定的 RTF 檔頭與表格結構
-                // ansicpg950: 指定繁體中文語系
-                // fonttbl: 定義一個支援中文的字型，例如微軟正黑體
-                let rtfContent = `{\\rtf1\\ansi\\ansicpg950\\deff0
-{\\fonttbl{\\f0\\fswiss\\fcharset136 Microsoft JhengHei UI;}}
-\\pard\\sa200\\sl276\\slmult1\\b\\f0\\fs28 Podcast 媒體庫節目表\\par\\par}
-`;
-                
-                // 定義表格欄位寬度與標題
-                // 分別為 類型、節目名稱、主持人(來源)
-                const tableHeader = `{\\trowd \\trgaph108\\trleft-108
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx2500
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx7500
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx12000
-\\pard\\intbl \\b 類型\\cell 節目名稱\\cell 主持人 (來源)\\b0 \\row}`;
-                
-                rtfContent += tableHeader;
-
-                // 步驟 3: 遍歷收藏庫，將每一筆資料轉換並填入表格
-                collection.forEach(podcast => {
-                    const genre = convertToRtfUnicode(podcast.primaryGenreName);
-                    const name = convertToRtfUnicode(podcast.collectionName);
-                    const artist = convertToRtfUnicode(podcast.artistName);
-
-                    const row = `{\\trowd \\trgaph108\\trleft-108
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx2500
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx7500
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx12000
-\\pard\\intbl ${genre}\\cell ${name}\\cell ${artist}\\pard \\row}`;
-                    rtfContent += row;
-                });
-                
-                rtfContent += `}`;
-
-                // 步驟 4: 組合檔名並觸發下載
+                // 步驟 1: 組合檔名 (副檔名改為 .html)
                 const today = new Date();
                 const yyyy = today.getFullYear();
                 const mm = String(today.getMonth() + 1).padStart(2, '0');
                 const dd = String(today.getDate()).padStart(2, '0');
                 const formattedDate = `${yyyy}-${mm}-${dd}`;
-                const filename = `Podcast 節目表 ${formattedDate}.rtf`;
+                const filename = `Podcast 節目表 ${formattedDate}.html`;
 
-                const blob = new Blob([rtfContent], { type: 'application/rtf' });
+                // 步驟 2: 建立 HTML 內容字串
+                // 增加內嵌 CSS 樣式以美化表格
+                let htmlContent = `<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>Podcast 節目表 ${formattedDate}</title>
+    <style>
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; margin: 2rem; background-color: #f8f9fa; color: #343a40; }
+        table { border-collapse: collapse; width: 100%; border: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { text-align: left; padding: 12px 15px; border-bottom: 1px solid #dee2e6; }
+        th { background-color: #e9ecef; font-weight: 600; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        tr:hover { background-color: #e2e6ea; }
+        h1 { color: #007AFF; border-bottom: 2px solid #007AFF; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Podcast 節目表 (${formattedDate})</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>類型</th>
+                <th>節目名稱</th>
+                <th>主持人 (來源)</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+                // 步驟 3: 遍歷收藏庫，將資料填入 HTML 表格的 <tr> 中
+                // 使用簡單的字串替換來避免 HTML 注入
+                const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                collection.forEach(podcast => {
+                    const genre = escapeHTML(podcast.primaryGenreName || 'N/A');
+                    const name = escapeHTML(podcast.collectionName || 'N/A');
+                    const artist = escapeHTML(podcast.artistName || 'N/A');
+                    htmlContent += `<tr><td>${genre}</td><td>${name}</td><td>${artist}</td></tr>`;
+                });
+                
+                htmlContent += `</tbody></table></body></html>`;
+
+                // 步驟 4: 建立 Blob 並觸發下載 (MIME 類型改為 text/html)
+                const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
                 link.download = filename;
@@ -975,7 +961,7 @@
                 link.click();
                 document.body.removeChild(link);
                 
-                showToast("節目表匯出成功！", "success");
+                showToast("節目表 HTML 檔案匯出成功！", "success");
             };
 
             const loadCollection = () => {
