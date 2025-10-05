@@ -905,7 +905,7 @@
                 localStorage.setItem('playerSettings', JSON.stringify(settings));
             };
             
-            // [修正] RTF 檔案下載功能
+            // [修正與強化] RTF 檔案下載功能
             const downloadCollectionAsRtf = () => {
                 const collection = getCollection();
                 if (collection.length === 0) {
@@ -913,15 +913,38 @@
                     return;
                 }
 
-                // 1. 解決亂碼問題: 定義 RTF 標頭，指定繁體中文語系 (ansicpg950) 和對應字型
-                // 2. 改善版面：改用表格呈現
+                // 步驟 1: 參照 AI 語句潤飾工具的技巧，建立一個能正確處理中文的 RTF 轉換函式
+                const convertToRtfUnicode = (text) => {
+                    if (!text) return '';
+                    let rtf = '';
+                    for (const char of text) {
+                        const code = char.charCodeAt(0);
+                        if (code > 127) {
+                            // 對於所有非 ASCII 字元（包含中文），使用 \u{charCode}? 格式
+                            rtf += `\\u${code}?`;
+                        } else if (char === '\\' || char === '{' || char === '}') {
+                            // 跳脫 RTF 的特殊符號
+                            rtf += `\\${char}`;
+                        } else if (char === '\n') {
+                             // 將換行符轉換為 RTF 的 \par
+                            rtf += '\\par ';
+                        } else {
+                            rtf += char;
+                        }
+                    }
+                    return rtf;
+                };
+
+                // 步驟 2: 建立包含中文設定的 RTF 檔頭與表格結構
+                // ansicpg950: 指定繁體中文語系
+                // fonttbl: 定義一個支援中文的字型，例如微軟正黑體
                 let rtfContent = `{\\rtf1\\ansi\\ansicpg950\\deff0
 {\\fonttbl{\\f0\\fswiss\\fcharset136 Microsoft JhengHei UI;}}
 \\pard\\sa200\\sl276\\slmult1\\b\\f0\\fs28 Podcast 媒體庫節目表\\par\\par}
 `;
                 
                 // 定義表格欄位寬度與標題
-                // Icon(類型), 節目名稱, 主持人(來源)
+                // 分別為 類型、節目名稱、主持人(來源)
                 const tableHeader = `{\\trowd \\trgaph108\\trleft-108
 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx2500
 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx7500
@@ -930,28 +953,11 @@
                 
                 rtfContent += tableHeader;
 
-                // Helper function to escape RTF special characters and handle potential undefined values
-                const escapeRtf = (str) => {
-                    if (!str) return '';
-                    // 1. Escape RTF control characters
-                    let escaped = str.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
-                    // 2. Convert non-ASCII characters to RTF unicode representation
-                    let result = '';
-                    for (let i = 0; i < escaped.length; i++) {
-                        const charCode = escaped.charCodeAt(i);
-                        if (charCode <= 127) {
-                            result += escaped[i];
-                        } else {
-                            result += `\\u${charCode}\'3f`; // \'3f is a fallback character
-                        }
-                    }
-                    return result;
-                };
-
+                // 步驟 3: 遍歷收藏庫，將每一筆資料轉換並填入表格
                 collection.forEach(podcast => {
-                    const genre = escapeRtf(podcast.primaryGenreName);
-                    const name = escapeRtf(podcast.collectionName);
-                    const artist = escapeRtf(podcast.artistName);
+                    const genre = convertToRtfUnicode(podcast.primaryGenreName);
+                    const name = convertToRtfUnicode(podcast.collectionName);
+                    const artist = convertToRtfUnicode(podcast.artistName);
 
                     const row = `{\\trowd \\trgaph108\\trleft-108
 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx2500
@@ -963,13 +969,13 @@
                 
                 rtfContent += `}`;
 
-                // 3. 解決檔案命名問題: 加上日期
+                // 步驟 4: 組合檔名並觸發下載
                 const today = new Date();
                 const yyyy = today.getFullYear();
                 const mm = String(today.getMonth() + 1).padStart(2, '0');
                 const dd = String(today.getDate()).padStart(2, '0');
                 const formattedDate = `${yyyy}-${mm}-${dd}`;
-                const filename = `Podcast 節目表_${formattedDate}.rtf`;
+                const filename = `Podcast 節目表 ${formattedDate}.rtf`;
 
                 const blob = new Blob([rtfContent], { type: 'application/rtf' });
                 const link = document.createElement('a');
@@ -978,8 +984,9 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                
+                showToast("節目表匯出成功！", "success");
             };
-
 
             const loadCollection = () => {
                 let collection = getCollection();
