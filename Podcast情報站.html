@@ -921,6 +921,7 @@
 `;
                 
                 // 定義表格欄位寬度與標題
+                // Icon(類型), 節目名稱, 主持人(來源)
                 const tableHeader = `{\\trowd \\trgaph108\\trleft-108
 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx2500
 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx7500
@@ -929,10 +930,22 @@
                 
                 rtfContent += tableHeader;
 
-                // Helper function to escape RTF special characters
+                // Helper function to escape RTF special characters and handle potential undefined values
                 const escapeRtf = (str) => {
                     if (!str) return '';
-                    return str.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
+                    // 1. Escape RTF control characters
+                    let escaped = str.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
+                    // 2. Convert non-ASCII characters to RTF unicode representation
+                    let result = '';
+                    for (let i = 0; i < escaped.length; i++) {
+                        const charCode = escaped.charCodeAt(i);
+                        if (charCode <= 127) {
+                            result += escaped[i];
+                        } else {
+                            result += `\\u${charCode}\'3f`; // \'3f is a fallback character
+                        }
+                    }
+                    return result;
                 };
 
                 collection.forEach(podcast => {
