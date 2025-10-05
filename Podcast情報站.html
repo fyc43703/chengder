@@ -905,7 +905,7 @@
                 localStorage.setItem('playerSettings', JSON.stringify(settings));
             };
             
-            // [新增] RTF 檔案下載功能
+            // [修正] RTF 檔案下載功能
             const downloadCollectionAsRtf = () => {
                 const collection = getCollection();
                 if (collection.length === 0) {
@@ -913,38 +913,55 @@
                     return;
                 }
 
-                let rtfContent = `{\\rtf1\\ansi\\deff0
-{\\fonttbl{\\f0 Arial;}}
-\\pard\\sa200\\sl276\\slmult1\\b\\f0\\fs28 Podcast 媒體庫節目表\\par}
+                // 1. 解決亂碼問題: 定義 RTF 標頭，指定繁體中文語系 (ansicpg950) 和對應字型
+                // 2. 改善版面：改用表格呈現
+                let rtfContent = `{\\rtf1\\ansi\\ansicpg950\\deff0
+{\\fonttbl{\\f0\\fswiss\\fcharset136 Microsoft JhengHei UI;}}
+\\pard\\sa200\\sl276\\slmult1\\b\\f0\\fs28 Podcast 媒體庫節目表\\par\\par}
 `;
                 
-                const header = `{\\trowd \\trgaph108\\trleft-108
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx4320
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx8640
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx12960
-\\pard\\intbl \\b 類別\\cell 節目名稱\\cell 主持人 (來源)\\b0 \\row}`;
+                // 定義表格欄位寬度與標題
+                const tableHeader = `{\\trowd \\trgaph108\\trleft-108
+\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx7500
+\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx12000
+\\pard\\intbl \\b 類型\\cell 節目名稱\\cell 主持人 (來源)\\b0 \\row}`;
                 
-                rtfContent += header;
+                rtfContent += tableHeader;
+
+                // Helper function to escape RTF special characters
+                const escapeRtf = (str) => {
+                    if (!str) return '';
+                    return str.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
+                };
 
                 collection.forEach(podcast => {
-                    const genre = podcast.primaryGenreName ? podcast.primaryGenreName.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}') : '';
-                    const name = podcast.collectionName.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
-                    const artist = podcast.artistName.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
+                    const genre = escapeRtf(podcast.primaryGenreName);
+                    const name = escapeRtf(podcast.collectionName);
+                    const artist = escapeRtf(podcast.artistName);
 
                     const row = `{\\trowd \\trgaph108\\trleft-108
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx4320
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx8640
-\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx12960
+\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx7500
+\\clbrdrb\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\clbrdrt\\brdrs\\brdrw10 \\cellx12000
 \\pard\\intbl ${genre}\\cell ${name}\\cell ${artist}\\pard \\row}`;
                     rtfContent += row;
                 });
                 
                 rtfContent += `}`;
 
+                // 3. 解決檔案命名問題: 加上日期
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                const formattedDate = `${yyyy}-${mm}-${dd}`;
+                const filename = `Podcast 節目表_${formattedDate}.rtf`;
+
                 const blob = new Blob([rtfContent], { type: 'application/rtf' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-                link.download = 'Podcast節目表.rtf';
+                link.download = filename;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -1825,3 +1842,4 @@
     </script>
 </body>
 </html>
+</div></body></html>
