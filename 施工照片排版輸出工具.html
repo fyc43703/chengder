@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,20 +21,56 @@
     </script>
 
     <style>
-        /* macOS 風格樣式 */
+        /* Light Theme */
+        :root.light {
+            --bg-color: #f5f5f7;
+            --text-color: #1d1d1f;
+            --text-secondary-color: #6e6e73;
+            --glass-bg: rgba(255, 255, 255, 0.6);
+            --border-color: rgba(0, 0, 0, 0.1);
+            --input-bg: #fff;
+            --instruction-keyword-color: #007aff;
+        }
+
+        /* Dark Theme */
+        :root.dark {
+            --bg-color: #1d1d1f;
+            --text-color: #f5f5f7;
+            --text-secondary-color: #a1a1a6;
+            --glass-bg: rgba(44, 44, 46, 0.7);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --input-bg: #2c2c2e;
+            --instruction-keyword-color: #0a84ff;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Icons", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
-            background-color: #f5f5f7;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
         }
         .transition-all {
             transition: all 0.2s ease-in-out;
         }
         .glass-effect {
-            background-color: rgba(255, 255, 255, 0.6);
+            background-color: var(--glass-bg);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            transition: background-color 0.3s, border-color 0.3s;
         }
+        h1, h2, h3 { color: var(--text-color); }
+        p, label, select, span { color: var(--text-secondary-color); }
+        h3 { color: var(--text-color); }
+        .text-blue-600 { color: #007aff; }
+        .dark .text-blue-600 { color: #0a84ff; }
+        input, select {
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        .dark #roc-date-display { background-color: var(--input-bg); }
+
         button:disabled, label.disabled-label {
             cursor: not-allowed;
             opacity: 0.5;
@@ -62,6 +98,7 @@
         .loader-overlay {
             background-color: rgba(245, 245, 247, 0.7);
         }
+        .dark .loader-overlay { background-color: rgba(29, 29, 31, 0.7); }
         .modal-overlay {
              background-color: rgba(0, 0, 0, 0.4);
         }
@@ -92,18 +129,14 @@
         .traffic-light.red { background-color: #ff5f56; }
         .traffic-light.yellow { background-color: #ffbd2e; }
         .traffic-light.green { background-color: #27c93f; }
-        #report-date-container {
-            position: relative;
-        }
+        
         #roc-date-display {
             position: absolute;
             left: 0.75rem;
             top: 50%;
             transform: translateY(-50%);
             pointer-events: none;
-            background-color: white;
             padding: 0 0.5rem;
-            color: #333;
         }
         input[type="date"]::-webkit-calendar-picker-indicator {
             opacity: 0.5;
@@ -134,14 +167,25 @@
         .header-field .input-group {
             flex-grow: 1;
         }
+        /* 加大核取方塊 */
         .header-field input[type="checkbox"] {
-            margin-bottom: 0.6rem; /* Align with input box */
+            margin-bottom: 0.5rem; 
+            width: 1.25rem;
+            height: 1.25rem;
         }
-        /* 新增：圖片預覽 Modal 樣式 */
+        /* 修正：按鈕內文字與圖示顏色繼承 */
+        button span, label span, button i, label i, button svg, label svg {
+            color: inherit;
+        }
         #image-preview-modal img {
             max-width: 90vw;
             max-height: 85vh;
             object-fit: contain;
+        }
+        /* 功能說明關鍵字顏色 */
+        .instruction-keyword {
+            color: var(--instruction-keyword-color);
+            font-weight: 600;
         }
     </style>
 </head>
@@ -153,7 +197,6 @@
     </div>
     
     <!-- Modal 區域 -->
-    <!-- 新增：圖片預覽 Modal -->
     <div id="image-preview-modal" class="modal-overlay" style="display: none; cursor: zoom-out;">
         <div class="relative">
             <img id="preview-image" src="" alt="圖片預覽">
@@ -165,19 +208,19 @@
 
     <div id="layout-modal" class="modal-overlay" style="display: none;">
         <div class="glass-effect rounded-xl shadow-lg p-6 w-full max-w-lg relative">
-            <h2 class="text-xl font-semibold text-gray-800 mb-6">版面設定</h2>
+            <h2 class="text-xl font-semibold mb-6">版面設定</h2>
             <div class="space-y-4 text-sm">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="layout-orientation" class="font-medium text-gray-600">頁面方向：</label>
-                        <select id="layout-orientation" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/80">
+                        <label for="layout-orientation" class="font-medium">頁面方向：</label>
+                        <select id="layout-orientation" class="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="portrait">直式 (Portrait)</option>
                             <option value="landscape">橫式 (Landscape)</option>
                         </select>
                     </div>
                     <div>
-                        <label for="photos-per-page" class="font-medium text-gray-600">每頁照片數量：</label>
-                        <select id="photos-per-page" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/80">
+                        <label for="photos-per-page" class="font-medium">每頁照片數量：</label>
+                        <select id="photos-per-page" class="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="2">2 張</option>
                             <option value="4">4 張</option>
                             <option value="6">6 張</option>
@@ -191,11 +234,11 @@
                 <div class="flex items-center pt-2 space-x-6">
                     <div class="flex items-center">
                         <input type="checkbox" id="show-captions" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="show-captions" class="ml-2 block text-gray-900">顯示說明文字</label>
+                        <label for="show-captions" class="ml-2 block">顯示說明文字</label>
                     </div>
                     <div class="flex items-center">
                         <input type="checkbox" id="show-borders" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="show-borders" class="ml-2 block text-gray-900">顯示框線</label>
+                        <label for="show-borders" class="ml-2 block">顯示框線</label>
                     </div>
                 </div>
             </div>
@@ -210,16 +253,16 @@
 
     <div id="pagination-modal" class="modal-overlay" style="display: none;">
         <div class="glass-effect rounded-xl shadow-lg p-6 w-full max-w-lg relative">
-            <h2 class="text-xl font-semibold text-gray-800 mb-6">頁碼設定</h2>
+            <h2 class="text-xl font-semibold mb-6">頁碼設定</h2>
             <div class="flex items-center pb-4 border-b border-gray-200 mb-4">
                 <input type="checkbox" id="pagination-enabled" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                <label for="pagination-enabled" class="ml-2 block text-gray-900 font-medium">啟用頁碼</label>
+                <label for="pagination-enabled" class="ml-2 block font-medium">啟用頁碼</label>
             </div>
             <div id="pagination-options-container" class="transition-opacity">
                 <div class="space-y-4 text-sm">
                     <div>
-                        <label for="pagination-position" class="font-medium text-gray-600">頁碼位置：</label>
-                        <select id="pagination-position" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/80">
+                        <label for="pagination-position" class="font-medium">頁碼位置：</label>
+                        <select id="pagination-position" class="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="center">頁尾置中</option>
                             <option value="left">頁尾靠左</option>
                             <option value="right">頁尾靠右</option>
@@ -227,26 +270,26 @@
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label for="pagination-font-size" class="font-medium text-gray-600">字體大小：</label>
-                            <input type="number" id="pagination-font-size" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/80" value="12">
+                            <label for="pagination-font-size" class="font-medium">字體大小：</label>
+                            <input type="number" id="pagination-font-size" class="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value="12">
                         </div>
                         <div>
-                            <label for="pagination-font-color" class="font-medium text-gray-600">字體顏色：</label>
-                            <input type="color" id="pagination-font-color" class="w-full mt-1 h-10 border border-gray-300 rounded-lg cursor-pointer" value="#555555">
+                            <label for="pagination-font-color" class="font-medium">字體顏色：</label>
+                            <input type="color" id="pagination-font-color" class="w-full mt-1 h-10 border rounded-lg cursor-pointer" value="#555555">
                         </div>
                     </div>
                     <div>
-                        <label for="pagination-format" class="font-medium text-gray-600">頁碼格式：</label>
-                        <input type="text" id="pagination-format" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/80">
-                        <p class="text-xs text-gray-500 mt-1">可用變數：{page} (目前頁), {total} (總頁數)</p>
+                        <label for="pagination-format" class="font-medium">頁碼格式：</label>
+                        <input type="text" id="pagination-format" class="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <p class="text-xs mt-1">可用變數：{page} (目前頁), {total} (總頁數)</p>
                     </div>
                     <div>
-                        <label for="pagination-range" class="font-medium text-gray-600">套用頁碼範圍 (可留白)：</label>
-                        <input type="text" id="pagination-range" placeholder="例如: 2-10, 15 (留白則全部套用)" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/80">
+                        <label for="pagination-range" class="font-medium">套用頁碼範圍 (可留白)：</label>
+                        <input type="text" id="pagination-range" placeholder="例如: 2-10, 15 (留白則全部套用)" class="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div class="flex items-center pt-2">
                         <input type="checkbox" id="pagination-show-total" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="pagination-show-total" class="ml-2 block text-gray-900">顯示總頁數</label>
+                        <label for="pagination-show-total" class="ml-2 block">顯示總頁數</label>
                     </div>
                 </div>
             </div>
@@ -261,20 +304,20 @@
     
     <div id="presets-modal" class="modal-overlay" style="display: none;">
         <div class="glass-effect rounded-xl shadow-lg p-6 w-full max-w-2xl relative">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">主題樣板管理</h2>
+            <h2 class="text-xl font-semibold mb-4">主題樣板管理</h2>
             <div class="grid grid-cols-2 gap-6">
                 <div class="space-y-3">
-                    <h3 class="font-semibold text-gray-700">儲存目前設定為樣板</h3>
-                    <input type="text" id="preset-name-input" placeholder="請輸入樣板名稱..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/80">
+                    <h3 class="font-semibold">儲存目前設定為樣板</h3>
+                    <input type="text" id="preset-name-input" placeholder="請輸入樣板名稱..." class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <button id="save-preset-btn" class="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-semibold transition-all shadow-sm">
                         <i data-lucide="save" class="w-5 h-5"></i>
                         <span>儲存樣板</span>
                     </button>
                 </div>
                 <div class="space-y-3">
-                    <h3 class="font-semibold text-gray-700">載入或刪除樣板</h3>
-                    <div id="presets-list" class="bg-gray-100 rounded-lg p-3 max-h-48 overflow-y-auto border">
-                        <p class="text-gray-500 text-sm text-center py-4">尚無儲存的樣板</p>
+                    <h3 class="font-semibold">載入或刪除樣板</h3>
+                    <div id="presets-list" class="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 max-h-48 overflow-y-auto border">
+                        <p class="text-sm text-center py-4">尚無儲存的樣板</p>
                     </div>
                 </div>
             </div>
@@ -294,13 +337,18 @@
                 <div class="traffic-light yellow"></div>
                 <div class="traffic-light green"></div>
             </div>
-            <h1 class="text-2xl font-semibold text-gray-800 text-center">
+             <!-- 新增：主題切換按鈕 -->
+            <button id="theme-toggle" title="切換明亮/深色主題" class="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                <i data-lucide="sun" class="block dark:hidden"></i>
+                <i data-lucide="moon" class="hidden dark:block"></i>
+            </button>
+            <h1 class="text-2xl font-semibold text-center">
                 施工照片排版輸出工具
             </h1>
-            <p class="text-center text-gray-500 text-sm mt-2">
+            <p class="text-center text-sm mt-2">
                 匯入多張照片自動處理排版，可自訂主題、標號、日期及頁碼，生成 HTML 檔案並列印為 PDF 報告。
             </p>
-            <p class="text-center text-gray-400 text-xs mt-1">製作者：陳政德</p>
+            <p class="text-center text-xs mt-1">製作者：陳政德</p>
         </header>
 
         <div class="glass-effect rounded-xl shadow-lg p-6 mb-6 sticky top-4 z-10">
@@ -309,7 +357,7 @@
                     <div class="header-field flex-grow" style="min-width: 400px;">
                         <div class="input-group">
                             <label for="theme-name-input" class="text-sm font-bold text-blue-600">主題名稱：</label>
-                            <input type="text" id="theme-name-input" placeholder="請輸入文件主題" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="text" id="theme-name-input" placeholder="請輸入文件主題" class="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         <input type="checkbox" id="show-theme-name" checked title="在報告中顯示主題名稱">
                     </div>
@@ -317,7 +365,7 @@
                         <div class="input-group">
                             <label for="construction-lot-select" class="text-sm font-bold text-blue-600">施工標別：</label>
                             <div class="flex items-center gap-2 mt-1">
-                                <select id="construction-lot-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <select id="construction-lot-select" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <option>萬大線</option>
                                     <option>環狀線</option>
                                     <option>環狀線北環段</option>
@@ -325,7 +373,7 @@
                                     <option>東環段</option>
                                     <option value="other">其他</option>
                                 </select>
-                                <input type="text" id="construction-lot-input" placeholder="自行輸入補充文字" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <input type="text" id="construction-lot-input" placeholder="自行輸入補充文字" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
                         </div>
                         <input type="checkbox" id="show-construction-lot" checked title="在報告中顯示施工標別">
@@ -334,7 +382,7 @@
                         <div class="input-group">
                              <label for="report-date-input" class="text-sm font-bold text-blue-600">日期：</label>
                              <div id="report-date-container" class="relative mt-1">
-                                <input type="date" id="report-date-input" class="w-full pl-3 pr-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-transparent">
+                                <input type="date" id="report-date-input" class="w-full pl-3 pr-2 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-transparent">
                                 <span id="roc-date-display" class="text-base"></span>
                              </div>
                         </div>
@@ -344,15 +392,14 @@
                 
                 <div class="flex justify-between items-end gap-4">
                     <div class="flex items-end gap-2">
-                         <div id="photo-count-info" class="text-gray-500 mr-4"></div>
-                         <label id="select-photos-label" class="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg cursor-pointer transition-all shadow-sm hover:shadow-md">
+                         <div id="photo-count-info" class="mr-4"></div>
+                         <label id="select-photos-label" class="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg cursor-pointer transition-all shadow-sm hover:shadow-md" title="選擇圖片或 PDF 檔案匯入">
                             <i data-lucide="upload" class="w-5 h-5"></i>
                             <span class="font-medium">選擇照片/PDF</span>
                             <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/tiff,image/heic,image/heif,image/jfif,application/pdf" id="file-input" class="hidden">
                         </label>
-                        <!-- 新增：匯入畫質選項 -->
                         <div>
-                            <select id="import-resolution" title="設定最終輸出的圖片品質" class="px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                            <select id="import-resolution" title="設定最終輸出的圖片品質" class="px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                                 <option value="1.0">低 (檔案小)</option>
                                 <option value="1.5" selected>中 (建議)</option>
                                 <option value="2.0">高 (品質好)</option>
@@ -361,22 +408,22 @@
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <button id="layout-settings-btn" class="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md">
+                        <button id="layout-settings-btn" class="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="設定報告的頁面排版">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
                             <span class="font-medium">版面</span>
                         </button>
-                        <button id="presets-btn" class="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md">
+                        <button id="presets-btn" class="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="儲存或載入常用的設定組合">
                             <i data-lucide="layout-template" class="w-5 h-5"></i>
                             <span class="font-medium">樣板</span>
                         </button>
-                        <button id="pagination-settings-btn" class="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md">
+                        <button id="pagination-settings-btn" class="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="自訂報告的頁碼樣式與範圍">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 7h6"/><path d="m10 10-2 2 2 2"/><path d="M14 10h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2v-4Z"/></svg>
                             <span class="font-medium">頁碼</span>
                         </button>
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <button id="generate-html-btn" class="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md">
+                        <button id="generate-html-btn" class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="將目前的設定與照片生成可列印的 HTML 報告">
                             <i data-lucide="file-code-2" class="w-5 h-5"></i>
                             <span id="generate-html-btn-text" class="font-medium">生成 HTML</span>
                         </button>
@@ -389,12 +436,89 @@
 
         <main id="photo-list-container">
             <div id="empty-state" class="glass-effect rounded-lg p-12 text-center transition-all">
-                <i data-lucide="image-down" class="w-16 h-16 mx-auto text-gray-400 mb-4"></i>
-                <p class="text-gray-600 text-lg font-medium">尚未選擇檔案</p>
-                <p class="text-gray-500 text-sm mt-2">請點擊上方的「選擇照片/PDF」按鈕開始</p>
+                <i data-lucide="image-down" class="w-16 h-16 mx-auto mb-4"></i>
+                <p class="text-lg font-medium">尚未選擇檔案</p>
+                <p class="text-sm mt-2">請點擊上方的「選擇照片/PDF」按鈕開始</p>
             </div>
             <div id="photo-grid" class="grid grid-cols-4 gap-6"></div>
         </main>
+        
+        <footer class="mt-12 glass-effect rounded-xl shadow-lg p-8">
+            <h2 class="text-2xl font-semibold text-center mb-8">功能與操作說明</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                
+                <div class="glass-effect rounded-lg p-6">
+                    <div class="flex items-center mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500 mr-3"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+                        <h3 class="text-lg font-semibold">報告資訊設定</h3>
+                    </div>
+                    <ul class="list-disc list-inside space-y-2 text-sm">
+                        <li><b class="instruction-keyword">主題名稱/標別/日期：</b>輸入報告的基本資訊。日期欄位會自動顯示民國年。</li>
+                        <li><b class="instruction-keyword">顯示選項：</b>透過欄位旁的 ✓ 核取方塊，可自由決定是否在最終報告的頁首顯示該項資訊。</li>
+                    </ul>
+                </div>
+                
+                <div class="glass-effect rounded-lg p-6">
+                    <div class="flex items-center mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500 mr-3"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path><line x1="16" y1="5" x2="22" y2="5"></line><line x1="19" y1="2" x2="19" y2="8"></line><path d="M12 18L12 12L15 15L12 12L9 15"></path></svg>
+                        <h3 class="text-lg font-semibold">檔案匯入</h3>
+                    </div>
+                    <ul class="list-disc list-inside space-y-2 text-sm">
+                        <li><b class="instruction-keyword">選擇檔案：</b>支援多選，可同時匯入圖片 (JPG, PNG, HEIC) 或 PDF 檔案。</li>
+                        <li><b class="instruction-keyword">PDF 匯入：</b>程式會自動將 PDF 的每一頁完整擷取成一張張圖片並匯入。</li>
+                        <li><b class="instruction-keyword">匯入畫質：</b>可選擇「低/中/高」三種品質，此設定會影響 PDF 渲染的清晰度與最終報告的檔案大小。</li>
+                    </ul>
+                </div>
+                
+                <div class="glass-effect rounded-lg p-6">
+                    <div class="flex items-center mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500 mr-3"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
+                        <h3 class="text-lg font-semibold">照片編輯區</h3>
+                    </div>
+                    <ul class="list-disc list-inside space-y-2 text-sm">
+                        <li><b class="instruction-keyword">編輯說明：</b>直接點擊照片下方的文字框即可輸入或修改說明，支援多行文字。</li>
+                        <li><b class="instruction-keyword">刪除/插入：</b>滑鼠移至照片上方會顯示控制按鈕，可刪除單張照片，或在此照片後插入新檔案。</li>
+                        <li><b class="instruction-keyword">預覽照片：</b>直接點擊照片縮圖，即可彈出大圖預覽視窗，方便檢視細節。</li>
+                    </ul>
+                </div>
+
+                <div class="glass-effect rounded-lg p-6">
+                    <div class="flex items-center mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-teal-600 mr-3"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M9 21V9"></path></svg>
+                        <h3 class="text-lg font-semibold">版面設定</h3>
+                    </div>
+                     <ul class="list-disc list-inside space-y-2 text-sm">
+                        <li><b class="instruction-keyword">頁面方向：</b>可選擇 A4 直式或橫式輸出。</li>
+                        <li><b class="instruction-keyword">照片數量：</b>支援每頁 2, 4, 6, 8, 9, 10, 12 張等多種排版。</li>
+                        <li><b class="instruction-keyword">顯示選項：</b>可自由選擇是否顯示說明文字與照片框線。</li>
+                    </ul>
+                </div>
+                
+                <div class="glass-effect rounded-lg p-6">
+                    <div class="flex items-center mb-3">
+                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-teal-600 mr-3"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        <h3 class="text-lg font-semibold">樣板管理</h3>
+                    </div>
+                    <ul class="list-disc list-inside space-y-2 text-sm">
+                        <li><b class="instruction-keyword">儲存設定：</b>可將當前的所有設定（包含報告資訊、版面、頁碼、畫質等）儲存成一個樣板。</li>
+                        <li><b class="instruction-keyword">快速載入：</b>點擊已儲存的樣板名稱即可一鍵套用所有設定，方便製作固定格式的報告。</li>
+                    </ul>
+                </div>
+
+                 <div class="glass-effect rounded-lg p-6">
+                    <div class="flex items-center mb-3">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-teal-600 mr-3"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path><path d="M8 7h6"></path><path d="m10 10-2 2 2 2"></path><path d="M14 10h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2v-4Z"></path></svg>
+                        <h3 class="text-lg font-semibold">頁碼設定</h3>
+                    </div>
+                     <ul class="list-disc list-inside space-y-2 text-sm">
+                        <li><b class="instruction-keyword">啟用頁碼：</b>可完全開啟或關閉頁碼功能。</li>
+                        <li><b class="instruction-keyword">自訂格式：</b>可設定頁碼位置、字體、顏色，並使用 `{page}` 和 `{total}` 變數自訂格式。</li>
+                        <li><b class="instruction-keyword">套用範圍：</b>可指定頁碼僅顯示在特定頁數，例如 `2-10, 15`。</li>
+                    </ul>
+                </div>
+
+            </div>
+        </footer>
     </div>
 
     <script>
@@ -471,6 +595,7 @@
             imagePreviewModal: document.getElementById('image-preview-modal'),
             previewImage: document.getElementById('preview-image'),
             imagePreviewClose: document.getElementById('image-preview-close'),
+            themeToggle: document.getElementById('theme-toggle'),
         };
 
         // --- UI 回饋 (載入、錯誤、成功) ---
@@ -516,7 +641,7 @@
             photos.forEach((photo, index) => {
                 const card = document.createElement('div');
                 card.className = 'photo-card glass-effect rounded-lg shadow-md overflow-hidden flex flex-col transition-all';
-                card.innerHTML = `<div class="relative group"><div class="h-48 flex items-center justify-center bg-black/5 overflow-hidden cursor-zoom-in"><img src="${photo.url}" alt="照片 ${index + 1}" class="max-w-full max-h-full object-contain"></div><div class="photo-controls absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all bg-black/40 p-1 rounded-full"><button title="在此後插入照片" class="insert-btn" data-index="${index}"><i data-lucide="plus-circle" class="w-5 h-5 text-white hover:text-blue-300"></i></button><button title="刪除照片" class="remove-btn" data-id="${photo.id}"><i data-lucide="trash-2" class="w-5 h-5 text-white hover:text-red-400"></i></button></div></div><div class="p-4 flex-grow flex flex-col"><label class="block text-sm font-medium text-gray-700 mb-1">說明文字 #${index + 1}</label><textarea data-id="${photo.id}" placeholder="請輸入說明..." class="description-textarea text-input w-full text-center px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 flex-grow">${photo.description}</textarea></div>`;
+                card.innerHTML = `<div class="relative group"><div class="h-48 flex items-center justify-center bg-black/5 overflow-hidden cursor-zoom-in"><img src="${photo.url}" alt="照片 ${index + 1}" class="max-w-full max-h-full object-contain"></div><div class="photo-controls absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all bg-black/40 p-1 rounded-full"><button title="在此後插入照片" class="insert-btn" data-index="${index}"><i data-lucide="plus-circle" class="w-5 h-5 text-white hover:text-blue-300"></i></button><button title="刪除照片" class="remove-btn" data-id="${photo.id}"><i data-lucide="trash-2" class="w-5 h-5 text-white hover:text-red-400"></i></button></div></div><div class="p-4 flex-grow flex flex-col"><label class="block text-sm font-medium mb-1">說明文字 #${index + 1}</label><textarea data-id="${photo.id}" placeholder="請輸入說明..." class="description-textarea text-input w-full text-center px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 flex-grow">${photo.description}</textarea></div>`;
                 dom.photoGrid.appendChild(card);
                 adjustTextareaHeight(card.querySelector('textarea'));
             });
@@ -636,7 +761,7 @@
         
         const loadPresets = () => { const storedPresets = localStorage.getItem('photoReportPresets'); presets = storedPresets ? JSON.parse(storedPresets) : {}; renderPresets(); };
         const savePresets = () => { localStorage.setItem('photoReportPresets', JSON.stringify(presets)); renderPresets(); };
-        const renderPresets = () => { dom.presetsList.innerHTML = ''; const presetKeys = Object.keys(presets); if (presetKeys.length === 0) { dom.presetsList.innerHTML = `<p class="text-gray-500 text-sm text-center py-4">尚無儲存的樣板</p>`; return; } presetKeys.forEach(name => { const item = document.createElement('div'); item.className = 'flex items-center justify-between p-2 rounded-md hover:bg-gray-200'; item.innerHTML = `<span class="font-medium text-gray-700 cursor-pointer load-preset-btn" data-name="${name}">${name}</span><button class="delete-preset-btn text-gray-400 hover:text-red-500" data-name="${name}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`; dom.presetsList.appendChild(item); }); lucide.createIcons(); };
+        const renderPresets = () => { dom.presetsList.innerHTML = ''; const presetKeys = Object.keys(presets); if (presetKeys.length === 0) { dom.presetsList.innerHTML = `<p class="text-sm text-center py-4">尚無儲存的樣板</p>`; return; } presetKeys.forEach(name => { const item = document.createElement('div'); item.className = 'flex items-center justify-between p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700'; item.innerHTML = `<span class="font-medium cursor-pointer load-preset-btn" data-name="${name}">${name}</span><button class="delete-preset-btn text-gray-400 hover:text-red-500" data-name="${name}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`; dom.presetsList.appendChild(item); }); lucide.createIcons(); };
 
         const handleSavePreset = () => {
             const name = dom.presetNameInput.value.trim();
@@ -837,8 +962,32 @@
 
         dom.savePresetBtn.addEventListener('click', handleSavePreset);
         dom.presetsList.addEventListener('click', (e) => { const loadBtn = e.target.closest('.load-preset-btn'); const deleteBtn = e.target.closest('.delete-preset-btn'); if (loadBtn) { handleLoadPreset(loadBtn.dataset.name); } else if (deleteBtn) { handleDeletePreset(deleteBtn.dataset.name); } });
+        
+        // 主題切換邏輯
+        const applyTheme = (theme) => {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+            } else {
+                document.documentElement.classList.add('light');
+                document.documentElement.classList.remove('dark');
+            }
+            localStorage.setItem('theme', theme);
+        };
+        dom.themeToggle.addEventListener('click', () => {
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+        });
+
 
         document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                applyTheme(savedTheme);
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                applyTheme('dark');
+            }
+            
             loadSessionData();
             loadPresets();
             if (!dom.reportDateInput.value) { const today = new Date(); dom.reportDateInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`; }
