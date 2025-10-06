@@ -34,6 +34,12 @@
       --process-text: #0b63ce;
       --error-bg: #ffe2e0;
       --error-text: #c23b2a;
+      
+      --control-bg: #fff;
+      --upload-area-bg: rgba(255,255,255,0.7);
+      --file-item-bg: rgba(255,255,255,0.8);
+      --btn-secondary-bg: #fff;
+      --btn-secondary-hover-bg: #f7f7f8;
 
       --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
       --radius-lg: 20px;
@@ -41,6 +47,35 @@
       --radius-sm: 8px;
       --blur: 20px;
       --saturate: 180%;
+    }
+
+    /* ===== (新增) 深色主題變數 ===== */
+    body.dark-mode {
+      --mac-bg: #1d1d1f;
+      --surface-glass: rgba(40,40,40,0.5);
+      --glass-border: rgba(60,60,60,0.7);
+      --shadow: 0 10px 30px rgba(0,0,0,0.25);
+      
+      --text: #f5f5f7;
+      --text-subtle: #a1a1a6;
+      --text-muted: #86868b;
+      
+      --border: #424245;
+      
+      --success-bg: #285c34;
+      --success-text: #aef0c1;
+      --warn-bg: #3a3a3c;
+      --warn-text: #a1a1a6;
+      --process-bg: #1f4e8a;
+      --process-text: #b8d6ff;
+      --error-bg: #7d2a23;
+      --error-text: #ffc4be;
+      
+      --control-bg: #3a3a3c;
+      --upload-area-bg: rgba(60,60,60,0.7);
+      --file-item-bg: rgba(60,60,60,0.8);
+      --btn-secondary-bg: #3a3a3c;
+      --btn-secondary-hover-bg: #4a4a4c;
     }
 
     html, body { height: 100%; }
@@ -53,9 +88,10 @@
       margin: 0;
       padding: 24px;
       display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      box-sizing: border-box; /* 確保 padding 不會影響總寬度 */
+      flex-direction: column; /* 讓 container 跟 instructions 垂直排列 */
+      align-items: center;
+      box-sizing: border-box;
+      transition: background .3s ease, color .3s ease;
     }
 
     /* ===== 容器：毛玻璃卡片 ===== */
@@ -69,71 +105,63 @@
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow);
       padding: 32px 32px 40px;
-      box-sizing: border-box; /* 確保 padding 不會影響總寬度 */
+      box-sizing: border-box;
+      transition: background .3s ease, border-color .3s ease;
+      position: relative; /* 為了主題切換按鈕定位 */
     }
 
-    /* ===== 標題列：左側三個原點 + 主標題（分行顯示） ===== */
+    /* ===== 標題列 ===== */
     .header{ margin-bottom: 28px; }
-    .traffic-lights{
-      display: flex; /* 改為 flex 以便對齊 */
-      gap: 8px;
-      margin-bottom: 20px; /* 與下方標題的間距 */
-    }
-    .dot{
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      border: 0.5px solid rgba(0,0,0,0.06);
-      box-shadow: 0 1px 0 rgba(0,0,0,0.06) inset;
-    }
-    .dot.red{    background:#ff5f57; }
+    .traffic-lights{ display: flex; gap: 8px; margin-bottom: 20px; }
+    .dot{ width: 12px; height: 12px; border-radius: 50%; border: 0.5px solid rgba(0,0,0,0.06); box-shadow: 0 1px 0 rgba(0,0,0,0.06) inset; }
+    .dot.red{ background:#ff5f57; }
     .dot.yellow{ background:#febc2e; }
-    .dot.green{  background:#28c840; }
+    .dot.green{ background:#28c840; }
     
-    .title-row {
-      text-align: center; /* 讓標題與副標題置中 */
-    }
-    .header h1{
-      font-size: 28px;
-      letter-spacing: .2px;
-      margin: 0;
-      font-weight: 700;
-      color: var(--text);
-    }
-    .subtitle{
-      margin: 8px 0 2px;
-      color: var(--text-subtle);
-      font-size: 14px;
-      line-height: 1.6;
-    }
-    .author-name{
-      margin: 4px 0 0;
-      color: var(--text-muted);
-      font-size: 12px;
-    }
+    .title-row { text-align: center; }
+    .header h1{ font-size: 28px; letter-spacing: .2px; margin: 0; font-weight: 700; color: var(--text); transition: color .3s ease; }
+    .subtitle{ margin: 8px 0 2px; color: var(--text-subtle); font-size: 14px; line-height: 1.6; transition: color .3s ease; }
+    .author-name{ margin: 4px 0 0; color: var(--text-muted); font-size: 12px; transition: color .3s ease;}
 
-    /* ===== 上傳區（保留原功能與文案） ===== */
+    /* ===== (新增) 主題切換按鈕 ===== */
+    .theme-switch-wrapper { position: absolute; top: 28px; right: 28px; }
+    .theme-switch { display: inline-block; height: 26px; position: relative; width: 50px; }
+    .theme-switch input { display:none; }
+    .slider { background-color: #ccc; bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; }
+    .slider:before { background-color: #fff; bottom: 4px; content: ""; height: 18px; left: 4px; position: absolute; transition: .4s; width: 18px; }
+    input:checked + .slider { background-color: var(--primary); }
+    input:checked + .slider:before { transform: translateX(24px); }
+    .slider.round { border-radius: 34px; }
+    .slider.round:before { border-radius: 50%; }
+    .slider .icon { position: absolute; top: 50%; transform: translateY(-50%); color: #fff; font-size: 12px; }
+    .slider .sun { left: 6px; opacity: 1; transition: opacity .2s ease; }
+    .slider .moon { right: 6px; opacity: 0; transition: opacity .2s ease; }
+    input:checked + .slider .sun { opacity: 0; }
+    input:checked + .slider .moon { opacity: 1; }
+
+    /* ===== 上傳區 ===== */
     .upload-wrapper{ display: flex; justify-content: center; margin: 18px 0 28px; }
     .upload-area{
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       padding: 16px 18px;
-      background: rgba(255,255,255,0.7);
+      background: var(--upload-area-bg);
       backdrop-filter: blur(16px) saturate(var(--saturate));
       -webkit-backdrop-filter: blur(16px) saturate(var(--saturate));
-      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease, background .3s ease;
       cursor: pointer;
       max-width: 360px;
       width: 100%;
       text-align: center;
       box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+      position: relative; /* 為了 Tooltip */
     }
     .upload-area:hover{ transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,0.08); border-color: var(--primary); }
     .upload-icon{ display:block; margin: 2px auto 8px; width:26px; height:26px; }
     .upload-text{ color: var(--primary-hover); font-weight:700; font-size:15px; letter-spacing:.2px; }
     .file-input{ display:none; }
 
-    /* ===== 控制列（毛玻璃、系統藍按鈕） ===== */
+    /* ===== 控制列 ===== */
     .controls{
       display:flex; gap:20px; flex-wrap:wrap; align-items:center; justify-content: space-between;
       background: var(--surface-glass);
@@ -144,53 +172,75 @@
       -webkit-backdrop-filter: blur(16px) saturate(var(--saturate));
       box-shadow: var(--shadow);
       margin-bottom: 24px;
+      transition: background .3s ease, border-color .3s ease;
     }
     .control-group{ display:flex; align-items:center; gap:12px; flex-grow:1; min-width:220px; }
-    .control-group label{ white-space:nowrap; font-weight:600; color: var(--text); font-size:14px; }
+    .control-group label{ white-space:nowrap; font-weight:600; color: var(--text); font-size:14px; transition: color .3s ease;}
     .output-select{
       padding:10px 36px 10px 12px;
       font-size:14px;
       border: 1px solid var(--border);
       border-radius: 10px;
-      background: #fff;
+      background: var(--control-bg);
       color: var(--text);
       appearance:none;
       -webkit-appearance: none;
       background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="none" stroke="%23007aff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 5l6 6 6-6"/></svg>');
       background-repeat:no-repeat; background-position:right 12px center;
-      transition: border-color .2s ease, box-shadow .2s ease;
+      transition: border-color .2s ease, box-shadow .2s ease, background .3s ease, color .3s ease;
     }
     .output-select:hover{ border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); }
 
     .quality-slider{ width:100%; max-width: 200px; height:6px; border-radius:999px; background:#e9e9ec; outline:none; -webkit-appearance:none; position:relative; }
-    .quality-slider::-webkit-slider-thumb{
-      -webkit-appearance:none; width:22px; height:22px; border-radius:50%;
-      background:#fff; border:2px solid var(--primary);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.12); cursor:pointer; transition: transform .15s ease;
-    }
+    .quality-slider::-webkit-slider-thumb{ -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:#fff; border:2px solid var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,0.12); cursor:pointer; transition: transform .15s ease; }
     .quality-slider::-webkit-slider-thumb:hover{ transform: scale(1.06); }
     .quality-value{ font-weight:700; color: var(--primary-hover); min-width:56px; text-align:center; font-size:14px; }
 
-    .btn{ padding: 12px 22px; border:none; border-radius: 12px; cursor:pointer; font-size:14px; font-weight:600; letter-spacing:.2px; transition: transform .15s ease, box-shadow .15s ease, background .15s ease; }
+    .btn{ padding: 12px 22px; border:none; border-radius: 12px; cursor:pointer; font-size:14px; font-weight:600; letter-spacing:.2px; transition: transform .15s ease, box-shadow .15s ease, background .15s ease; position: relative; /* 為了 Tooltip */ }
     .btn:disabled{ opacity:.55; cursor:not-allowed; box-shadow:none !important; transform:none !important; }
     .btn-primary{ background: var(--primary); color:#fff; box-shadow: 0 6px 16px rgba(0,122,255,0.35); }
     .btn-primary:hover{ background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 10px 22px rgba(0,122,255,0.38); }
-    .btn-secondary{ background:#fff; color: var(--text); border: 1px solid var(--border); }
-    .btn-secondary:hover{ background:#f7f7f8; transform: translateY(-1px); }
+    .btn-secondary{ background: var(--btn-secondary-bg); color: var(--text); border: 1px solid var(--border); transition: background .3s ease, color .3s ease, border-color .3s ease; }
+    .btn-secondary:hover{ background: var(--btn-secondary-hover-bg); transform: translateY(-1px); }
 
-    /* ===== 統計卡片（毛玻璃） ===== */
+    /* ===== (新增) 懸浮文字提示 (Tooltip) ===== */
+    [data-tooltip]::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 115%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #333;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .2s ease, visibility .2s ease;
+      z-index: 10;
+    }
+    body.dark-mode [data-tooltip]::after {
+        background-color: #f5f5f7;
+        color: #1d1d1f;
+    }
+    [data-tooltip]:hover::after { opacity: 1; visibility: visible; }
+    
+    /* ===== 統計卡片 ===== */
     .stats{ display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom: 18px; }
-    .stat-card{ background: var(--surface-glass); border: 1px solid var(--glass-border); border-radius: var(--radius-md); text-align:center; padding: 10px 12px; box-shadow: var(--shadow); transition: transform .15s ease, box-shadow .15s ease; }
+    .stat-card{ background: var(--surface-glass); border: 1px solid var(--glass-border); border-radius: var(--radius-md); text-align:center; padding: 10px 12px; box-shadow: var(--shadow); transition: transform .15s ease, box-shadow .15s ease, background .3s ease, border-color .3s ease; }
     .stat-card:hover{ transform: translateY(-2px); box-shadow: 0 12px 26px rgba(0,0,0,0.08); }
     .stat-number{ font-size:22px; font-weight:800; color: var(--primary-hover); display:block; }
-    .stat-label{ color: var(--text-muted); font-size: 12px; margin-top: 4px; font-weight:400; }
+    .stat-label{ color: var(--text-muted); font-size: 12px; margin-top: 4px; font-weight:400; transition: color .3s ease; }
 
     /* ===== 進度條 ===== */
     .progress-bar{ width:100%; height:10px; background:#e9e9ec; border-radius:999px; overflow:hidden; margin:22px 0 8px; }
     .progress-fill{ height:100%; background: var(--primary); width:0%; transition: width .25s ease; }
-    .progress-text{ text-align:center; color: var(--text-subtle); font-weight:600; font-size:13px; }
+    .progress-text{ text-align:center; color: var(--text-subtle); font-weight:600; font-size:13px; transition: color .3s ease; }
 
-    /* ===== 檔案清單（毛玻璃面板） ===== */
+    /* ===== 檔案清單 ===== */
     .file-list-container{
       max-height: 220px; overflow-y:auto; margin: 18px 0 22px;
       border: 1px solid var(--glass-border); border-radius: var(--radius-md);
@@ -198,18 +248,19 @@
       backdrop-filter: blur(16px) saturate(var(--saturate));
       -webkit-backdrop-filter: blur(16px) saturate(var(--saturate));
       box-shadow: var(--shadow);
+      transition: background .3s ease, border-color .3s ease;
     }
     .file-item{
       display:flex; align-items:center; padding:10px 12px;
-      background: rgba(255,255,255,0.8); border-radius: 12px; margin-bottom:10px;
+      background: var(--file-item-bg); border-radius: 12px; margin-bottom:10px;
       border-left: 6px solid var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      transition: background .3s ease;
     }
     .file-item:last-child { margin-bottom: 0; }
     .file-info{ flex:1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .file-name{ font-weight:600; color: var(--text); margin:0; }
-    .file-size{ color: var(--text-muted); font-size:12px; margin-left:6px; }
-
-    .file-status{ padding:6px 12px; border-radius:999px; font-size:12px; font-weight:700; letter-spacing:.2px; white-space: nowrap; }
+    .file-name{ font-weight:600; color: var(--text); margin:0; transition: color .3s ease; }
+    .file-size{ color: var(--text-muted); font-size:12px; margin-left:6px; transition: color .3s ease; }
+    .file-status{ padding:6px 12px; border-radius:999px; font-size:12px; font-weight:700; letter-spacing:.2px; white-space: nowrap; transition: background .3s ease, color .3s ease; }
     .status-waiting{ background: var(--warn-bg); color: var(--warn-text); }
     .status-processing{ background: var(--process-bg); color: var(--process-text); }
     .status-completed{ background: var(--success-bg); color: var(--success-text); }
@@ -219,7 +270,7 @@
     .results{ margin-top: 28px; text-align:center; }
     .download-all{ margin:16px 0 6px; display:flex; justify-content:center; align-items:center; gap:12px; }
 
-    /* ===== 訊息盒（毛玻璃） ===== */
+    /* ===== 訊息盒 ===== */
     .message-box{
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
       width: calc(100% - 40px); max-width: 400px;
@@ -227,97 +278,124 @@
       border-radius: var(--radius-md); padding: 22px; box-shadow: 0 18px 44px rgba(0,0,0,0.18);
       text-align:center; z-index:1000; display:none; animation: fadeIn .25s ease-out;
       backdrop-filter: blur(20px) saturate(var(--saturate)); -webkit-backdrop-filter: blur(20px) saturate(var(--saturate));
+      transition: background .3s ease, border-color .3s ease;
     }
     .message-box .message-content{ display:flex; flex-direction:column; align-items:center; gap:12px; }
-    .message-box .message-icon{ font-size:28px; color: var(--primary); }
-    .message-box.error-box .message-icon{ color: #c23b2a; }
-    .message-box.success-box .message-icon{ color: #1b7a3d; }
-    .message-box .message-text{ font-weight:600; color: var(--text); margin:0; }
-    .message-box .close-btn{ background:#fff; border: 1px solid var(--border); padding:8px 14px; border-radius: 10px; cursor:pointer; font-weight:600; }
+    .message-box .message-icon{ font-size:28px; }
+    .message-box .message-text{ font-weight:600; color: var(--text); margin:0; transition: color .3s ease;}
+    .message-box .close-btn{ background:var(--btn-secondary-bg); border: 1px solid var(--border); padding:8px 14px; border-radius: 10px; cursor:pointer; font-weight:600; color: var(--text); transition: background .3s ease, color .3s ease, border-color .3s ease; }
     @keyframes fadeIn{ from{opacity:0; transform:translate(-50%,-46%);} to{opacity:1; transform:translate(-50%,-50%);} }
 
-    /* ===== 響應式設計 (Responsive Web Design) ===== */
-    
-    /* --- Tablet (平板): 1024px 以下 --- */
-    @media (max-width: 1024px) {
-      body {
-        padding: 20px;
-      }
-      .container {
-        padding: 28px;
-      }
-      .header h1 {
-        font-size: 26px;
-      }
-      .controls {
-        justify-content: flex-start; /* 讓內容從左邊開始排列換行 */
-      }
+    /* ===== (新增) 操作說明區塊 ===== */
+    .instructions-container {
+      width: 100%;
+      max-width: 920px;
+      margin-top: 32px;
+      padding: 32px;
+      background: var(--surface-glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+      -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+      transition: background .3s ease, border-color .3s ease;
+      box-sizing: border-box;
+    }
+    .instructions-container h2 {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0 0 28px;
+      color: var(--text);
+      transition: color .3s ease;
+    }
+    .instructions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 28px;
+    }
+    .instruction-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .instruction-icon {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      color: var(--primary);
+    }
+    .instruction-step h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0 0 8px;
+      color: var(--text);
+      transition: color .3s ease;
+    }
+    .instruction-step p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-subtle);
+      margin: 0;
+      transition: color .3s ease;
+    }
+    .keyword-highlight {
+      color: var(--primary); /* (新增) 蘋果藍色關鍵字 */
+      font-weight: 600;
     }
 
-    /* --- Mobile (手機): 768px 以下 --- */
+    /* ===== 響應式設計 (Responsive Web Design) ===== */
+    @media (max-width: 1024px) {
+      body { padding: 20px; }
+      .container, .instructions-container { padding: 28px; }
+      .header h1 { font-size: 26px; }
+      .controls { justify-content: flex-start; }
+    }
     @media (max-width: 768px) {
-      body {
-        padding: 16px;
-        align-items: flex-start; /* 確保內容從頂部開始 */
-      }
-      .container {
-        padding: 20px;
-      }
-      .header h1 {
-        font-size: 22px;
-      }
-      .subtitle {
-        font-size: 13px;
-      }
-      .controls {
-        flex-direction: column; /* 控制項垂直堆疊 */
-        align-items: stretch;   /* 讓控制項撐滿寬度 */
-      }
-      .control-group {
-        flex-direction: column; /* 標籤與輸入框也垂直堆疊 */
-        align-items: flex-start;
-        gap: 8px;
-        min-width: unset;
-      }
-      .quality-slider {
-        max-width: none; /* 移除最大寬度限制，讓它撐滿 */
-      }
-      .btn {
-        width: 100%; /* 按鈕撐滿寬度 */
-        padding: 14px 22px; /* 增加點擊區域 */
-      }
-      .stats {
-        grid-template-columns: 1fr; /* 統計卡片改為單欄 */
-      }
-      .file-item {
-        flex-wrap: wrap; /* 允許檔案狀態換行 */
-        gap: 8px;
-      }
-      .file-list-container {
-        max-height: 180px; /* 縮小檔案列表最大高度 */
-      }
+      body { padding: 16px; align-items: flex-start; }
+      .container, .instructions-container { padding: 20px; margin-top: 24px; }
+      .header h1 { font-size: 22px; }
+      .subtitle { font-size: 13px; }
+      .theme-switch-wrapper { top: 18px; right: 18px; }
+      .controls { flex-direction: column; align-items: stretch; }
+      .control-group { flex-direction: column; align-items: flex-start; gap: 8px; min-width: unset; }
+      .quality-slider { max-width: none; }
+      .btn { width: 100%; padding: 14px 22px; }
+      .stats { grid-template-columns: 1fr; }
+      .file-item { flex-wrap: wrap; gap: 8px; }
+      .file-list-container { max-height: 180px; }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <!-- (已修改) macOS 三個原點移至獨立的第一行 -->
       <div class="traffic-lights" aria-hidden="true">
         <span class="dot red"></span>
         <span class="dot yellow"></span>
         <span class="dot green"></span>
       </div>
+      <!-- (新增) 主題切換按鈕 -->
+      <div class="theme-switch-wrapper" data-tooltip="切換明亮/深色主題">
+        <label class="theme-switch" for="theme-checkbox">
+          <input type="checkbox" id="theme-checkbox" />
+          <div class="slider round">
+            <span class="icon sun">☀️</span>
+            <span class="icon moon">🌙</span>
+          </div>
+        </label>
+      </div>
       <div class="title-row">
         <h1>HEIC 批次轉檔工具</h1>
-        <!-- (已修改) 副標題文字更新 -->
         <p class="subtitle">將 iPhone 的 HEIC 圖片檔案轉換為 JPG、PNG 及 WebP 等多種影像格式</p>
         <p class="author-name">製作者：陳政德</p>
       </div>
     </div>
 
     <div class="upload-wrapper">
-      <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+      <!-- (新增) 懸浮提示文字 -->
+      <div class="upload-area" onclick="document.getElementById('fileInput').click()" data-tooltip="點擊此處或拖曳檔案以匯入">
         <div class="upload-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M16 2H8C6.89543 2 6 2.89543 6 4V20C6 21.1046 6.89543 22 8 22H16C17.1046 22 18 21.1046 18 20V4C18 2.89543 17.1046 2 16 2Z" stroke="var(--primary-hover)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -348,8 +426,8 @@
         <input type="range" id="qualitySlider" class="quality-slider" min="0.1" max="1" step="0.1" value="0.8">
         <span class="quality-value" id="qualityValue">80%</span>
       </div>
-      <button class="btn btn-primary" id="convertBtn" disabled>開始轉換</button>
-      <button class="btn btn-secondary" id="clearBtn">清除檔案</button>
+      <button class="btn btn-primary" id="convertBtn" disabled data-tooltip="開始處理佇列中的所有檔案">開始轉換</button>
+      <button class="btn btn-secondary" id="clearBtn" data-tooltip="清除所有已匯入的檔案">清除檔案</button>
     </div>
 
     <div class="stats" id="stats" style="display:none;">
@@ -378,7 +456,7 @@
 
     <div class="results" id="results" style="display:none;">
       <div class="download-all">
-        <button class="btn btn-primary" id="downloadAllBtn">📥 下載全部檔案</button>
+        <button class="btn btn-primary" id="downloadAllBtn" data-tooltip="將所有轉換後的檔案打包下載">📥 下載全部檔案</button>
       </div>
     </div>
   </div>
@@ -390,8 +468,42 @@
       <button class="close-btn" onclick="document.getElementById('messageBox').style.display='none'">關閉</button>
     </div>
   </div>
+  
+  <!-- (新增) 操作說明區塊 -->
+  <div class="instructions-container">
+    <h2>如何使用</h2>
+    <div class="instructions-grid">
+      <div class="instruction-step">
+        <div class="instruction-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15m0-3l-3-3m0 0l-3 3m3-3v11.25" />
+          </svg>
+        </div>
+        <h3>1. 匯入 HEIC 檔案</h3>
+        <p>點擊上方的「<span class="keyword-highlight">點選照片</span>」按鈕，或直接將 HEIC 檔案拖曳至該區域，即可批次匯入。</p>
+      </div>
+      <div class="instruction-step">
+        <div class="instruction-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+          </svg>
+        </div>
+        <h3>2. 調整轉換設定</h3>
+        <p>依需求選擇輸出的<span class="keyword-highlight">圖片格式</span>（JPG, PNG 等）與<span class="keyword-highlight">壓縮品質</span>。品質越高，檔案越大。</p>
+      </div>
+      <div class="instruction-step">
+        <div class="instruction-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+        </div>
+        <h3>3. 開始轉換與下載</h3>
+        <p>設定完成後，點擊「<span class="keyword-highlight">開始轉換</span>」。完成後點擊「<span class="keyword-highlight">下載全部</span>」，即可一次存為 ZIP 檔。</p>
+      </div>
+    </div>
+  </div>
 
-  <!-- JavaScript 功能保持不變 -->
+  <!-- JavaScript 功能 -->
   <script>
     class HEICConverter {
       constructor() {
@@ -559,7 +671,36 @@
         return parseFloat((bytes/Math.pow(k,i)).toFixed(2)) + ' ' + sizes[i];
       }
     }
-    document.addEventListener('DOMContentLoaded', () => { new HEICConverter(); });
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      // (新增) 主題切換功能
+      const themeCheckbox = document.getElementById('theme-checkbox');
+      const currentTheme = localStorage.getItem('theme');
+
+      if (currentTheme) {
+        document.body.classList.add(currentTheme);
+        if (currentTheme === 'dark-mode') {
+          themeCheckbox.checked = true;
+        }
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        // (新增) 根據系統偏好設定預設主題
+        document.body.classList.add('dark-mode');
+        themeCheckbox.checked = true;
+        localStorage.setItem('theme', 'dark-mode');
+      }
+
+      themeCheckbox.addEventListener('change', () => {
+        if (themeCheckbox.checked) {
+          document.body.classList.add('dark-mode');
+          localStorage.setItem('theme', 'dark-mode');
+        } else {
+          document.body.classList.remove('dark-mode');
+          localStorage.setItem('theme', 'light-mode');
+        }
+      });
+      
+      new HEICConverter(); 
+    });
   </script>
 </body>
 </html>
