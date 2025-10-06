@@ -18,7 +18,18 @@
       --text: #1d1d1f;
       --muted: #6e6e73;
       --card-radius: 18px;
+      --modal-bg: rgba(0,0,0,0.5);
     }
+    html.dark-mode {
+      --bg: #1d1d1f;
+      --panel-bg: rgba(40, 40, 42, 0.85);
+      --stroke: rgba(255, 255, 255, 0.15);
+      --shadow: 0 8px 30px rgba(0,0,0,.25);
+      --text: #f5f5f7;
+      --muted: #86868b;
+      --modal-bg: rgba(0,0,0,0.6);
+    }
+
     html,body{height:100%;}
     body{
       margin:0; background:var(--bg); padding: 16px;
@@ -27,6 +38,7 @@
       -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
       overflow: hidden;
       box-sizing: border-box;
+      transition: background-color 0.3s, color 0.3s;
     }
     *, *::before, *::after { box-sizing: inherit; }
     .frame{max-width:1400px; height: 100%; margin:0 auto; display: flex; flex-direction: column;}
@@ -63,24 +75,35 @@
     .dot{width:12px; height:12px; border-radius:50%;}
     .dot.red{background:#ff5f56;} .dot.yellow{background:#ffbd2e;} .dot.green{background:#27c93f;}
 
-    .titlebar{display:flex; align-items:center; justify-content:center; padding-bottom: 1rem; flex-shrink: 0;}
-    .titles{text-align:center; flex-grow:1;}
+    .titlebar{display:flex; align-items:center; justify-content:space-between; padding-bottom: 1rem; flex-shrink: 0;}
+    .titles{text-align:center; flex-grow:1; padding: 0 40px;}
     .titles h1{margin:0 0 4px 0; font-size:24px; font-weight:600;}
     .titles h2{margin:0; font-size:14px; font-weight:400; color:var(--muted); line-height: 1.2;}
     .author{margin-top:0; font-size:14px; font-weight:400; color:var(--muted); white-space:nowrap; line-height: 1.2;}
 
-    .glass{background:var(--panel-bg); border:1px solid var(--stroke); border-radius:var(--card-radius); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); box-shadow:var(--shadow);}
+    #themeToggle { background: none; border: none; cursor: pointer; padding: 5px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    #themeToggle:hover { background: var(--stroke); }
+    #themeToggle svg { width: 22px; height: 22px; fill: var(--muted); }
+    #themeToggle:hover svg { fill: var(--text); }
+
+    .glass{background:var(--panel-bg); border:1px solid var(--stroke); border-radius:var(--card-radius); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); box-shadow:var(--shadow); transition: background-color 0.3s, border-color 0.3s;}
     .panel{padding:18px;}
-    .panel .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .panel h3{margin:0; font-size:16px; font-weight:600; color:var(--blue); text-transform:uppercase; letter-spacing:.8px;}
-    
-    .btn.primary { background: var(--orange); color: white; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+    .panel .header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .panel h3{margin:0; font-size:16px; font-weight:600; color:var(--blue); text-transform:uppercase; letter-spacing:.8px; flex-shrink: 0;}
+    .panel .header-actions { display: flex; gap: 8px; }
+
+    .btn.primary { background: var(--orange); color: white; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; border: none; font-size: 14px; font-weight: 500;}
     .btn.primary:hover{filter:brightness(1.1);}
     .btn.primary svg { width: 20px; height: 20px; fill: white; }
-    .btn.ghost { background: transparent; color: var(--muted); font-size: 12px; padding: 4px 8px; border: 1px solid rgba(0,0,0,0.3); border-radius: 6px; cursor: pointer; }
-    .btn.ghost:hover { background: rgba(0,0,0,0.05); }
+    .btn.ghost { background: transparent; color: var(--muted); font-size: 12px; padding: 4px 8px; border: 1px solid var(--stroke); border-radius: 6px; cursor: pointer; }
+    html.dark-mode .btn.ghost { border-color: rgba(255,255,255,0.3); }
+    .btn.ghost:hover { background: var(--stroke); }
 
-    .filedrop{border:2px dashed rgba(0,0,0,.12); border-radius:16px; padding:12px 16px; text-align:center; display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 12px;}
+    [data-tooltip] { position: relative; }
+    [data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%); background-color: rgba(20, 20, 20, 0.9); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; white-space: nowrap; opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; pointer-events: none; z-index: 100; }
+    [data-tooltip]:hover::after { opacity: 1; visibility: visible; }
+
+    .filedrop{border:2px dashed var(--stroke); border-radius:16px; padding:12px 16px; text-align:center; display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 12px;}
     .video-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-size: 18px; pointer-events: none; text-align: center; padding: 1rem; z-index: 10; }
     
     .controls-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 15px; display: flex; flex-direction: column; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%); opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; z-index: 20; }
@@ -93,7 +116,6 @@
     #progressBar::-moz-range-thumb { width: 14px; height: 14px; background: var(--red); border-radius: 50%; border: none; z-index: 3; position: relative; }
     
     .ab-marker { position: absolute; top: 50%; transform: translateY(-50%); width: 3px; height: 10px; background-color: var(--orange); z-index: 1; display: none; border-radius: 1px; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
-    
     #abLoopRange { position: absolute; top: 50%; transform: translateY(-50%); height: 2px; background-color: var(--orange); z-index: 1; display: none; }
     #abLoopRange::before, #abLoopRange::after { content: ''; position: absolute; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
     #abLoopRange::before { left: -3px; border-right: 6px solid var(--orange); }
@@ -101,7 +123,7 @@
     
     .controls-group { display: flex; justify-content: space-between; align-items: center; }
     .controls-left, .controls-right { display: flex; align-items: center; gap: 12px; }
-    .control-btn { background: none; border: none; padding: 0; cursor: pointer; color: white; line-height: 1; position: relative; }
+    .control-btn { background: none; border: none; padding: 0; cursor: pointer; color: white; line-height: 1; }
     .control-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .control-btn:disabled:hover svg { transform: scale(1); }
     .control-btn svg { width: 24px; height: 24px; fill: white; pointer-events: none; transition: transform 0.2s; }
@@ -109,8 +131,6 @@
     .control-btn.active svg { fill: var(--blue); }
     .control-btn.ab-active svg { fill: var(--orange); }
     .control-btn.active-green svg { fill: var(--green); }
-    .control-btn[data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: 150%; left: 50%; transform: translateX(-50%); background-color: rgba(20, 20, 20, 0.9); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; white-space: nowrap; opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; pointer-events: none; z-index: 100; }
-    .control-btn[data-tooltip]:hover::after { opacity: 1; visibility: visible; }
     
     .ab-controls { display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 12px; }
     .ab-separator { width: 1px; height: 16px; background: rgba(255,255,255,0.3); margin: 0 4px; }
@@ -136,7 +156,7 @@
     .custom-speed-control .label span:last-child { font-weight: 600; color: var(--blue); }
     #speedSlider { width: 100%; }
     
-    .list-area { background: rgba(0,0,0,0.03); border-radius: 12px; padding: 8px; flex-grow: 1; min-height: 0; display: flex; flex-direction: column; }
+    .list-area { background: var(--stroke); border-radius: 12px; padding: 8px; flex-grow: 1; min-height: 0; display: flex; flex-direction: column; }
     .list-group-top { flex-shrink: 0; }
     .file-list-container.radio-main-container { flex-grow: 1; min-height: 0; display: flex; flex-direction: column; }
     
@@ -186,8 +206,9 @@
     .radio-main-container.collapsed #radioList { max-height: 0; }
 
     #videoList li, #audioList li, #radioList li, #favoriteRadioList li { position: relative; font-size: 14px; white-space: nowrap; overflow: hidden; padding: 8px 10px; cursor: pointer; border-radius: 8px; transition: background-color 0.15s ease; display: flex; align-items: center; }
-    #videoList li:hover, #audioList li:hover, #radioList li:hover, #favoriteRadioList li:hover { background-color: rgba(0,0,0,.07); }
+    #videoList li:hover, #audioList li:hover, #radioList li:hover, #favoriteRadioList li:hover { background-color: var(--stroke); }
     #videoList li.active, #audioList li.active, #radioList li.active, #favoriteRadioList li.active { background-color: var(--blue); color: white; font-weight: 500; }
+    #videoList li.active:hover, #audioList li.active:hover, #radioList li.active:hover, #favoriteRadioList li.active:hover { background-color: #0077ed; }
     #videoList:empty::after, #audioList:empty::after, #radioList:empty::after, #favoriteRadioList:empty::after { content: "尚未匯入檔案"; color: var(--muted); font-style: italic; font-size: 13px; padding: 4px; }
     #radioList:empty::after { content: ""; }
     .list-spinner { display: flex; justify-content: center; align-items: center; padding: 2rem; }
@@ -211,7 +232,9 @@
     li.active .list-item-btn:hover { opacity: 1; }
     .list-item-btn svg { width: 16px; height: 16px; pointer-events: none; }
     .favorite-btn svg { fill: #ccc; }
+    html.dark-mode .favorite-btn svg { fill: #555; }
     li:hover .favorite-btn svg { fill: #aaa; }
+    html.dark-mode li:hover .favorite-btn svg { fill: #888; }
     li.active:hover .favorite-btn svg { fill: #fff; }
     .favorite-btn.is-favorite svg { fill: #ffc845; opacity: 1; }
     li.active .favorite-btn.is-favorite svg { opacity: 1; }
@@ -229,11 +252,27 @@
     #radioList li.failed, #favoriteRadioList li.failed { opacity: 0.5; cursor: not-allowed; color: var(--muted); }
     #radioList li.failed:hover, #favoriteRadioList li.failed:hover { background-color: transparent; }
     #waveform-display { height: 40px; background-color: white; border: 1px solid var(--stroke); border-top: none; border-radius: 0 0 var(--card-radius) var(--card-radius); position: relative; overflow: hidden; display: none; flex-shrink: 0; }
+    html.dark-mode #waveform-display { background-color: #2c2c2e; }
     #waveformCanvas { width: 100%; height: 100%; display: block; }
     #waveform-playhead { position: absolute; top: 0; left: 0; width: 2px; height: 100%; background-color: var(--red); pointer-events: none; }
-    #loadingIndicator { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(245,245,247,0.7); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; gap: 10px; color: var(--muted); font-weight: 600; }
-    .spinner { width: 50px; height: 50px; border: 5px solid rgba(0,0,0,0.1); border-top-color: var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
+    #loadingIndicator { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--panel-bg); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; gap: 10px; color: var(--muted); font-weight: 600; }
+    .spinner { width: 50px; height: 50px; border: 5px solid var(--stroke); border-top-color: var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 10000; padding: 1rem; cursor: pointer;}
+    .instructions-panel { width: 100%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; cursor: auto;}
+    .instructions-panel .header { display: flex; justify-content: space-between; align-items: center; }
+    .close-btn { background: none; border: none; cursor: pointer; padding: 0; }
+    .close-btn svg { width: 24px; height: 24px; fill: var(--muted); }
+    .close-btn:hover svg { fill: var(--text); }
+    .instructions-panel .instructions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; overflow-y: auto; padding: 8px; margin-top: 10px; }
+    .instruction-item { text-align: center; }
+    .icon-bg { width: 60px; height: 60px; border-radius: 50%; background: var(--stroke); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+    .icon-bg svg { width: 32px; height: 32px; fill: var(--blue); }
+    .instruction-item h4 { margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: var(--text); }
+    .instruction-item p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .keyword { font-weight: 600; color: var(--text); background: var(--stroke); padding: 2px 5px; border-radius: 4px; }
+    
 
     @media (max-width: 1024px) { 
       body { overflow-y: auto; height: auto; padding: 12px; } 
@@ -242,7 +281,7 @@
       .sidebar { max-height: 60vh; min-height: 400px; } 
       #videoList, #audioList { max-height: 100px; }
       .video-player-container { min-height: 250px; } 
-      .control-btn[data-tooltip]:hover::after { display: none; } 
+      [data-tooltip]:hover::after { display: none; } 
     }
     @media (max-width: 768px) { 
       body { padding: 8px; } 
@@ -268,34 +307,44 @@
 </head>
 <body>
   <div class="frame">
-    <div class="dots">
-        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-    </div>
     <div class="titlebar">
-      <div class="titles"><h1>影音播放器(含電台)</h1><h2>提供支援速度調整、循環播放、音訊波形圖顯示、廣播電台與智慧媒體庫管理功能</h2><div class="author">製作者：陳政德</div></div>
+        <div class="dots">
+            <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+        </div>
+        <div class="titles"><h1>影音播放器(含電台)</h1><h2>提供支援速度調整、循環播放、音訊波形圖顯示、廣播電台與智慧媒體庫管理功能</h2><div class="author">製作者：陳政德</div></div>
+        <button id="themeToggle" data-tooltip="切換明/暗主題">
+            <svg id="sunIcon" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.64 5.64c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l1.06 1.06c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41L5.64 5.64zm12.73 12.73c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l1.06 1.06c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41l-1.06-1.06zM5.64 18.36l1.06-1.06c.39-.39.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0zm12.73-12.73l1.06-1.06c.39-.39.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0z"></path></svg>
+            <svg id="moonIcon" viewBox="0 0 24 24" style="display: none;"><path d="M12.3 4.81c-.39-.04-.78.16-.9.55-1.55 5.23-8.85 9.01-10.63 7.82.35.13.7.23 1.06.28 2.3.34 4.46-1.2 4.9-3.5.76-3.83 4.4-6.38 7.9-6.38.45 0 .89.07 1.32.18-.1-.38-.34-.71-.75-.95zM10.1 2c-.55 0-1 .45-1 1s.45 1 1 1c4.41 0 8 3.59 8 8 0 .46.33.86.78.98.45.12.93-.11 1.08-.55C21.46 6.94 16.4 2 10.1 2z"></path></svg>
+        </button>
     </div>
     
     <div class="layout">
       <div class="sidebar">
         <div class="panel glass library">
-          <div class="header"><h3>媒體庫</h3><button id="clearPlaylistBtn" class="btn ghost" title="清除媒體庫所有匯入的檔案">全部清除</button></div>
+          <div class="header">
+            <h3>媒體庫</h3>
+            <div class="header-actions">
+                <button id="showInstructionsBtn" class="btn ghost" data-tooltip="顯示功能說明">功能說明</button>
+                <button id="clearPlaylistBtn" class="btn ghost" data-tooltip="清除媒體庫所有匯入的檔案">全部清除</button>
+            </div>
+          </div>
           <div class="filedrop" id="drop">
-            <label class="btn primary" title="點擊選擇影片或音訊檔案"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>選擇影片或音訊檔案</span><input id="file" type="file" accept="video/*,audio/*,.m4a,.ogg,.aac,.3gp,.mp4,.webm,.avi,.mov,.mkv" hidden multiple></label>
+            <label class="btn primary" data-tooltip="點擊選擇或拖曳檔案至此"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>選擇影片或音訊檔案</span><input id="file" type="file" accept="video/*,audio/*,.m4a,.ogg,.aac,.3gp,.mp4,.webm,.avi,.mov,.mkv" hidden multiple></label>
           </div>
           
           <div class="list-area" id="listArea">
             <div class="list-group-top">
                 <div class="file-list-container" id="videoListContainer">
-                    <label class="file-list-label"><div class="label-text"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><span>影片列表</span></div><button id="toggleVideoListBtn" class="label-btn chevron-btn" title="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button></label><ol id="videoList"></ol>
+                    <label class="file-list-label"><div class="label-text"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"></path></svg><span>影片列表</span></div><button id="toggleVideoListBtn" class="label-btn chevron-btn" data-tooltip="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button></label><ol id="videoList"></ol>
                 </div>
                 <div class="file-list-container" id="audioListContainer">
-                    <label class="file-list-label"><div class="label-text"><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>音訊列表</span></div><button id="toggleAudioListBtn" class="label-btn chevron-btn" title="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button></label><ol id="audioList"></ol>
+                    <label class="file-list-label"><div class="label-text"><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>音訊列表</span></div><button id="toggleAudioListBtn" class="label-btn chevron-btn" data-tooltip="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button></label><ol id="audioList"></ol>
                 </div>
                 <div class="file-list-container favorites-container" id="favoritesContainer">
                     <label class="file-list-label">
                         <div class="label-text"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg><span>我的最愛電台</span></div>
                         <div class="label-actions">
-                            <button id="toggleFavoritesBtn" class="label-btn chevron-btn" title="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button>
+                            <button id="toggleFavoritesBtn" class="label-btn chevron-btn" data-tooltip="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button>
                         </div>
                     </label>
                     <div class="favorites-dropdown-wrapper">
@@ -308,8 +357,8 @@
                 <label class="file-list-label">
                     <div class="label-text"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 2v3h-2V8h2zm-2 5h2v2h-2v-2zm-4-5h2v8h-2V8zm-2 8h-2v-2h2v2zm-2-4h-2V8h2v4z"></path></svg><span>廣播電台</span></div>
                     <div class="label-actions">
-                        <button id="sortRadioBtn" class="label-btn" title="切換排序 (人氣/名稱)"><svg viewBox="0 0 24 24"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"></path></svg></button>
-                        <button id="toggleRadioListBtn" class="label-btn chevron-btn" title="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button>
+                        <button id="sortRadioBtn" class="label-btn" data-tooltip="切換排序 (人氣/名稱)"><svg viewBox="0 0 24 24"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"></path></svg></button>
+                        <button id="toggleRadioListBtn" class="label-btn chevron-btn" data-tooltip="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button>
                     </div>
                 </label>
                 <ol id="radioList"></ol>
@@ -339,18 +388,16 @@
                 <div class="ab-controls">
                   <button class="control-btn" id="setABtn" data-tooltip="設定 A 點 (A)">
                     <svg viewBox="0 0 24 24">
-                      <path d="M8 5 H6 V19 H8 V5z"></path>
-                      <path d="M11 15.5H16.5L15.25 12.5H12.25L11 15.5ZM13.75 7L18 17H9.5L13.75 7Z" fill="var(--orange)"></path>
+                      <text x="4" y="18" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white">A</text>
                     </svg>
                   </button>
                   <button class="control-btn" id="setBBtn" data-tooltip="設定 B 點 (B)">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M16 5 H18 V19 H16 V5z"></path>
-                      <path d="M12.5 12.75H9.5V15.5H12.5C13.88 15.5 15 14.38 15 13C15 11.62 13.88 10.5 12.5 10.5H9.5V12.75ZM12.5 10.5C13.88 10.5 15 9.38 15 8C15 6.62 13.88 5.5 12.5 5.5H8V17H12.5C14.71 17 16.5 15.21 16.5 13C16.5 10.79 14.71 9 12.5 9V10.5Z" fill="var(--orange)"></path>
+                     <svg viewBox="0 0 24 24">
+                      <text x="4" y="18" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white">B</text>
                     </svg>
                   </button>
                   <div class="ab-separator"></div>
-                  <button class="control-btn" id="abLoopBtn" data-tooltip="區段循環"><svg viewBox="0 0 24 24"><path d="M10.5,6H20.71L19.29,4.58L20.71,3.17L24,6.45L20.71,9.74L19.29,8.33L20.71,6.91H11V11.09L12.42,9.67L13.83,11.08L10.55,14.37L7.26,11.08L8.67,9.67L10.09,11.09V6.91C10.09,6.42 10.29,5.95 10.63,5.63C10.95,5.29 11.42,5.09 11.91,5.09H21V3.09H11.91C10.93,3.09 10.04,3.47 9.37,4.14C8.7,4.8 8.32,5.69 8.32,6.68V11.09L6.91,9.67L5.5,11.08L8.78,14.37L12.07,11.08L10.65,9.67L9.24,11.09V6.68C9.24,6.19 9.43,5.72 9.77,5.4C10.1,5.06 10.56,4.86 11.05,4.86H20.71L19.29,3.45L20.71,2.04L24,5.32L20.71,8.61L19.29,7.2L20.71,5.77H11.05C10.74,5.77 10.45,5.88 10.23,6.1C10.01,6.32 9.91,6.61 9.91,6.91V11.09L11.33,12.5L12.74,11.08L16.03,14.37L12.74,17.66L11.33,16.25L9.91,17.66V21.09H1V19.09H8.09V14.91L6.67,16.33L5.26,14.92L8.55,11.63L11.84,14.92L13.26,16.33L14.67,14.92L11.38,11.63L8.09,14.92V19.91H3V17.91H8.09V14.91L6.67,13.5L5.26,14.92L1.97,11.63L5.26,8.34L6.67,9.75L8.09,8.34V3.91H19V1.91H8.09C7.09,1.91 6.2,2.29 5.53,2.96C4.86,3.63 4.48,4.5 4.48,5.5V8.34L3.07,6.92L1.66,8.33L4.95,11.63L1.66,14.92L3.07,16.33L4.48,14.92V19.91C4.48,20.9 4.86,21.77 5.53,22.44C6.2,23.11 7.09,23.5 8.09,23.5H19V21.5H8.09C7.78,21.5 7.49,21.39 7.27,21.17C7.05,20.95 6.94,20.66 6.94,20.36V14.91L8.36,13.5L9.77,14.92L13.06,11.63L16.35,14.92L17.77,13.5L19.18,14.92V20.36C19.18,20.85 18.99,21.32 18.65,21.66C18.31,22 17.85,22.19 17.36,22.19H6.94V20.19H17.36C17.67,20.19 17.96,20.08 18.18,19.86C18.4,19.64 18.5,19.35 18.5,19.05V14.91L17.09,13.5L15.67,14.92L12.38,11.63L9.09,14.92L7.67,13.5L6.26,14.92V5.5C6.26,5.01 6.45,4.54 6.79,4.2C7.13,3.86 7.59,3.67 8.09,3.67H19V5.67H8.09C7.78,5.67 7.49,5.78 7.27,6C7.05,6.22 6.94,6.51 6.94,6.81V13.5Z"/></svg></button>
+                  <button class="control-btn" id="abLoopBtn" data-tooltip="區段循環"><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"></path></svg></button>
                 </div>
                 <button class="control-btn active-green" id="toggleVisualizerBtn" data-tooltip="切換視覺化效果">
                     <svg id="visualizerIconCircular" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -382,7 +429,7 @@
                 <button class="control-btn" id="loopBtn" data-tooltip="單檔循環 (L)"><svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"></path></svg></button>
                 <button class="control-btn" id="pipBtn" data-tooltip="子母畫面 (P)"><svg viewBox="0 0 24 24"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"></path></svg></button>
                 <button class="control-btn" id="snapshotBtn" data-tooltip="畫面快照 (C)"><svg viewBox="0 0 24 24"><path d="M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2z M12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5-5 5-2.24 5-5 5z"/></svg></button>
-                <button class="control-btn" id="settingsBtn" data-tooltip="播放設定"><svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19-.15-.24-.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69-.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59-1.69-.98l2.49 1c.23-.09.49 0-.61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg></button>
+                <button class="control-btn" id="settingsBtn" data-tooltip="播放設定"><svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19-.15-.24-.42-.12-.64l2 3.46c.12-.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59-1.69-.98l2.49 1c.23-.09.49 0-.61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg></button>
                 <button class="control-btn" id="fullscreenBtn" data-tooltip="全螢幕 (F)"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg></button>
               </div>
             </div>
@@ -394,6 +441,60 @@
     </div>
 
     <div id="loadingIndicator" style="display: none;"><div class="spinner"></div><div id="loadingText">媒體檔案載入中...</div></div>
+    
+    <div id="instructionsModal" class="modal-overlay">
+        <div class="panel glass instructions-panel">
+            <div class="header">
+                <h3>功能說明</h3>
+                <button id="closeInstructionsBtn" class="close-btn" data-tooltip="關閉">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+                </button>
+            </div>
+            <div class="instructions-grid">
+                <div class="instruction-item">
+                    <div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm3-10.17L14.17 8H13v6h-2V8H9.83L12 5.83zM5 18h14v2H5v-2z"></path></svg></div>
+                    <h4>匯入媒體</h4>
+                    <p>點擊 <span class="keyword">「選擇檔案」</span> 按鈕，或直接將檔案 <span class="keyword">拖曳</span> 至媒體庫，即可開始播放。</p>
+                </div>
+                <div class="instruction-item">
+                    <div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M10 16.5v-9l6 4.5-6 4.5zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path></svg></div>
+                    <h4>基本播放</h4>
+                    <p>使用播放列控制 <span class="keyword">播放/暫停 (Space)</span>、<span class="keyword">上/下一首</span>、<span class="keyword">音量 (m)</span> 與 <span class="keyword">進度</span>。支援鍵盤 <span class="keyword">← →</span> 與 <span class="keyword">↑ ↓</span> 鍵。</p>
+                </div>
+                <div class="instruction-item">
+                    <div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"></path></svg></div>
+                    <h4>區段循環 (A-B)</h4>
+                    <p>在起點按下 <span class="keyword">A</span> 鈕，終點按 <span class="keyword">B</span> 鈕，再點擊 <span class="keyword">循環圖示</span> 啟用。適合語言學習或音樂練習。</p>
+                </div>
+                <div class="instruction-item">
+                    <div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M15.01 10.49l-2.2-2.2c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.7.7-3.52 3.52c-.78.78-.78 2.05 0 2.83.78.78 2.05.78 2.83 0l3.52-3.52.7.7c.39.39 1.02.39 1.41 0 .4-.39.4-1.02.01-1.41zm-5.63 5.64c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l2.2 2.2c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41l-2.2-2.2zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path></svg></div>
+                    <h4>播放速度</h4>
+                    <p>點擊 <span class="keyword">設定圖示</span>，可以自由調整 <span class="keyword">0.25x</span> 至 <span class="keyword">2.0x</span> 的播放速度，慢速或快速播放皆可。</p>
+                </div>
+                <div class="instruction-item">
+                    <div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg></div>
+                    <h4>音訊視覺化</h4>
+                    <p>播放音訊或廣播時，點擊 <span class="keyword">視覺化圖示</span> 可切換多種動態效果，為聽覺饗宴增添視覺趣味。</p>
+                </div>
+                <div class="instruction-item">
+                    <div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M12 7.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5S10.62 9.5 12 9.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-5.5 11.5c0-3.03 2.47-5.5 5.5-5.5s5.5 2.47 5.5 5.5-2.47 5.5-5.5 5.5-5.5-2.47-5.5-5.5z"></path></svg></div>
+                    <h4>廣播電台</h4>
+                    <p>內建台灣地區熱門廣播電台。點擊 <span class="keyword">星號</span> 可收藏至「我的最愛」，方便快速收聽。</p>
+                </div>
+                <div class="instruction-item">
+                    <div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24-.42-.12-.64l2 3.46c.12-.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61.25 1.17.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg></div>
+                    <h4>進階功能</h4>
+                    <p>還提供 <span class="keyword">單檔循環 (L)</span>、<span class="keyword">隨機播放 (S)</span>、<span class="keyword">子母畫面 (P)</span> 及 <span class="keyword">畫面快照 (C)</span> 等多種實用功能。</p>
+                </div>
+                <div class="instruction-item">
+                    <div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M20 15.31 23.31 12 20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"></path></svg></div>
+                    <h4>明暗主題</h4>
+                    <p>點擊右上角的 <span class="keyword">太陽/月亮</span> 圖示，即可在明亮與深色主題間自由切換，適應不同光線環境。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
   </div>
 
   <script>
@@ -440,6 +541,11 @@
     const videoListContainer = $('videoListContainer'), toggleVideoListBtn = $('toggleVideoListBtn');
     const audioListContainer = $('audioListContainer'), toggleAudioListBtn = $('toggleAudioListBtn');
 
+    // 新增元素
+    const themeToggle = $('themeToggle'), sunIcon = $('sunIcon'), moonIcon = $('moonIcon');
+    const instructionsModal = $('instructionsModal'), showInstructionsBtn = $('showInstructionsBtn'), closeInstructionsBtn = $('closeInstructionsBtn');
+
+
     videoPlayer.volume = 0.2;
     volumeSlider.value = 0.2;
 
@@ -464,8 +570,8 @@
       allFiles.forEach((fileObj, index) => {
         const li = document.createElement('li');
         li.draggable = true; li.dataset.index = index;
-        li.innerHTML = `<span class="media-type-badge ${fileObj.type}">${fileObj.type}</span><div class="filename-container"><span class="marquee-text">${fileObj.file.name}</span></div><button class="remove-item-btn" data-index="${index}">&times;</button>`;
-        li.title = fileObj.file.name;
+        li.innerHTML = `<span class="media-type-badge ${fileObj.type}">${fileObj.type}</span><div class="filename-container"><span class="marquee-text">${fileObj.file.name}</span></div><button class="remove-item-btn" data-index="${index}" data-tooltip="移除">&times;</button>`;
+        li.dataset.tooltip = fileObj.file.name;
         if (currentMode === 'file' && index === currentFileIndex) li.classList.add('active');
         li.onclick = (e) => { if (e.target.classList.contains('remove-item-btn')) return; if (index !== currentFileIndex || currentMode !== 'file') loadFile(allFiles[index].file); };
         if (fileObj.type === 'video') videoList.appendChild(li); else audioList.appendChild(li);
@@ -495,7 +601,7 @@
 
     function handleFiles(files) { if (!files || files.length === 0) return; const wasEmpty = allFiles.length === 0; for (const file of files) { if (!allFiles.some(f => f.file.name === file.name)) { const type = file.type.startsWith('video/') ? 'video' : 'audio'; allFiles.push({ file, type }); } } updateAllLists(); if (wasEmpty && files.length > 0) { loadFile(allFiles[0].file); } }
     async function loadFile(file) { if (hlsInstance) { hlsInstance.destroy(); } videoPlayer.crossOrigin = null; currentMode = 'file'; updateControlsState(); if (isPlaying) pause(); cancelAnimationFrame(visualizerFrameId); showLoading(true, "媒體檔案載入中..."); document.querySelectorAll('#radioList li.active, #favoriteRadioList li.active').forEach(el => el.classList.remove('active')); try { currentFile = file; currentFileIndex = allFiles.findIndex(f => f.file.name === file.name); if (AC.state === 'suspended') { await AC.resume(); } setupVisualizer(); const url = URL.createObjectURL(file); videoPlayer.src = url; videoPlayer.load(); updateAllLists(); resetAbLoop(); titlesH1.textContent = file.name; titlesH2.textContent = '本地檔案播放'; if (file.type.startsWith('audio/')) { videoPlayer.style.display = 'none'; videoOverlay.innerHTML = `🎵<br><span style="font-size: 16px; margin-top: 10px; font-weight: 500;">${file.name}</span>`; if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } videoOverlay.style.display = 'flex'; } else { videoPlayer.style.display = 'block'; audioVisualizer.style.display = 'none'; videoOverlay.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } showLoading(true, "正在分析音訊..."); try { const arrayBuffer = await file.arrayBuffer(); audioBuffer = await AC.decodeAudioData(arrayBuffer.slice(0)); waveformDisplay.style.display = 'block'; videoPlayerContainer.classList.add('with-waveform'); } catch (e) { console.warn("無法解析音訊或無音訊軌:", e.message); audioBuffer = null; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); } } catch (e) { console.error("Error loading file:", e); alert(`檔案載入失敗: ${e.message}`); } finally { showLoading(false); } }
-    function drawWaveform() { if (!audioBuffer || waveformCanvas.clientWidth === 0) return; const canvas = waveformCanvas; const ctx = waveformCtx; const dpr = window.devicePixelRatio || 1; canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; ctx.scale(dpr, dpr); const width = canvas.clientWidth; const height = canvas.clientHeight; const amp = height / 2; ctx.clearRect(0, 0, width, height); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0, 113, 227, 0.7)'; const data = audioBuffer.getChannelData(0); const step = Math.ceil(data.length / width); ctx.beginPath(); for (let i = 0; i < width; i++) { let min = 1.0; let max = -1.0; for (let j = 0; j < step; j++) { const datum = data[(i * step) + j]; if (datum < min) min = datum; if (datum > max) max = datum; } ctx.moveTo(i, amp + min * amp); ctx.lineTo(i, amp + max * amp); } ctx.stroke(); }
+    function drawWaveform() { if (!audioBuffer || waveformCanvas.clientWidth === 0) return; const canvas = waveformCanvas; const ctx = waveformCtx; const dpr = window.devicePixelRatio || 1; canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; ctx.scale(dpr, dpr); const width = canvas.clientWidth; const height = canvas.clientHeight; const amp = height / 2; ctx.clearRect(0, 0, width, height); ctx.lineWidth = 2; const isDark = document.documentElement.classList.contains('dark-mode'); ctx.strokeStyle = isDark ? 'rgba(0, 113, 227, 0.8)' : 'rgba(0, 113, 227, 0.7)'; const data = audioBuffer.getChannelData(0); const step = Math.ceil(data.length / width); ctx.beginPath(); for (let i = 0; i < width; i++) { let min = 1.0; let max = -1.0; for (let j = 0; j < step; j++) { const datum = data[(i * step) + j]; if (datum < min) min = datum; if (datum > max) max = datum; } ctx.moveTo(i, amp + min * amp); ctx.lineTo(i, amp + max * amp); } ctx.stroke(); }
     const waveformResizeObserver = new ResizeObserver(entries => { for (const entry of entries) { if (entry.target.style.display !== 'none' && entry.contentRect.width > 0) { drawWaveform(); } } });
     waveformResizeObserver.observe(waveformDisplay);
     function updateWaveformPlayhead() { if (!audioBuffer) return; const percent = videoPlayer.currentTime / videoPlayer.duration; waveformPlayhead.style.left = `${percent * 100}%`; }
@@ -559,8 +665,8 @@
         const li = document.createElement('li');
         li.dataset.stationuuid = station.stationuuid;
         const isFavorite = favoriteStationUUIDs.includes(station.stationuuid);
-        li.innerHTML = `<span class="station-status"></span><div class="filename-container"><span class="marquee-text">${station.name}</span><div class="list-item-actions"><button class="list-item-btn favorite-btn ${isFavorite ? 'is-favorite' : ''}" title="加入/移出我的最愛"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg></button><button class="list-item-btn remove-station-btn" title="從列表中移除"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg></button></div></div>`;
-        li.title = station.name;
+        li.innerHTML = `<span class="station-status"></span><div class="filename-container"><span class="marquee-text">${station.name}</span><div class="list-item-actions"><button class="list-item-btn favorite-btn ${isFavorite ? 'is-favorite' : ''}" data-tooltip="加入/移出我的最愛"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg></button><button class="list-item-btn remove-station-btn" data-tooltip="從列表中移除"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg></button></div></div>`;
+        li.dataset.tooltip = station.name;
         li.querySelector('.filename-container').onclick = (e) => { if(e.target.closest('.list-item-btn')) return; if (li.classList.contains('failed')) return; if (currentStation && currentStation.stationuuid === station.stationuuid) togglePlay(); else playRadioStream(station); };
         return li;
     }
@@ -574,6 +680,7 @@
     }
     function updateStationItemStatus(uuid, status) { document.querySelectorAll(`li[data-stationuuid="${uuid}"]`).forEach(li => { const statusEl = li.querySelector('.station-status'); if (!statusEl) return; if (status === 'success') { statusEl.textContent = '✅'; li.classList.remove('failed'); } else if (status === 'failed') { statusEl.textContent = '❌'; li.classList.add('failed'); } else { statusEl.innerHTML = '●'; statusEl.style.color = '#ccc'; li.classList.remove('failed'); } }); }
 
+    // --- 事件監聽器 ---
     $('file').onchange = e => handleFiles(e.target.files);
     drop.ondragover = e => { e.preventDefault(); drop.style.borderColor = 'var(--blue)'; }; drop.ondragleave = () => drop.style.borderColor = ''; drop.ondrop = e => { e.preventDefault(); drop.style.borderColor = ''; handleFiles(e.dataTransfer.files); };
     playPauseBtn.onclick = togglePlay; 
@@ -637,7 +744,39 @@
         }
     });
 
+    // --- 新增功能邏輯 ---
+    // 主題切換
+    const applyTheme = (theme) => {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+            sunIcon.style.display = 'none';
+            moonIcon.style.display = 'block';
+        } else {
+            document.documentElement.classList.remove('dark-mode');
+            sunIcon.style.display = 'block';
+            moonIcon.style.display = 'none';
+        }
+        drawWaveform(); // 主題變更時重繪波形圖
+    };
+
+    themeToggle.onclick = () => {
+        const isDarkMode = document.documentElement.classList.contains('dark-mode');
+        const newTheme = isDarkMode ? 'light' : 'dark';
+        applyTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
+    };
+
+    // 功能說明面板
+    showInstructionsBtn.onclick = () => instructionsModal.style.display = 'flex';
+    closeInstructionsBtn.onclick = () => instructionsModal.style.display = 'none';
+    instructionsModal.onclick = (e) => { if(e.target === instructionsModal) instructionsModal.style.display = 'none'; };
+
+
     document.addEventListener('DOMContentLoaded', () => {
+      // 初始主題設定
+      const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      applyTheme(savedTheme);
+
       loadFavorites();
       updateControlsState();
       fetchStations();
