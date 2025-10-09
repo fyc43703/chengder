@@ -9,8 +9,8 @@
             /* --- Light Theme --- */
             --system-font: -apple-system, "SF Pro", "Helvetica Neue", "Arial", sans-serif;
             --background-color: #f5f5f7;
-            --window-background-color: rgba(255, 255, 255, 0.6);
-            --panel-background-color: rgba(240, 240, 245, 0.7);
+            --window-background-color: rgba(255, 255, 255, 0.85);
+            --panel-background-color: rgba(240, 240, 245, 0.85);
             --editor-background-color: #fff;
             --system-blue: #007aff;
             --system-green: #28a745;
@@ -28,8 +28,8 @@
         body[data-theme="dark"] {
             /* --- Dark Theme --- */
             --background-color: #1c1c1e;
-            --window-background-color: rgba(44, 44, 46, 0.7);
-            --panel-background-color: rgba(28, 28, 30, 0.8);
+            --window-background-color: rgba(44, 44, 46, 0.85);
+            --panel-background-color: rgba(28, 28, 30, 0.85);
             --editor-background-color: #2c2c2e;
             --system-blue: #0a84ff;
             --system-green: #30d158;
@@ -42,49 +42,48 @@
             --table-header-bg: #3a3a3c;
         }
 
-        /* --- 基本設定 --- */
+        /* --- 基本設定與佈局 --- */
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden; /* Prevent body scrolling */
+        }
         body {
             font-family: var(--system-font);
-            margin: 0;
             padding: 20px;
             background-color: var(--background-color);
             color: var(--text-color);
+            box-sizing: border-box;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            transition: background-color 0.3s, color 0.3s;
-        }
-        
-        /* MODIFICATION: Sticky Header container */
-        #sticky-header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: var(--window-background-color);
-            backdrop-filter: blur(var(--blur-radius));
-            -webkit-backdrop-filter: blur(var(--blur-radius));
-            /* To ensure the top border radius of the window is visible */
-            padding-top: 1px;
-            margin-top: -1px;
         }
 
-        /* --- 主視窗容器 --- */
+        /* --- 主視窗容器 (Flex佈局) --- */
         .window-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 40px);
             width: 100%;
             max-width: 100%;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: var(--window-shadow);
             border: 1px solid var(--border-color);
+            background: var(--background-color); /* Use body background */
+        }
+
+        /* --- 固定頂部區域 --- */
+        #sticky-header {
+            flex-shrink: 0;
             background: var(--window-background-color);
             backdrop-filter: blur(var(--blur-radius));
             -webkit-backdrop-filter: blur(var(--blur-radius));
-            transition: background-color 0.3s, border-color 0.3s;
+            border-bottom: 1px solid var(--border-color);
         }
 
         /* --- 標題列 --- */
         .title-bar {
             padding: 10px 12px;
-            border-bottom: 1px solid var(--border-color);
             position: relative;
             text-align: center;
         }
@@ -92,7 +91,6 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 0;
             min-height: 28px;
         }
         .window-controls { display: flex; align-items: center; gap: 8px; position: absolute; top: 10px; left: 12px; }
@@ -100,35 +98,30 @@
         .dot-red { background-color: #ff5f56; }
         .dot-yellow { background-color: #ffbd2e; }
         .dot-green { background-color: #27c93f; }
-        
         .title-content { margin: 0 auto; }
         .window-title { font-size: 20px; font-weight: 600; margin:0; }
-        
-        .window-subtitle { font-size: 13px; color: var(--text-color-secondary); margin: 2px 0 0; }
-        .window-creator { font-size: 12px; color: var(--text-color-secondary); margin: 2px 0 0; }
-
-        #current-filename {
-            font-size: 13px;
-            color: var(--text-color-secondary);
-            margin-left: 8px;
-        }
-
+        #current-filename { font-size: 13px; color: var(--text-color-secondary); margin-left: 8px; }
         #theme-toggle { background: transparent; padding: 4px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: absolute; top: 10px; right: 12px; }
         #theme-toggle:hover { background-color: var(--border-color); }
         #theme-toggle svg { width: 24px; height: 24px; fill: var(--text-color-secondary); }
+        .window-subtitle { font-size: 13px; color: var(--text-color-secondary); margin: 2px 0 0; }
+        .window-creator { font-size: 12px; color: var(--text-color-secondary); margin: 2px 0 0; }
 
-        /* --- 主要內容區域 --- */
-        .main-content { padding: 16px; }
+        /* --- 可捲動內容區域 --- */
+        .main-content { 
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 16px; 
+            background: var(--window-background-color);
+        }
         
         /* --- 控制面板 --- */
         .controls-panel {
             display: flex;
             flex-direction: column;
             padding: 12px;
-            background-color: var(--panel-background-color);
-            border-radius: 8px;
-            margin-bottom: 16px;
             gap: 12px;
+            border-bottom: 1px solid var(--border-color);
         }
         .controls-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
         .control-group { display: flex; align-items: center; gap: 6px; }
@@ -150,9 +143,8 @@
             padding: 6px 10px;
             border-radius: 6px;
             font-size: 14px;
-            transition: box-shadow 0.2s, border-color 0.2s, background-color 0.3s;
+            transition: box-shadow 0.2s, border-color 0.2s;
         }
-        /* MODIFICATION: Reduced input widths for 2-row layout */
         #search-input, #replace-input { width: 70px; }
         #font-size-input, #border-width-input { width: 36px; }
         #row-height-input, #col-width-input { width: 38px; }
@@ -167,21 +159,10 @@
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
         input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border-color); border-radius: 4px; }
         
-        input[type="color"].mixed::-webkit-color-swatch {
-            background-image:
-                linear-gradient(45deg, rgba(0,0,0,0.2) 25%, transparent 25%),
-                linear-gradient(-45deg, rgba(0,0,0,0.2) 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, rgba(0,0,0,0.2) 75%),
-                linear-gradient(-45deg, transparent 75%, rgba(0,0,0,0.2) 75%);
-            background-size: 8px 8px;
-            background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
-        }
-
-
         button {
             padding: 5px 12px; border: none; background-color: var(--system-blue); color: white;
             border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;
-            transition: transform 0.1s, filter 0.2s, background-color 0.2s; display: flex; align-items: center; gap: 6px;
+            transition: transform 0.1s, filter 0.2s; display: flex; align-items: center; gap: 6px;
         }
         button:hover { filter: brightness(1.1); }
         button:active { transform: scale(0.98); filter: brightness(1.2); }
@@ -189,41 +170,22 @@
         button.success { background-color: var(--system-green); }
         button.danger { background-color: var(--system-red); }
         button:disabled { background-color: color-mix(in srgb, var(--system-gray) 50%, var(--panel-background-color)); color: var(--text-color-secondary); cursor: not-allowed; filter: none; }
-        button:disabled:hover, button:disabled:active { transform: none; }
         button svg { width: 14px; height: 14px; fill: currentColor; }
         #save-html-btn svg, #save-rtf-btn svg { width: 16px; height: 16px; }
-
-        /* --- 圖示按鈕 --- */
-        button.icon-btn {
-            padding: 6px;
-            width: 30px;
-            height: 30px;
-            justify-content: center;
-        }
+        button.icon-btn { padding: 6px; width: 30px; height: 30px; justify-content: center; }
         .btn-align { background-color: var(--system-green); }
         .btn-table { background-color: var(--system-brown); }
 
-        /* --- 下拉選單 (Dropdown) --- */
-        .dropdown { position: relative; display: inline-block; }
-        .dropdown-content { display: none; position: absolute; background-color: var(--panel-background-color); min-width: 120px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 10; border-radius: 6px; padding: 5px 0; border: 1px solid var(--border-color); }
-        .dropdown-content a { color: var(--text-color); padding: 8px 12px; text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 14px; }
-        .dropdown-content a:hover { background-color: var(--border-color); }
-        .dropdown.show .dropdown-content { display: block; }
-        .dropdown-content svg { width: 16px; height: 16px; fill: var(--text-color-secondary); }
-
         /* --- 編輯器 --- */
         #editor-container { 
-            overflow: auto; 
             padding: 20px; 
             background-color: var(--editor-background-color); 
             border-radius: 8px; 
             border: 1px solid var(--border-color); 
-            transition: background-color 0.3s, width 0.3s, height 0.3s; 
+            transition: width 0.3s, height 0.3s;
         }
         #content-display { 
-            background-color: transparent; 
             min-height: 400px; 
-            transition: transform 0.2s ease; 
             transform-origin: top left; 
             user-select: none; 
             outline: none; 
@@ -236,35 +198,16 @@
             padding: 2cm;
             box-sizing: content-box;
         }
-        #editor-container.paged-view.portrait {
-            width: 21cm;
-            min-height: 29.7cm;
-            padding-bottom: 2cm;
-        }
-        #editor-container.paged-view.landscape {
-            width: 29.7cm;
-            min-height: 21cm;
-            padding-bottom: 2cm;
-        }
-        body[data-theme="dark"] #editor-container.paged-view {
-            box-shadow: 0 0 15px rgba(0,0,0,0.4);
-        }
+        #editor-container.paged-view.portrait { width: 21cm; min-height: 29.7cm; }
+        #editor-container.paged-view.landscape { width: 29.7cm; min-height: 21cm; }
 
         /* --- 表格與選取樣式 --- */
-        #content-display table {
-            border-collapse: collapse;
-            width: 100%;
-            position: relative;
-            table-layout: fixed;
-        }
+        #content-display table { border-collapse: collapse; width: 100%; position: relative; table-layout: fixed; }
         #content-display th, #content-display td { 
-            border: 1px solid var(--border-color); padding: 10px 12px; text-align: left; font-size: 14px; 
-            transition: background-color 0.3s, border-color 0.3s, border-width 0.3s; position: relative; min-width: 40px;
-            overflow: hidden;
-            word-break: break-all;
+            border: 1px solid var(--border-color); padding: 10px 12px; text-align: left;
+            position: relative; min-width: 40px; overflow: hidden; word-break: break-all;
         }
         #content-display th { background-color: var(--table-header-bg); font-weight: 600; }
-        
         #content-display td.selected-cell, #content-display th.selected-cell { 
              outline: 1px solid var(--system-blue); 
              outline-offset: -1px; 
@@ -273,40 +216,14 @@
 
         mark.highlight { background-color: #ffdd57; color: black; border-radius: 2px; padding: 0 2px; }
         
-        .resizable-image-container { 
-            position: relative;
-            display: inline-block;
-            min-width: 20px; 
-            min-height: 20px;
-        }
-
-        .resizable-image-container img { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: contain;
-            display: block;
-            user-select: none;
-            -webkit-user-drag: none;
-        }
-
+        .resizable-image-container { position: relative; display: inline-block; min-width: 20px; min-height: 20px; }
+        .resizable-image-container img { width: 100%; height: 100%; object-fit: contain; display: block; user-select: none; -webkit-user-drag: none; }
         .resize-handle {
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            background-color: var(--system-blue);
-            border: 2px solid var(--editor-background-color);
-            right: -6px;
-            bottom: -6px;
-            border-radius: 50%;
-            cursor: nwse-resize;
-            z-index: 10;
-            opacity: 0;
-            transition: opacity 0.2s;
+            position: absolute; width: 12px; height: 12px; background-color: var(--system-blue);
+            border: 2px solid var(--editor-background-color); right: -6px; bottom: -6px;
+            border-radius: 50%; cursor: nwse-resize; z-index: 10; opacity: 0; transition: opacity 0.2s;
         }
-
-        .resizable-image-container:hover .resize-handle {
-            opacity: 1;
-        }
+        .resizable-image-container:hover .resize-handle { opacity: 1; }
         
         /* --- 提示訊息 --- */
         #notification { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s; }
@@ -341,7 +258,6 @@
                 <p class="window-creator">製作者：陳政德</p>
             </header>
             <div class="controls-panel">
-                <!-- MODIFICATION: Re-organized into 2 rows -->
                  <div class="controls-row">
                     <div class="control-group">
                         <button id="select-file-btn">選擇檔案</button>
@@ -420,20 +336,9 @@
                      <div class="separator"></div>
                      <div class="control-group">
                         <label>邊框:</label>
-                        <input type="color" id="border-color-input" value="#dddddd" disabled title="表格邊框顏色">
-                        <input type="number" id="border-width-input" min="0" max="10" value="1" disabled title="表格邊框寬度 (px)">
-                        <div class="dropdown">
-                            <button id="border-dropdown-btn" class="icon-btn btn-table" disabled title="設定框線">
-                               <svg viewBox="0 0 24 24"><path d="M7 21H5V9h2v12zM9 13v2h2v-2H9zM9 17v2h2v-2H9zM9 9v2h2V9H9zM13 21h-2V9h2v12zM15 9h2v2h-2V9zM15 13h2v2h-2v-2zM15 17h2v2h-2v-2zM19 21h-2V9h2v12zM3 7V5h18v2H3zM3 21v-2h18v2H3z"/></svg>
-                            </button>
-                            <div class="dropdown-content" id="border-options">
-                                <a href="#" data-border="bottom">下框線</a><a href="#" data-border="top">上框線</a>
-                                <a href="#" data-border="left">左框線</a><a href="#" data-border="right">右框線</a>
-                                <a href="#" data-border="none">無框線</a><a href="#" data-border="all">所有框線</a>
-                                <a href="#" data-border="outside">外框線</a><a href="#" data-border="inside">內框線</a>
-                            </div>
-                        </div>
-                    </div>
+                        <input type="color" id="border-color-input" value="#dddddd" disabled>
+                        <input type="number" id="border-width-input" min="0" max="10" value="1" disabled>
+                     </div>
                      <div class="control-group">
                         <label for="row-height-input">列高:</label>
                         <input type="number" id="row-height-input" min="1" disabled>
@@ -483,8 +388,6 @@
             const bgColorInput = getEl('bg-color-input');
             const borderColorInput = getEl('border-color-input');
             const borderWidthInput = getEl('border-width-input');
-            const borderDropdownBtn = getEl('border-dropdown-btn');
-            const borderOptions = getEl('border-options');
             const insertImageBtn = getEl('insert-image-btn');
             const imageUploadInput = getEl('image-upload-input');
             const rowHeightInput = getEl('row-height-input'), colWidthInput = getEl('col-width-input');
@@ -506,7 +409,7 @@
                 searchInput, searchBtn, replaceInput, replaceBtn, zoomInBtn, zoomOutBtn, zoomResetBtn, saveHtmlBtn, undoBtn,
                 alignLeftBtn, alignCenterBtn, alignRightBtn, alignTopBtn, alignMiddleBtn, alignBottomBtn,
                 addRowBtn, addColBtn, deleteRowBtn, deleteColBtn, mergeCellsBtn, splitCellBtn,
-                fontSizeInput, fontColorInput, bgColorInput, borderColorInput, borderWidthInput, borderDropdownBtn, insertImageBtn,
+                fontSizeInput, fontColorInput, bgColorInput, borderColorInput, borderWidthInput, insertImageBtn,
                 rowHeightInput, colWidthInput, fixRowHeightCheck, fixColWidthCheck,
                 saveRtfBtn, portraitBtn, landscapeBtn, viewResetBtn
             ];
@@ -574,7 +477,6 @@
 
             function updateToolbarForSelection() {
                 const selection = window.getSelection();
-                // MODIFICATION: Prioritize text selection over cell selection for toolbar updates
                 if (selection.rangeCount > 0 && !selection.isCollapsed) {
                     const node = selection.anchorNode;
                     const parentElement = node.nodeType === 3 ? node.parentElement : node;
@@ -823,6 +725,9 @@
                 const cell = e.target.closest('td, th');
                 if (!cell || e.target.closest('.resizable-image-container')) return;
 
+                // MODIFICATION: Clear previous selection on mousedown
+                clearSelection();
+
                 if (cell.style.cursor === 'col-resize' && !fixColWidthCheck.checked) {
                     resizing = { type: 'col', target: cell, startX: e.clientX, startW: cell.offsetWidth };
                 } else if (cell.style.cursor === 'row-resize' && !fixRowHeightCheck.checked) {
@@ -834,16 +739,18 @@
                     document.addEventListener('mouseup', onMouseUpResize);
                 } else {
                     dragStart = true; isSelecting = false; startCell = cell; endCell = cell;
+                    // Select the single cell immediately
+                    startCell.classList.add('selected-cell');
+                    selectedCells.push(startCell);
                 }
             });
 
-            // MODIFICATION: Update toolbar on both mouseup and keyup for text selections
             const handleSelectionChange = () => {
-                if (dragStart) {
-                    if (!isSelecting) {
-                        clearSelection();
-                        if(startCell) { startCell.classList.add('selected-cell'); selectedCells.push(startCell); }
-                    }
+                // This logic now runs on mouseup to handle DRAG selection
+                if (dragStart && isSelecting) {
+                    // The range selection is already handled by mousemove
+                } else if (dragStart && !isSelecting) {
+                    // This handles a simple click. Selection is already done in mousedown.
                 }
                 updateToolbarForSelection();
                 dragStart = false; isSelecting = false;
@@ -859,114 +766,54 @@
             alignMiddleBtn.addEventListener('click', () => setStyleOnCells('verticalAlign', 'middle'));
             alignBottomBtn.addEventListener('click', () => setStyleOnCells('verticalAlign', 'bottom'));
 
-            // MODIFICATION START: Individual Text Formatting Logic
-            function applyStyleToSelection(styleProperty, styleValue) {
-                const selection = window.getSelection();
-                if (!selection.rangeCount || selection.isCollapsed) return false;
-                
-                const range = selection.getRangeAt(0);
-                if (range.toString().trim() === '') return true;
-
-                const span = document.createElement('span');
-                span.style[styleProperty] = styleValue;
-                
-                try {
-                    range.surroundContents(span);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                } catch(e) {
-                     // Fallback for complex selections using deprecated execCommand
-                    try {
-                        document.execCommand('styleWithCSS', false, true);
-                        const command = styleProperty === 'color' ? 'foreColor' : 'fontSize';
-                        const value = styleProperty === 'fontSize' ? 1 : styleValue; // fontSize command is tricky
-                        document.execCommand(command, false, value);
-                        if(command === 'fontSize') {
-                            const fontElements = contentDisplay.getElementsByTagName('font');
-                            for(const font of fontElements) {
-                                if(selection.containsNode(font, true)){
-                                    font.style.fontSize = styleValue;
-                                    font.removeAttribute('size');
-                                    font.removeAttribute('color');
-                                }
-                            }
-                        }
-                    } catch (cmdError) {
-                         console.error("Could not wrap or style complex selection:", e, cmdError);
-                         showNotification("無法格式化跨越多個區塊的複雜選取。");
-                    }
+            // MODIFICATION: Font size listener applies only to cells
+            fontSizeInput.addEventListener('input', () => {
+                const value = fontSizeInput.value + 'px';
+                if (value) {
+                    applyToSelectedCells(c => c.style.fontSize = value, false);
+                    setTimeout(saveState, 500);
                 }
-                return true;
-            }
+            });
 
-            const addInputListener = (input, styleProp, unit = '') => {
-                const applyStyle = () => {
-                    const value = input.value + unit;
-                    if (value) {
-                        input.classList.remove('mixed');
-                        const styled = applyStyleToSelection(styleProp, value);
-                        if (!styled) {
-                            applyToSelectedCells(c => c.style[styleProp] = value, false);
-                        }
-                        saveState();
-                    }
-                };
-                input.addEventListener('input', applyStyle);
-                input.addEventListener('change', applyStyle); // For color picker closing
-            };
-            // MODIFICATION END
-
-            addInputListener(fontSizeInput, 'fontSize', 'px');
-            addInputListener(fontColorInput, 'color');
-            addInputListener(bgColorInput, 'backgroundColor');
-            addInputListener(rowHeightInput, 'height', 'px');
-            addInputListener(colWidthInput, 'width', 'px');
-
-            borderDropdownBtn.addEventListener('click', (e) => { e.stopPropagation(); borderDropdownBtn.parentElement.classList.toggle('show'); });
-            borderOptions.addEventListener('click', (e) => {
-                e.preventDefault();
-                const target = e.target.closest('a'); if (!target) return;
-                const borderType = target.dataset.border;
-                if (selectedCells.length === 0) { showNotification('請先選擇儲存格'); return; }
-                const width = borderWidthInput.value, color = borderColorInput.value, borderStyle = `${width}px solid ${color}`;
-                const bounds = { minR: Infinity, maxR: -1, minC: Infinity, maxC: -1 };
-                selectedCells.forEach(cell => {
-                    bounds.minR = Math.min(bounds.minR, cell.parentElement.rowIndex); bounds.maxR = Math.max(bounds.maxR, cell.parentElement.rowIndex);
-                    bounds.minC = Math.min(bounds.minC, cell.cellIndex); bounds.maxC = Math.max(bounds.maxC, cell.cellIndex);
-                });
-                applyToSelectedCells(cell => {
-                    switch (borderType) {
-                        case 'bottom': cell.style.borderBottom = borderStyle; break;
-                        case 'top': cell.style.borderTop = borderStyle; break;
-                        case 'left': cell.style.borderLeft = borderStyle; break;
-                        case 'right': cell.style.borderRight = borderStyle; break;
-                        case 'none': cell.style.border = 'none'; break;
-                        case 'all': cell.style.border = borderStyle; break;
-                        case 'outside':
-                            if (cell.parentElement.rowIndex === bounds.minR) cell.style.borderTop = borderStyle;
-                            if (cell.parentElement.rowIndex === bounds.maxR) cell.style.borderBottom = borderStyle;
-                            if (cell.cellIndex === bounds.minC) cell.style.borderLeft = borderStyle;
-                            if (cell.cellIndex === bounds.maxC) cell.style.borderRight = borderStyle;
-                            break;
-                         case 'inside':
-                            if (cell.parentElement.rowIndex < bounds.maxR) cell.style.borderBottom = borderStyle;
-                            if (cell.cellIndex < bounds.maxC) cell.style.borderRight = borderStyle;
-                            break;
-                    }
-                }, false);
-                saveState();
-                borderDropdownBtn.parentElement.classList.remove('show');
+            // MODIFICATION: Font color listener handles text selection first
+            fontColorInput.addEventListener('input', () => {
+                const value = fontColorInput.value;
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0 && !selection.isCollapsed && contentDisplay.contains(selection.anchorNode)) {
+                    document.execCommand('foreColor', false, value);
+                } else {
+                    applyToSelectedCells(c => c.style.color = value, false);
+                }
+                setTimeout(saveState, 500);
             });
             
-            function applyTableWideBorder() {
-                const table = contentDisplay.querySelector('table'); if (!table) return;
-                const color = borderColorInput.value, width = borderWidthInput.value + 'px';
-                table.querySelectorAll('td, th').forEach(cell => { cell.style.borderColor = color; cell.style.borderWidth = width; });
-                saveState();
-            }
-            borderColorInput.addEventListener('input', applyTableWideBorder);
-            borderWidthInput.addEventListener('input', applyTableWideBorder);
+            bgColorInput.addEventListener('input', () => {
+                const value = bgColorInput.value;
+                applyToSelectedCells(c => c.style.backgroundColor = value, false);
+                setTimeout(saveState, 500);
+            });
+            
+            const addDelayedInputListener = (input, styleProp, unit = '') => {
+                 input.addEventListener('input', () => {
+                    const value = input.value + unit;
+                    applyToSelectedCells(c => c.style[styleProp] = value, false);
+                    clearTimeout(input.timer);
+                    input.timer = setTimeout(saveState, 500);
+                });
+            };
+            addDelayedInputListener(rowHeightInput, 'height', 'px');
+            addDelayedInputListener(colWidthInput, 'width', 'px');
 
+            borderColorInput.addEventListener('input', () => {
+                const color = borderColorInput.value;
+                applyToSelectedCells(c => c.style.borderColor = color);
+            });
+
+            borderWidthInput.addEventListener('input', () => {
+                const width = borderWidthInput.value + 'px';
+                applyToSelectedCells(c => c.style.borderWidth = width);
+            });
+            
             addRowBtn.addEventListener('click', () => { 
                 if(selectedCells.length === 0) { showNotification('請先選擇一個儲存格以確定新增位置'); return; }
                 const lastSelectedCell = selectedCells[selectedCells.length - 1], currentRow = lastSelectedCell.parentElement;
@@ -1069,14 +916,9 @@
                 else { body.setAttribute('data-theme', 'dark'); themeIconSun.style.display = 'none'; themeIconMoon.style.display = 'block'; }
             });
             
-            window.addEventListener('click', (e) => {
-                if (!e.target.closest('.dropdown')) { document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show')); }
-            });
-
             // --- RTF Export Logic ---
             saveRtfBtn.addEventListener('click', async () => {
-                clearSelection(); clearHighlight();
-                showNotification('正在產生 RTF 檔案...');
+                clearSelection(); clearHighlight(); showNotification('正在產生 RTF 檔案...');
                 try {
                     const rtfContent = await htmlToRtf(contentDisplay);
                     const filename = `${originalFilename || 'content'}.rtf`;
@@ -1086,33 +928,17 @@
                     document.body.appendChild(a); a.click(); document.body.removeChild(a);
                     URL.revokeObjectURL(a.href);
                     showNotification('RTF 檔案已儲存。');
-                } catch (error) {
-                    console.error("RTF Generation Error:", error);
-                    showNotification('產生 RTF 檔案失敗。');
-                }
+                } catch (error) { console.error("RTF Generation Error:", error); showNotification('產生 RTF 檔案失敗。'); }
             });
             
-            function escapeTextForRtf(text) {
-                return text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/\n/g, '\\par\n')
-                   .split('').map(c => c.charCodeAt(0) > 127 ? `\\u${c.charCodeAt(0)}?` : c).join('');
-            }
-
-            function base64ToHex(base64) {
-                const raw = window.atob(base64);
-                let hex = '';
-                for (let i = 0; i < raw.length; i++) {
-                    const charHex = raw.charCodeAt(i).toString(16);
-                    hex += (charHex.length === 2 ? charHex : '0' + charHex);
-                }
-                return hex;
-            }
+            function escapeTextForRtf(text) { return text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/\n/g, '\\par\n').split('').map(c => c.charCodeAt(0) > 127 ? `\\u${c.charCodeAt(0)}?` : c).join(''); }
+            function base64ToHex(base64) { const raw = window.atob(base64); let hex = ''; for (let i = 0; i < raw.length; i++) { const charHex = raw.charCodeAt(i).toString(16); hex += (charHex.length === 2 ? charHex : '0' + charHex); } return hex; }
             
             async function parseNodeToRtf(node) {
-                let rtf = '';
                 if (node.nodeType === Node.TEXT_NODE) return escapeTextForRtf(node.textContent);
                 if (node.nodeType !== Node.ELEMENT_NODE) return '';
 
-                let prefix = '', suffix = '';
+                let prefix = '', suffix = '', rtf = '';
                 const tagName = node.tagName.toUpperCase();
                 const style = window.getComputedStyle(node);
 
@@ -1123,15 +949,17 @@
                     case 'B': case 'STRONG': prefix = '{\\b '; suffix = '}'; break;
                     case 'I': case 'EM': prefix = '{\\i '; suffix = '}'; break;
                     case 'U': prefix = '{\\ul '; suffix = '}'; break;
-                    case 'SPAN': // Handle styled spans for individual text formatting
+                    case 'SPAN': 
                         prefix = '{';
                         if (style.fontWeight === 'bold' || parseInt(style.fontWeight) >= 700) prefix += '\\b ';
                         if (style.fontStyle === 'italic') prefix += '\\i ';
                         if (style.textDecorationLine === 'underline') prefix += '\\ul ';
                         if (style.fontSize) prefix += `\\fs${parseInt(style.fontSize) * 2} `;
-                        // More style conversions can be added here
                         suffix = '}';
                         break;
+                    case 'FONT': // Handle execCommand color changes
+                         prefix = `{\\cf${await colorToRtfIndex(style.color)} `; suffix = '}';
+                         break;
                     case 'BR': return '\\par\n';
                     case 'TABLE': return await parseTableToRtf(node);
                     case 'IMG': return await parseImageToRtf(node);
@@ -1146,113 +974,88 @@
             async function parseImageToRtf(imgNode) {
                 const src = imgNode.src; if (!src) return '';
                 try {
-                    const response = await fetch(src);
-                    const blob = await response.blob();
-                    const reader = new FileReader();
+                    const response = await fetch(src); const blob = await response.blob();
                     return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
                         reader.onloadend = () => {
                             const base64String = reader.result.split(',')[1];
                             const hexData = base64ToHex(base64String);
                             const picType = blob.type === 'image/png' ? '\\pngblip' : '\\jpegblip';
-                            
-                            const PAGE_WIDTH_TWIPS = 12240; // 8.5 inches
-                            const MARGIN_TWIPS = 1440; // 1 inch
-                            const MAX_PIC_WIDTH_TWIPS = PAGE_WIDTH_TWIPS - (2 * MARGIN_TWIPS);
-
+                            const PAGE_WIDTH_TWIPS = 12240, MARGIN_TWIPS = 1440, MAX_PIC_WIDTH_TWIPS = PAGE_WIDTH_TWIPS - (2 * MARGIN_TWIPS);
                             const container = imgNode.closest('.resizable-image-container');
-                            let widthPx = parseInt(container ? container.style.width : imgNode.width, 10) || imgNode.naturalWidth || 200;
-                            let heightPx = parseInt(container ? container.style.height : imgNode.height, 10) || imgNode.naturalHeight || (widthPx / (imgNode.naturalWidth/imgNode.naturalHeight || 1));
-                            
-                            let widthTwips = widthPx * 15;
-                            let heightTwips = heightPx * 15;
-
-                            if (widthTwips > MAX_PIC_WIDTH_TWIPS) {
-                                const scale = MAX_PIC_WIDTH_TWIPS / widthTwips;
-                                widthTwips = MAX_PIC_WIDTH_TWIPS;
-                                heightTwips *= scale;
-                            }
-                            
+                            let widthPx = parseInt(container?.style.width, 10) || imgNode.naturalWidth || 200;
+                            let heightPx = parseInt(container?.style.height, 10) || imgNode.naturalHeight || (widthPx / (imgNode.naturalWidth/imgNode.naturalHeight || 1));
+                            let widthTwips = widthPx * 15, heightTwips = heightPx * 15;
+                            if (widthTwips > MAX_PIC_WIDTH_TWIPS) { const scale = MAX_PIC_WIDTH_TWIPS / widthTwips; widthTwips = MAX_PIC_WIDTH_TWIPS; heightTwips *= scale; }
                             const imageRtf = `{\\pard\\qc{\\pict\\picw${widthPx}\\pich${heightPx}\\picwgoal${Math.round(widthTwips)}\\pichgoal${Math.round(heightTwips)}${picType} ${hexData}}\\par}`;
                             resolve(imageRtf);
                         };
-                        reader.onerror = reject;
-                        reader.readAsDataURL(blob);
+                        reader.onerror = reject; reader.readAsDataURL(blob);
                     });
                 } catch (error) { console.error(`Could not process image ${src}:`, error); return ''; }
             }
 
             async function parseTableToRtf(tableNode) {
                 const rows = Array.from(tableNode.rows); if (rows.length === 0) return '';
-                
-                // Build a virtual grid to handle col/row spans
                 const grid = [];
                 for (let r = 0; r < rows.length; r++) {
-                    const row = rows[r];
-                    if (!grid[r]) grid[r] = [];
+                    const row = rows[r]; if (!grid[r]) grid[r] = [];
                     for (let c = 0; c < row.cells.length; c++) {
-                        const cell = row.cells[c];
-                        let gridC = 0;
+                        const cell = row.cells[c]; let gridC = 0;
                         while(grid[r][gridC]) gridC++;
-
-                        const colspan = parseInt(cell.getAttribute('colspan') || '1');
-                        const rowspan = parseInt(cell.getAttribute('rowspan') || '1');
+                        const colspan = parseInt(cell.getAttribute('colspan') || '1'), rowspan = parseInt(cell.getAttribute('rowspan') || '1');
                         for (let rs = 0; rs < rowspan; rs++) {
                             for (let cs = 0; cs < colspan; cs++) {
                                 if (!grid[r + rs]) grid[r + rs] = [];
-                                grid[r + rs][gridC + cs] = {
-                                    element: cell,
-                                    isFirst: rs === 0 && cs === 0,
-                                    isFirstRow: rs === 0,
-                                };
+                                grid[r + rs][gridC + cs] = { element: cell, isFirst: rs === 0 && cs === 0, isFirstRow: rs === 0, };
                             }
                         }
                     }
                 }
                 const numCols = grid[0] ? grid[0].length : 0;
-                
-                // Determine column widths based on the first row of the grid
                 const colWidths = Array(numCols).fill(0);
-                if (grid[0]) {
-                    for(let c = 0; c < numCols; c++) {
-                        if(grid[0][c] && grid[0][c].element) {
-                            colWidths[c] = grid[0][c].element.getBoundingClientRect().width / (grid[0][c].element.getAttribute('colspan') || 1);
-                        }
-                    }
-                }
+                if (grid[0]) { for(let c = 0; c < numCols; c++) { if(grid[0][c]?.element) colWidths[c] = grid[0][c].element.getBoundingClientRect().width / (grid[0][c].element.getAttribute('colspan') || 1); } }
 
                 let tableRtf = '';
                 for (let r = 0; r < grid.length; r++) {
-                    let rowHeader = '{\\trowd \\trgaph108\\trleft-108 ';
+                    let rowHeader = `{\\trowd \\trgaph108\\trleft-108 `;
                     let currentX = 0;
-                    for (let c = 0; c < numCols; c++) {
-                        currentX += (colWidths[c] || 100) * 15; // default width if column is empty
-                        rowHeader += `\\cellx${Math.round(currentX)} `;
-                    }
-                    
+                    for (let c = 0; c < numCols; c++) { currentX += (colWidths[c] || 100) * 15; rowHeader += `\\cellx${Math.round(currentX)} `; }
                     let cellsContentRtf = '';
                     for (let c = 0; c < numCols; c++) {
-                        const cellInfo = grid[r][c];
-                        if (!cellInfo) continue;
+                        const cellInfo = grid[r][c]; if (!cellInfo) continue;
                         if (cellInfo.isFirst) {
-                            let cellPrefix = '{\\intbl ';
+                            let cellPrefix = `{\\intbl `;
                             if (parseInt(cellInfo.element.getAttribute('rowspan') || '1') > 1) cellPrefix += '\\clvmgf ';
                             if (parseInt(cellInfo.element.getAttribute('colspan') || '1') > 1) cellPrefix += '\\clmrg ';
                             cellsContentRtf += `${cellPrefix} ${await parseNodeToRtf(cellInfo.element)} }\\cell `;
-                        } else if (cellInfo.isFirstRow) { // Horizontally merged
-                             cellsContentRtf += '{\\intbl \\clmrg }\\cell ';
-                        } else { // Vertically merged
-                             cellsContentRtf += '{\\intbl \\clvmrg }\\cell ';
-                        }
+                        } else if (cellInfo.isFirstRow) { cellsContentRtf += '{\\intbl \\clmrg }\\cell '; }
+                        else { cellsContentRtf += '{\\intbl \\clvmrg }\\cell '; }
                     }
                     tableRtf += rowHeader + '\n' + cellsContentRtf + '}\\row\n';
                 }
                 return `{\\pard ${tableRtf}\\par}`;
             }
 
+            let rtfColorTable = {}, rtfColorIndex = 1;
+            async function colorToRtfIndex(colorStr) {
+                const hex = colorToHex(colorStr);
+                if (rtfColorTable[hex]) return rtfColorTable[hex].index;
+                const match = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                if (match) {
+                    const r = parseInt(match[1]), g = parseInt(match[2]), b = parseInt(match[3]);
+                    rtfColorTable[hex] = { index: rtfColorIndex, def: `\\red${r}\\green${g}\\blue${b};` };
+                    return rtfColorIndex++;
+                }
+                return 0; // Default color
+            }
+
             async function htmlToRtf(element) {
+                rtfColorTable = {'#000000': {index: 0, def: '\\red0\\green0\\blue0;'}}; rtfColorIndex = 1;
                 let contentRtf = '';
                 for (const child of element.childNodes) contentRtf += await parseNodeToRtf(child);
-                const header = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Microsoft JhengHei;}{\\f1 Times New Roman;}}';
+                const colorTableDef = Object.values(rtfColorTable).map(c => c.def).join('');
+                const header = `{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Microsoft JhengHei;}}{\\colortbl;${colorTableDef}}`;
                 return header + contentRtf + '}';
             }
         });
