@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML編輯器</title>
+    <title>HTML表格編輯器</title>
     <style>
         :root {
             /* --- Light Theme --- */
@@ -17,7 +17,6 @@
             --system-red: #ff3b30;
             --system-gray: #8e8e93;
             --system-brown: #a2835b;
-            --system-purple: #5856d6;
             --border-color: rgba(0, 0, 0, 0.1);
             --text-color: #1d1d1f;
             --text-color-secondary: #6e6e73;
@@ -37,7 +36,6 @@
             --system-red: #ff453a;
             --system-gray: #8e8e93;
             --system-brown: #ab8e68;
-            --system-purple: #5e5ce6;
             --border-color: rgba(255, 255, 255, 0.15);
             --text-color: #f2f2f7;
             --text-color-secondary: #8d8d92;
@@ -122,7 +120,7 @@
         }
         .controls-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
         .control-group { display: flex; align-items: center; gap: 6px; }
-        .control-group label, .control-group > label {
+        .control-group label, .control-group > label { /* Increased specificity */
             font-size: 14px; 
             color: var(--system-blue); 
             font-weight: 600;
@@ -165,6 +163,7 @@
             background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
         }
 
+
         button {
             padding: 5px 12px; border: none; background-color: var(--system-blue); color: white;
             border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;
@@ -178,6 +177,7 @@
         button:disabled { background-color: color-mix(in srgb, var(--system-gray) 50%, var(--panel-background-color)); color: var(--text-color-secondary); cursor: not-allowed; filter: none; }
         button:disabled:hover, button:disabled:active { transform: none; }
         button svg { width: 14px; height: 14px; fill: currentColor; }
+        #save-html-btn svg { width: 16px; height: 16px; }
 
         /* --- 圖示按鈕 --- */
         button.icon-btn {
@@ -188,58 +188,20 @@
         }
         .btn-align { background-color: var(--system-green); }
         .btn-table { background-color: var(--system-brown); }
-        .btn-insert { background-color: var(--system-purple); }
 
         /* --- 下拉選單 (Dropdown) --- */
         .dropdown { position: relative; display: inline-block; }
         .dropdown-content { display: none; position: absolute; background-color: var(--panel-background-color); min-width: 120px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 10; border-radius: 6px; padding: 5px 0; border: 1px solid var(--border-color); }
-        .dropdown-content a { color: var(--text-color); padding: 8px 12px; text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+        .dropdown-content a { color: var(--text-color); padding: 8px 12px; text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 14px; }
         .dropdown-content a:hover { background-color: var(--border-color); }
         .dropdown.show .dropdown-content { display: block; }
         .dropdown-content svg { width: 16px; height: 16px; fill: var(--text-color-secondary); }
 
         /* --- 編輯器 --- */
-        #editor-container { 
-            overflow: auto; 
-            padding: 20px; 
-            background-color: var(--editor-background-color); 
-            border-radius: 8px; 
-            border: 1px solid var(--border-color); 
-            transition: all 0.3s; 
-        }
-        
-        #content-display { 
-            background-color: var(--editor-background-color); /* Match editor background for seamless look */
-            min-height: 250px; 
-            transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease; 
-            transform-origin: top left; 
-            user-select: none; 
-            outline: none;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Softer shadow */
-        }
-        #content-display[contenteditable="true"] { 
-            user-select: text; 
-            cursor: text; 
-        }
-
-        /* Page Orientation Styles */
-        .portrait-mode {
-             width: 21cm;
-             height: 29.7cm;
-             padding: 2cm;
-             margin: 1cm auto;
-             box-sizing: border-box;
-             box-shadow: 0 0 15px rgba(0,0,0,0.15);
-        }
-
-        .landscape-mode {
-            width: 29.7cm;
-            height: 21cm;
-            padding: 2cm;
-            margin: 1cm auto;
-            box-sizing: border-box;
-            box-shadow: 0 0 15px rgba(0,0,0,0.15);
-        }
+        #editor-container { overflow: auto; padding: 20px; background-color: var(--editor-background-color); border-radius: 8px; border: 1px solid var(--border-color); transition: background-color 0.3s; }
+        #content-display { background-color: transparent; min-height: 250px; transition: transform 0.2s ease; transform-origin: top left; user-select: none; }
+        #content-display[contenteditable="true"] { user-select: text; cursor: text; }
+        #content-display:focus { outline: none; }
 
         /* --- 表格與選取樣式 --- */
         #content-display table {
@@ -264,28 +226,21 @@
 
         mark.highlight { background-color: #ffdd57; color: black; border-radius: 2px; padding: 0 2px; }
         
-        .resizable-image-container, .shape-container { 
+        .resizable-image-container { 
             position: relative;
-            display: inline-block;
+            display: inline-block; /* Changed for easier resize */
             min-width: 20px; 
             min-height: 20px;
-            cursor: move;
-            user-select: none;
-        }
-        
-        .shape-container[contenteditable="false"] {
-             -webkit-user-select: none;
-             -moz-user-select: none;
-             -ms-user-select: none;
-             user-select: none;
+            /* width and height are set via style */
         }
 
-        .resizable-image-container img, .shape-container svg { 
+        .resizable-image-container img { 
             width: 100%; 
             height: 100%; 
             object-fit: contain;
             display: block;
-            pointer-events: none; /* Let events pass to the container */
+            user-select: none;
+            -webkit-user-drag: none;
         }
 
         .resize-handle {
@@ -302,13 +257,66 @@
             opacity: 0;
             transition: opacity 0.2s;
         }
-        .resizable-image-container:hover .resize-handle, .shape-container:hover .resize-handle {
+
+        .resizable-image-container:hover .resize-handle {
             opacity: 1;
         }
         
         /* --- 提示訊息 --- */
         #notification { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s; }
         #notification.show { opacity: 1; visibility: visible; transform: translate(-50%, -10px); }
+
+        /* --- 操作說明區塊 --- */
+        .instructions-section {
+            padding: 0 16px 16px 16px;
+        }
+        .instructions-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+        .instructions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .instruction-category {
+            background-color: var(--panel-background-color);
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+        }
+        .instruction-category h4 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        .instruction-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 14px;
+            color: var(--text-color-secondary);
+            margin-bottom: 12px;
+        }
+        .instruction-item:last-child {
+            margin-bottom: 0;
+        }
+        .instruction-item .icon {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            fill: var(--text-color-secondary);
+            margin-top: 2px;
+        }
+        .instruction-item .description .keyword {
+            color: var(--system-blue);
+            font-weight: 600;
+        }
 
     </style>
 </head>
@@ -324,7 +332,7 @@
                     <span id="current-filename"></span>
                 </div>
                  <div class="title-content">
-                    <h1 class="window-title">HTML 編輯器</h1>
+                    <h1 class="window-title">HTML 表格編輯器</h1>
                 </div>
                 <button id="theme-toggle" title="切換明暗主題">
                     <span id="theme-icon-sun">
@@ -335,138 +343,209 @@
                     </span>
                 </button>
             </div>
-            <p class="window-subtitle">本程式是針對 HTML 的視覺化編輯工具，提供直覺的操作介面。</p>
+            <p class="window-subtitle">本程式是針對 HTML 表格的視覺化編輯工具，提供直覺的操作介面。</p>
             <p class="window-creator">製作者：陳政德</p>
         </header>
 
         <main class="main-content">
             <div class="controls-panel">
                  <div class="controls-row">
-                    <!-- 檔案與編輯 -->
                     <div class="control-group">
-                        <button id="select-file-btn">匯入檔案</button>
+                        <button id="select-file-btn">選擇檔案</button>
                         <input type="file" id="file-input" accept=".html,.htm" style="display: none;">
-                        <button id="save-html-btn" class="success">儲存為 HTML</button>
-                        <button id="save-rtf-btn" class="success">儲存為 RTF</button>
+                    </div>
+                    <div class="control-group">
+                        <input type="text" id="search-input" placeholder="搜尋文字" disabled>
+                        <button id="search-btn" disabled>搜尋</button>
+                        <input type="text" id="replace-input" placeholder="取代為" disabled>
+                        <button id="replace-btn" class="secondary" disabled>全部取代</button>
                     </div>
                     <div class="separator"></div>
-                    <div class="control-group">
-                        <button id="undo-btn" title="復原 (Ctrl+Z)">
-                             <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.38 11.23 17.28 8 12.5 8z"/></svg>
-                        </button>
-                        <button id="cut-btn" title="剪下 (Ctrl+X)" class="icon-btn"><svg viewBox="0 0 24 24"><path d="M9.64 7.64c.23-.5.36-1.05.36-1.64 0-2.21-1.79-4-4-4S2 3.79 2 6c0 .59.13 1.14.36 1.64L9 14.29V22h6v-7.71l6.64-6.65c.23-.5.36-1.05.36-1.64 0-2.21-1.79-4-4-4s-4 1.79-4 4c0 .59.13 1.14.36 1.64L15 11l-5.36-3.36zM6 6c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm12 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/></svg></button>
-                        <button id="copy-btn" title="複製 (Ctrl+C)" class="icon-btn"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
-                        <button id="paste-btn" title="貼上 (Ctrl+V)" class="icon-btn"><svg viewBox="0 0 24 24"><path d="M19 2h-4.18C14.4.84 13.3 0 12 0S9.6.84 9.18 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z"/></svg></button>
-                    </div>
-                    <div class="separator"></div>
-                    <div class="control-group">
-                        <input type="text" id="search-input" placeholder="搜尋文字">
-                        <button id="search-btn">搜尋</button>
-                        <input type="text" id="replace-input" placeholder="取代為">
-                        <button id="replace-btn" class="secondary">全部取代</button>
-                    </div>
-                 </div>
-                 <div class="controls-row">
-                    <!-- 格式 -->
                     <div class="control-group">
                         <label>對齊:</label>
-                        <button id="align-left-btn" class="icon-btn btn-align" title="靠左對齊"><svg viewBox="0 0 24 24"><path d="M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z"/></svg></button>
-                        <button id="align-center-btn" class="icon-btn btn-align" title="置中對齊"><svg viewBox="0 0 24 24"><path d="M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z"/></svg></button>
-                        <button id="align-right-btn" class="icon-btn btn-align" title="靠右對齊"><svg viewBox="0 0 24 24"><path d="M3 21h18v-2H3v2zm6-4h12v-2H9v2zm-6-4h18v-2H3v2zm6-4h12V7H9v2zM3 3v2h18V3H3z"/></svg></button>
-                        <button id="align-top-btn" class="icon-btn btn-align" title="靠上對齊"><svg viewBox="0 0 24 24" transform="rotate(90)"><path d="M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z"/></svg></button>
-                        <button id="align-middle-btn" class="icon-btn btn-align" title="垂直置中"><svg viewBox="0 0 24 24" transform="rotate(90)"><path d="M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z"/></svg></button>
-                        <button id="align-bottom-btn" class="icon-btn btn-align" title="靠下對齊"><svg viewBox="0 0 24 24" transform="rotate(90)"><path d="M3 21h18v-2H3v2zm6-4h12v-2H9v2zm-6-4h18v-2H3v2zm6-4h12V7H9v2zM3 3v2h18V3H3z"/></svg></button>
+                        <button id="align-left-btn" class="icon-btn btn-align" disabled title="靠左對齊"><svg viewBox="0 0 24 24"><path d="M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z"/></svg></button>
+                        <button id="align-center-btn" class="icon-btn btn-align" disabled title="置中對齊"><svg viewBox="0 0 24 24"><path d="M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z"/></svg></button>
+                        <button id="align-right-btn" class="icon-btn btn-align" disabled title="靠右對齊"><svg viewBox="0 0 24 24"><path d="M3 21h18v-2H3v2zm6-4h12v-2H9v2zm-6-4h18v-2H3v2zm6-4h12V7H9v2zM3 3v2h18V3H3z"/></svg></button>
+                        <button id="align-top-btn" class="icon-btn btn-align" disabled title="靠上對齊"><svg viewBox="0 0 24 24" transform="rotate(90)"><path d="M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z"/></svg></button>
+                        <button id="align-middle-btn" class="icon-btn btn-align" disabled title="垂直置中"><svg viewBox="0 0 24 24" transform="rotate(90)"><path d="M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z"/></svg></button>
+                        <button id="align-bottom-btn" class="icon-btn btn-align" disabled title="靠下對齊"><svg viewBox="0 0 24 24" transform="rotate(90)"><path d="M3 21h18v-2H3v2zm6-4h12v-2H9v2zm-6-4h18v-2H3v2zm6-4h12V7H9v2zM3 3v2h18V3H3z"/></svg></button>
                     </div>
                      <div class="control-group">
                         <label>縮放:</label>
-                        <button id="zoom-in-btn" class="icon-btn" title="放大">+</button>
-                        <button id="zoom-out-btn" class="icon-btn" title="縮小">-</button>
-                        <button id="zoom-reset-btn" title="重設縮放">100%</button>
+                        <button id="zoom-in-btn" class="icon-btn" disabled title="放大">+</button>
+                        <button id="zoom-out-btn" class="icon-btn" disabled title="縮小">-</button>
+                        <button id="zoom-reset-btn" disabled title="重設縮放">100%</button>
                     </div>
                     <div class="control-group">
-                        <label>頁面:</label>
-                        <button id="portrait-btn" title="直式">直式</button>
-                        <button id="landscape-btn" title="橫式">橫式</button>
+                         <button id="undo-btn" title="復原上一步 (Ctrl+Z)" disabled>
+                             <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.38 11.23 17.28 8 12.5 8z"/></svg>
+                             復原
+                         </button>
                     </div>
                     <div class="separator"></div>
                     <div class="control-group">
                         <label>文字:</label>
-                        <input type="number" id="font-size-input" min="8" max="72" value="14" title="文字大小">
-                        <input type="color" id="font-color-input" value="#000000" title="文字顏色">
+                        <input type="number" id="font-size-input" min="8" max="72" value="14" disabled title="文字大小">
+                        <input type="color" id="font-color-input" value="#000000" disabled title="文字顏色">
                     </div>
                      <div class="control-group">
                         <label>背景:</label>
-                        <input type="color" id="bg-color-input" value="#FFFFFF" title="儲存格背景顏色">
+                        <input type="color" id="bg-color-input" value="#FFFFFF" disabled title="儲存格背景顏色">
                     </div>
                     <div class="separator"></div>
                     <div class="control-group">
                         <label>邊框:</label>
-                        <input type="color" id="border-color-input" value="#dddddd" title="表格邊框顏色">
-                        <input type="number" id="border-width-input" min="0" max="10" value="1" title="表格邊框寬度 (px)">
+                        <input type="color" id="border-color-input" value="#dddddd" disabled title="表格邊框顏色">
+                        <input type="number" id="border-width-input" min="0" max="10" value="1" disabled title="表格邊框寬度 (px)">
                         <div class="dropdown">
-                            <button id="border-dropdown-btn" class="icon-btn btn-table" title="設定框線">
+                            <button id="border-dropdown-btn" class="icon-btn btn-table" disabled title="設定框線">
                                <svg viewBox="0 0 24 24"><path d="M7 21H5V9h2v12zM9 13v2h2v-2H9zM9 17v2h2v-2H9zM9 9v2h2V9H9zM13 21h-2V9h2v12zM15 9h2v2h-2V9zM15 13h2v2h-2v-2zM15 17h2v2h-2v-2zM19 21h-2V9h2v12zM3 7V5h18v2H3zM3 21v-2h18v2H3z"/></svg>
                             </button>
                             <div class="dropdown-content" id="border-options">
-                                <a data-border="bottom">下框線</a><a data-border="top">上框線</a>
-                                <a data-border="left">左框線</a><a data-border="right">右框線</a>
-                                <a data-border="none">無框線</a><a data-border="all">所有框線</a>
-                                <a data-border="outside">外框線</a><a data-border="inside">內框線</a>
+                                <a href="#" data-border="bottom">下框線</a>
+                                <a href="#" data-border="top">上框線</a>
+                                <a href="#" data-border="left">左框線</a>
+                                <a href="#" data-border="right">右框線</a>
+                                <a href="#" data-border="none">無框線</a>
+                                <a href="#" data-border="all">所有框線</a>
+                                <a href="#" data-border="outside">外框線</a>
+                                <a href="#" data-border="inside">內框線</a>
                             </div>
                         </div>
-                    </div>
-                </div>
-                <div class="controls-row">
-                    <!-- 插入與表格操作 -->
-                    <div class="control-group">
-                        <label>插入:</label>
-                        <button id="insert-table-btn" class="icon-btn btn-insert" title="插入表格">
-                           <svg viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m0 2v3h14V6H5m0 5v3h4v-3H5m6 0v3h8v-3h-8m-6 5v3h4v-3H5m6 0v3h8v-3h-8Z"/></svg>
-                        </button>
-                        <div class="dropdown">
-                            <button id="insert-shape-btn" class="icon-btn btn-insert" title="插入圖案">
-                                <svg viewBox="0 0 24 24"><path d="M23 12l-7 7v-4.2c-2.8.1-5.2.8-7.2 2.2-2 1.3-3.3 3-4 5-.5-1.8-.4-4.1.4-6.8 1-3 2.8-5.2 5.4-6.6C13.2 7.3 16 6.8 19 6.8V3l4 4.5V12z"/></svg>
-                            </button>
-                            <div class="dropdown-content" id="shape-options">
-                                <a data-shape="rect">矩形</a>
-                                <a data-shape="circle">圓形</a>
-                            </div>
-                        </div>
-                        <button id="insert-image-btn" class="icon-btn btn-insert" title="插入圖片">
-                            <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-                        </button>
                     </div>
                     <div class="separator"></div>
                      <div class="control-group">
                         <label>表格:</label>
-                        <button id="add-row-btn" class="icon-btn btn-table" title="在下方新增一列"><svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM4 12h16v4H4v-4zm10-4.5h2v3h-2v-3zm-3 0h2v3h-2v-3zm-3 0h2v3H8v-3zM21 20H3v-1c0-.55.45-1 1-1h16c.55 0 1 .45 1 1v1zM11 2v3h2V2h-2z"/></svg></button>
-                        <button id="add-col-btn" class="icon-btn btn-table" title="在右方新增一欄"><svg viewBox="0 0 24 24"><path d="M8 4v16c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm6 14h-4V6h4v12zm-8.5-2h3v-2h-3v2zm0-3h3v-2h-3v2zm0-3h3v-2h-3v2zM20 4c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H10V4h10zM19 21v-2h1c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1h-1V1h-2v2h-8V1H8v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14v2h2z" transform="scale(1, -1) translate(0, -24)"/></svg></button>
-                        <button id="delete-row-btn" class="danger icon-btn" title="刪除選取列"><svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-2 9H6v-2h12v2z"/></svg></button>
-                        <button id="delete-col-btn" class="danger icon-btn" title="刪除選取欄"><svg viewBox="0 0 24 24"><path d="M14 4v16c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2h-4zM4 8h4V6H4v2zm0 6h4v-2H4v2zm0-3h4v-2H4v2z"/></svg></button>
-                        <button id="merge-cells-btn" class="icon-btn btn-table" title="合併儲存格"><svg viewBox="0 0 24 24"><path d="M11 11H5v2h6v6h2v-6h6v-2h-6V5h-2v6Z M3 21V3h18v18H3Z"/></svg></button>
-                        <button id="split-cell-btn" class="icon-btn btn-table" title="拆分儲存格"><svg viewBox="0 0 24 24"><path d="M13 11V3h-2v8H3v2h8v8h2v-8h8v-2h-8Z M3 3v8h8V3H3Zm10 0v8h8V3h-8ZM3 13v8h8v-8H3Zm10 0v8h8v-8h-8Z"/></svg></button>
+                        <button id="add-row-btn" class="icon-btn btn-table" disabled title="在下方新增一列"><svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM4 12h16v4H4v-4zm10-4.5h2v3h-2v-3zm-3 0h2v3h-2v-3zm-3 0h2v3H8v-3zM21 20H3v-1c0-.55.45-1 1-1h16c.55 0 1 .45 1 1v1zM11 2v3h2V2h-2z"/></svg></button>
+                        <button id="add-col-btn" class="icon-btn btn-table" disabled title="在右方新增一欄"><svg viewBox="0 0 24 24"><path d="M8 4v16c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm6 14h-4V6h4v12zm-8.5-2h3v-2h-3v2zm0-3h3v-2h-3v2zm0-3h3v-2h-3v2zM20 4c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H10V4h10zM19 21v-2h1c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1h-1V1h-2v2h-8V1H8v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14v2h2z" transform="scale(1, -1) translate(0, -24)"/></svg></button>
+                        <button id="delete-row-btn" class="danger icon-btn" disabled title="刪除選取列"><svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-2 9H6v-2h12v2z"/></svg></button>
+                        <button id="delete-col-btn" class="danger icon-btn" disabled title="刪除選取欄"><svg viewBox="0 0 24 24"><path d="M14 4v16c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2h-4zM4 8h4V6H4v2zm0 6h4v-2H4v2zm0-3h4v-2H4v2z"/></svg></button>
+                        <button id="merge-cells-btn" class="icon-btn btn-table" disabled title="合併儲存格"><svg viewBox="0 0 24 24"><path d="M11 11H5v2h6v6h2v-6h6v-2h-6V5h-2v6Z M3 21V3h18v18H3Z"/></svg></button>
+                        <button id="split-cell-btn" class="icon-btn btn-table" disabled title="拆分儲存格"><svg viewBox="0 0 24 24"><path d="M13 11V3h-2v8H3v2h8v8h2v-8h8v-2h-8Z M3 3v8h8V3H3Zm10 0v8h8V3h-8ZM3 13v8h8v-8H3Zm10 0v8h8v-8h-8Z"/></svg></button>
+                        <button id="insert-image-btn" class="icon-btn btn-table" disabled title="在選取儲存格插入圖片">
+                            <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                        </button>
                     </div>
                      <div class="separator"></div>
                      <div class="control-group">
                         <label for="row-height-input">列高:</label>
-                        <input type="number" id="row-height-input" min="1" title="列高度 (px)">
-                        <input type="checkbox" id="fix-row-height-check" title="固定列高，禁止拖曳調整">
+                        <input type="number" id="row-height-input" min="1" disabled title="列高度 (px)">
+                        <input type="checkbox" id="fix-row-height-check" disabled title="固定列高，禁止拖曳調整">
                         <label for="fix-row-height-check">固定</label>
                         
                         <label for="col-width-input" style="margin-left: 8px;">欄寬:</label>
-                        <input type="number" id="col-width-input" min="1" title="欄寬度 (px)">
-                        <input type="checkbox" id="fix-col-width-check" title="固定欄寬，禁止拖曳調整">
+                        <input type="number" id="col-width-input" min="1" disabled title="欄寬度 (px)">
+                        <input type="checkbox" id="fix-col-width-check" disabled title="固定欄寬，禁止拖曳調整">
                         <label for="fix-col-width-check">固定</label>
+                    </div>
+                    <div class="spacer"></div>
+                    <div class="control-group">
+                        <button id="save-html-btn" class="success" disabled>
+                            <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                            儲存為 HTML
+                        </button>
                     </div>
                 </div>
             </div>
     
             <div id="editor-container">
-                <div id="content-display" contenteditable="true">
-                    點擊「匯入檔案」或開始編輯...
+                <div id="content-display" contenteditable="false">
+                    請從上方選擇一個包含 HTML 表格的檔案...
                 </div>
             </div>
         </main>
+
+        <section class="instructions-section">
+            <h3 class="instructions-title">功能與操作說明</h3>
+            <div class="instructions-grid">
+                <div class="instruction-category">
+                    <h4>檔案操作</h4>
+                    <div class="instruction-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                        <div class="description">
+                            點擊 <span class="keyword">選擇檔案</span> 按鈕，可從您的電腦讀取 <span class="keyword">.html</span> 或 <span class="keyword">.htm</span> 檔案，並將檔案中的第一個表格載入編輯區。
+                        </div>
+                    </div>
+                    <div class="instruction-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                        <div class="description">
+                            完成編輯後，點擊 <span class="keyword">儲存為 HTML</span> 按鈕，即可將目前的表格儲存為一個獨立的 <span class="keyword">.html</span> 檔案。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="instruction-category">
+                    <h4>編輯功能</h4>
+                    <div class="instruction-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                        <div class="description">
+                           使用 <span class="keyword">搜尋</span> 與 <span class="keyword">取代</span> 功能，可以快速在表格中尋找或批次修改文字內容。
+                        </div>
+                    </div>
+                    <div class="instruction-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.38 11.23 17.28 8 12.5 8z"/></svg>
+                        <div class="description">
+                            任何操作失誤，都可以透過 <span class="keyword">復原</span> 按鈕回到上一步。最多可復原 30 步。
+                        </div>
+                    </div>
+                     <div class="instruction-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M12 6C9.79 6 8 7.79 8 10s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0-8C7.47 4 3.28 6.27 2 10c1.28 3.73 5.47 6 10 6s8.72-2.27 10-6c-1.28-3.73-5.47-6-10-6zm0 10c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
+                        <div class="description">
+                           透過 <span class="keyword">縮放</span> 功能，可以放大或縮小整個表格的預覽畫面，方便檢視細節或總覽全局。
+                        </div>
+                    </div>
+                </div>
+                 <div class="instruction-category">
+                    <h4>格式設定</h4>
+                    <div class="instruction-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
+                        <div class="description">
+                           設定選取儲存格的 <span class="keyword">文字</span> 大小與顏色，以及儲存格的 <span class="keyword">背景</span> 顏色。
+                        </div>
+                    </div>
+                     <div class="instruction-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z"/></svg>
+                        <div class="description">
+                           調整文字的水平（<span class="keyword">靠左</span>、<span class="keyword">置中</span>、<span class="keyword">靠右</span>）與垂直（<span class="keyword">靠上</span>、<span class="keyword">垂直置中</span>、<span class="keyword">靠下</span>）<span class="keyword">對齊</span>方式。
+                        </div>
+                    </div>
+                    <div class="instruction-item">
+                         <svg class="icon" viewBox="0 0 24 24"><path d="M7 21H5V9h2v12zM9 13v2h2v-2H9zM9 17v2h2v-2H9zM9 9v2h2V9H9zM13 21h-2V9h2v12zM15 9h2v2h-2V9zM15 13h2v2h-2v-2zM15 17h2v2h-2v-2zM19 21h-2V9h2v12zM3 7V5h18v2H3zM3 21v-2h18v2H3z"/></svg>
+                        <div class="description">
+                           設定表格的 <span class="keyword">邊框</span> 顏色與寬度，或透過下拉選單，針對選取範圍設定 <span class="keyword">內外框線</span> 或 <span class="keyword">單邊框線</span>。
+                        </div>
+                    </div>
+                </div>
+                <div class="instruction-category">
+                    <h4>表格操作</h4>
+                    <div class="instruction-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M11 11V3h2v8h8v2h-8v8h-2v-8H3v-2h8z"/></svg>
+                        <div class="description">
+                           在選取儲存格的右方或下方 <span class="keyword">新增</span> 欄或列，也可以 <span class="keyword">刪除</span> 目前選取的所有欄或列。
+                        </div>
+                    </div>
+                     <div class="instruction-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M11 11H5v2h6v6h2v-6h6v-2h-6V5h-2v6Z M3 21V3h18v18H3Z"/></svg>
+                        <div class="description">
+                           <span class="keyword">合併</span> 多個儲存格為一個，或將已合併的儲存格 <span class="keyword">拆分</span> 回原始狀態。
+                        </div>
+                    </div>
+                    <div class="instruction-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                        <div class="description">
+                           <span class="keyword">插入圖片</span> 到儲存格中，並可拖曳右下角控制點調整圖片大小。支援 <span class="keyword">.heic</span> 格式。
+                        </div>
+                    </div>
+                     <div class="instruction-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
+                        <div class="description">
+                          設定 <span class="keyword">列高</span> 與 <span class="keyword">欄寬</span>，並可勾選 <span class="keyword">固定</span>，防止後續拖曳儲存格框線時改變尺寸。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </div>
 
     <input type="file" id="image-upload-input" accept="image/*,.heic,.heif" style="display:none;">
@@ -482,9 +561,8 @@
             const searchInput = getEl('search-input'), searchBtn = getEl('search-btn');
             const replaceInput = getEl('replace-input'), replaceBtn = getEl('replace-btn');
             const zoomInBtn = getEl('zoom-in-btn'), zoomOutBtn = getEl('zoom-out-btn'), zoomResetBtn = getEl('zoom-reset-btn');
-            const saveHtmlBtn = getEl('save-html-btn'), saveRtfBtn = getEl('save-rtf-btn'), notification = getEl('notification');
+            const saveHtmlBtn = getEl('save-html-btn'), notification = getEl('notification');
             const undoBtn = getEl('undo-btn');
-            const cutBtn = getEl('cut-btn'), copyBtn = getEl('copy-btn'), pasteBtn = getEl('paste-btn');
             const alignLeftBtn = getEl('align-left-btn'), alignCenterBtn = getEl('align-center-btn'), alignRightBtn = getEl('align-right-btn');
             const alignTopBtn = getEl('align-top-btn'), alignMiddleBtn = getEl('align-middle-btn'), alignBottomBtn = getEl('align-bottom-btn');
             const addRowBtn = getEl('add-row-btn'), addColBtn = getEl('add-col-btn');
@@ -499,13 +577,9 @@
             const borderDropdownBtn = getEl('border-dropdown-btn');
             const borderOptions = getEl('border-options');
             const insertImageBtn = getEl('insert-image-btn');
-            const insertTableBtn = getEl('insert-table-btn');
-            const insertShapeBtn = getEl('insert-shape-btn');
-            const shapeOptions = getEl('shape-options');
             const imageUploadInput = getEl('image-upload-input');
             const rowHeightInput = getEl('row-height-input'), colWidthInput = getEl('col-width-input');
             const fixRowHeightCheck = getEl('fix-row-height-check'), fixColWidthCheck = getEl('fix-col-width-check');
-            const portraitBtn = getEl('portrait-btn'), landscapeBtn = getEl('landscape-btn');
             const currentFilename = getEl('current-filename');
             
             // --- State Variables ---
@@ -513,10 +587,17 @@
             let historyStack = [], HISTORY_MAX_SIZE = 30;
             let selectedCells = [], isSelecting = false, startCell = null, endCell = null, dragStart = false;
             let resizing = null;
-            let objectResizing = null; // General purpose for images and shapes
-            let objectDragging = null; // For dragging shapes
+            let imageResizing = null; // State for image resizing
             let originalFilename = '';
-            
+
+            const allControls = [
+                searchInput, searchBtn, replaceInput, replaceBtn, zoomInBtn, zoomOutBtn, zoomResetBtn, saveHtmlBtn, undoBtn,
+                alignLeftBtn, alignCenterBtn, alignRightBtn, alignTopBtn, alignMiddleBtn, alignBottomBtn,
+                addRowBtn, addColBtn, deleteRowBtn, deleteColBtn, mergeCellsBtn, splitCellBtn,
+                fontSizeInput, fontColorInput, bgColorInput, borderColorInput, borderWidthInput, borderDropdownBtn, insertImageBtn,
+                rowHeightInput, colWidthInput, fixRowHeightCheck, fixColWidthCheck
+            ];
+
             // --- Core Functions ---
             function showNotification(message) {
                 clearTimeout(notificationTimer);
@@ -524,12 +605,19 @@
                 notification.classList.add('show');
                 notificationTimer = setTimeout(() => notification.classList.remove('show'), 3000);
             }
+
+            function setControlsState(enabled) {
+                allControls.forEach(control => control.disabled = !enabled);
+                contentDisplay.contentEditable = enabled;
+                undoBtn.disabled = historyStack.length <= 1;
+            }
             
             function saveState() {
-                if (resizing || objectResizing || objectDragging) return;
+                // To prevent saving intermediate states during resize
+                if (resizing || imageResizing) return;
                 historyStack.push(contentDisplay.innerHTML);
                 if (historyStack.length > HISTORY_MAX_SIZE) historyStack.shift();
-                undoBtn.disabled = historyStack.length <= 1;
+                undoBtn.disabled = false;
             }
 
             function undoState() {
@@ -541,8 +629,7 @@
                 undoBtn.disabled = historyStack.length <= 1;
             }
             
-            function colorToHex(colorStr) {
-                if (!colorStr) return '#FFFFFF';
+             function colorToHex(colorStr) {
                 const temp = document.createElement("div");
                 temp.style.color = colorStr;
                 document.body.appendChild(temp);
@@ -552,12 +639,18 @@
                 const match = computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
                 if (match) {
                     try {
-                        return "#" + ((1 << 24) + (parseInt(match[1]) << 16) + (parseInt(match[2]) << 8) + parseInt(match[3])).toString(16).slice(1).toUpperCase();
+                        const r = parseInt(match[1]);
+                        const g = parseInt(match[2]);
+                        const b = parseInt(match[3]);
+                        return ("#" + 
+                               ("0" + r.toString(16)).slice(-2) +
+                               ("0" + g.toString(16)).slice(-2) +
+                               ("0" + b.toString(16)).slice(-2)).toUpperCase();
                     } catch (e) {
                         return '#000000';
                     }
                 }
-                return '#FFFFFF';
+                return '#FFFFFF'; // Fallback for invalid colors
             }
             
             function getEffectiveBackgroundColor(element) {
@@ -571,35 +664,54 @@
                     if (el === contentDisplay) break; 
                     el = el.parentElement;
                 }
-                const editorStyle = window.getComputedStyle(contentDisplay);
-                if (editorStyle.backgroundColor !== 'transparent' && editorStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
-                    return editorStyle.backgroundColor;
-                }
                 return window.getComputedStyle(getEl('editor-container')).backgroundColor;
             }
-
 
             function updateToolbarForSelection() {
                 if (selectedCells.length === 0) return;
 
                 const primaryCell = selectedCells[0];
                 const primaryStyle = window.getComputedStyle(primaryCell);
-                
-                fontSizeInput.value = parseInt(primaryStyle.fontSize) || 14;
-                
                 const primaryBgColor = colorToHex(getEffectiveBackgroundColor(primaryCell));
-                bgColorInput.value = primaryBgColor;
-
                 const primaryFontColor = colorToHex(primaryStyle.color);
-                fontColorInput.value = primaryFontColor;
+                
+                let hasMixedBg = false;
+                let hasMixedFont = false;
 
+                for (let i = 1; i < selectedCells.length; i++) {
+                    const currentCell = selectedCells[i];
+                    const currentStyle = window.getComputedStyle(currentCell);
+                    if (colorToHex(getEffectiveBackgroundColor(currentCell)) !== primaryBgColor) {
+                        hasMixedBg = true;
+                    }
+                    if (colorToHex(currentStyle.color) !== primaryFontColor) {
+                        hasMixedFont = true;
+                    }
+                    if (hasMixedBg && hasMixedFont) break; 
+                }
+
+                // Update common properties
+                fontSizeInput.value = parseInt(primaryStyle.fontSize);
                 const rect = primaryCell.getBoundingClientRect();
                 rowHeightInput.value = Math.round(rect.height / currentZoom);
                 colWidthInput.value = Math.round(rect.width / currentZoom);
 
-                bgColorInput.classList.toggle('mixed', selectedCells.some(c => colorToHex(getEffectiveBackgroundColor(c)) !== primaryBgColor));
-                fontColorInput.classList.toggle('mixed', selectedCells.some(c => colorToHex(window.getComputedStyle(c).color) !== primaryFontColor));
+                // Update color pickers
+                if (hasMixedBg) {
+                    bgColorInput.classList.add('mixed');
+                } else {
+                    bgColorInput.classList.remove('mixed');
+                    bgColorInput.value = primaryBgColor;
+                }
+
+                if (hasMixedFont) {
+                    fontColorInput.classList.add('mixed');
+                } else {
+                    fontColorInput.classList.remove('mixed');
+                    fontColorInput.value = primaryFontColor;
+                }
             }
+
 
             function clearHighlight() {
                 contentDisplay.querySelectorAll('mark.highlight').forEach(mark => {
@@ -649,75 +761,6 @@
                 }
             }
             
-            async function checkClipboardPermission(permissionName) {
-                if (!navigator.permissions) return 'prompt';
-                try {
-                    const result = await navigator.permissions.query({ name: permissionName });
-                    return result.state; // 'granted', 'prompt', or 'denied'
-                } catch (err) {
-                    return 'prompt'; // Fallback for browsers that don't support clipboard permissions query
-                }
-            }
-
-            async function execCmd(command, value = null) {
-                contentDisplay.focus(); 
-                
-                if (command === 'copy' || command === 'cut') {
-                    try {
-                        if (navigator.clipboard && navigator.clipboard.write) {
-                            const selection = document.getSelection();
-                            if (selection.rangeCount > 0) {
-                                const range = selection.getRangeAt(0);
-                                const selectedContent = range.cloneContents();
-                                const tempDiv = document.createElement('div');
-                                tempDiv.appendChild(selectedContent);
-                                const htmlBlob = new Blob([tempDiv.innerHTML], { type: 'text/html' });
-                                const textBlob = new Blob([tempDiv.innerText], { type: 'text/plain' });
-                                const clipboardItem = new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob });
-                                await navigator.clipboard.write([clipboardItem]);
-                                if(command === 'cut') {
-                                    range.deleteContents();
-                                }
-                                showNotification(command === 'cut' ? '已剪下' : '已複製');
-                            }
-                        } else { throw new Error('Clipboard API not available.'); }
-                    } catch (err) {
-                        document.execCommand(command);
-                    }
-                } else if (command === 'paste') {
-                    const state = await checkClipboardPermission('clipboard-read');
-                    if (state === 'denied') {
-                        showNotification('貼上權限已被封鎖，請至瀏覽器設定中開啟。');
-                        return;
-                    }
-                    try {
-                        if(navigator.clipboard && navigator.clipboard.read) {
-                            const clipboardItems = await navigator.clipboard.read();
-                             let pasted = false;
-                             for (const item of clipboardItems) {
-                                if (item.types.includes('text/html')) {
-                                    const blob = await item.getType('text/html');
-                                    const html = await blob.text();
-                                    document.execCommand('insertHTML', false, html);
-                                    pasted = true;
-                                    break;
-                                }
-                            }
-                             if (!pasted) {
-                               const text = await navigator.clipboard.readText();
-                               document.execCommand('insertText', false, text);
-                            }
-                        } else { throw new Error('Clipboard API not available.'); }
-                    } catch (err) {
-                         document.execCommand('paste');
-                    }
-                } else {
-                     document.execCommand(command, false, value);
-                }
-                
-                saveState();
-            }
-            
             // --- Event Listeners ---
             selectFileBtn.addEventListener('click', () => fileInput.click());
 
@@ -732,50 +775,41 @@
                     const table = doc.querySelector('table');
                     if (table) {
                         contentDisplay.innerHTML = table.outerHTML;
+                        setControlsState(true);
+                        historyStack = [];
+                        saveState();
                         const firstCell = table.querySelector('td, th');
                         if (firstCell) {
                             const computedStyle = window.getComputedStyle(firstCell);
                             borderColorInput.value = colorToHex(computedStyle.borderColor);
                             borderWidthInput.value = parseInt(computedStyle.borderWidth) || 1;
                         }
-                        showNotification('表格載入成功！');
-                    } else if (doc.body && doc.body.innerHTML.trim()) {
-                        contentDisplay.innerHTML = doc.body.innerHTML;
-                        showNotification('HTML 內容載入成功！');
+                        showNotification('檔案載入成功！');
                     } else {
-                        contentDisplay.innerHTML = '<p style="color: red;">錯誤：檔案中找不到可編輯的內容。</p>';
+                        contentDisplay.innerHTML = '<p style="color: red;">錯誤：檔案中找不到 &lt;table&gt; 元素。</p>';
+                        setControlsState(false);
                     }
-                    historyStack = [];
-                    saveState();
                 };
                 reader.readAsText(file);
-                fileInput.value = '';
+                fileInput.value = ''; // Reset for re-uploading same file
             });
             
             searchBtn.addEventListener('click', () => {
                 clearHighlight();
                 const searchTerm = searchInput.value;
                 if (!searchTerm) return;
-                const regex = new RegExp(searchTerm, 'gi');
-                const walker = document.createTreeWalker(contentDisplay, NodeFilter.SHOW_TEXT, null, false);
-                let nodes = [];
-                while(walker.nextNode()) nodes.push(walker.currentNode);
-                
                 let count = 0;
-                nodes.forEach(node => {
-                     if (node.nodeValue.match(regex)) {
-                        const parent = node.parentNode;
-                        if (parent.nodeName === 'MARK') return;
-                        const newHTML = node.nodeValue.replace(regex, match => {
-                            count++;
-                            return `<mark class="highlight">${match}</mark>`;
-                        });
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = newHTML;
-                        while(tempDiv.firstChild) {
-                            parent.insertBefore(tempDiv.firstChild, node);
-                        }
-                        parent.removeChild(node);
+                const regex = new RegExp(searchTerm, 'gi');
+                contentDisplay.querySelectorAll('td, th').forEach(cell => {
+                    const originalHTML = cell.innerHTML;
+                    let matchesFound = 0;
+                    const newHTML = originalHTML.replace(regex, (match) => {
+                        matchesFound++;
+                        return `<mark class="highlight">${match}</mark>`;
+                    });
+                    if (matchesFound > 0) {
+                        cell.innerHTML = newHTML;
+                        count += matchesFound;
                     }
                 });
                 showNotification(`找到 ${count} 個符合的項目。`);
@@ -790,18 +824,12 @@
                 }
                 let count = 0;
                 const regex = new RegExp(searchTerm, 'gi');
-                const walker = document.createTreeWalker(contentDisplay, NodeFilter.SHOW_TEXT, null, false);
-                let nodesToReplace = [];
-                while(walker.nextNode()) nodesToReplace.push(walker.currentNode);
-                
-                nodesToReplace.forEach(node => {
-                    const matches = node.nodeValue.match(regex);
-                    if(matches) {
-                        count += matches.length;
-                        node.nodeValue = node.nodeValue.replace(regex, replaceTerm);
+                contentDisplay.querySelectorAll('td, th').forEach(cell => {
+                    if (cell.textContent.match(regex)) {
+                        count += (cell.innerHTML.match(regex) || []).length;
+                        cell.innerHTML = cell.innerHTML.replace(regex, replaceTerm);
                     }
                 });
-                
                 if (count > 0) {
                     saveState();
                     showNotification(`已取代 ${count} 個項目。`);
@@ -813,9 +841,24 @@
             saveHtmlBtn.addEventListener('click', () => {
                 clearSelection();
                 clearHighlight();
-                const contentHTML = contentDisplay.innerHTML;
-                const filename = `${originalFilename || 'document'}.html`;
-                const fullHTML = `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><title>${filename}</title><style>body{font-family:sans-serif}table{border-collapse:collapse;width:100%;table-layout:fixed}td,th{border:1px solid #ddd;padding:8px;overflow:hidden;word-break:break-all}</style></head><body>${contentHTML}</body></html>`;
+                const tableHTML = contentDisplay.innerHTML;
+                const filename = `${originalFilename || 'table'}.html`;
+
+                const fullHTML = `<!DOCTYPE html>
+    <html lang="zh-Hant">
+    <head>
+        <meta charset="UTF-8">
+        <title>Exported Table</title>
+        <style>
+            body { font-family: sans-serif; }
+            table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+            td, th { border: 1px solid #ddd; padding: 8px; overflow: hidden; word-break: break-all; }
+        </style>
+    </head>
+    <body>
+        ${tableHTML}
+    </body>
+    </html>`;
                 const blob = new Blob([fullHTML], { type: 'text/html' });
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
@@ -827,154 +870,12 @@
                 showNotification('HTML 檔案已儲存。');
             });
             
-            function base64ToHex(base64) {
-                const raw = atob(base64);
-                let result = '';
-                for (let i = 0; i < raw.length; i++) {
-                    const hex = raw.charCodeAt(i).toString(16);
-                    result += (hex.length === 2 ? hex : '0' + hex);
-                }
-                return result;
-            }
-            
-            async function htmlToRtf(htmlString) {
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = htmlString;
-                
-                const rtfHeader = '{\\rtf1\\ansi\\ansicpg950\\deff0{\\fonttbl{\\f0\\fnil\\fcharset136 PMingLiU;}}\\pard\\sa200\\sl276\\slmult1\n';
-                const rtfFooter = '}';
-                
-                async function processNode(node) {
-                    let rtf = '';
-                    if (node.nodeType === Node.TEXT_NODE) {
-                        for (const char of node.nodeValue) {
-                            const code = char.charCodeAt(0);
-                             if (code > 127) rtf += `\\u${code}?`;
-                            else if (char === '\\' || char === '{' || char === '}') rtf += `\\${char}`;
-                            else rtf += char;
-                        }
-                    } else if (node.nodeType === Node.ELEMENT_NODE) {
-                        const tagName = node.tagName.toLowerCase();
-                        let childrenRtf = '';
-                        for (const child of Array.from(node.childNodes)) {
-                            childrenRtf += await processNode(child);
-                        }
-                        
-                        switch(tagName) {
-                            case 'p': case 'div':
-                                rtf += `{\\pard ${childrenRtf}\\par}\n`; break;
-                            case 'br':
-                                rtf += '\\line\n'; break;
-                            case 'b': case 'strong':
-                                rtf += `{\\b ${childrenRtf}}`; break;
-                            case 'i': case 'em':
-                                rtf += `{\\i ${childrenRtf}}`; break;
-                            case 'u':
-                                rtf += `{\\ul ${childrenRtf}}`; break;
-                            case 'table':
-                                rtf += await processTable(node); break;
-                            case 'img':
-                                rtf += await processImage(node); break;
-                            default:
-                                rtf += childrenRtf;
-                        }
-                    }
-                    return rtf;
-                }
-
-                async function processImage(imgNode) {
-                    if (!imgNode.src || !imgNode.src.startsWith('data:image/')) return '';
-                    try {
-                        const [header, base64Data] = imgNode.src.split(',');
-                        const imageType = header.match(/image\/(\w+)/)[1];
-                        const hexData = base64ToHex(base64Data);
-                        
-                        const container = imgNode.closest('.resizable-image-container');
-                        const width = (container || imgNode).offsetWidth * 15;
-                        const height = (container || imgNode).offsetHeight * 15;
-                        
-                        let pictType = 'pngblip';
-                        if(imageType === 'jpeg' || imageType === 'jpg') pictType = 'jpegblip';
-                        
-                        return `{\\pict\\${pictType}\\picw${width}\\pich${height}\\picwgoal${width}\\pichgoal${height} ${hexData}}`;
-                    } catch(e) {
-                        console.error("RTF Image processing error:", e);
-                        return '';
-                    }
-                }
-
-                async function processTable(tableNode) {
-                    let tableRtf = '';
-                    for (const row of Array.from(tableNode.rows)) {
-                        let rowHeader = '\\trowd \\trautofit1 ';
-                        let currentPos = 0;
-                        let cellDefs = '';
-                         Array.from(row.cells).forEach(cell => {
-                            const cellWidth = cell.getBoundingClientRect().width * 15;
-                            currentPos += cellWidth;
-                            cellDefs += `\\cellx${Math.round(currentPos)}`;
-                        });
-
-                        let cellContents = '';
-                        for (const cell of Array.from(row.cells)) {
-                            let content = '';
-                            for (const childNode of cell.childNodes) {
-                                content += await processNode(childNode);
-                            }
-                            cellContents += `\\intbl {\\pard\\ql ${content} \\pard}\\cell\n`;
-                        }
-                        tableRtf += `{\\pard ${rowHeader}${cellDefs}\n${cellContents}\\row}\n`;
-                    }
-                    return `{\\pard ${tableRtf}}`;
-                }
-                
-                let rtfContent = '';
-                for(const node of Array.from(tempDiv.childNodes)){
-                    rtfContent += await processNode(node);
-                }
-
-                return rtfHeader + rtfContent + rtfFooter;
-            }
-
-
-            saveRtfBtn.addEventListener('click', async () => {
-                showNotification("正在產生 RTF 檔案，請稍候...");
-                try {
-                    const filename = `${originalFilename || 'document'}.rtf`;
-                    const rtfContent = await htmlToRtf(contentDisplay.innerHTML);
-                    const blob = new Blob([rtfContent], { type: 'application/rtf' });
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = filename;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    showNotification("RTF 文件匯出成功!");
-                } catch (e) {
-                    showNotification("產生 RTF 失敗，請檢查內容。");
-                    console.error("RTF generation failed:", e);
-                }
-            });
-            
             zoomInBtn.addEventListener('click', () => { currentZoom = Math.min(2.0, currentZoom + 0.1); updateZoom(); });
             zoomOutBtn.addEventListener('click', () => { currentZoom = Math.max(0.2, currentZoom - 0.1); updateZoom(); });
             zoomResetBtn.addEventListener('click', () => { currentZoom = 1.0; updateZoom(); });
-            
-            const preventFocusSteal = (e) => e.preventDefault();
-            const commandButtons = [cutBtn, copyBtn, pasteBtn, undoBtn, alignLeftBtn, alignCenterBtn, alignRightBtn, alignTopBtn, alignMiddleBtn, alignBottomBtn];
-            commandButtons.forEach(btn => btn.addEventListener('mousedown', preventFocusSteal));
-
             undoBtn.addEventListener('click', undoState);
-            cutBtn.addEventListener('click', () => execCmd('cut'));
-            copyBtn.addEventListener('click', () => execCmd('copy'));
-            pasteBtn.addEventListener('click', () => execCmd('paste'));
+            document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (!undoBtn.disabled) undoState(); }});
 
-
-            document.addEventListener('keydown', (e) => { 
-                if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (!undoBtn.disabled) undoState(); }
-            });
-
-            // Resize and Drag Handlers
             function onMouseMove(e) {
                 if (!resizing) return;
                 if (resizing.type === 'col') {
@@ -985,6 +886,7 @@
                     if (newH > 30) resizing.target.style.height = newH + 'px';
                 }
             }
+            
             function onMouseUpResize() {
                 if (resizing) saveState();
                 resizing = null;
@@ -992,35 +894,42 @@
                 document.removeEventListener('mouseup', onMouseUpResize);
             }
 
-            function onObjectResizeMove(e) {
-                if (!objectResizing) return;
-                e.preventDefault();
-                const dx = e.clientX - objectResizing.startX;
-                const dy = e.clientY - objectResizing.startY;
-                let newW = objectResizing.startW + dx;
-                let newH = objectResizing.startH + dy;
+            function onImageResizeMove(e) {
+                if (!imageResizing) return;
+                const dx = e.clientX - imageResizing.startX;
+                const dy = e.clientY - imageResizing.startY;
+                let newW = imageResizing.startW + dx;
+                let newH = imageResizing.startH + dy;
                 if (newW < 20) newW = 20;
                 if (newH < 20) newH = 20;
-                objectResizing.container.style.width = newW + 'px';
-                objectResizing.container.style.height = newH + 'px';
+                imageResizing.container.style.width = newW + 'px';
+                imageResizing.container.style.height = newH + 'px';
             }
-            function onObjectResizeUp() {
-                if (objectResizing) saveState();
-                document.removeEventListener('mousemove', onObjectResizeMove);
-                document.removeEventListener('mouseup', onObjectResizeUp);
-                objectResizing = null;
+
+            function onImageResizeUp() {
+                if (imageResizing) {
+                    saveState();
+                }
+                document.removeEventListener('mousemove', onImageResizeMove);
+                document.removeEventListener('mouseup', onImageResizeUp);
+                imageResizing = null;
             }
 
             contentDisplay.addEventListener('mousemove', (e) => {
-                if (resizing || objectResizing) return;
+                if (resizing || imageResizing) return;
                 const cell = e.target.closest('td, th');
                 if (cell) {
                     const rect = cell.getBoundingClientRect();
                     const atRightEdge = Math.abs(e.clientX - rect.right) < 5;
                     const atBottomEdge = Math.abs(e.clientY - rect.bottom) < 5;
-                    if (atRightEdge && !fixColWidthCheck.checked) cell.style.cursor = 'col-resize';
-                    else if (atBottomEdge && !fixRowHeightCheck.checked) cell.style.cursor = 'row-resize';
-                    else cell.style.cursor = 'text';
+
+                    if (atRightEdge && !fixColWidthCheck.checked) {
+                        cell.style.cursor = 'col-resize';
+                    } else if (atBottomEdge && !fixRowHeightCheck.checked) {
+                        cell.style.cursor = 'row-resize';
+                    } else {
+                        cell.style.cursor = 'text';
+                    }
                 }
                 if (!dragStart) return;
                 if (!isSelecting) isSelecting = true;
@@ -1034,22 +943,27 @@
             });
 
             contentDisplay.addEventListener('mousedown', (e) => {
-                const target = e.target;
-                if (target.classList.contains('resize-handle')) {
-                    e.preventDefault(); e.stopPropagation();
-                    const container = target.closest('.resizable-image-container, .shape-container');
-                    objectResizing = {
-                        container: container, startX: e.clientX, startY: e.clientY,
-                        startW: container.offsetWidth, startH: container.offsetHeight
+                // Handle image resize first
+                if (e.target.classList.contains('resize-handle')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const container = e.target.closest('.resizable-image-container');
+                    imageResizing = {
+                        container: container,
+                        startX: e.clientX,
+                        startY: e.clientY,
+                        startW: container.offsetWidth,
+                        startH: container.offsetHeight
                     };
-                    document.addEventListener('mousemove', onObjectResizeMove);
-                    document.addEventListener('mouseup', onObjectResizeUp);
+                    document.addEventListener('mousemove', onImageResizeMove);
+                    document.addEventListener('mouseup', onImageResizeUp);
                     return;
                 }
+
+                if (resizing) e.preventDefault();
+                const cell = e.target.closest('td, th');
                 
-                const cell = target.closest('td, th');
-                if (!cell) return;
-                 if (resizing) e.preventDefault();
+                if (!cell || e.target.closest('.resizable-image-container')) return;
 
                 if (cell.style.cursor === 'col-resize' && !fixColWidthCheck.checked) {
                     resizing = { type: 'col', target: cell, startX: e.clientX, startW: cell.offsetWidth };
@@ -1070,36 +984,22 @@
 
             window.addEventListener('mouseup', () => {
                 if (dragStart) {
-                    if (!isSelecting) { // Handle single click
-                        if (startCell && !startCell.querySelector('.resizable-image-container, .shape-container')) {
-                            clearSelection();
+                    if (!isSelecting) { // Handle single click selection
+                        clearSelection();
+                        if(startCell) {
                             startCell.classList.add('selected-cell');
                             selectedCells.push(startCell);
                         }
                     }
-                    if (selectedCells.length > 0) updateToolbarForSelection();
+                    if (selectedCells.length > 0) {
+                        updateToolbarForSelection();
+                    }
                 }
                 dragStart = false;
                 isSelecting = false;
             });
-            
-            function setStyle(prop, val) {
-                if (selectedCells.length > 0) {
-                    applyToSelectedCells(c => c.style[prop] = val);
-                } else {
-                    let command = '';
-                    if (prop === 'textAlign') {
-                        if (val === 'left') command = 'justifyLeft';
-                        else if (val === 'center') command = 'justifyCenter';
-                        else if (val === 'right') command = 'justifyRight';
-                    } else if (prop === 'verticalAlign') {
-                        showNotification('垂直對齊僅適用於表格儲存格。');
-                        return;
-                    }
-                    if (command) document.execCommand(command, false, null);
-                }
-            }
 
+            const setStyle = (prop, val) => applyToSelectedCells(c => c.style[prop] = val);
             alignLeftBtn.addEventListener('click', () => setStyle('textAlign', 'left'));
             alignCenterBtn.addEventListener('click', () => setStyle('textAlign', 'center'));
             alignRightBtn.addEventListener('click', () => setStyle('textAlign', 'right'));
@@ -1107,60 +1007,47 @@
             alignMiddleBtn.addEventListener('click', () => setStyle('verticalAlign', 'middle'));
             alignBottomBtn.addEventListener('click', () => setStyle('verticalAlign', 'bottom'));
             
-            function getSelectionHtml() {
-                const selection = window.getSelection();
-                if (selection.rangeCount > 0) {
-                    const range = selection.getRangeAt(0);
-                    const div = document.createElement('div');
-                    div.appendChild(range.cloneContents());
-                    return div.innerHTML;
-                }
-                return '';
-            }
-            
+            // Add delayed saveState to inputs
             const addInputListener = (input, styleProp, unit = '') => {
-                 input.addEventListener('mousedown', preventFocusSteal);
-                 input.addEventListener('input', () => {
+                input.addEventListener('input', () => {
                     const value = input.value + unit;
-                    const rawValue = input.value;
-                    if (!rawValue) return;
-
-                    contentDisplay.focus();
-
-                    if (selectedCells.length > 0) {
-                        input.classList.remove('mixed');
+                    if (value) { 
+                        input.classList.remove('mixed'); // When user picks a color, it's no longer mixed
                         applyToSelectedCells(c => c.style[styleProp] = value, false);
-                    } else {
-                        const selection = window.getSelection();
-                        if (!selection.rangeCount || selection.isCollapsed) {
-                             if(styleProp !== 'height' && styleProp !== 'width')
-                                showNotification('請先選取文字以套用樣式。');
-                             return;
-                        }
-                        const selectedHtml = getSelectionHtml();
-                        if (selectedHtml) {
-                             document.execCommand('insertHTML', false, `<span style="${styleProp}: ${value}">${selectedHtml}</span>`);
-                        }
+                        clearTimeout(input.timer);
+                        input.timer = setTimeout(saveState, 500);
                     }
-                    clearTimeout(input.timer);
-                    input.timer = setTimeout(saveState, 500);
                 });
             };
-            
-            addInputListener(fontSizeInput, 'font-size', 'px');
+
+            addInputListener(fontSizeInput, 'fontSize', 'px');
             addInputListener(fontColorInput, 'color');
-            addInputListener(bgColorInput, 'background-color');
+            addInputListener(bgColorInput, 'backgroundColor');
             addInputListener(rowHeightInput, 'height', 'px');
             addInputListener(colWidthInput, 'width', 'px');
 
-            borderDropdownBtn.addEventListener('click', (e) => { e.stopPropagation(); borderDropdownBtn.parentElement.classList.toggle('show'); });
+            // --- New Border Logic ---
+            borderDropdownBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                borderDropdownBtn.parentElement.classList.toggle('show');
+            });
+
             borderOptions.addEventListener('click', (e) => {
                 e.preventDefault();
                 const target = e.target.closest('a');
                 if (!target) return;
+
                 const borderType = target.dataset.border;
-                if (selectedCells.length === 0) { showNotification('請先選擇儲存格'); return; }
-                const width = borderWidthInput.value, color = borderColorInput.value, borderStyle = `${width}px solid ${color}`;
+                if (selectedCells.length === 0) {
+                    showNotification('請先選擇儲存格');
+                    return;
+                }
+                
+                const width = borderWidthInput.value;
+                const color = borderColorInput.value;
+                const borderStyle = `${width}px solid ${color}`;
+                
+                // For outside/inside logic, find selection boundaries
                 const bounds = { minR: Infinity, maxR: -1, minC: Infinity, maxC: -1 };
                 selectedCells.forEach(cell => {
                     bounds.minR = Math.min(bounds.minR, cell.parentElement.rowIndex);
@@ -1168,6 +1055,7 @@
                     bounds.minC = Math.min(bounds.minC, cell.cellIndex);
                     bounds.maxC = Math.max(bounds.maxC, cell.cellIndex);
                 });
+
                 applyToSelectedCells(cell => {
                     switch (borderType) {
                         case 'bottom': cell.style.borderBottom = borderStyle; break;
@@ -1187,7 +1075,8 @@
                             if (cell.cellIndex < bounds.maxC) cell.style.borderRight = borderStyle;
                             break;
                     }
-                }, false);
+                }, false); // Defer saveState call
+
                 saveState();
                 borderDropdownBtn.parentElement.classList.remove('show');
             });
@@ -1198,163 +1087,232 @@
                 const color = borderColorInput.value;
                 const width = borderWidthInput.value + 'px';
                 table.querySelectorAll('td, th').forEach(cell => {
-                    cell.style.borderColor = color; cell.style.borderWidth = width;
+                    cell.style.borderColor = color;
+                    cell.style.borderWidth = width;
                 });
                 saveState();
             }
             borderColorInput.addEventListener('input', applyTableWideBorder);
             borderWidthInput.addEventListener('input', applyTableWideBorder);
+            // --- End New Border Logic ---
 
             addRowBtn.addEventListener('click', () => { 
-                if(selectedCells.length === 0) { showNotification('請先選擇儲存格以確定新增位置'); return; }
-                const currentRow = selectedCells[selectedCells.length - 1].parentElement;
+                if(selectedCells.length === 0) { 
+                    showNotification('請先選擇一個儲存格以確定新增位置'); 
+                    return; 
+                }
+                const lastSelectedCell = selectedCells[selectedCells.length - 1];
+                const currentRow = lastSelectedCell.parentElement;
                 const table = currentRow.closest('table');
                 if (!table || !currentRow) return;
                 const colCount = table.rows[0].cells.length;
                 const newRow = table.insertRow(currentRow.rowIndex + 1);
-                for (let i = 0; i < colCount; i++) newRow.insertCell(i).innerHTML = '&nbsp;';
+                for (let i = 0; i < colCount; i++) {
+                    newRow.insertCell(i).innerHTML = '&nbsp;';
+                }
                 saveState(); 
             });
 
             addColBtn.addEventListener('click', () => {
-                if (selectedCells.length === 0) { showNotification('請先選擇儲存格以確定新增位置'); return; }
-                const table = selectedCells[0].closest('table');
-                const colIndex = selectedCells[selectedCells.length - 1].cellIndex;
-                for (const row of table.rows) row.insertCell(colIndex + 1).innerHTML = '&nbsp;';
+                if (selectedCells.length === 0) {
+                    showNotification('請先選擇一個儲存格以確定新增位置');
+                    return;
+                }
+                const lastSelectedCell = selectedCells[selectedCells.length - 1];
+                const table = lastSelectedCell.closest('table');
+                const colIndex = lastSelectedCell.cellIndex;
+                for (const row of table.rows) {
+                    const newCell = row.insertCell(colIndex + 1);
+                    newCell.innerHTML = '&nbsp;';
+                }
                 saveState();
             });
 
             deleteRowBtn.addEventListener('click', () => {
-                if (selectedCells.length === 0) { showNotification('請選擇要刪除的列'); return; }
+                if (selectedCells.length === 0) {
+                    showNotification('請選擇要刪除的列中的儲存格');
+                    return;
+                }
                 const rowsToDelete = [...new Set(selectedCells.map(cell => cell.parentElement))];
-                if (rowsToDelete[0].closest('table').rows.length <= rowsToDelete.length) { showNotification('無法刪除所有列'); return; }
+                if (rowsToDelete[0].closest('table').rows.length <= rowsToDelete.length) {
+                    showNotification('無法刪除表格的所有列');
+                    return;
+                }
                 rowsToDelete.forEach(row => row.remove());
                 clearSelection();
                 saveState();
             });
 
             deleteColBtn.addEventListener('click', () => {
-                if (selectedCells.length === 0) { showNotification('請選擇要刪除的欄'); return; }
+                if (selectedCells.length === 0) {
+                    showNotification('請選擇要刪除的欄中的儲存格');
+                    return;
+                }
                 const table = selectedCells[0].closest('table');
-                if (table.rows[0].cells.length <= 1) { showNotification('無法刪除最後一欄'); return; }
+                if (table.rows[0].cells.length <= 1) {
+                    showNotification('無法刪除表格的最後一欄');
+                    return;
+                }
                 const colsToDelete = [...new Set(selectedCells.map(cell => cell.cellIndex))].sort((a, b) => b - a);
-                colsToDelete.forEach(colIndex => { for (const row of table.rows) row.deleteCell(colIndex); });
+                colsToDelete.forEach(colIndex => {
+                    for (const row of table.rows) {
+                        row.deleteCell(colIndex);
+                    }
+                });
                 clearSelection();
                 saveState();
             });
             
             mergeCellsBtn.addEventListener('click', () => {
-                if (selectedCells.length < 2) { showNotification('請選擇至少兩個儲存格來合併'); return; }
-                let minRow = Infinity, maxRow = -1, minCol = Infinity, maxCol = -1, content = '';
+                if (selectedCells.length < 2) {
+                    showNotification('請選擇至少兩個儲存格來合併。');
+                    return;
+                }
+
+                let minRow = Infinity, maxRow = -1, minCol = Infinity, maxCol = -1;
+                let content = '';
+
                 selectedCells.forEach(cell => {
                     content += cell.innerHTML + ' ';
-                    minRow = Math.min(minRow, cell.parentElement.rowIndex); maxRow = Math.max(maxRow, cell.parentElement.rowIndex);
-                    minCol = Math.min(minCol, cell.cellIndex); maxCol = Math.max(maxCol, cell.cellIndex);
+                    const r = cell.parentElement.rowIndex;
+                    const c = cell.cellIndex;
+                    if (r < minRow) minRow = r;
+                    if (r > maxRow) maxRow = r;
+                    if (c < minCol) minCol = c;
+                    if (c > maxCol) maxCol = c;
                 });
-                const firstCell = selectedCells.sort((a, b) => a.parentElement.rowIndex - b.parentElement.rowIndex || a.cellIndex - b.cellIndex)[0];
-                firstCell.colSpan = maxCol - minCol + 1; firstCell.rowSpan = maxRow - minRow + 1;
+                
+                selectedCells.sort((a, b) => a.parentElement.rowIndex - b.parentElement.rowIndex || a.cellIndex - b.cellIndex);
+                const firstCell = selectedCells[0];
+
+                const colSpan = maxCol - minCol + 1;
+                const rowSpan = maxRow - minRow + 1;
+
+                firstCell.setAttribute('colspan', colSpan);
+                firstCell.setAttribute('rowspan', rowSpan);
                 firstCell.innerHTML = content.trim();
+
                 selectedCells.slice(1).forEach(cell => cell.remove());
-                saveState(); clearSelection();
-                firstCell.classList.add('selected-cell'); selectedCells.push(firstCell);
+                
+                saveState();
+                clearSelection();
+                firstCell.classList.add('selected-cell');
+                selectedCells.push(firstCell);
+                showNotification('儲存格已合併。');
             });
 
             splitCellBtn.addEventListener('click', () => {
-                if (selectedCells.length !== 1) { showNotification('請選擇一個要拆分的儲存格'); return; }
-                const cell = selectedCells[0], rowSpan = cell.rowSpan || 1, colSpan = cell.colSpan || 1;
-                if (rowSpan === 1 && colSpan === 1) { showNotification('此儲存格未被合併'); return; }
-                const table = cell.closest('table'), parentRow = cell.parentElement;
-                const rowIndex = parentRow.rowIndex, cellIndex = cell.cellIndex;
-                cell.removeAttribute('rowspan'); cell.removeAttribute('colspan');
+                if (selectedCells.length !== 1) {
+                    showNotification('請選擇一個要拆分的儲存格。');
+                    return;
+                }
+                const cell = selectedCells[0];
+                const rowSpan = parseInt(cell.getAttribute('rowspan') || '1');
+                const colSpan = parseInt(cell.getAttribute('colspan') || '1');
+
+                if (rowSpan === 1 && colSpan === 1) {
+                    showNotification('這個儲存格沒有被合併。');
+                    return;
+                }
+                
+                const table = cell.closest('table');
+                const parentRow = cell.parentElement;
+                const rowIndex = parentRow.rowIndex;
+                const cellIndex = cell.cellIndex;
+
+                cell.removeAttribute('rowspan');
+                cell.removeAttribute('colspan');
+
                 for (let r = 0; r < rowSpan; r++) {
+                    const targetRow = table.rows[rowIndex + r];
                     for (let c = 0; c < colSpan; c++) {
                         if (r === 0 && c === 0) continue; 
-                        table.rows[rowIndex + r].insertCell(cellIndex + c).innerHTML = '&nbsp;';
+                        const newCell = targetRow.insertCell(cellIndex + c);
+                        newCell.innerHTML = '&nbsp;';
                     }
                 }
                 saveState();
+                showNotification('儲存格已拆分。');
             });
             
-            insertImageBtn.addEventListener('click', () => imageUploadInput.click());
+            insertImageBtn.addEventListener('click', () => { if(selectedCells.length === 0) { showNotification('請選擇一個儲存格'); return; } imageUploadInput.click(); });
+            
             imageUploadInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                const isHeic = /\.heic(f)?$/i.test(file.name);
+
+                const isHeic = file.type === 'image/heic' || file.type === 'image/heif' || /\.heic$/i.test(file.name) || /\.heif$/i.test(file.name);
+
                 const processImage = (imageBlob) => {
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        const imgHTML = `<div class="resizable-image-container" contenteditable="false" style="width: 150px; height: auto;">` + `<img src="${ev.target.result}" alt="">` + `<div class="resize-handle"></div>` + `</div>`;
-                        execCmd('insertHTML', imgHTML);
+                        const imgHTML = `<div class="resizable-image-container">` +
+                                        `<img src="${ev.target.result}" alt="">` +
+                                        `<div class="resize-handle"></div>` +
+                                        `</div>`;
+                        applyToSelectedCells(cell => {
+                            cell.innerHTML = imgHTML;
+                            const img = cell.querySelector('img');
+                            img.onload = () => {
+                                const container = img.parentElement;
+                                const cellWidth = cell.clientWidth - 24; // Account for padding
+                                const aspect = img.naturalWidth / img.naturalHeight;
+                                let w = Math.min(img.naturalWidth, cellWidth);
+                                let h = w / aspect;
+                                container.style.width = w + 'px';
+                                container.style.height = h + 'px';
+                                saveState();
+                            };
+                        }, false);
                     };
                     reader.readAsDataURL(imageBlob);
                 };
+
                 if (isHeic) {
                     showNotification('正在轉換 HEIC 檔案...');
-                    heic2any({ blob: file, toType: "image/jpeg", quality: 0.8, })
-                    .then(res => { processImage(res); showNotification('HEIC 轉換成功！'); })
-                    .catch(err => { console.error(err); showNotification('HEIC 轉換失敗。'); });
-                } else { processImage(file); }
+                    heic2any({
+                        blob: file,
+                        toType: "image/jpeg",
+                        quality: 0.8,
+                    })
+                    .then((conversionResult) => {
+                        processImage(conversionResult);
+                         showNotification('HEIC 檔案轉換成功！');
+                    })
+                    .catch((err) => {
+                        console.error(err);
+                        showNotification('HEIC 檔案轉換失敗。');
+                    });
+                } else {
+                    processImage(file);
+                }
+                
                 imageUploadInput.value = '';
             });
 
-            insertTableBtn.addEventListener('click', () => {
-                let rows = prompt("請輸入列數:", "3");
-                let cols = prompt("請輸入欄數:", "3");
-                if (rows && cols && !isNaN(rows) && !isNaN(cols)) {
-                    let tableHTML = '<table border="1" style="width:100%; border-collapse: collapse;"><tbody>';
-                    for (let r = 0; r < parseInt(rows); r++) {
-                        tableHTML += '<tr>';
-                        for (let c = 0; c < parseInt(cols); c++) tableHTML += '<td>&nbsp;</td>';
-                        tableHTML += '</tr>';
-                    }
-                    tableHTML += '</tbody></table>';
-                    execCmd('insertHTML', tableHTML);
-                }
-            });
-
-            insertShapeBtn.addEventListener('click', (e) => { e.stopPropagation(); insertShapeBtn.parentElement.classList.toggle('show'); });
-            shapeOptions.addEventListener('click', (e) => {
-                e.preventDefault();
-                const target = e.target.closest('a');
-                if (!target) return;
-                const shapeType = target.dataset.shape;
-                let shapeHTML = '';
-                if (shapeType === 'rect') {
-                    shapeHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><rect x="0" y="0" width="100" height="100" fill="lightblue" stroke="blue" stroke-width="2"/></svg>`;
-                } else if (shapeType === 'circle') {
-                    shapeHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><circle cx="50" cy="50" r="50" fill="lightgreen" stroke="green" stroke-width="2"/></svg>`;
-                }
-                if (shapeHTML) {
-                    const fullHTML = `<div class="shape-container" contenteditable="false" style="width: 100px; height: 100px;">${shapeHTML}<div class="resize-handle"></div></div>`;
-                    execCmd('insertHTML', fullHTML);
-                }
-                insertShapeBtn.parentElement.classList.remove('show');
-            });
-            
-            portraitBtn.addEventListener('click', () => { contentDisplay.className = 'portrait-mode'; });
-            landscapeBtn.addEventListener('click', () => { contentDisplay.className = 'landscape-mode'; });
-
             themeToggle.addEventListener('click', () => {
-                const isDark = document.body.toggleAttribute('data-theme');
+                const body = document.body;
+                const isDark = body.getAttribute('data-theme') === 'dark';
                 if (isDark) {
-                     document.body.setAttribute('data-theme', 'dark');
-                     themeIconSun.style.display = 'none';
-                     themeIconMoon.style.display = 'block';
+                    body.removeAttribute('data-theme');
+                    themeIconSun.style.display = 'block';
+                    themeIconMoon.style.display = 'none';
                 } else {
-                     document.body.removeAttribute('data-theme');
-                     themeIconSun.style.display = 'block';
-                     themeIconMoon.style.display = 'none';
+                    body.setAttribute('data-theme', 'dark');
+                    themeIconSun.style.display = 'none';
+                    themeIconMoon.style.display = 'block';
                 }
             });
             
+            // Close dropdowns if clicked outside
             window.addEventListener('click', (e) => {
                 if (!e.target.closest('.dropdown')) {
-                    document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
+                    document.querySelectorAll('.dropdown.show').forEach(dropdown => {
+                        dropdown.classList.remove('show');
+                    });
                 }
             });
-            
-            // Initial State
-            saveState(); // Save the initial empty state
+
         });
     </script>
 </body>
