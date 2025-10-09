@@ -79,6 +79,7 @@
             backdrop-filter: blur(var(--blur-radius));
             -webkit-backdrop-filter: blur(var(--blur-radius));
             border-bottom: 1px solid var(--border-color);
+            z-index: 10;
         }
 
         /* --- 標題列 --- */
@@ -176,17 +177,19 @@
         #content-display td.selected-cell, #content-display th.selected-cell { outline: 1px solid var(--system-blue); outline-offset: -1px; background-color: color-mix(in srgb, var(--system-blue) 5%, transparent) !important; }
         mark.highlight { background-color: #ffdd57; color: black; border-radius: 2px; padding: 0 2px; }
         
-        /* --- MODIFICATION START: Image Cropping and Resizing Styles --- */
+        /* --- Image Cropping and Resizing Styles --- */
         .image-wrapper {
             position: relative;
             display: inline-block;
             line-height: 0; /* Prevents extra space below the image */
+            user-select: none;
         }
         .image-wrapper img {
             display: block;
             width: 100%;
             height: 100%;
             object-fit: cover; /* Important for cropping */
+            pointer-events: none; /* Prevent image dragging */
         }
         .crop-container {
             position: absolute;
@@ -216,10 +219,9 @@
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
             pointer-events: none;
         }
-        /* --- MODIFICATION END --- */
         
         /* --- 提示訊息 --- */
-        #notification { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s; }
+        #notification { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.3s; }
         #notification.show { opacity: 1; visibility: visible; transform: translate(-50%, -10px); }
     </style>
 </head>
@@ -291,386 +293,396 @@
             const contentDisplay = getEl('content-display');
             const fontSizeInput = getEl('font-size-input');
             const fontColorInput = getEl('font-color-input');
-            let selectedCells = [];
+            
+            // --- App State ---
             let originalFilename = '';
             let historyStack = [], HISTORY_MAX_SIZE = 30;
-            let resizing = null, imageAction = null, dragStart = false, isSelecting = false, startCell = null, endCell = null;
+            let resizing = null, imageAction = null;
 
-            // --- Simplified Controls Setup ---
-            const allControls = Array.from(document.querySelectorAll('.controls-panel button, .controls-panel input'));
-            const undoBtn = getEl('undo-btn');
-
-            function showNotification(message) {
+            // --- Utility Functions ---
+            const showNotification = (message) => {
                 const notification = getEl('notification');
                 clearTimeout(notification.timer);
                 notification.textContent = message;
                 notification.classList.add('show');
                 notification.timer = setTimeout(() => notification.classList.remove('show'), 3000);
-            }
+            };
 
-            function setControlsState(enabled) {
-                allControls.forEach(control => control.disabled = !enabled);
+            const setControlsState = (enabled) => {
+                getEl('sticky-header').querySelectorAll('button, input').forEach(control => {
+                    if(control.id !== 'theme-toggle' && control.id !== 'select-file-btn' && control.id !== 'file-input') {
+                       control.disabled = !enabled;
+                    }
+                });
                 contentDisplay.contentEditable = enabled;
-                undoBtn.disabled = historyStack.length <= 1;
-            }
-            
-            function saveState() {
+                getEl('undo-btn').disabled = historyStack.length <= 1;
+            };
+
+            // --- History (Undo/Redo) ---
+            const saveState = () => {
                 if (resizing || imageAction) return;
                 historyStack.push(contentDisplay.innerHTML);
                 if (historyStack.length > HISTORY_MAX_SIZE) historyStack.shift();
-                undoBtn.disabled = false;
-            }
+                getEl('undo-btn').disabled = false;
+            };
 
-            function undoState() {
+            const undoState = () => {
                 if (historyStack.length > 1) {
                     historyStack.pop();
                     contentDisplay.innerHTML = historyStack[historyStack.length - 1];
                     clearSelection();
                 }
-                undoBtn.disabled = historyStack.length <= 1;
-            }
-
-            function clearSelection() {
-                document.querySelectorAll('.selected-cell').forEach(c => c.classList.remove('selected-cell'));
-                selectedCells = [];
-                const activeImage = document.querySelector('.image-wrapper.active');
-                if(activeImage) activeImage.classList.remove('active');
-            }
-            
-            // --- Text Formatting Logic ---
-            function applyStyleToSelection(styleProperty, styleValue) {
-                const selection = window.getSelection();
-                if (!selection.rangeCount || selection.isCollapsed) return;
-                document.execCommand('styleWithCSS', false, true);
-                const command = { 'fontSize': 'fontSize', 'color': 'foreColor' }[styleProperty];
-                const value = styleProperty === 'fontSize' ? '1' : styleValue; // Dummy value for fontSize
-                document.execCommand(command, false, value);
-
-                // For fontSize, we need to manually set the style on the generated <font> tags
-                if (styleProperty === 'fontSize') {
-                    const range = selection.getRangeAt(0);
-                    const container = range.commonAncestorContainer;
-                    const fontElements = (container.nodeType === 1 ? container : container.parentElement).getElementsByTagName('font');
-                    Array.from(fontElements).forEach(font => {
-                        if (selection.containsNode(font, true)) {
-                            font.style.fontSize = styleValue;
-                            font.removeAttribute('size');
-                        }
-                    });
-                }
-                 saveState();
-            }
-
-            fontSizeInput.addEventListener('change', () => applyStyleToSelection('fontSize', fontSizeInput.value + 'px'));
-            fontColorInput.addEventListener('input', () => applyStyleToSelection('color', fontColorInput.value));
-
-            // --- Image Handling & Cropping ---
-            function createImageControls(wrapper) {
-                if (wrapper.querySelector('.crop-container')) return; // Already exists
-                const controls = `
-                    <div class="crop-overlay"></div>
-                    <div class="crop-handle edge edge-n"></div><div class="crop-handle edge edge-s"></div>
-                    <div class="crop-handle edge edge-w"></div><div class="crop-handle edge edge-e"></div>
-                    <div class="crop-handle corner corner-nw"></div><div class="crop-handle corner corner-ne"></div>
-                    <div class="crop-handle corner corner-sw"></div><div class="crop-handle corner corner-se"></div>`;
-                const container = document.createElement('div');
-                container.className = 'crop-container';
-                container.innerHTML = controls;
-                wrapper.appendChild(container);
-            }
-
-            function removeImageControls(wrapper) {
-                const container = wrapper.querySelector('.crop-container');
-                if (container) wrapper.removeChild(container);
-            }
-
-            contentDisplay.addEventListener('click', (e) => {
-                const wrapper = e.target.closest('.image-wrapper');
-                const lastActive = document.querySelector('.image-wrapper.active');
-                if (lastActive && lastActive !== wrapper) {
-                    lastActive.classList.remove('active');
-                    removeImageControls(lastActive);
-                }
-                if (wrapper) {
-                    if (!wrapper.classList.contains('active')) {
-                        wrapper.classList.add('active');
-                        createImageControls(wrapper);
-                    }
-                }
-            });
-            
-            contentDisplay.addEventListener('mousedown', (e) => {
-                const handle = e.target.closest('.crop-handle');
-                const wrapper = e.target.closest('.image-wrapper');
-                if (!wrapper) return;
-                
-                const img = wrapper.querySelector('img');
-                const rect = wrapper.getBoundingClientRect();
-                const startX = e.clientX;
-                const startY = e.clientY;
-
-                let clip = {
-                    top: parseFloat(wrapper.dataset.clipTop) || 0,
-                    right: parseFloat(wrapper.dataset.clipRight) || 100,
-                    bottom: parseFloat(wrapper.dataset.clipBottom) || 100,
-                    left: parseFloat(wrapper.dataset.clipLeft) || 0,
-                };
-
-                const updateClipPath = () => {
-                    img.style.clipPath = `polygon(${clip.left}% ${clip.top}%, ${clip.right}% ${clip.top}%, ${clip.right}% ${clip.bottom}%, ${clip.left}% ${clip.bottom}%)`;
-                    wrapper.dataset.clipTop = clip.top; wrapper.dataset.clipRight = clip.right;
-                    wrapper.dataset.clipBottom = clip.bottom; wrapper.dataset.clipLeft = clip.left;
-                };
-
-                const onMouseMove = (moveEvent) => {
-                    const dx = (moveEvent.clientX - startX) / rect.width * 100;
-                    const dy = (moveEvent.clientY - startY) / rect.height * 100;
-                    
-                    if (handle.classList.contains('edge-n') || handle.classList.contains('corner-nw') || handle.classList.contains('corner-ne')) clip.top = Math.max(0, Math.min(clip.bottom - 1, (parseFloat(wrapper.dataset.clipTop) || 0) + dy));
-                    if (handle.classList.contains('edge-s') || handle.classList.contains('corner-sw') || handle.classList.contains('corner-se')) clip.bottom = Math.min(100, Math.max(clip.top + 1, (parseFloat(wrapper.dataset.clipBottom) || 100) + dy));
-                    if (handle.classList.contains('edge-w') || handle.classList.contains('corner-nw') || handle.classList.contains('corner-sw')) clip.left = Math.max(0, Math.min(clip.right - 1, (parseFloat(wrapper.dataset.clipLeft) || 0) + dx));
-                    if (handle.classList.contains('edge-e') || handle.classList.contains('corner-ne') || handle.classList.contains('corner-se')) clip.right = Math.min(100, Math.max(clip.left + 1, (parseFloat(wrapper.dataset.clipRight) || 100) + dx));
-                    
-                    updateClipPath();
-                };
-
-                const onMouseUp = () => {
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                    saveState();
-                };
-
-                if(handle){
-                    e.preventDefault(); e.stopPropagation();
-                    document.addEventListener('mousemove', onMouseMove);
-                    document.addEventListener('mouseup', onMouseUp);
-                }
-            });
-
-            const processImageFile = (file) => {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const imgHTML = `<div class="image-wrapper" style="width: 200px;"><img src="${ev.target.result}" alt="${file.name}"></div>`;
-                    document.execCommand('insertHTML', false, imgHTML);
-                    saveState();
-                };
-                reader.readAsDataURL(file);
+                getEl('undo-btn').disabled = historyStack.length <= 1;
             };
 
-            getEl('insert-image-btn').addEventListener('click', () => getEl('image-upload-input').click());
-            getEl('image-upload-input').addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                if (file.name.match(/\.(heic|heif)$/i)) {
-                    showNotification('正在轉換 HEIC 檔案...');
-                    heic2any({ blob: file, toType: "image/jpeg" })
-                        .then(conversionResult => { processImageFile(conversionResult); showNotification('轉換成功！'); })
-                        .catch(() => showNotification('HEIC 轉換失敗。'));
-                } else {
-                    processImageFile(file);
+            // --- Selection ---
+             const clearSelection = () => {
+                document.querySelectorAll('.selected-cell').forEach(c => c.classList.remove('selected-cell'));
+                const activeImage = document.querySelector('.image-wrapper.active');
+                if(activeImage) {
+                    activeImage.classList.remove('active');
+                    removeImageControls(activeImage);
                 }
-                e.target.value = '';
-            });
+            };
 
-            // --- Robust RTF Export Engine ---
-            getEl('save-rtf-btn').addEventListener('click', async () => {
-                showNotification('正在產生 RTF 檔案...');
+            // --- Core Functionality Initialization ---
+            function initializeCoreFeatures() {
+
+                // 1. File Handling
                 try {
-                    const rtfContent = await new RtfExporter().generate(contentDisplay);
-                    const blob = new Blob([rtfContent], { type: 'application/rtf' });
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = `${originalFilename || 'content'}.rtf`;
-                    a.click();
-                    URL.revokeObjectURL(a.href);
-                    showNotification('RTF 檔案已儲存。');
-                } catch (error) {
-                    console.error("RTF Generation Error:", error);
-                    showNotification('產生 RTF 檔案失敗。');
-                }
-            });
+                    const selectFileBtn = getEl('select-file-btn');
+                    const fileInput = getEl('file-input');
+                    
+                    selectFileBtn.addEventListener('click', () => fileInput.click());
+                    fileInput.addEventListener('change', (event) => {
+                        const file = event.target.files[0];
+                        if (!file) return;
 
-            class RtfExporter {
-                constructor() {
-                    this.colorTable = {};
-                    this.fontTable = {};
-                    this.colorIndex = 1;
-                    this.fontIndex = 1;
-                    this.rtf = '';
+                        originalFilename = file.name.replace(/\.[^/.]+$/, "");
+                        getEl('current-filename').textContent = file.name;
+
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const doc = new DOMParser().parseFromString(e.target.result, 'text/html');
+                            contentDisplay.innerHTML = doc.body.innerHTML.trim() || '<p>&nbsp;</p>';
+                            setControlsState(true);
+                            historyStack = [];
+                            saveState();
+                            showNotification('檔案載入成功！');
+                        };
+                        reader.onerror = () => showNotification('讀取檔案時發生錯誤。');
+                        reader.readAsText(file, 'UTF-8');
+                        fileInput.value = '';
+                    });
+                } catch (e) {
+                    console.error("File Handling initialization failed:", e);
+                    showNotification("檔案處理功能初始化失敗。");
                 }
 
-                async generate(element) {
-                    this.colorTable = { '#000000': { index: 0, def: '\\red0\\green0\\blue0;' }};
-                    this.fontTable = { 'Microsoft JhengHei': { index: 0, def: '{\\f0 Microsoft JhengHei;}' } };
-                    this.colorIndex = 1; this.fontIndex = 1;
+                // 2. Text Formatting
+                try {
+                    const applyStyle = (command, value) => {
+                        document.execCommand(command, false, value);
+                        contentDisplay.focus();
+                        saveState();
+                    };
                     
-                    let contentRtf = await this.parseNode(element);
-                    
-                    const colorTableDef = Object.values(this.colorTable).map(c => c.def).join('');
-                    const fontTableDef = Object.values(this.fontTable).map(f => f.def).join('');
-                    
-                    const header = `{\\rtf1\\ansi\\deff0{\\fonttbl${fontTableDef}}{\\colortbl;${colorTableDef}}`;
-                    return `${header}${contentRtf}}`;
+                    fontSizeInput.addEventListener('change', () => {
+                        // execCommand for font size is tricky, use a span wrapper instead for reliability
+                        const selection = window.getSelection();
+                        if (!selection.rangeCount || selection.isCollapsed) return;
+                        
+                        const range = selection.getRangeAt(0);
+                        const span = document.createElement('span');
+                        span.style.fontSize = fontSizeInput.value + 'px';
+                        
+                        span.appendChild(range.extractContents());
+                        range.insertNode(span);
+                        selection.removeAllRanges();
+                        saveState();
+                    });
+
+                    fontColorInput.addEventListener('input', () => applyStyle('foreColor', fontColorInput.value));
+                } catch (e) {
+                    console.error("Text Formatting initialization failed:", e);
+                    showNotification("文字格式化功能初始化失敗。");
                 }
+
+                // 3. Image Handling & Cropping
+                try {
+                    initializeImageHandling();
+                } catch (e) {
+                    console.error("Image Handling initialization failed:", e);
+                    showNotification("圖片處理功能初始化失敗。");
+                }
+
+                // 4. RTF Export
+                try {
+                    initializeRtfExport();
+                } catch (e) {
+                    console.error("RTF Export initialization failed:", e);
+                    showNotification("RTF 匯出功能初始化失敗。");
+                }
+
+                // 5. Other Controls
+                try {
+                    getEl('undo-btn').addEventListener('click', undoState);
+                    getEl('save-html-btn').addEventListener('click', () => {
+                         clearSelection();
+                        const contentHTML = contentDisplay.innerHTML;
+                        const filename = `${originalFilename || 'content'}.html`;
+                        const fullHTML = `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><title>Exported</title></head><body>${contentHTML}</body></html>`;
+                        const blob = new Blob([fullHTML], { type: 'text/html' });
+                        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+                        showNotification('HTML 已儲存');
+                    });
+                     getEl('theme-toggle').addEventListener('click', () => {
+                        const body = document.body;
+                        const isDark = body.hasAttribute('data-theme');
+                        if (isDark) {
+                            body.removeAttribute('data-theme');
+                            getEl('theme-icon-sun').style.display = 'block';
+                            getEl('theme-icon-moon').style.display = 'none';
+                        } else {
+                            body.setAttribute('data-theme', 'dark');
+                            getEl('theme-icon-sun').style.display = 'none';
+                            getEl('theme-icon-moon').style.display = 'block';
+                        }
+                    });
+                    // ... Add other simple listeners for table edits, alignment etc. here
+                } catch (e) {
+                    console.error("Other controls initialization failed:", e);
+                }
+            }
+            
+            function initializeImageHandling() {
+                const createImageControls = (wrapper) => {
+                    if (wrapper.querySelector('.crop-container')) return;
+                    const controls = `<div class="crop-overlay"></div><div class="crop-handle edge edge-n"></div><div class="crop-handle edge edge-s"></div><div class="crop-handle edge edge-w"></div><div class="crop-handle edge edge-e"></div><div class="crop-handle corner corner-nw"></div><div class="crop-handle corner corner-ne"></div><div class="crop-handle corner corner-sw"></div><div class="crop-handle corner corner-se"></div>`;
+                    const container = document.createElement('div');
+                    container.className = 'crop-container';
+                    container.innerHTML = controls;
+                    wrapper.appendChild(container);
+                };
                 
-                getColorIndex(colorStr) {
-                    const hex = colorToHex(colorStr);
-                    if (this.colorTable[hex]) return this.colorTable[hex].index;
-                    const match = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-                    if(match) {
-                        const [r, g, b] = [match[1], match[2], match[3]];
-                        this.colorTable[hex] = { index: this.colorIndex, def: `\\red${r}\\green${g}\\blue${b};` };
-                        return this.colorIndex++;
-                    }
-                    return 0;
-                }
+                const removeImageControls = (wrapper) => {
+                    const container = wrapper.querySelector('.crop-container');
+                    if (container) wrapper.removeChild(container);
+                };
 
-                async parseNode(node) {
-                    let rtf = '';
-                    for (const child of node.childNodes) {
-                        if (child.nodeType === Node.TEXT_NODE) {
-                            rtf += this.escapeText(child.textContent);
-                        } else if (child.nodeType === Node.ELEMENT_NODE) {
-                            rtf += await this.parseElement(child);
+                contentDisplay.addEventListener('click', (e) => {
+                    const wrapper = e.target.closest('.image-wrapper');
+                    const lastActive = document.querySelector('.image-wrapper.active');
+                    if (lastActive && lastActive !== wrapper) {
+                        lastActive.classList.remove('active');
+                        removeImageControls(lastActive);
+                    }
+                    if (wrapper) {
+                        e.stopPropagation();
+                        if (!wrapper.classList.contains('active')) {
+                            wrapper.classList.add('active');
+                            createImageControls(wrapper);
                         }
                     }
-                    return rtf;
-                }
+                });
+            
+                contentDisplay.addEventListener('mousedown', (e) => {
+                    const handle = e.target.closest('.crop-handle');
+                    const wrapper = e.target.closest('.image-wrapper');
+                    if (!handle || !wrapper) return;
+                    
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const img = wrapper.querySelector('img');
+                    const rect = wrapper.getBoundingClientRect();
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    
+                    const initialClip = {
+                        top: parseFloat(wrapper.dataset.clipTop) || 0, right: parseFloat(wrapper.dataset.clipRight) || 100,
+                        bottom: parseFloat(wrapper.dataset.clipBottom) || 100, left: parseFloat(wrapper.dataset.clipLeft) || 0
+                    };
+
+                    const onMouseMove = (moveEvent) => {
+                        const dx = (moveEvent.clientX - startX) / rect.width * 100;
+                        const dy = (moveEvent.clientY - startY) / rect.height * 100;
+                        let clip = {...initialClip};
+                        
+                        if (handle.classList.contains('edge-n') || handle.classList.contains('corner-nw') || handle.classList.contains('corner-ne')) clip.top = Math.max(0, Math.min(clip.bottom - 1, initialClip.top + dy));
+                        if (handle.classList.contains('edge-s') || handle.classList.contains('corner-sw') || handle.classList.contains('corner-se')) clip.bottom = Math.min(100, Math.max(clip.top + 1, initialClip.bottom + dy));
+                        if (handle.classList.contains('edge-w') || handle.classList.contains('corner-nw') || handle.classList.contains('corner-sw')) clip.left = Math.max(0, Math.min(clip.right - 1, initialClip.left + dx));
+                        if (handle.classList.contains('edge-e') || handle.classList.contains('corner-ne') || handle.classList.contains('corner-se')) clip.right = Math.min(100, Math.max(clip.left + 1, initialClip.right + dx));
+                        
+                        img.style.clipPath = `polygon(${clip.left}% ${clip.top}%, ${clip.right}% ${clip.top}%, ${clip.right}% ${clip.bottom}%, ${clip.left}% ${clip.bottom}%)`;
+                        wrapper.dataset.clipTop = clip.top; wrapper.dataset.clipRight = clip.right;
+                        wrapper.dataset.clipBottom = clip.bottom; wrapper.dataset.clipLeft = clip.left;
+                    };
+
+                    const onMouseUp = () => {
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                        saveState();
+                    };
+                    
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                });
                 
-                async parseElement(el) {
-                    const style = window.getComputedStyle(el);
-                    let prefix = '{', suffix = '}';
-                    
-                    // Style attributes
-                    prefix += `\\f0\\fs${parseInt(style.fontSize) * 2 || 24} `;
-                    prefix += `\\cf${this.getColorIndex(style.color)} `;
-                    if (style.fontWeight === 'bold' || parseInt(style.fontWeight) >= 700) prefix += '\\b ';
-                    if (style.fontStyle === 'italic') prefix += '\\i ';
-                    if (style.textDecorationLine === 'underline') prefix += '\\ul ';
-                    
-                    let content = await this.parseNode(el);
+                const processImageFile = (file) => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        document.execCommand('insertHTML', false, `<div class="image-wrapper" style="width: 200px;"><img src="${ev.target.result}" alt="${file.name}"></div>`);
+                        saveState();
+                    };
+                    reader.readAsDataURL(file);
+                };
 
-                    // Block elements
-                    const tagName = el.tagName.toUpperCase();
-                    if (['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(tagName)) {
-                        prefix += '\\pard ';
-                        if (style.textAlign === 'center') prefix += '\\qc ';
-                        else if (style.textAlign === 'right') prefix += '\\qr ';
-                        suffix += '\\par';
-                    } else if (tagName === 'BR') {
-                        return '\\par\n';
-                    } else if (tagName === 'TABLE') {
-                        return await this.parseTable(el);
-                    } else if (tagName === 'IMG') {
-                        return await this.parseImage(el);
-                    } else if(tagName === 'FONT') { // From execCommand
-                         prefix += `\\cf${this.getColorIndex(el.color)} `;
+                getEl('insert-image-btn').addEventListener('click', () => getEl('image-upload-input').click());
+                getEl('image-upload-input').addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    if (file.name.match(/\.(heic|heif)$/i)) {
+                        showNotification('正在轉換 HEIC 檔案...');
+                        heic2any({ blob: file, toType: "image/jpeg" })
+                            .then(conversionResult => { processImageFile(conversionResult); showNotification('轉換成功！'); })
+                            .catch(() => showNotification('HEIC 轉換失敗。'));
+                    } else {
+                        processImageFile(file);
                     }
-                    
-                    return `${prefix}${content}${suffix}`;
+                    e.target.value = '';
+                });
+            }
+
+            function initializeRtfExport() {
+                 function colorToHex(colorStr) {
+                    if (!colorStr || colorStr === 'transparent') return '#FFFFFF'; // Default for transparent
+                    const temp = document.createElement("div");
+                    temp.style.color = colorStr;
+                    document.body.appendChild(temp);
+                    const computedColor = window.getComputedStyle(temp).color;
+                    document.body.removeChild(temp);
+                    const match = computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                    if (match) {
+                        try {
+                            const r = parseInt(match[1]); const g = parseInt(match[2]); const b = parseInt(match[3]);
+                            return ("#" + ("0" + r.toString(16)).slice(-2) + ("0" + g.toString(16)).slice(-2) + ("0" + b.toString(16)).slice(-2)).toUpperCase();
+                        } catch (e) { return '#000000'; }
+                    }
+                    return '#000000';
+                }
+                function base64ToHex(base64) { 
+                    const raw = window.atob(base64); let hex = ''; 
+                    for (let i = 0; i < raw.length; i++) { const charHex = raw.charCodeAt(i).toString(16); hex += (charHex.length === 2 ? charHex : '0' + charHex); } return hex; 
                 }
 
-                async parseImage(img) {
+                class RtfExporter {
+                     constructor() {
+                        this.colorTable = {}; this.fontTable = {}; this.colorIndex = 1; this.fontIndex = 1;
+                    }
+                    async generate(element) {
+                        this.colorTable = { '#000000': { index: 0, def: '\\red0\\green0\\blue0;' }}; this.fontTable = { 'Microsoft JhengHei': { index: 0, def: '{\\f0 Microsoft JhengHei;}' } };
+                        this.colorIndex = 1; this.fontIndex = 1;
+                        let contentRtf = await this.parseNode(element);
+                        const colorTableDef = Object.values(this.colorTable).map(c => c.def).join(''); const fontTableDef = Object.values(this.fontTable).map(f => f.def).join('');
+                        return `{\\rtf1\\ansi\\deff0{\\fonttbl${fontTableDef}}{\\colortbl;${colorTableDef}}${contentRtf}}`;
+                    }
+                    getColorIndex(colorStr) {
+                        const hex = colorToHex(colorStr); if (this.colorTable[hex]) return this.colorTable[hex].index;
+                        const match = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                        if(match) {
+                            const [r, g, b] = [match[1], match[2], match[3]];
+                            this.colorTable[hex] = { index: this.colorIndex, def: `\\red${r}\\green${g}\\blue${b};` };
+                            return this.colorIndex++;
+                        } return 0;
+                    }
+                    async parseNode(node) {
+                        let rtf = '';
+                        for (const child of node.childNodes) {
+                            if (child.nodeType === Node.TEXT_NODE) rtf += this.escapeText(child.textContent);
+                            else if (child.nodeType === Node.ELEMENT_NODE) rtf += await this.parseElement(child);
+                        } return rtf;
+                    }
+                    async parseElement(el) {
+                        const style = window.getComputedStyle(el); let prefix = '{', suffix = '}';
+                        prefix += `\\f0\\fs${parseInt(style.fontSize) * 2 || 24} `;
+                        prefix += `\\cf${this.getColorIndex(style.color)} `;
+                        if (style.fontWeight === 'bold' || parseInt(style.fontWeight) >= 700) prefix += '\\b ';
+                        if (style.fontStyle === 'italic') prefix += '\\i ';
+                        if (style.textDecorationLine === 'underline') prefix += '\\ul ';
+                        let content = await this.parseNode(el);
+                        const tagName = el.tagName.toUpperCase();
+                        if (['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(tagName)) {
+                            prefix += '\\pard ';
+                            if (style.textAlign === 'center') prefix += '\\qc '; else if (style.textAlign === 'right') prefix += '\\qr ';
+                            suffix += '\\par';
+                        } else if (tagName === 'BR') return '\\par\n';
+                        else if (tagName === 'TABLE') return await this.parseTable(el);
+                        else if (tagName === 'IMG') return await this.parseImage(el);
+                        return `${prefix}${content}${suffix}`;
+                    }
+                    async parseImage(img) {
+                        try {
+                            const wrapper = img.closest('.image-wrapper');
+                            const response = await fetch(img.src); const blob = await response.blob();
+                            const base64 = await new Promise(resolve => { const reader = new FileReader(); reader.onloadend = () => resolve(reader.result.split(',')[1]); reader.readAsDataURL(blob); });
+                            const hexData = base64ToHex(base64); const picType = blob.type === 'image/png' ? '\\pngblip' : '\\jpegblip';
+                            const w = wrapper.offsetWidth * 15, h = wrapper.offsetHeight * 15;
+                            let crop = { l:0, r:0, t:0, b:0 };
+                            crop.l = (parseFloat(wrapper.dataset.clipLeft) || 0) / 100 * w; crop.r = (100 - (parseFloat(wrapper.dataset.clipRight) || 100)) / 100 * w;
+                            crop.t = (parseFloat(wrapper.dataset.clipTop) || 0) / 100 * h; crop.b = (100 - (parseFloat(wrapper.dataset.clipBottom) || 100)) / 100 * h;
+                            return `{\\pard\\qc{\\pict\\picwgoal${Math.round(w - crop.l - crop.r)}\\pichgoal${Math.round(h - crop.t - crop.b)}\\piccropl${Math.round(crop.l)}\\piccropr${Math.round(crop.r)}\\piccropt${Math.round(crop.t)}\\piccropb${Math.round(crop.b)}${picType} ${hexData}}\\par}`;
+                        } catch (e) { console.error(e); return ''; }
+                    }
+                    async parseTable(table) {
+                        const grid = []; Array.from(table.rows).forEach((row, r) => { if (!grid[r]) grid[r] = []; Array.from(row.cells).forEach(cell => { let c = 0; while (grid[r][c]) c++; const colspan = parseInt(cell.getAttribute('colspan') || 1); const rowspan = parseInt(cell.getAttribute('rowspan') || 1); for (let i = 0; i < rowspan; i++) { for (let j = 0; j < colspan; j++) { if (!grid[r + i]) grid[r + i] = []; grid[r + i][c + j] = { cell, isMerged: i > 0 || j > 0, isFirst: i === 0 && j === 0 }; } } }); });
+                        let tableRtf = '';
+                        for (let r = 0; r < grid.length; r++) {
+                            let rowHeader = `{\\trowd\\trgaph108 `; let currentX = 0;
+                            for (let c = 0; c < grid[r].length; c++) {
+                                const cellEl = grid[r][c].cell; const colspan = parseInt(cellEl.getAttribute('colspan') || 1);
+                                currentX += cellEl.getBoundingClientRect().width / colspan * 15;
+                                if (grid[r][c].isFirst) rowHeader += this.getCellBorders(cellEl); rowHeader += `\\cellx${Math.round(currentX)} `;
+                            }
+                            let cellsContent = '';
+                            for (let c = 0; c < grid[r].length; c++) {
+                                const {cell, isFirst} = grid[r][c];
+                                if(isFirst) {
+                                    let cellContent = await this.parseNode(cell); let prefix = '{\\intbl ';
+                                    if(parseInt(cell.getAttribute('rowspan')) > 1) prefix += '\\clvmgf '; if(parseInt(cell.getAttribute('colspan')) > 1) prefix += '\\clmrg ';
+                                    cellsContent += `${prefix}${cellContent}}\\cell `;
+                                } else { if(grid[r][c-1] && grid[r][c-1].cell === grid[r][c].cell) cellsContent += '{\\intbl \\clmrg }\\cell '; else cellsContent += '{\\intbl \\clvmrg }\\cell '; }
+                            }
+                            tableRtf += `${rowHeader}${cellsContent}}\\row\n`;
+                        } return `{\\pard ${tableRtf}\\par}`;
+                    }
+                    getCellBorders(cell) {
+                        const style = window.getComputedStyle(cell); let borderRtf = ''; const borderTypes = ['top', 'bottom', 'left', 'right'];
+                        borderTypes.forEach(type => {
+                            const width = parseInt(style[`border-${type}-width`]);
+                            if(width > 0) {
+                                const colorIndex = this.getColorIndex(style[`border-${type}-color`]);
+                                borderRtf += `\\clbrdr${type.substring(0,1)} \\brdrw${width * 15}\\brdrs\\clbrdrcf${colorIndex} `;
+                            }
+                        }); return borderRtf;
+                    }
+                    escapeText(text) { return text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/\n/g, '\\par\n').split('').map(c => c.charCodeAt(0) > 127 ? `\\u${c.charCodeAt(0)}?` : c).join(''); }
+                }
+
+                getEl('save-rtf-btn').addEventListener('click', async () => {
+                    showNotification('正在產生 RTF 檔案...');
                     try {
-                        const wrapper = img.closest('.image-wrapper');
-                        const response = await fetch(img.src);
-                        const blob = await response.blob();
-                        const base64 = await new Promise(resolve => {
-                            const reader = new FileReader();
-                            reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                            reader.readAsDataURL(blob);
-                        });
-                        const hexData = base64ToHex(base64);
-
-                        const picType = blob.type === 'image/png' ? '\\pngblip' : '\\jpegblip';
-                        const w = wrapper.offsetWidth * 15, h = wrapper.offsetHeight * 15;
-                        
-                        let crop = {};
-                        crop.l = (parseFloat(wrapper.dataset.clipLeft) || 0) / 100 * w;
-                        crop.r = (100 - (parseFloat(wrapper.dataset.clipRight) || 100)) / 100 * w;
-                        crop.t = (parseFloat(wrapper.dataset.clipTop) || 0) / 100 * h;
-                        crop.b = (100 - (parseFloat(wrapper.dataset.clipBottom) || 100)) / 100 * h;
-
-                        return `{\\pard\\qc{\\pict\\picwgoal${w - crop.l - crop.r}\\pichgoal${h - crop.t - crop.b}\\piccropl${Math.round(crop.l)}\\piccropr${Math.round(crop.r)}\\piccropt${Math.round(crop.t)}\\piccropb${Math.round(crop.b)}${picType} ${hexData}}\\par}`;
-                    } catch (e) { console.error(e); return ''; }
-                }
-
-                async parseTable(table) {
-                    const grid = [];
-                    Array.from(table.rows).forEach((row, r) => {
-                        if (!grid[r]) grid[r] = [];
-                        Array.from(row.cells).forEach(cell => {
-                            let c = 0; while (grid[r][c]) c++;
-                            const colspan = parseInt(cell.getAttribute('colspan') || 1);
-                            const rowspan = parseInt(cell.getAttribute('rowspan') || 1);
-                            for (let i = 0; i < rowspan; i++) {
-                                for (let j = 0; j < colspan; j++) {
-                                    if (!grid[r + i]) grid[r + i] = [];
-                                    grid[r + i][c + j] = { cell, isMerged: i > 0 || j > 0, isFirst: i === 0 && j === 0 };
-                                }
-                            }
-                        });
-                    });
-
-                    let tableRtf = '';
-                    for (let r = 0; r < grid.length; r++) {
-                        let rowHeader = `{\\trowd\\trgaph108 `;
-                        let currentX = 0;
-                        for (let c = 0; c < grid[r].length; c++) {
-                            const cellEl = grid[r][c].cell;
-                            const colspan = parseInt(cellEl.getAttribute('colspan') || 1);
-                            currentX += cellEl.getBoundingClientRect().width / colspan * 15;
-                            if (grid[r][c].isFirst) rowHeader += this.getCellBorders(cellEl);
-                            rowHeader += `\\cellx${Math.round(currentX)} `;
-                        }
-                        
-                        let cellsContent = '';
-                        for (let c = 0; c < grid[r].length; c++) {
-                            const {cell, isMerged, isFirst} = grid[r][c];
-                            if(isFirst) {
-                                let cellContent = await this.parseNode(cell);
-                                let prefix = '{\\intbl ';
-                                if(parseInt(cell.getAttribute('rowspan')) > 1) prefix += '\\clvmgf ';
-                                if(parseInt(cell.getAttribute('colspan')) > 1) prefix += '\\clmrg ';
-                                cellsContent += `${prefix}${cellContent}}\\cell `;
-                            } else {
-                                if(grid[r][c-1] && grid[r][c-1].cell === cell) cellsContent += '{\\intbl \\clmrg }\\cell '; // horizontal merge
-                                else cellsContent += '{\\intbl \\clvmrg }\\cell '; // vertical merge
-                            }
-                        }
-                        tableRtf += `${rowHeader}${cellsContent}}\\row\n`;
-                    }
-                    return `{\\pard ${tableRtf}\\par}`;
-                }
-
-                getCellBorders(cell) {
-                    const style = window.getComputedStyle(cell);
-                    let borderRtf = '';
-                    const borderTypes = ['top', 'bottom', 'left', 'right'];
-                    borderTypes.forEach(type => {
-                        const width = parseInt(style[`border-${type}-width`]);
-                        if(width > 0) {
-                            borderRtf += `\\clbrdr${type.substring(0,1)} \\brdrw${width * 15}\\brdrs `;
-                        }
-                    });
-                    return borderRtf;
-                }
-                
-                escapeText(text) { return text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/\n/g, '\\par\n').split('').map(c => c.charCodeAt(0) > 127 ? `\\u${c.charCodeAt(0)}?` : c).join(''); }
+                        const rtfContent = await new RtfExporter().generate(contentDisplay);
+                        const blob = new Blob([rtfContent], { type: 'application/rtf' });
+                        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${originalFilename || 'content'}.rtf`;
+                        a.click(); URL.revokeObjectURL(a.href);
+                        showNotification('RTF 檔案已儲存。');
+                    } catch (error) { console.error("RTF Generation Error:", error); showNotification('產生 RTF 檔案失敗。'); }
+                });
             }
 
-            // Init other simple controls
-            const otherControls = {
-                selectFileBtn: () => getEl('file-input').click(),
-                saveHtmlBtn: () => { /* save html logic */ },
-                zoomInBtn: () => { /* zoom logic */},
-                // ... more simple listeners
-            }
-            Object.keys(otherControls).forEach(id => {
-                 const el = getEl(id);
-                 if(el) el.addEventListener('click', otherControls[id]);
-            });
-            // Initial state
+            // --- Initial Load ---
+            initializeCoreFeatures();
             setControlsState(false);
         });
     </script>
