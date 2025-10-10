@@ -231,6 +231,9 @@
         .episode-action-btn:hover { background-color: var(--color-text-secondary); color: var(--color-surface); }
         .episode-action-btn.download-action-link { color: #27C93F; border-color: #27C93F; }
         .episode-action-btn.download-action-link:hover { background-color: #27C93F; color: white; }
+        /* [新增] 分享按鈕樣式 */
+        .episode-action-btn.share-action-btn { color: #007AFF; border-color: #007AFF; }
+        .episode-action-btn.share-action-btn:hover { background-color: #007AFF; color: white; }
         .episode-item:not(.is-playing-item):hover .episode-metadata { display: none; }
         .episode-item:not(.is-playing-item):hover .episode-item-actions { display: flex; }
         .episode-date { font-size: 0.75rem; color: var(--color-text-secondary); white-space: nowrap; }
@@ -1387,6 +1390,7 @@
                             <span class="episode-date">${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</span>
                         </div>
                         <div class="episode-item-actions">
+                            <button class="episode-action-btn share-action-btn" title="分享連結"><i class="fas fa-share-alt"></i></button>
                             <a href="${ep.episodeUrl}" download="${escapeAttr(ep.trackName)}.mp3" class="episode-action-btn download-action-link" title="下載"><i class="fas fa-download"></i></a>
                         </div>
                         <div class="sound-icon-container">${soundIconSVG}</div>
@@ -1402,6 +1406,28 @@
                     item.querySelector('.episode-main-content').addEventListener('click', () => playEpisode(ep, podcast.artistName, episodes));
                     item.querySelector('.episode-thumbnail-btn').addEventListener('click', (e) => { e.stopPropagation(); openEpisodeModal(ep, podcast, episodes); });
                     item.querySelector('.download-action-link')?.addEventListener('click', (e) => e.stopPropagation());
+                    
+                    // [新增] 分享按鈕事件
+                    const shareBtn = item.querySelector('.share-action-btn');
+                    if(shareBtn) {
+                        shareBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const urlToCopy = ep.episodeUrl;
+                            const textArea = document.createElement('textarea');
+                            textArea.value = urlToCopy;
+                            textArea.style.position = 'fixed';
+                            textArea.style.left = '-9999px'; // Move it off-screen
+                            document.body.appendChild(textArea);
+                            textArea.select();
+                            try {
+                                document.execCommand('copy');
+                                showToast('已成功複製單集連結！');
+                            } catch (err) {
+                                showToast('複製連結失敗。', 'error');
+                            }
+                            document.body.removeChild(textArea);
+                        });
+                    }
                 });
                 syncPlayerUI();
             }
