@@ -43,7 +43,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML編輯器</title>
+    <title>HTML視覺化編輯器</title>
     <style>
         :root {
             /* --- Light Theme --- */
@@ -51,6 +51,7 @@
             --background-color: #f5f5f7;
             --window-background-color: rgba(255, 255, 255, 0.6);
             --panel-background-color: rgba(240, 240, 245, 0.7);
+            --dropdown-background-color: rgba(255, 255, 255, 0.95);
             --editor-background-color: #fff;
             --system-blue: #007aff;
             --system-green: #28a745;
@@ -71,6 +72,7 @@
             --background-color: #1c1c1e;
             --window-background-color: rgba(44, 44, 46, 0.7);
             --panel-background-color: rgba(28, 28, 30, 0.8);
+            --dropdown-background-color: rgba(28, 28, 30, 0.95);
             --editor-background-color: #2c2c2e;
             --system-blue: #0a84ff;
             --system-green: #30d158;
@@ -199,7 +201,7 @@
             transition: box-shadow 0.2s, border-color 0.2s, background-color 0.3s;
         }
         #search-input, #replace-input { width: 60px; }
-        #font-size-input, #border-width-input { width: 36px; }
+        #font-size-input, #border-width-input { width: 36px; text-align: center; }
         #row-height-input, #col-width-input { width: 40px; }
         input[type="text"]:focus, input[type="number"]:focus { outline: none; border-color: var(--system-blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--system-blue) 30%, transparent); }
         
@@ -248,7 +250,7 @@
 
         /* --- 下拉選單 (Dropdown) --- */
         .dropdown { position: relative; display: inline-block; }
-        .dropdown-content { display: none; position: absolute; background-color: var(--panel-background-color); min-width: 120px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 10; border-radius: 6px; padding: 5px 0; border: 1px solid var(--border-color); }
+        .dropdown-content { display: none; position: absolute; background-color: var(--dropdown-background-color); min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 10; border-radius: 6px; padding: 5px 0; border: 1px solid var(--border-color); right: 0; backdrop-filter: blur(var(--blur-radius)); -webkit-backdrop-filter: blur(var(--blur-radius));}
         .dropdown-content a { color: var(--text-color); padding: 8px 12px; text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
         .dropdown-content a:hover { background-color: var(--border-color); }
         .dropdown.show .dropdown-content { display: block; }
@@ -276,25 +278,6 @@
         #content-display[contenteditable="true"] { 
             user-select: text; 
             cursor: text; 
-        }
-
-        /* Page Orientation Styles */
-        .portrait-mode {
-             width: 21cm;
-             height: 29.7cm;
-             padding: 2cm;
-             margin: 1cm auto;
-             box-sizing: border-box;
-             box-shadow: 0 0 15px rgba(0,0,0,0.15);
-        }
-
-        .landscape-mode {
-            width: 29.7cm;
-            height: 21cm;
-            padding: 2cm;
-            margin: 1cm auto;
-            box-sizing: border-box;
-            box-shadow: 0 0 15px rgba(0,0,0,0.15);
         }
 
         /* --- 表格與選取樣式 --- */
@@ -366,6 +349,54 @@
         #notification { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s; }
         #notification.show { opacity: 1; visibility: visible; transform: translate(-50%, -10px); }
 
+        /* --- 操作說明區塊 --- */
+        .help-section {
+            background-color: var(--panel-background-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 24px;
+        }
+        .help-section h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .help-section h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--system-blue);
+            margin-top: 24px;
+            margin-bottom: 16px;
+        }
+        .help-section ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .help-section li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+            line-height: 1.5;
+            color: var(--text-color-secondary);
+        }
+        .help-section .help-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            fill: var(--text-color-secondary);
+            margin-top: -2px;
+        }
+        .help-section .keyword {
+            color: var(--system-blue);
+            font-weight: 500;
+        }
+
     </style>
 </head>
 <body>
@@ -380,7 +411,7 @@
                     <span id="current-filename"></span>
                 </div>
                  <div class="title-content">
-                    <h1 class="window-title">HTML 編輯器</h1>
+                    <h1 class="window-title">HTML 視覺化編輯器</h1>
                 </div>
                 <button id="theme-toggle" title="切換明暗主題">
                     <span id="theme-icon-sun">
@@ -391,7 +422,7 @@
                     </span>
                 </button>
             </div>
-            <p class="window-subtitle">本程式是針對 HTML 的視覺化編輯工具，提供直覺的操作介面。</p>
+            <p class="window-subtitle">一個簡易直觀的操作工具，可用於編輯 HTML 表格和文字內容。</p>
             <p class="window-creator">製作者：陳政德</p>
         </header>
 
@@ -401,8 +432,9 @@
                     <div class="control-group">
                         <button id="select-file-btn">匯入檔案</button>
                         <input type="file" id="file-input" accept=".html,.htm" style="display: none;">
-                        <button id="save-html-btn" class="success">儲存為 HTML</button>
-                        <button id="print-btn" class="success">另存文件 (PDF/RTF)</button>
+                        <button id="new-page-btn" class="icon-btn" title="新增空白頁">
+                           <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 14h-3v3h-2v-3H8v-2h3v-3h2v3h3v2z"/></svg>
+                        </button>
                     </div>
                     <div class="separator"></div>
                     <div class="control-group">
@@ -439,8 +471,28 @@
                             <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
                         </button>
                     </div>
-                     <div class="separator"></div>
-                     <div class="control-group">
+                    <div class="spacer"></div>
+                    <div class="control-group">
+                        <div class="dropdown">
+                            <button id="export-btn" class="success" title="儲存或匯出檔案">
+                                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="white"/></svg>
+                                <span>儲存 / 匯出</span>
+                            </button>
+                            <div class="dropdown-content" id="export-options">
+                                <a id="export-html-link">
+                                    <svg viewBox="0 0 24 24"><path d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
+                                    <span>儲存為 HTML</span>
+                                </a>
+                                <a id="export-pdf-link">
+                                    <svg viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm-2.5.5H9v-2h-.5v2zm7 4.5h-3v-1h3v1zm0-2h-3v-1h3v1zm0-2h-3v-1h3v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/></svg>
+                                    <span>另存 PDF / 列印</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="controls-row">
+                    <div class="control-group">
                         <label>表格:</label>
                         <button id="add-row-btn" class="icon-btn btn-table" title="在下方新增一列"><svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM4 12h16v4H4v-4zm10-4.5h2v3h-2v-3zm-3 0h2v3h-2v-3zm-3 0h2v3H8v-3zM21 20H3v-1c0-.55.45-1 1-1h16c.55 0 1 .45 1 1v1zM11 2v3h2V2h-2z"/></svg></button>
                         <button id="add-col-btn" class="icon-btn btn-table" title="在右方新增一欄"><svg viewBox="0 0 24 24"><path d="M8 4v16c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm6 14h-4V6h4v12zm-8.5-2h3v-2h-3v2zm0-3h3v-2h-3v2zm0-3h3v-2h-3v2zM20 4c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H10V4h10zM19 21v-2h1c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1h-1V1h-2v2h-8V1H8v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14v2h2z" transform="scale(1, -1) translate(0, -24)"/></svg></button>
@@ -449,8 +501,7 @@
                         <button id="merge-cells-btn" class="icon-btn btn-table" title="合併儲存格"><svg viewBox="0 0 24 24"><path d="M11 11H5v2h6v6h2v-6h6v-2h-6V5h-2v6Z M3 21V3h18v18H3Z"/></svg></button>
                         <button id="split-cell-btn" class="icon-btn btn-table" title="拆分儲存格"><svg viewBox="0 0 24 24"><path d="M13 11V3h-2v8H3v2h8v8h2v-8h8v-2h-8Z M3 3v8h8V3H3Zm10 0v8h8V3h-8ZM3 13v8h8v-8H3Zm10 0v8h8v-8h-8Z"/></svg></button>
                     </div>
-                </div>
-                <div class="controls-row">
+                     <div class="separator"></div>
                     <div class="control-group">
                         <label>對齊:</label>
                         <button id="align-left-btn" class="icon-btn btn-align" title="靠左對齊"><svg viewBox="0 0 24 24"><path d="M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z"/></svg></button>
@@ -466,15 +517,12 @@
                         <button id="zoom-out-btn" class="icon-btn" title="縮小">-</button>
                         <button id="zoom-reset-btn" title="重設縮放">100%</button>
                     </div>
-                    <div class="control-group">
-                        <label>頁面:</label>
-                        <button id="portrait-btn" title="直式">直式</button>
-                        <button id="landscape-btn" title="橫式">橫式</button>
-                    </div>
                     <div class="separator"></div>
                     <div class="control-group">
                         <label>文字:</label>
+                        <button id="decrease-font-size-btn" class="icon-btn" title="縮小文字">A-</button>
                         <input type="number" id="font-size-input" min="8" max="72" value="14" title="文字大小">
+                        <button id="increase-font-size-btn" class="icon-btn" title="放大文字">A+</button>
                         <input type="color" id="font-color-input" value="#000000" title="文字顏色">
                     </div>
                      <div class="control-group">
@@ -514,11 +562,44 @@
             </div>
     
             <div id="editor-container">
-                <div id="content-display" contenteditable="true">
-                    點擊「匯入檔案」或開始編輯...
-                </div>
+                <div id="content-display" contenteditable="true"><p><br></p></div>
             </div>
         </main>
+        
+        <div class="help-section">
+            <h2>功能與操作說明</h2>
+            
+            <h3><span class="keyword">檔案</span></h3>
+            <ul>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M19.5 6h-2.5V4.5C17 3.12 15.88 2 14.5 2h-5C8.12 2 7 3.12 7 4.5V6H4.5C3.12 6 2 7.12 2 8.5v9C2 18.88 3.12 20 4.5 20h15c1.38 0 2.5-1.12 2.5-2.5v-9C22 7.12 20.88 6 19.5 6zM9 4.5C9 4.22 9.22 4 9.5 4h5c.28 0 .5.22.5.5V6H9V4.5z"/></svg><div><span class="keyword">匯入檔案</span>：點擊以選擇並載入電腦中的 <span class="keyword">.html</span> 或 <span class="keyword">.htm</span> 檔案，將其內容顯示於編輯區。</div></li>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 14h-3v3h-2v-3H8v-2h3v-3h2v3h3v2z"/></svg><div><span class="keyword">新增空白頁</span>：快速清空目前編輯區的所有內容，方便您從頭開始一份新文件。</div></li>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg><div><span class="keyword">儲存 / 匯出</span>：點擊後可選擇 <span class="keyword">儲存為 HTML</span> 檔案，或透過 <span class="keyword">另存 PDF / 列印</span> 功能將目前內容匯出為 PDF 或進行列印。</div></li>
+            </ul>
+
+            <h3><span class="keyword">編輯</span></h3>
+            <ul>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.38 11.23 17.28 8 12.5 8z"/></svg><div><span class="keyword">復原 (Undo)</span>：撤銷上一步的操作。程式會記錄您最近的30個步驟。</div></li>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M9.64 7.64c.23-.5.36-1.05.36-1.64 0-2.21-1.79-4-4-4S2 3.79 2 6c0 .59.13 1.14.36 1.64L9 14.29V22h6v-7.71l6.64-6.65c.23-.5.36-1.05.36-1.64 0-2.21-1.79-4-4-4s-4 1.79-4 4c0 .59.13 1.14.36 1.64L15 11l-5.36-3.36zM6 6c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm12 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/></svg><div><span class="keyword">剪下 (Cut)</span>：將選取的文字或物件從文件中移除，並複製到剪貼簿。</div></li>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg><div><span class="keyword">複製 (Copy)</span>：複製選取的文字或物件到剪貼簿。</div></li>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M19 2h-4.18C14.4.84 13.3 0 12 0S9.6.84 9.18 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z"/></svg><div><span class="keyword">貼上 (Paste)</span>：將剪貼簿中的內容貼到游標目前所在的位置。</div></li>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M15.58 4.04c-.39-.39-1.02-.39-1.41 0l-1.06 1.06 2.83 2.83 1.06-1.06c.39-.39.39-1.02 0-1.41l-1.42-1.42zM12.5 7.5 5 15v3h3l7.5-7.5-3-3z"/></svg><div><span class="keyword">搜尋與取代</span>：在輸入框中輸入文字，可進行 <span class="keyword">搜尋</span> 並以黃色標記所有符合項目，或進行 <span class="keyword">全部取代</span>。</div></li>
+            </ul>
+
+            <h3><span class="keyword">插入</span></h3>
+            <ul>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m0 2v3h14V6H5m0 5v3h4v-3H5m6 0v3h8v-3h-8m-6 5v3h4v-3H5m6 0v3h8v-3h-8Z"/></svg><div><span class="keyword">插入表格</span>：點擊後會提示您輸入所需的 <span class="keyword">列數</span> 與 <span class="keyword">欄數</span>，以快速建立表格。</div></li>
+                 <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M23 12l-7 7v-4.2c-2.8.1-5.2.8-7.2 2.2-2 1.3-3.3 3-4 5-.5-1.8-.4-4.1.4-6.8 1-3 2.8-5.2 5.4-6.6C13.2 7.3 16 6.8 19 6.8V3l4 4.5V12z"/></svg><div><span class="keyword">插入圖案</span>：可選擇插入 <span class="keyword">矩形</span> 或 <span class="keyword">圓形</span>。插入後可拖曳右下角控制點來調整大小。</div></li>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg><div><span class="keyword">插入圖片</span>：從您的電腦選擇一張圖片插入。支援 HEIC 格式自動轉檔。插入後可拖曳右下角控制點來調整大小。</div></li>
+            </ul>
+             
+            <h3><span class="keyword">表格工具</span></h3>
+            <ul>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM4 12h16v4H4v-4zm10-4.5h2v3h-2v-3zm-3 0h2v3h-2v-3zm-3 0h2v3H8v-3zM21 20H3v-1c0-.55.45-1 1-1h16c.55 0 1 .45 1 1v1zM11 2v3h2V2h-2z"/></svg><div><span class="keyword">新增/刪除 列/欄</span>：選取任一儲存格後，可 <span class="keyword">在其下方新增一列</span> 或 <span class="keyword">右方新增一欄</span>。也可 <span class="keyword">刪除選取儲存格所在的整列或整欄</span>。</div></li>
+                 <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M11 11H5v2h6v6h2v-6h6v-2h-6V5h-2v6Z M3 21V3h18v18H3Z"/></svg><div><span class="keyword">合併/拆分 儲存格</span>：選取多個相鄰儲存格後可進行 <span class="keyword">合併</span>。選取一個已合併的儲存格後可進行 <span class="keyword">拆分</span>，還原其原始結構。</div></li>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z"/></svg><div><span class="keyword">對齊</span>：對選取的儲存格內容進行 <span class="keyword">水平</span> (左、中、右) 或 <span class="keyword">垂直</span> (上、中、下) 對齊。</div></li>
+                <li><svg class="help-icon" viewBox="0 0 24 24"><path d="M7 21H5V9h2v12zM9 13v2h2v-2H9zM9 17v2h2v-2H9zM9 9v2h2V9H9zM13 21h-2V9h2v12zM15 9h2v2h-2V9zM15 13h2v2h-2v-2zM15 17h2v2h-2v-2zM19 21h-2V9h2v12zM3 7V5h18v2H3zM3 21v-2h18v2H3z"/></svg><div><span class="keyword">框線設定</span>：可針對選取的儲存格設定 <span class="keyword">上/下/左/右</span>、<span class="keyword">所有</span>、<span class="keyword">內/外</span> 等不同類型的框線。</div></li>
+            </ul>
+        </div>
     </div>
 
     <div id="print-content" style="display: none;"></div>
@@ -532,12 +613,14 @@
             // --- DOM Elements ---
             const getEl = (id) => document.getElementById(id);
             const fileInput = getEl('file-input'), selectFileBtn = getEl('select-file-btn');
+            const newPageBtn = getEl('new-page-btn');
             const contentDisplay = getEl('content-display');
             const searchInput = getEl('search-input'), searchBtn = getEl('search-btn');
             const replaceInput = getEl('replace-input'), replaceBtn = getEl('replace-btn');
             const zoomInBtn = getEl('zoom-in-btn'), zoomOutBtn = getEl('zoom-out-btn'), zoomResetBtn = getEl('zoom-reset-btn');
-            const saveHtmlBtn = getEl('save-html-btn'), notification = getEl('notification');
-            const printBtn = getEl('print-btn');
+            const exportBtn = getEl('export-btn'), exportOptions = getEl('export-options');
+            const exportHtmlLink = getEl('export-html-link'), exportPdfLink = getEl('export-pdf-link');
+            const notification = getEl('notification');
             const undoBtn = getEl('undo-btn');
             const cutBtn = getEl('cut-btn'), copyBtn = getEl('copy-btn'), pasteBtn = getEl('paste-btn');
             const alignLeftBtn = getEl('align-left-btn'), alignCenterBtn = getEl('align-center-btn'), alignRightBtn = getEl('align-right-btn');
@@ -547,6 +630,8 @@
             const mergeCellsBtn = getEl('merge-cells-btn'), splitCellBtn = getEl('split-cell-btn');
             const themeToggle = getEl('theme-toggle'), themeIconSun = getEl('theme-icon-sun'), themeIconMoon = getEl('theme-icon-moon');
             const fontSizeInput = getEl('font-size-input');
+            const decreaseFontSizeBtn = getEl('decrease-font-size-btn');
+            const increaseFontSizeBtn = getEl('increase-font-size-btn');
             const fontColorInput = getEl('font-color-input');
             const bgColorInput = getEl('bg-color-input');
             const borderColorInput = getEl('border-color-input');
@@ -560,7 +645,6 @@
             const imageUploadInput = getEl('image-upload-input');
             const rowHeightInput = getEl('row-height-input'), colWidthInput = getEl('col-width-input');
             const fixRowHeightCheck = getEl('fix-row-height-check'), fixColWidthCheck = getEl('fix-col-width-check');
-            const portraitBtn = getEl('portrait-btn'), landscapeBtn = getEl('landscape-btn');
             const currentFilename = getEl('current-filename');
             
             // --- State Variables ---
@@ -570,7 +654,8 @@
             let resizing = null;
             let objectResizing = null; // General purpose for images and shapes
             let objectDragging = null; // For dragging shapes
-            let originalFilename = '';
+            let originalFilename = 'untitled';
+            let currentSelectionRange = null;
             
             // --- Core Functions ---
             function showNotification(message) {
@@ -635,26 +720,39 @@
 
 
             function updateToolbarForSelection() {
-                if (selectedCells.length === 0) return;
-
-                const primaryCell = selectedCells[0];
-                const primaryStyle = window.getComputedStyle(primaryCell);
-                
-                fontSizeInput.value = parseInt(primaryStyle.fontSize) || 14;
-                
-                const primaryBgColor = colorToHex(getEffectiveBackgroundColor(primaryCell));
-                bgColorInput.value = primaryBgColor;
-
-                const primaryFontColor = colorToHex(primaryStyle.color);
-                fontColorInput.value = primaryFontColor;
-
-                const rect = primaryCell.getBoundingClientRect();
-                rowHeightInput.value = Math.round(rect.height / currentZoom);
-                colWidthInput.value = Math.round(rect.width / currentZoom);
-
-                bgColorInput.classList.toggle('mixed', selectedCells.some(c => colorToHex(getEffectiveBackgroundColor(c)) !== primaryBgColor));
-                fontColorInput.classList.toggle('mixed', selectedCells.some(c => colorToHex(window.getComputedStyle(c).color) !== primaryFontColor));
+                if (selectedCells.length > 0) {
+                    const primaryCell = selectedCells[0];
+                    const primaryStyle = window.getComputedStyle(primaryCell);
+                    fontSizeInput.value = parseInt(primaryStyle.fontSize) || 14;
+                    const primaryBgColor = colorToHex(getEffectiveBackgroundColor(primaryCell));
+                    bgColorInput.value = primaryBgColor;
+                    const primaryFontColor = colorToHex(primaryStyle.color);
+                    fontColorInput.value = primaryFontColor;
+                    const rect = primaryCell.getBoundingClientRect();
+                    rowHeightInput.value = Math.round(rect.height / currentZoom);
+                    colWidthInput.value = Math.round(rect.width / currentZoom);
+                    bgColorInput.classList.toggle('mixed', selectedCells.some(c => colorToHex(getEffectiveBackgroundColor(c)) !== primaryBgColor));
+                    fontColorInput.classList.toggle('mixed', selectedCells.some(c => colorToHex(window.getComputedStyle(c).color) !== primaryFontColor));
+                } else {
+                    const selection = window.getSelection();
+                    if (selection.rangeCount > 0 && !selection.isCollapsed) {
+                        const range = selection.getRangeAt(0);
+                        let el = range.startContainer;
+                        el = el.nodeType === Node.TEXT_NODE ? el.parentElement : el;
+                        
+                        let size = window.getComputedStyle(el).fontSize;
+                        while(!size || size === "0px"){
+                           el = el.parentElement;
+                           if(!el) break;
+                           size = window.getComputedStyle(el).fontSize;
+                        }
+                        
+                        fontSizeInput.value = parseInt(size) || 14;
+                        fontColorInput.value = colorToHex(window.getComputedStyle(el).color);
+                    }
+                }
             }
+
 
             function clearHighlight() {
                 contentDisplay.querySelectorAll('mark.highlight').forEach(mark => {
@@ -757,8 +855,16 @@
             
             // --- Event Listeners ---
             selectFileBtn.addEventListener('click', () => fileInput.click());
+            
+            newPageBtn.addEventListener('click', () => {
+                contentDisplay.innerHTML = '<p><br></p>';
+                originalFilename = 'untitled';
+                currentFilename.textContent = '';
+                historyStack = [];
+                saveState();
+                showNotification('已新增空白頁');
+            });
 
-            // MODIFIED: Simplified file import logic
             fileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
@@ -768,11 +874,8 @@
                 reader.onload = (e) => {
                     const doc = new DOMParser().parseFromString(e.target.result, 'text/html');
                     if (doc.body && doc.body.innerHTML.trim()) {
-                        // Directly use the entire body content. This preserves tables, images, text, etc., in their original layout.
                         contentDisplay.innerHTML = doc.body.innerHTML;
                         showNotification('檔案匯入成功！');
-
-                        // Optionally, still try to get the border style if a table exists.
                         const table = contentDisplay.querySelector('table');
                         if (table) {
                             const firstCell = table.querySelector('td, th');
@@ -785,7 +888,6 @@
                     } else {
                         contentDisplay.innerHTML = '<p style="color: red;">錯誤：檔案中找不到可編輯的內容。</p>';
                     }
-                    // Reset history
                     historyStack = [];
                     saveState();
                 };
@@ -851,7 +953,7 @@
                 }
             });
 
-            saveHtmlBtn.addEventListener('click', () => {
+            function saveAsHtml() {
                 clearSelection();
                 clearHighlight();
                 const contentHTML = contentDisplay.innerHTML;
@@ -866,25 +968,29 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(a.href);
                 showNotification('HTML 檔案已儲存。');
-            });
-            
-            // --- FINAL: Print-based document saving ---
-            printBtn.addEventListener('click', () => {
+            }
+
+            function saveAsPdf() {
                 const printContent = getEl('print-content');
                 if (!printContent) return;
-
-                // Clone the editor's content to prepare it for printing
                 const contentClone = contentDisplay.cloneNode(true);
-                
-                // Remove our internal resize handles from the clone
                 contentClone.querySelectorAll('.resize-handle').forEach(handle => handle.remove());
-
-                // Set the clone's content into the dedicated print div
                 printContent.innerHTML = '';
                 printContent.appendChild(contentClone);
-                
-                // Trigger the browser's print dialog
                 window.print();
+            }
+            
+            exportBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                exportBtn.parentElement.classList.toggle('show');
+            });
+            exportHtmlLink.addEventListener('click', () => {
+                saveAsHtml();
+                exportBtn.parentElement.classList.remove('show');
+            });
+            exportPdfLink.addEventListener('click', () => {
+                saveAsPdf();
+                exportBtn.parentElement.classList.remove('show');
             });
 
             zoomInBtn.addEventListener('click', () => { currentZoom = Math.min(2.0, currentZoom + 0.1); updateZoom(); });
@@ -905,7 +1011,6 @@
                 if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (!undoBtn.disabled) undoState(); }
             });
 
-            // Resize and Drag Handlers
             function onMouseMove(e) {
                 if (!resizing) return;
                 if (resizing.type === 'col') {
@@ -999,16 +1104,25 @@
                 }
             });
 
+            document.addEventListener('selectionchange', () => {
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    currentSelectionRange = selection.getRangeAt(0).cloneRange();
+                }
+                updateToolbarForSelection();
+            });
+
+
             window.addEventListener('mouseup', () => {
                 if (dragStart) {
-                    if (!isSelecting) { // Handle single click
+                    if (!isSelecting) { 
                         if (startCell && !startCell.querySelector('.resizable-image-container, .shape-container')) {
                             clearSelection();
                             startCell.classList.add('selected-cell');
                             selectedCells.push(startCell);
                         }
                     }
-                    if (selectedCells.length > 0) updateToolbarForSelection();
+                    updateToolbarForSelection();
                 }
                 dragStart = false;
                 isSelecting = false;
@@ -1038,7 +1152,7 @@
             alignMiddleBtn.addEventListener('click', () => setStyle('verticalAlign', 'middle'));
             alignBottomBtn.addEventListener('click', () => setStyle('verticalAlign', 'bottom'));
             
-            const addInputListener = (input, command, styleProp, unit = '') => {
+            const addInputListener = (input, styleProp, unit = '') => {
                  input.addEventListener('mousedown', preventFocusSteal);
                  input.addEventListener('input', () => {
                     const value = input.value + unit;
@@ -1052,31 +1166,57 @@
                         applyToSelectedCells(c => c.style[styleProp] = value, false);
                     } else {
                         const selection = window.getSelection();
+                        if (selection.rangeCount > 0 && currentSelectionRange) {
+                            selection.removeAllRanges();
+                            selection.addRange(currentSelectionRange);
+                        }
+                        
                         if (!selection.rangeCount || selection.isCollapsed) {
-                             if(styleProp !== 'height' && styleProp !== 'width')
+                             if(styleProp !== 'height' && styleProp !== 'width') {
                                 showNotification('請先選取文字以套用樣式。');
+                             }
                              return;
                         }
-                        execCmd(command, command === 'fontSize' ? findClosestFontSize(rawValue) : rawValue);
+                        
+                        if (styleProp === 'fontSize') {
+                            document.execCommand("fontSize", false, "1"); // Use a placeholder size
+                            const fontElements = contentDisplay.getElementsByTagName("font");
+                            for (let i = 0; i < fontElements.length; i++) {
+                                if (fontElements[i].size === "1") {
+                                    fontElements[i].removeAttribute("size");
+                                    fontElements[i].style.fontSize = value;
+                                }
+                            }
+                        } else if (styleProp === 'color') {
+                            execCmd('foreColor', rawValue);
+                        } else if (styleProp === 'backgroundColor') {
+                            execCmd('backColor', rawValue);
+                        }
                     }
                     clearTimeout(input.timer);
                     input.timer = setTimeout(saveState, 500);
                 });
             };
             
-            function findClosestFontSize(px) {
-                const sizes = [8, 10, 12, 14, 18, 24, 36]; // Corresponds to 1-7 font sizes
-                const target = parseInt(px, 10);
-                const closest = sizes.reduce((prev, curr) => 
-                    (Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev));
-                return sizes.indexOf(closest) + 1;
+            addInputListener(fontSizeInput, 'fontSize', 'px');
+            addInputListener(fontColorInput, 'color');
+            addInputListener(bgColorInput, 'backgroundColor');
+            addInputListener(rowHeightInput, 'height', 'px');
+            addInputListener(colWidthInput, 'width', 'px');
+            
+            function changeFontSize(amount) {
+                let currentSize = parseInt(fontSizeInput.value);
+                if (isNaN(currentSize)) currentSize = 14;
+                const newSize = Math.max(8, Math.min(72, currentSize + amount));
+                fontSizeInput.value = newSize;
+                fontSizeInput.dispatchEvent(new Event('input'));
             }
 
-            addInputListener(fontSizeInput, 'fontSize', 'fontSize', 'px');
-            addInputListener(fontColorInput, 'foreColor', 'color');
-            addInputListener(bgColorInput, 'backColor', 'backgroundColor');
-            addInputListener(rowHeightInput, null, 'height', 'px');
-            addInputListener(colWidthInput, null, 'width', 'px');
+            decreaseFontSizeBtn.addEventListener('mousedown', preventFocusSteal);
+            increaseFontSizeBtn.addEventListener('mousedown', preventFocusSteal);
+            decreaseFontSizeBtn.addEventListener('click', () => changeFontSize(-1));
+            increaseFontSizeBtn.addEventListener('click', () => changeFontSize(1));
+
 
             borderDropdownBtn.addEventListener('click', (e) => { e.stopPropagation(); borderDropdownBtn.parentElement.classList.toggle('show'); });
             borderOptions.addEventListener('click', (e) => {
@@ -1256,9 +1396,6 @@
                 insertShapeBtn.parentElement.classList.remove('show');
             });
             
-            portraitBtn.addEventListener('click', () => { contentDisplay.className = 'portrait-mode'; });
-            landscapeBtn.addEventListener('click', () => { contentDisplay.className = 'landscape-mode'; });
-
             themeToggle.addEventListener('click', () => {
                 const isDark = document.body.toggleAttribute('data-theme');
                 if (isDark) {
@@ -1279,11 +1416,11 @@
             });
             
             // Initial State
-            saveState(); // Save the initial empty state
+            saveState();
         });
     </script>
 </body>
 </html>
 </div>
 </body>
-</html></div></body></html>
+</html>
