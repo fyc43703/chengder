@@ -234,6 +234,9 @@
         /* [新增] 分享按鈕樣式 */
         .episode-action-btn.share-action-btn { color: #007AFF; border-color: #007AFF; }
         .episode-action-btn.share-action-btn:hover { background-color: #007AFF; color: white; }
+        /* [新增] 儲存單集按鈕樣式 */
+        .episode-action-btn.save-episode-btn { color: #FFBD2E; border-color: #FFBD2E; }
+        .episode-action-btn.save-episode-btn:hover, .episode-action-btn.save-episode-btn.is-saved { background-color: #FFBD2E; color: white; }
         .episode-item:not(.is-playing-item):hover .episode-metadata { display: none; }
         .episode-item:not(.is-playing-item):hover .episode-item-actions { display: flex; }
         .episode-date { font-size: 0.75rem; color: var(--color-text-secondary); white-space: nowrap; }
@@ -439,6 +442,84 @@
             background-color: #0056b3;
         }
 
+        /* [修改] 已存單集表格樣式 */
+        #tab-saved-episodes .saved-episodes-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 0.5rem;
+        }
+        #tab-saved-episodes .saved-episodes-table th {
+            text-align: left;
+            padding: 0.5rem 1rem;
+            color: var(--color-text-secondary);
+            font-weight: 500;
+            font-size: 0.875rem;
+            border-bottom: 2px solid var(--color-interactive-element);
+        }
+        #tab-saved-episodes .saved-episodes-table td {
+            padding: 0.75rem 1rem;
+            vertical-align: middle;
+            background-color: var(--color-surface);
+            transition: background-color 0.2s;
+        }
+        #tab-saved-episodes .saved-episodes-table tr:not(thead tr):hover td {
+            background-color: var(--color-surface-hover);
+        }
+        #tab-saved-episodes .saved-episodes-table td:first-child { border-radius: 0.5rem 0 0 0.5rem; }
+        #tab-saved-episodes .saved-episodes-table td:last-child { border-radius: 0 0.5rem 0.5rem 0; }
+
+        /* 設定欄位寬度 */
+        #tab-saved-episodes .col-title { width: 50%; }
+        #tab-saved-episodes .col-podcast { width: 20%; }
+        #tab-saved-episodes .col-date { width: 15%; }
+        #tab-saved-episodes .col-actions { width: 15%; }
+
+        #tab-saved-episodes .saved-episode-artwork {
+            width: 40px;
+            height: 40px;
+            border-radius: 0.25rem;
+            flex-shrink: 0;
+        }
+        #tab-saved-episodes .saved-episode-title {
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 350px; /* 根據父容器寬度調整 */
+        }
+        html[data-theme="light"] #tab-saved-episodes .saved-episode-title { color: #1d1d1f; }
+
+        #tab-saved-episodes .saved-episode-artist {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+        }
+        #tab-saved-episodes .action-link {
+            background: transparent;
+            border: none;
+            color: #007AFF;
+            cursor: pointer;
+            font-size: 0.875rem;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        #tab-saved-episodes .action-link:hover {
+            text-decoration: underline;
+        }
+
+        #tab-saved-episodes .remove-saved-btn {
+            background: transparent;
+            border: none;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            font-size: 1.1rem;
+            opacity: 0.5;
+            transition: all 0.2s;
+        }
+        #tab-saved-episodes .remove-saved-btn:hover {
+            opacity: 1;
+            color: #ff3b30;
+        }
+
     </style>
 </head>
 <body>
@@ -537,6 +618,10 @@
                             <button class="tab-btn" data-tab="tab-storage">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4" /></svg>
                                 儲存媒體庫
+                            </button>
+                            <button class="tab-btn" data-tab="tab-saved-episodes">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                                已存單集
                             </button>
                         </div>
                 
@@ -677,6 +762,9 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                            <div id="tab-saved-episodes" class="tab-panel">
+                                <!-- 內容將由 JavaScript 動態生成 -->
                             </div>
                         </div>
                     </div>
@@ -877,6 +965,10 @@
 
             const getCollection = () => JSON.parse(localStorage.getItem('podcastCollection') || '[]');
             const saveCollection = (collection) => localStorage.setItem('podcastCollection', JSON.stringify(collection));
+
+            // [新增] 儲存單集相關函式
+            const getSavedEpisodes = () => JSON.parse(localStorage.getItem('savedEpisodes') || '[]');
+            const saveSavedEpisodes = (episodes) => localStorage.setItem('savedEpisodes', JSON.stringify(episodes));
 
             const getPlaybackProgress = () => JSON.parse(localStorage.getItem('playbackProgress') || '{}');
             const savePlaybackProgress = (episodeId, currentTime, duration) => {
@@ -1363,6 +1455,7 @@
                 if (!placeholder) return;
                 const escapeAttr = (str) => String(str || '').replace(/"/g, '&quot;');
                 const progressData = getPlaybackProgress();
+                const savedEpisodes = getSavedEpisodes();
 
                 const episodesHTML = episodes.slice(0, 50).map((ep, index) => {
                     const durationFormatted = formatDuration(ep.duration);
@@ -1371,6 +1464,8 @@
                     const progress = progressData[ep.trackId];
                     const progressPercent = progress && progress.duration ? (progress.currentTime / progress.duration) * 100 : 0;
                     const isListened = progressPercent > 95;
+                    const isSaved = savedEpisodes.some(savedEp => savedEp.trackId === ep.trackId);
+                    const savedIconClass = isSaved ? 'fas' : 'far';
 
                     return `
                     <div class="episode-item ${isListened ? 'is-listened' : ''}" data-episode-id="${escapeAttr(ep.trackId)}">
@@ -1390,6 +1485,7 @@
                             <span class="episode-date">${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</span>
                         </div>
                         <div class="episode-item-actions">
+                            <button class="episode-action-btn save-episode-btn ${isSaved ? 'is-saved' : ''}" title="儲存/取消儲存單集"><i class="${savedIconClass} fa-bookmark"></i></button>
                             <button class="episode-action-btn share-action-btn" title="分享連結"><i class="fas fa-share-alt"></i></button>
                             <a href="${ep.episodeUrl}" download="${escapeAttr(ep.trackName)}.mp3" class="episode-action-btn download-action-link" title="下載"><i class="fas fa-download"></i></a>
                         </div>
@@ -1407,7 +1503,14 @@
                     item.querySelector('.episode-thumbnail-btn').addEventListener('click', (e) => { e.stopPropagation(); openEpisodeModal(ep, podcast, episodes); });
                     item.querySelector('.download-action-link')?.addEventListener('click', (e) => e.stopPropagation());
                     
-                    // [新增] 分享按鈕事件
+                    const saveBtn = item.querySelector('.save-episode-btn');
+                    if(saveBtn) {
+                        saveBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            saveEpisodeToggle(ep, podcast);
+                        });
+                    }
+
                     const shareBtn = item.querySelector('.share-action-btn');
                     if(shareBtn) {
                         shareBtn.addEventListener('click', (e) => {
@@ -1416,7 +1519,7 @@
                             const textArea = document.createElement('textarea');
                             textArea.value = urlToCopy;
                             textArea.style.position = 'fixed';
-                            textArea.style.left = '-9999px'; // Move it off-screen
+                            textArea.style.left = '-9999px';
                             document.body.appendChild(textArea);
                             textArea.select();
                             try {
@@ -1431,6 +1534,240 @@
                 });
                 syncPlayerUI();
             }
+
+            // [新增] 儲存/取消儲存單集
+            const saveEpisodeToggle = (episode, podcastInfo) => {
+                let savedEpisodes = getSavedEpisodes();
+                const existingIndex = savedEpisodes.findIndex(e => e.trackId === episode.trackId);
+                const saveBtn = document.querySelector(`.episode-item[data-episode-id="${CSS.escape(String(episode.trackId))}"] .save-episode-btn`);
+
+                if (existingIndex > -1) {
+                    savedEpisodes.splice(existingIndex, 1);
+                    showToast(`已從儲存移除單集`, 'error');
+                    if (saveBtn) {
+                        saveBtn.classList.remove('is-saved');
+                        saveBtn.querySelector('i').className = 'far fa-bookmark';
+                    }
+                } else {
+                    const episodeToSave = {
+                        ...episode,
+                        podcastArtistName: podcastInfo.artistName,
+                        podcastCollectionId: podcastInfo.collectionId,
+                        podcastArtworkUrl600: podcastInfo.artworkUrl600
+                    };
+                    savedEpisodes.unshift(episodeToSave);
+                    showToast(`已儲存單集！`);
+                    if (saveBtn) {
+                        saveBtn.classList.add('is-saved');
+                        saveBtn.querySelector('i').className = 'fas fa-bookmark';
+                    }
+                }
+                saveSavedEpisodes(savedEpisodes);
+
+                if (document.getElementById('tab-saved-episodes')?.classList.contains('active')) {
+                    renderSavedEpisodes();
+                }
+            };
+            
+            // [新增] 下載已存單集列表為 HTML
+            const downloadSavedEpisodesAsHtml = () => {
+                const savedEpisodes = getSavedEpisodes();
+                if (savedEpisodes.length === 0) {
+                    showToast('您的已存單集列表是空的。', 'error');
+                    return;
+                }
+
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                const formattedDate = `${yyyy}-${mm}-${dd}`;
+                const filename = `已存單集列表 ${formattedDate}.html`;
+
+                let htmlContent = `<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>已存單集列表 ${formattedDate}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background-color: #f5f5f7; color: #333; }
+        .container { max-width: 900px; margin: 40px auto; padding: 20px; }
+        h1 { color: #007aff; }
+        table { border-collapse: collapse; width: 100%; background-color: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); overflow: hidden; }
+        th, td { text-align: left; padding: 12px 15px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        th { font-weight: 600; background-color: #fafafa; }
+        tr:last-child td { border-bottom: none; }
+        .episode-artwork { width: 50px; height: 50px; border-radius: 8px; }
+        a { color: #007aff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>已存單集列表 (${savedEpisodes.length} 集)</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="2">單集名稱</th>
+                    <th>所屬節目</th>
+                    <th>發布日期</th>
+                    <th>音訊連結</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+                const escapeHTML = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                savedEpisodes.forEach(ep => {
+                    const title = escapeHTML(ep.trackName);
+                    const podcast = escapeHTML(ep.podcastArtistName);
+                    const artworkUrl = ep.artworkUrl60 || 'https://placehold.co/50x50/f5f5f7/333?text=NA';
+                    const releaseDate = new Date(ep.releaseDate).toLocaleDateString('sv-SE');
+                    const audioLink = escapeHTML(ep.episodeUrl);
+
+                    htmlContent += `
+                        <tr>
+                           <td><img src="${artworkUrl}" alt="artwork" class="episode-artwork"></td>
+                           <td>${title}</td>
+                           <td>${podcast}</td>
+                           <td>${releaseDate}</td>
+                           <td><a href="${audioLink}" target="_blank">收聽/下載</a></td>
+                        </tr>`;
+                });
+                
+                htmlContent += `</tbody></table></div></body></html>`;
+
+                const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showToast("已存單集列表 HTML 檔案匯出成功！", "success");
+            };
+
+            // [修改] 已存單集列表改為表格樣式
+            const renderSavedEpisodes = () => {
+                const container = document.getElementById('tab-saved-episodes');
+                if (!container) return;
+
+                const savedEpisodes = getSavedEpisodes();
+                container.innerHTML = ''; // 清空先前內容
+
+                // 建立標頭區塊
+                const header = document.createElement('div');
+                header.className = 'flex justify-between items-center mb-4';
+                header.innerHTML = `<h2 class="text-xl font-bold">已儲存的單集 (${savedEpisodes.length})</h2>`;
+
+                if (savedEpisodes.length > 0) {
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.id = 'download-saved-list-btn';
+                    downloadBtn.className = 'bg-[#007AFF] text-white font-semibold py-2 px-4 rounded-lg text-sm inline-flex items-center gap-2 hover:bg-[#0056b3] transition-colors';
+                    downloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> 下載列表 (HTML)`;
+                    downloadBtn.addEventListener('click', downloadSavedEpisodesAsHtml);
+                    header.appendChild(downloadBtn);
+                }
+                
+                container.appendChild(header);
+
+                if (savedEpisodes.length === 0) {
+                    const emptyState = document.createElement('div');
+                    emptyState.className = 'text-center p-8 text-[var(--color-text-secondary)]';
+                    emptyState.innerHTML = `
+                        <i class="far fa-bookmark text-4xl mb-3"></i>
+                        <p class="font-bold">尚未儲存任何單集</p>
+                        <p class="text-sm mt-1">在節目列表中點擊 <i class="far fa-bookmark"></i> 即可儲存您喜歡的單集。</p>
+                    `;
+                    container.appendChild(emptyState);
+                    return;
+                }
+
+                const table = document.createElement('table');
+                table.className = 'saved-episodes-table';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th class="col-title">單集名稱</th>
+                            <th class="col-podcast">所屬節目</th>
+                            <th class="col-date">發布日期</th>
+                            <th class="col-actions">音訊連結</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                `;
+
+                const tbody = table.querySelector('tbody');
+                const escapeAttr = (str) => String(str || '').replace(/"/g, '&quot;');
+                
+                savedEpisodes.forEach(ep => {
+                    const tr = document.createElement('tr');
+                    const releaseDate = new Date(ep.releaseDate).toLocaleDateString('sv-SE');
+
+                    tr.innerHTML = `
+                        <td class="col-title">
+                            <div class="flex items-center gap-3">
+                                <img src="${ep.artworkUrl600 || ep.artworkUrl60}" class="saved-episode-artwork">
+                                <span class="saved-episode-title" title="${escapeAttr(ep.trackName)}">${ep.trackName}</span>
+                            </div>
+                        </td>
+                        <td class="col-podcast">
+                            <span class="saved-episode-artist">${ep.podcastArtistName}</span>
+                        </td>
+                        <td class="col-date">
+                            <span>${releaseDate}</span>
+                        </td>
+                        <td class="col-actions">
+                             <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-1">
+                                    <button class="play-saved-btn action-link" title="收聽">收聽</button>
+                                    <span class="text-[var(--color-text-secondary)]">/</span>
+                                    <a href="${ep.episodeUrl}" download="${escapeAttr(ep.trackName)}.mp3" class="download-saved-btn action-link" title="下載單集">下載</a>
+                                </div>
+                                <button class="remove-saved-btn" title="移除"><i class="fas fa-times-circle"></i></button>
+                            </div>
+                        </td>
+                    `;
+
+                    tr.querySelector('.download-saved-btn').addEventListener('click', (e) => e.stopPropagation());
+
+                    tr.querySelector('.play-saved-btn').addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        showToast('正在準備播放...');
+                        try {
+                             if (!collectionCache[ep.podcastCollectionId] || !collectionCache[ep.podcastCollectionId].episodes) {
+                                const podcastInfo = await getPodcastInfo(ep.podcastCollectionId);
+                                const episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
+                                if(collectionCache[ep.podcastCollectionId]) {
+                                    collectionCache[ep.podcastCollectionId].episodes = episodes;
+                                }
+                             }
+                            const fullPlaylist = collectionCache[ep.podcastCollectionId].episodes;
+                            playEpisode(ep, ep.podcastArtistName, fullPlaylist);
+                        } catch (error) {
+                            showToast('無法載入節目完整列表，播放失敗。', 'error');
+                            console.error("為已存單集擷取播放列表時發生錯誤:", error);
+                        }
+                    });
+
+                    tr.querySelector('.remove-saved-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        let currentSaved = getSavedEpisodes();
+                        currentSaved = currentSaved.filter(saved => saved.trackId !== ep.trackId);
+                        saveSavedEpisodes(currentSaved);
+                        showToast('已移除儲存的單集', 'error');
+                        renderSavedEpisodes();
+                        const mainSaveBtn = document.querySelector(`.episode-item[data-episode-id="${CSS.escape(String(ep.trackId))}"] .save-episode-btn`);
+                        if (mainSaveBtn) {
+                             mainSaveBtn.classList.remove('is-saved');
+                             mainSaveBtn.querySelector('i').className = 'far fa-bookmark';
+                        }
+                    });
+
+                    tbody.appendChild(tr);
+                });
+                container.appendChild(table);
+            };
             
             function openEpisodeModal(episode, podcast, playlist) {
                 document.getElementById('modal-artwork').src = episode.artworkUrl600 || podcast.artworkUrl600;
