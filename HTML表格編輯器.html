@@ -344,7 +344,6 @@
       #content-display th .resizable-image-container.image-in-cell {
           position: relative; /* 成為絕對定位圖片的基準 */
           width: 100%;
-          /* height: 250px; 移除固定高度，改由JS動態設定 */
           overflow: hidden; /* 確保內容不會溢出 */
           display: block; /* 使用 block 佈局 */
       }
@@ -877,21 +876,21 @@
             });
 
             function processImages() {
-                const cells = contentDisplay.querySelectorAll('td, th');
-                cells.forEach(cell => {
-                    const imgs = cell.querySelectorAll('img:not(.resizable-image-container img)');
-                    imgs.forEach(img => {
-                        const currentH = Math.min(cell.offsetHeight, 250);
-                        const container = document.createElement('div');
-                        container.className = 'resizable-image-container image-in-cell';
-                        container.style.width = '100%';
-                        container.style.height = `${currentH}px`;
-                        img.parentNode.insertBefore(container, img);
-                        container.appendChild(img);
-                        const handle = document.createElement('div');
-                        handle.className = 'resize-handle';
-                        container.appendChild(handle);
-                    });
+                // 擴展處理：不僅td/th，也處理一般img（如grid模擬表格）
+                const allImgs = contentDisplay.querySelectorAll('img:not(.resizable-image-container img)');
+                allImgs.forEach(img => {
+                    const parent = img.closest('td, th') || img.parentElement; // 如果在td/th，用cell；否則用parent
+                    const isTableCell = !!img.closest('td, th');
+                    const currentH = parent.offsetHeight || 250; // 保留原高度
+                    const container = document.createElement('div');
+                    container.className = isTableCell ? 'resizable-image-container image-in-cell' : 'resizable-image-container';
+                    container.style.width = '100%';
+                    container.style.height = `${currentH}px`;
+                    img.parentNode.insertBefore(container, img);
+                    container.appendChild(img);
+                    const handle = document.createElement('div');
+                    handle.className = 'resize-handle';
+                    container.appendChild(handle);
                 });
             }
 
@@ -904,7 +903,12 @@
                 reader.onload = (e) => {
                     const doc = new DOMParser().parseFromString(e.target.result, 'text/html');
                     if (doc.body && doc.body.innerHTML.trim()) {
-                        contentDisplay.innerHTML = doc.body.innerHTML;
+                        // 修正：注入原檔style
+                        const styleContent = doc.querySelector('style') ? doc.querySelector('style').innerHTML : '';
+                        contentDisplay.innerHTML = styleContent ? `<style>${styleContent}</style>${doc.body.innerHTML}` : doc.body.innerHTML;
+                        // 最小化衝突：移除min-height與box-shadow，讓原style主導
+                        contentDisplay.style.minHeight = 'auto';
+                        contentDisplay.style.boxShadow = 'none';
                         processImages();
                         showNotification('檔案匯入成功！');
                         const table = contentDisplay.querySelector('table');
