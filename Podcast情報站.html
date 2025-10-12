@@ -424,9 +424,8 @@
                 opacity: 1;
             }
         }
-        /* [新增] 下載按鈕樣式 */
-        #download-rtf-btn {
-            background-color: #007AFF;
+        /* [新增] 下載/匯入按鈕樣式 */
+        #download-rtf-btn, #import-rtf-btn {
             color: white;
             padding: 0.75rem 1.5rem;
             border-radius: 0.5rem;
@@ -438,9 +437,11 @@
             gap: 0.5rem;
             border: none;
         }
-        #download-rtf-btn:hover {
-            background-color: #0056b3;
-        }
+        #download-rtf-btn { background-color: #007AFF; }
+        #download-rtf-btn:hover { background-color: #0056b3; }
+        #import-rtf-btn { background-color: #34C759; }
+        #import-rtf-btn:hover { background-color: #2ca349; }
+
 
         /* [修改] 已存單集表格樣式 */
         #tab-saved-episodes .saved-episodes-table {
@@ -759,10 +760,14 @@
                                         <p class="intro-text mt-4">
                                             由於資料是跟隨著瀏覽器本身，這也代表您的收藏列表是完全<strong style="color: #007AFF;">獨立且私密</strong>的。您的收藏資料**不會**被上傳到任何網路伺服器，因此也**不會**自動同步到您的手機、平板，或是另一台電腦的瀏覽器上。同樣地，若您更換了瀏覽器（例如從 Chrome 換到 Edge），或是執行了「清除瀏覽資料」清除了網站快取，這個儲存紀錄將會被永久刪除。為了備份您的收藏，建議您定時使用下方的功能匯出節目表。
                                         </p>
-                                        <div class="mt-8">
+                                        <div class="mt-8 flex items-center gap-4">
                                             <button id="download-rtf-btn">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                                 下載 Podcast 節目表
+                                            </button>
+                                            <button id="import-rtf-btn">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0-4 4m4-4v12" /></svg>
+                                                匯入 Podcast 節目表
                                             </button>
                                         </div>
                                     </div>
@@ -801,6 +806,8 @@
             </main>
         </div>
     </div>
+    <input type="file" id="import-rtf-input" hidden accept=".html">
+    <input type="file" id="import-saved-episodes-input" hidden accept=".html">
 
     <footer class="player" id="player">
         <div class="player-info">
@@ -910,16 +917,17 @@
                 volumeIconBtn: document.getElementById('volume-icon-btn'),
                 volumeTooltip: document.getElementById('volume-tooltip'),
                 volumeContainer: document.getElementById('volume-container'),
-                // [新增] 歡迎表單 DOM 元素
                 welcomeModalOverlay: document.getElementById('welcome-modal-overlay'),
                 welcomeModal: document.getElementById('welcome-modal'),
                 welcomeForm: document.getElementById('welcome-form'),
                 nicknameInput: document.getElementById('nickname-input'),
                 skipWelcomeBtn: document.getElementById('skip-welcome-btn'),
-                 // [新增] 下載 RTF 按鈕
                 downloadRtfBtn: document.getElementById('download-rtf-btn'),
-                 // [新增] 已存單集內容容器
                 savedEpisodesContent: document.getElementById('saved-episodes-content'),
+                // [新增] 匯入功能相關 DOM 元素
+                importRtfBtn: document.getElementById('import-rtf-btn'),
+                importRtfInput: document.getElementById('import-rtf-input'),
+                importSavedEpisodesInput: document.getElementById('import-saved-episodes-input'),
             };
 
             const soundIconSVG = `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect class="sound-wave sound-wave-1" x="4" y="8" width="4" height="8" rx="1"></rect><rect class="sound-wave sound-wave-2" x="10" y="5" width="4" height="14" rx="1"></rect><rect class="sound-wave sound-wave-3" x="16" y="8" width="4" height="8" rx="1"></rect></svg>`;
@@ -954,32 +962,26 @@
             let currentViewSource = 'sidebar';
             let searchState = { term: '', results: [], currentIndex: -1, offset: 0, limit: 50 };
             
-            // [新增] 排序相關狀態
             let sortableInstance = null;
-            let sortMode = 'manual'; // 'manual', 'asc', 'desc'
+            let sortMode = 'manual';
 
-            // [新增] 更新標題的函式
             const updateLibraryTitle = (name) => {
                 if (name) {
-                    // 使用 textContent 以防止 XSS 攻擊
                     const titleEl = document.createElement('span');
                     titleEl.textContent = `${name}的私藏Podcast`;
-                    domElements.libraryTitle.innerHTML = ''; // 清空舊內容
+                    domElements.libraryTitle.innerHTML = '';
                     domElements.libraryTitle.appendChild(titleEl);
                 } else {
                     domElements.libraryTitle.textContent = '我的私藏Podcast';
                 }
             };
 
-            // [優化] Toast 通知函式
             const showToast = (message, type = 'success') => {
                 const toast = document.createElement('div');
                 toast.className = `toast ${type}`;
                 toast.textContent = message;
                 domElements.toastContainer.appendChild(toast);
-                
                 setTimeout(() => toast.classList.add('show'), 10);
-                
                 setTimeout(() => {
                     toast.classList.remove('show');
                     toast.addEventListener('transitionend', () => toast.remove());
@@ -988,11 +990,8 @@
 
             const getCollection = () => JSON.parse(localStorage.getItem('podcastCollection') || '[]');
             const saveCollection = (collection) => localStorage.setItem('podcastCollection', JSON.stringify(collection));
-
-            // [新增] 儲存單集相關函式
             const getSavedEpisodes = () => JSON.parse(localStorage.getItem('savedEpisodes') || '[]');
             const saveSavedEpisodes = (episodes) => localStorage.setItem('savedEpisodes', JSON.stringify(episodes));
-
             const getPlaybackProgress = () => JSON.parse(localStorage.getItem('playbackProgress') || '{}');
             const savePlaybackProgress = (episodeId, currentTime, duration) => {
                 if (!episodeId || !duration) return;
@@ -1001,7 +1000,6 @@
                 localStorage.setItem('playbackProgress', JSON.stringify(progressData));
             };
             
-            // [優化] 儲存使用者播放器設定
             const getPlayerSettings = () => JSON.parse(localStorage.getItem('playerSettings') || '{}');
             const savePlayerSettings = () => {
                 const settings = {
@@ -1013,7 +1011,7 @@
                 localStorage.setItem('playerSettings', JSON.stringify(settings));
             };
             
-            // [修正與強化] 下載節目表功能 (輸出為 macOS 風格 HTML)
+            // [修改] 下載節目表功能，加入 data-* 屬性以利匯入
             const downloadCollectionAsRtf = () => {
                 const collection = getCollection();
                 if (collection.length === 0) {
@@ -1027,6 +1025,7 @@
                 const dd = String(today.getDate()).padStart(2, '0');
                 const formattedDate = `${yyyy}-${mm}-${dd}`;
                 const filename = `Podcast 節目表 ${formattedDate}.html`;
+                const escapeHTML = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
                 let htmlContent = `<!DOCTYPE html>
 <html lang="zh-Hant">
@@ -1034,38 +1033,14 @@
     <meta charset="UTF-8">
     <title>Podcast 節目表 ${formattedDate}</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            background-color: #f5f5f7;
-            color: #333;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: #f5f5f7; color: #333; }
         .container { max-width: 900px; margin: 40px auto; padding: 20px; }
-        .title-bar {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            padding: 16px;
-            margin-bottom: 20px;
-        }
+        .title-bar { display: flex; align-items: center; justify-content: center; position: relative; padding: 16px; margin-bottom: 20px; }
         .traffic-lights { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); display: flex; gap: 8px; }
         .dot { width: 12px; height: 12px; border-radius: 50%; }
-        .dot.red { background-color: #ff5f56; }
-        .dot.yellow { background-color: #ffbd2e; }
-        .dot.green { background-color: #27c93f; }
+        .dot.red { background-color: #ff5f56; } .dot.yellow { background-color: #ffbd2e; } .dot.green { background-color: #27c93f; }
         .title-bar h1 { margin: 0; font-size: 1.2rem; font-weight: 600; color: #007aff; }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            background-color: rgba(255, 255, 255, 0.6);
-            -webkit-backdrop-filter: blur(20px);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
+        table { border-collapse: collapse; width: 100%; background-color: rgba(255, 255, 255, 0.6); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); overflow: hidden; }
         th, td { text-align: left; padding: 12px 15px; border-bottom: 1px solid rgba(0, 0, 0, 0.05); vertical-align: middle; }
         th { font-weight: 600; }
         tr:last-child td { border-bottom: none; }
@@ -1075,29 +1050,20 @@
 <body>
     <div class="container">
         <div class="title-bar">
-            <div class="traffic-lights">
-                <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-            </div>
+            <div class="traffic-lights"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
             <h1>Podcast 節目表 (${formattedDate})</h1>
         </div>
         <table>
-            <thead>
-                <tr>
-                    <th>類型</th>
-                    <th colspan="2">節目名稱</th>
-                    <th>主持人 (來源)</th>
-                </tr>
-            </thead>
+            <thead><tr><th>類型</th><th colspan="2">節目名稱</th><th>主持人 (來源)</th></tr></thead>
             <tbody>`;
 
-                const escapeHTML = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 collection.forEach(podcast => {
                     const genre = escapeHTML(podcast.primaryGenreName || 'N/A');
                     const name = escapeHTML(podcast.collectionName || 'N/A');
                     const artist = escapeHTML(podcast.artistName || 'N/A');
                     const artworkUrl = podcast.artworkUrl60 || 'https://placehold.co/40x40/f5f5f7/333?text=NA';
                     htmlContent += `
-                        <tr>
+                        <tr data-collection-name="${name}" data-artist-name="${artist}">
                            <td>${genre}</td>
                            <td><img src="${artworkUrl}" alt="icon" class="podcast-icon"></td>
                            <td>${name}</td>
@@ -1114,9 +1080,85 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                
                 showToast("節目表 HTML 檔案匯出成功！", "success");
             };
+
+            // [新增] 處理匯入 Podcast 收藏庫的函式
+            async function handleCollectionImport(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const htmlString = e.target.result;
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(htmlString, 'text/html');
+                    const rows = doc.querySelectorAll('tbody tr');
+
+                    if (rows.length === 0) {
+                        showToast('未在檔案中找到可匯入的節目。', 'error');
+                        return;
+                    }
+
+                    showToast(`找到 ${rows.length} 個節目，正在搜尋並匯入...`);
+                    
+                    const currentCollection = getCollection();
+                    const existingIds = new Set(currentCollection.map(p => p.collectionId));
+                    let addedCount = 0;
+                    let failedCount = 0;
+
+                    const importPromises = Array.from(rows).map(row => {
+                        const collectionName = row.dataset.collectionName;
+                        const artistName = row.dataset.artistName;
+
+                        if (!collectionName || !artistName) return Promise.resolve(null);
+                        
+                        const searchTerm = `${collectionName} ${artistName}`;
+                        const targetUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=podcast&limit=5`;
+                        
+                        return fetch(CORS_PROXY + encodeURIComponent(targetUrl))
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.results && data.results.length > 0) {
+                                    const bestMatch = data.results.find(p => p.collectionName === collectionName && p.artistName === artistName);
+                                    return bestMatch || data.results[0];
+                                }
+                                return null;
+                            })
+                            .catch(err => {
+                                console.error('匯入搜尋失敗:', collectionName, err);
+                                return null;
+                            });
+                    });
+
+                    const results = await Promise.allSettled(importPromises);
+                    
+                    let newPodcasts = [];
+                    for (const result of results) {
+                        if (result.status === 'fulfilled' && result.value) {
+                            const podcast = result.value;
+                            if (!existingIds.has(podcast.collectionId)) {
+                                newPodcasts.push({ ...podcast, addedAt: Date.now(), isFavorite: false });
+                                existingIds.add(podcast.collectionId);
+                                addedCount++;
+                            }
+                        } else {
+                            failedCount++;
+                        }
+                    }
+
+                    if (newPodcasts.length > 0) {
+                        const updatedCollection = [...newPodcasts, ...currentCollection];
+                        saveCollection(updatedCollection);
+                        loadCollection();
+                        domElements.defaultView.style.display = 'none';
+                    }
+
+                    showToast(`匯入完成！成功新增 ${addedCount} 個節目，失敗 ${failedCount} 個。`, 'success');
+                    event.target.value = '';
+                };
+                reader.readAsText(file);
+            }
 
             const loadCollection = () => {
                 let collection = getCollection();
@@ -1142,12 +1184,9 @@
                     return;
                 }
                 
-                // [修改] 根據 sortMode 決定是否分組
                 if (sortMode === 'manual' && !searchTerm && !isFavoritesFilterActive) {
-                    // 在手動排序、無篩選、無過濾最愛時，直接渲染列表
                     filteredCollection.forEach(podcast => renderCollectionItem(podcast));
                 } else {
-                    // 其他情況下 (自動排序、搜尋、篩選最愛)，進行分組
                     const groupedByGenre = filteredCollection.reduce((acc, podcast) => {
                         const genre = podcast.primaryGenreName || '未分類';
                         if (!acc[genre]) { acc[genre] = []; }
@@ -1232,7 +1271,6 @@
                 item.title = `${podcast.collectionName} - ${podcast.artistName}`;
                 const trashSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.144-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.057-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>`;
                 const heartIconClass = podcast.isFavorite ? 'fas' : 'far';
-                // [修改] 新增拖曳桿元素
                 item.innerHTML = `
                     <span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>
                     <img src="${podcast.artworkUrl600}" alt="${podcast.collectionName}" class="w-12 h-12 rounded-lg flex-shrink-0">
@@ -1290,7 +1328,6 @@
                         const isCollected = collection.some(p => p.collectionId === podcast.collectionId);
                         const item = document.createElement('div');
                         item.className = 'search-result-item';
-                        /* [修改] Podcast照片與下方的文字說明需緊貼 (mb-2 -> mb-1) */
                         item.innerHTML = `<button class="add-to-fav-btn ${isCollected ? 'is-favorite' : ''}" data-id="${podcast.collectionId}" title="加入/移除收藏"><i class="fa-heart ${isCollected ? 'fas' : 'far'}"></i></button><img src="${podcast.artworkUrl600}" class="w-full rounded-lg mb-1 shadow-lg"><span class="font-bold text-sm truncate w-full" title="${podcast.collectionName}">${podcast.collectionName}</span><span class="text-xs text-gray-400 truncate w-full" title="${podcast.artistName}">${podcast.artistName}</span>`;
                         item.addEventListener('click', () => {
                             currentViewSource = 'search';
@@ -1332,14 +1369,11 @@
             }
 
             async function parseFeed(feedUrl, podcastInfo) {
-                // [修改] 增加 cache-busting 參數，強制取得最新資料
-                // 透過在原始 Feed URL 後面加上一個獨一無二的時間戳，來繞過所有層級的快取
                 const urlWithCacheBuster = new URL(feedUrl);
                 urlWithCacheBuster.searchParams.set('_', new Date().getTime());
 
                 const proxyUrl = CORS_PROXY + encodeURIComponent(urlWithCacheBuster.toString());
                 try {
-                    // 保留 'no-cache' 選項作為雙重保險
                     const res = await fetchWithTimeout(proxyUrl, { timeout: 10000, cache: 'no-cache' });
                     if (!res.ok) throw new Error(`代理伺服器回應錯誤，狀態碼: ${res.status}。`);
                     
@@ -1385,17 +1419,11 @@
                 try {
                     const podcastInfo = await getPodcastInfo(collectionId);
                     renderPodcastShell(podcastInfo);
-                    
-                    // [修改] 移除單集列表的快取邏輯，確保每次點擊都重新抓取最新的 Feed 內容
                     const episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
-                    
-                    // 雖然每次都重新抓取，但仍然更新快取，供播放器等其他功能使用
                     if (collectionCache[collectionId]) {
                         collectionCache[collectionId].episodes = episodes;
                     }
-                    
                     populateEpisodesList(episodes, podcastInfo);
-
                 } catch (error) {
                     domElements.podcastDetailView.innerHTML = `<div class="text-center text-[var(--color-text-secondary)] m-auto"><p class="font-bold text-lg mb-2">哎呀！節目資訊載入失敗了</p><p class="text-sm">${error.message}</p><p class="text-xs mt-2">可能是對方的伺服器有點問題，或是您的網路不太穩定。請稍後再試試看。</p></div>`;
                 } finally {
@@ -1558,7 +1586,6 @@
                 syncPlayerUI();
             }
 
-            // [新增] 儲存/取消儲存單集
             const saveEpisodeToggle = (episode, podcastInfo) => {
                 let savedEpisodes = getSavedEpisodes();
                 const existingIndex = savedEpisodes.findIndex(e => e.trackId === episode.trackId);
@@ -1592,7 +1619,7 @@
                 }
             };
             
-            // [新增] 下載已存單集列表為 HTML
+            // [修改] 下載已存單集列表功能，加入完整 data-* 屬性
             const downloadSavedEpisodesAsHtml = () => {
                 const savedEpisodes = getSavedEpisodes();
                 if (savedEpisodes.length === 0) {
@@ -1606,6 +1633,7 @@
                 const dd = String(today.getDate()).padStart(2, '0');
                 const formattedDate = `${yyyy}-${mm}-${dd}`;
                 const filename = `已存單集列表 ${formattedDate}.html`;
+                const escapeHTML = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
                 let htmlContent = `<!DOCTYPE html>
 <html lang="zh-Hant">
@@ -1614,10 +1642,10 @@
     <title>已存單集列表 ${formattedDate}</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background-color: #f5f5f7; color: #333; }
-        .container { max-width: 95%; margin: 20px auto; padding: 20px; } /* [修改] 版面加寬 */
+        .container { max-width: 95%; margin: 20px auto; padding: 20px; }
         h1 { color: #007aff; }
         table { border-collapse: collapse; width: 100%; background-color: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); overflow: hidden; }
-        th, td { text-align: left; padding: 8px 15px; border-bottom: 1px solid #eee; vertical-align: middle; } /* [修改] 減少垂直間距 */
+        th, td { text-align: left; padding: 8px 15px; border-bottom: 1px solid #eee; vertical-align: middle; }
         th { font-weight: 600; background-color: #fafafa; }
         tr:last-child td { border-bottom: none; }
         .episode-artwork { width: 50px; height: 50px; border-radius: 8px; }
@@ -1629,31 +1657,28 @@
     <div class="container">
         <h1>已存單集列表 (${savedEpisodes.length} 集)</h1>
         <table>
-            <thead>
-                <tr>
-                    <th colspan="2">單集名稱</th>
-                    <th>所屬節目</th>
-                    <th>發布日期</th>
-                    <th>音訊連結</th>
-                </tr>
-            </thead>
+            <thead><tr><th colspan="2">單集名稱</th><th>所屬節目</th><th>發布日期</th><th>音訊連結</th></tr></thead>
             <tbody>`;
 
-                const escapeHTML = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 savedEpisodes.forEach(ep => {
-                    const title = escapeHTML(ep.trackName);
-                    const podcast = escapeHTML(ep.podcastArtistName);
-                    const artworkUrl = ep.artworkUrl60 || 'https://placehold.co/50x50/f5f5f7/333?text=NA';
-                    const releaseDate = new Date(ep.releaseDate).toLocaleDateString('sv-SE');
-                    const audioLink = escapeHTML(ep.episodeUrl);
-
+                    const dataAttributes = `
+                        data-track-id="${escapeHTML(ep.trackId)}"
+                        data-track-name="${escapeHTML(ep.trackName)}"
+                        data-episode-url="${escapeHTML(ep.episodeUrl)}"
+                        data-release-date="${escapeHTML(ep.releaseDate)}"
+                        data-description="${escapeHTML(ep.description)}"
+                        data-artwork-url-600="${escapeHTML(ep.podcastArtworkUrl600)}"
+                        data-duration="${escapeHTML(ep.duration)}"
+                        data-podcast-artist-name="${escapeHTML(ep.podcastArtistName)}"
+                        data-podcast-collection-id="${escapeHTML(ep.podcastCollectionId)}"
+                    `;
                     htmlContent += `
-                        <tr>
-                           <td><img src="${artworkUrl}" alt="artwork" class="episode-artwork"></td>
-                           <td>${title}</td>
-                           <td>${podcast}</td>
-                           <td>${releaseDate}</td>
-                           <td><a href="${audioLink}" target="_blank">收聽/下載</a></td>
+                        <tr ${dataAttributes}>
+                           <td><img src="${ep.artworkUrl60 || ep.podcastArtworkUrl600}" alt="artwork" class="episode-artwork"></td>
+                           <td>${escapeHTML(ep.trackName)}</td>
+                           <td>${escapeHTML(ep.podcastArtistName)}</td>
+                           <td>${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</td>
+                           <td><a href="${escapeHTML(ep.episodeUrl)}" target="_blank">收聽/下載</a></td>
                         </tr>`;
                 });
                 
@@ -1670,26 +1695,93 @@
                 showToast("已存單集列表 HTML 檔案匯出成功！", "success");
             };
 
-            // [修改] 已存單集列表改為表格樣式
+            // [新增] 處理匯入已存單集列表的函式
+            function handleSavedEpisodesImport(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const htmlString = e.target.result;
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(htmlString, 'text/html');
+                    const rows = doc.querySelectorAll('tbody tr');
+
+                    if (rows.length === 0) {
+                        showToast('未在檔案中找到可匯入的單集。', 'error');
+                        return;
+                    }
+
+                    const currentSavedEpisodes = getSavedEpisodes();
+                    const existingTrackIds = new Set(currentSavedEpisodes.map(ep => ep.trackId));
+                    let newEpisodes = [];
+
+                    rows.forEach(row => {
+                        const trackId = row.dataset.trackId;
+                        if (trackId && !existingTrackIds.has(trackId)) {
+                            const importedEpisode = {
+                                trackId: trackId,
+                                trackName: row.dataset.trackName,
+                                episodeUrl: row.dataset.episodeUrl,
+                                releaseDate: row.dataset.releaseDate,
+                                description: row.dataset.description,
+                                artworkUrl60: row.dataset.artworkUrl600,
+                                artworkUrl600: row.dataset.artworkUrl600,
+                                duration: row.dataset.duration,
+                                podcastArtistName: row.dataset.podcastArtistName,
+                                podcastCollectionId: row.dataset.podcastCollectionId,
+                            };
+                            newEpisodes.push(importedEpisode);
+                            existingTrackIds.add(trackId);
+                        }
+                    });
+
+                    if (newEpisodes.length > 0) {
+                        const updatedEpisodes = [...newEpisodes, ...currentSavedEpisodes];
+                        saveSavedEpisodes(updatedEpisodes);
+                        showToast(`成功匯入 ${newEpisodes.length} 個新單集！`, 'success');
+                        renderSavedEpisodes();
+                    } else {
+                        showToast('檔案中的所有單集都已存在。', 'success');
+                    }
+                    
+                    event.target.value = '';
+                };
+                reader.readAsText(file);
+            }
+
+            // [修改] 已存單集列表函式，加入匯入按鈕
             const renderSavedEpisodes = () => {
                 const container = domElements.savedEpisodesContent;
                 if (!container) return;
-
                 const savedEpisodes = getSavedEpisodes();
-                container.innerHTML = ''; // 清空先前內容
+                container.innerHTML = '';
 
-                // 建立標頭區塊
                 const header = document.createElement('div');
                 header.className = 'flex justify-between items-center mb-4';
-                header.innerHTML = `<h2 class="text-xl font-bold">已儲存的單集 (${savedEpisodes.length})</h2>`;
+                
+                const title = document.createElement('h2');
+                title.className = 'text-xl font-bold';
+                title.textContent = `已儲存的單集 (${savedEpisodes.length})`;
+                header.appendChild(title);
 
                 if (savedEpisodes.length > 0) {
+                    const btnContainer = document.createElement('div');
+                    btnContainer.className = 'flex items-center gap-4';
+
                     const downloadBtn = document.createElement('button');
-                    downloadBtn.id = 'download-saved-list-btn';
                     downloadBtn.className = 'bg-[#007AFF] text-white font-semibold py-2 px-4 rounded-lg text-sm inline-flex items-center gap-2 hover:bg-[#0056b3] transition-colors';
                     downloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> 下載列表 (HTML)`;
                     downloadBtn.addEventListener('click', downloadSavedEpisodesAsHtml);
-                    header.appendChild(downloadBtn);
+                    btnContainer.appendChild(downloadBtn);
+                    
+                    const importBtn = document.createElement('button');
+                    importBtn.className = 'bg-[#34C759] text-white font-semibold py-2 px-4 rounded-lg text-sm inline-flex items-center gap-2 hover:bg-[#2ca349] transition-colors';
+                    importBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0-4 4m4-4v12" /></svg> 匯入儲存的單集列表`;
+                    importBtn.addEventListener('click', () => domElements.importSavedEpisodesInput.click());
+                    btnContainer.appendChild(importBtn);
+
+                    header.appendChild(btnContainer);
                 }
                 
                 container.appendChild(header);
@@ -1697,63 +1789,27 @@
                 if (savedEpisodes.length === 0) {
                     const emptyState = document.createElement('div');
                     emptyState.className = 'text-center p-8 text-[var(--color-text-secondary)]';
-                    emptyState.innerHTML = `
-                        <i class="far fa-bookmark text-4xl mb-3"></i>
-                        <p class="font-bold">尚未儲存任何單集</p>
-                        <p class="text-sm mt-1">在節目列表中點擊 <i class="far fa-bookmark"></i> 即可儲存您喜歡的單集。</p>
-                    `;
+                    emptyState.innerHTML = `<i class="far fa-bookmark text-4xl mb-3"></i><p class="font-bold">尚未儲存任何單集</p><p class="text-sm mt-1">在節目列表中點擊 <i class="far fa-bookmark"></i> 即可儲存您喜歡的單集。</p>`;
                     container.appendChild(emptyState);
                     return;
                 }
 
                 const table = document.createElement('table');
                 table.className = 'saved-episodes-table';
-                table.innerHTML = `
-                    <thead>
-                        <tr>
-                            <th class="col-title">單集名稱</th>
-                            <th class="col-podcast">所屬節目</th>
-                            <th class="col-date">發布日期</th>
-                            <th class="col-actions">音訊連結</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                `;
+                table.innerHTML = `<thead><tr><th class="col-title">單集名稱</th><th class="col-podcast">所屬節目</th><th class="col-date">發布日期</th><th class="col-actions">音訊連結</th></tr></thead><tbody></tbody>`;
 
                 const tbody = table.querySelector('tbody');
                 const escapeAttr = (str) => String(str || '').replace(/"/g, '&quot;');
                 
                 savedEpisodes.forEach(ep => {
                     const tr = document.createElement('tr');
-                    const releaseDate = new Date(ep.releaseDate).toLocaleDateString('sv-SE');
-
                     tr.innerHTML = `
-                        <td class="col-title">
-                            <div class="flex items-center gap-3">
-                                <img src="${ep.artworkUrl600 || ep.artworkUrl60}" class="saved-episode-artwork">
-                                <span class="saved-episode-title" title="${escapeAttr(ep.trackName)}">${ep.trackName}</span>
-                            </div>
-                        </td>
-                        <td class="col-podcast">
-                            <span class="saved-episode-artist">${ep.podcastArtistName}</span>
-                        </td>
-                        <td class="col-date">
-                            <span>${releaseDate}</span>
-                        </td>
-                        <td class="col-actions">
-                             <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-1">
-                                    <button class="play-saved-btn action-link" title="收聽">收聽</button>
-                                    <span class="text-[var(--color-text-secondary)]">/</span>
-                                    <a href="${ep.episodeUrl}" download="${escapeAttr(ep.trackName)}.mp3" class="download-saved-btn action-link" title="下載單集">下載</a>
-                                </div>
-                                <button class="remove-saved-btn" title="移除"><i class="fas fa-times-circle"></i></button>
-                            </div>
-                        </td>
-                    `;
+                        <td class="col-title"><div class="flex items-center gap-3"><img src="${ep.artworkUrl600 || ep.artworkUrl60}" class="saved-episode-artwork"><span class="saved-episode-title" title="${escapeAttr(ep.trackName)}">${ep.trackName}</span></div></td>
+                        <td class="col-podcast"><span class="saved-episode-artist">${ep.podcastArtistName}</span></td>
+                        <td class="col-date"><span>${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</span></td>
+                        <td class="col-actions"><div class="flex items-center justify-between"><div class="flex items-center gap-1"><button class="play-saved-btn action-link" title="收聽">收聽</button><span class="text-[var(--color-text-secondary)]">/</span><a href="${ep.episodeUrl}" download="${escapeAttr(ep.trackName)}.mp3" class="download-saved-btn action-link" title="下載單集">下載</a></div><button class="remove-saved-btn" title="移除"><i class="fas fa-times-circle"></i></button></div></td>`;
 
                     tr.querySelector('.download-saved-btn').addEventListener('click', (e) => e.stopPropagation());
-
                     tr.querySelector('.play-saved-btn').addEventListener('click', async (e) => {
                         e.stopPropagation();
                         showToast('正在準備播放...');
@@ -1761,15 +1817,12 @@
                              if (!collectionCache[ep.podcastCollectionId] || !collectionCache[ep.podcastCollectionId].episodes) {
                                 const podcastInfo = await getPodcastInfo(ep.podcastCollectionId);
                                 const episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
-                                if(collectionCache[ep.podcastCollectionId]) {
-                                    collectionCache[ep.podcastCollectionId].episodes = episodes;
-                                }
+                                if(collectionCache[ep.podcastCollectionId]) collectionCache[ep.podcastCollectionId].episodes = episodes;
                              }
                             const fullPlaylist = collectionCache[ep.podcastCollectionId].episodes;
                             playEpisode(ep, ep.podcastArtistName, fullPlaylist);
                         } catch (error) {
                             showToast('無法載入節目完整列表，播放失敗。', 'error');
-                            console.error("為已存單集擷取播放列表時發生錯誤:", error);
                         }
                     });
 
@@ -1786,7 +1839,6 @@
                              mainSaveBtn.querySelector('i').className = 'far fa-bookmark';
                         }
                     });
-
                     tbody.appendChild(tr);
                 });
                 container.appendChild(table);
@@ -1944,7 +1996,6 @@
                 };
             }
 
-            // [新增] 更新排序按鈕及容器樣式的函式
             const updateSortUI = () => {
                 const isManualSortPossible = !isFavoritesFilterActive && !domElements.localSearchInput.value;
                 if (sortMode === 'manual' && isManualSortPossible) {
@@ -1965,7 +2016,6 @@
                 }
             };
 
-            // [新增] 初始化拖曳排序功能的函式
             const initializeSorting = () => {
                 if (sortableInstance) {
                     sortableInstance.destroy();
@@ -1973,7 +2023,7 @@
 
                 sortableInstance = new Sortable(domElements.sidebarItemsContainer, {
                     animation: 150,
-                    handle: '.drag-handle', // [修改] 指定拖曳桿
+                    handle: '.drag-handle',
                     filter: '.sidebar-genre-header',
                     preventOnFilter: true,
                     ghostClass: 'sortable-ghost',
@@ -1988,14 +2038,12 @@
                         const reorderedCollection = reorderedIds.map(id => idMap.get(id)).filter(Boolean);
 
                         saveCollection(reorderedCollection);
-                        // 不重新載入以維持視覺上的順暢
                     }
                 });
                 updateSortUI();
             };
 
             function initialize() {
-                // [修改] 歡迎表單邏輯
                 const savedNickname = localStorage.getItem('podcastNickname');
                 const welcomeSkipped = localStorage.getItem('welcomeSkipped');
 
@@ -2023,7 +2071,7 @@
 
                 if(domElements.skipWelcomeBtn) {
                     domElements.skipWelcomeBtn.addEventListener('click', () => {
-                        localStorage.setItem('welcomeSkipped', 'true'); // 記住使用者已略過
+                        localStorage.setItem('welcomeSkipped', 'true');
                         domElements.welcomeModalOverlay.style.display = 'none';
                     });
                 }
@@ -2186,7 +2234,6 @@
                 domElements.viewModeGridBtn.addEventListener('click', () => { domElements.sidebarItemsContainer.classList.add('grid-view'); domElements.viewModeGridBtn.classList.add('active'); domElements.viewModeListBtn.classList.remove('active'); });
                 domElements.filterFavoritesBtn.addEventListener('click', () => { isFavoritesFilterActive = !isFavoritesFilterActive; domElements.filterFavoritesBtn.classList.toggle('active', isFavoritesFilterActive); loadCollection(); updateSortUI(); });
                 
-                // [修改] 排序按鈕事件監聽器
                 domElements.sortDirectionBtn.addEventListener('click', () => {
                     const isManualPossible = !isFavoritesFilterActive && !domElements.localSearchInput.value;
                     let modes = isManualPossible ? ['manual', 'asc', 'desc'] : ['asc', 'desc'];
@@ -2221,22 +2268,22 @@
                     if(e.code === 'ArrowLeft') { e.preventDefault(); domElements.skipBackwardBtn.click(); }
                 });
                 
-                // [修正] 綁定下載按鈕的點擊事件
                 domElements.downloadRtfBtn.addEventListener('click', downloadCollectionAsRtf);
 
+                // [新增] 綁定匯入按鈕與檔案輸入框的事件
+                domElements.importRtfBtn.addEventListener('click', () => domElements.importRtfInput.click());
+                domElements.importRtfInput.addEventListener('change', handleCollectionImport);
+                domElements.importSavedEpisodesInput.addEventListener('change', handleSavedEpisodesImport);
+
+
                 applyTheme(localStorage.getItem('theme') || 'dark');
-                
-                // [修改] 初始化排序功能
                 sortMode = localStorage.getItem('podcastSortMode') || 'manual';
-                
                 loadCollection();
                 initializeSorting();
                 syncPlayerUI();
-                
                 domElements.mainContent.querySelectorAll(':scope > div').forEach(d => d.style.display = 'none');
                 domElements.defaultView.style.display = 'flex';
 
-                // [新增] Tab 頁面切換邏輯
                 const tabButtons = document.querySelectorAll('.tab-btn');
                 const tabPanels = document.querySelectorAll('.tab-panel');
 
@@ -2244,24 +2291,19 @@
                     button.addEventListener('click', () => {
                         tabButtons.forEach(btn => btn.classList.remove('active'));
                         button.classList.add('active');
-
                         const targetTab = button.dataset.tab;
-
-        // 【修正】如果點擊的是「已存單集」分頁，則呼叫函式重新產生列表
-        if (targetTab === 'tab-saved-episodes') {
-            renderSavedEpisodes();
-        }
-
-        tabPanels.forEach(panel => {
-            panel.classList.remove('active');
-        });
-
-        document.getElementById(targetTab).classList.add('active');
-    });
-});
+                        if (targetTab === 'tab-saved-episodes') {
+                            renderSavedEpisodes();
+                        }
+                        tabPanels.forEach(panel => {
+                            panel.classList.remove('active');
+                        });
+                        document.getElementById(targetTab).classList.add('active');
+                    });
+                });
             }
             initialize();
         });
     </script>
 </body>
-</html></div></body></html>
+</html>
