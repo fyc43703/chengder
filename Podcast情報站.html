@@ -231,6 +231,9 @@
         .episode-action-btn:hover { background-color: var(--color-text-secondary); color: var(--color-surface); }
         .episode-action-btn.download-action-link { color: #27C93F; border-color: #27C93F; }
         .episode-action-btn.download-action-link:hover { background-color: #27C93F; color: white; }
+        /* [新增] Info按鈕樣式 */
+        .episode-action-btn.info-action-btn { color: #A0C4FF; border-color: #A0C4FF; }
+        .episode-action-btn.info-action-btn:hover { background-color: #A0C4FF; color: var(--color-surface); }
         /* [新增] 分享按鈕樣式 */
         .episode-action-btn.share-action-btn { color: #007AFF; border-color: #007AFF; }
         .episode-action-btn.share-action-btn:hover { background-color: #007AFF; color: white; }
@@ -723,7 +726,7 @@
                                                         <p><strong><i class="fas fa-adjust" style="color: #FFBD2E;"></i> 明暗主題切換：</strong><br>
                                                         點擊右上角的太陽 / 月亮圖示，即可在兩種視覺主題間無縫切換，保護您的眼睛，無論白天黑夜都有最佳體驗。</p>
                                                         <p class="mt-2"><strong><i class="fas fa-info-circle" style="color: #007AFF;"></i> 單集詳情速覽：</strong><br>
-                                                        在單集列表中，點擊最左側的「單集封面圖」，會彈出該集的完整內容簡介 (Show Notes)，幫助您在播放前快速了解單集主題與大綱。</p>
+                                                        在單集列表中，點擊最左側的「單集封面圖」，或將滑鼠移至單集上方並點擊 <i class="fas fa-info-circle" style="color: #A0C4FF;"></i> 圖示，即可彈出該集的完整內容簡介 (Show Notes)，幫助您在播放前快速了解單集主題與大綱。</p>
                                                     </div>
                                                 </li>
                                             </ul>
@@ -770,7 +773,9 @@
                                                 下載 Podcast 節目表
                                             </button>
                                             <button id="import-rtf-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0-4 4m4-4v12" /></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                                </svg>
                                                 匯入 Podcast 節目表
                                             </button>
                                         </div>
@@ -1018,7 +1023,6 @@
                 localStorage.setItem('playerSettings', JSON.stringify(settings));
             };
             
-            // [修改] 調整下載節目表的版面與內容
             const downloadCollectionAsRtf = () => {
                 const collection = getCollection();
                 if (collection.length === 0) {
@@ -1547,6 +1551,7 @@
                             <span class="episode-date">${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</span>
                         </div>
                         <div class="episode-item-actions">
+                            <button class="episode-action-btn info-action-btn" title="查看單集說明"><i class="fas fa-info-circle"></i></button>
                             <button class="episode-action-btn save-episode-btn ${isSaved ? 'is-saved' : ''}" title="儲存/取消儲存單集"><i class="${savedIconClass} fa-bookmark"></i></button>
                             <button class="episode-action-btn share-action-btn" title="分享連結"><i class="fas fa-share-alt"></i></button>
                             <a href="${ep.episodeUrl}" download="${escapeAttr(ep.trackName)}.mp3" class="episode-action-btn download-action-link" title="下載"><i class="fas fa-download"></i></a>
@@ -1565,6 +1570,14 @@
                     item.querySelector('.episode-thumbnail-btn').addEventListener('click', (e) => { e.stopPropagation(); openEpisodeModal(ep, podcast, episodes); });
                     item.querySelector('.download-action-link')?.addEventListener('click', (e) => e.stopPropagation());
                     
+                    const infoBtn = item.querySelector('.info-action-btn');
+                    if(infoBtn) {
+                        infoBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            openEpisodeModal(ep, podcast, episodes);
+                        });
+                    }
+
                     const saveBtn = item.querySelector('.save-episode-btn');
                     if(saveBtn) {
                         saveBtn.addEventListener('click', (e) => {
@@ -1786,7 +1799,7 @@
                 
                 const importBtn = document.createElement('button');
                 importBtn.className = 'bg-[#34C759] text-white font-semibold py-2 px-4 rounded-lg text-sm inline-flex items-center gap-2 hover:bg-[#2ca349] transition-colors';
-                importBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0-4 4m4-4v12" /></svg> 匯入儲存的單集列表`;
+                importBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg> 匯入儲存的單集列表`;
                 importBtn.addEventListener('click', () => domElements.importSavedEpisodesInput.click());
                 btnContainer.appendChild(importBtn);
 
