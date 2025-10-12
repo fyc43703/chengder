@@ -932,7 +932,6 @@
                 skipWelcomeBtn: document.getElementById('skip-welcome-btn'),
                 downloadRtfBtn: document.getElementById('download-rtf-btn'),
                 savedEpisodesContent: document.getElementById('saved-episodes-content'),
-                // [新增] 匯入功能相關 DOM 元素
                 importRtfBtn: document.getElementById('import-rtf-btn'),
                 importRtfInput: document.getElementById('import-rtf-input'),
                 importSavedEpisodesInput: document.getElementById('import-saved-episodes-input'),
@@ -1019,6 +1018,7 @@
                 localStorage.setItem('playerSettings', JSON.stringify(settings));
             };
             
+            // [修改] 調整下載節目表的版面與內容
             const downloadCollectionAsRtf = () => {
                 const collection = getCollection();
                 if (collection.length === 0) {
@@ -1041,7 +1041,7 @@
     <title>Podcast 節目表 ${formattedDate}</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: #f5f5f7; color: #333; }
-        .container { max-width: 900px; margin: 40px auto; padding: 20px; }
+        .container { max-width: 95%; margin: 40px auto; padding: 20px; }
         .title-bar { display: flex; align-items: center; justify-content: center; position: relative; padding: 16px; margin-bottom: 20px; }
         .traffic-lights { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); display: flex; gap: 8px; }
         .dot { width: 12px; height: 12px; border-radius: 50%; }
@@ -1052,6 +1052,8 @@
         th { font-weight: 600; }
         tr:last-child td { border-bottom: none; }
         .podcast-icon { width: 40px; height: 40px; border-radius: 8px; }
+        a { color: #007aff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -1061,7 +1063,7 @@
             <h1>Podcast 節目表 (${formattedDate})</h1>
         </div>
         <table>
-            <thead><tr><th>類型</th><th colspan="2">節目名稱</th><th>主持人 (來源)</th></tr></thead>
+            <thead><tr><th>類型</th><th colspan="2">節目名稱</th><th>主持人 (來源)</th><th>節目連結</th></tr></thead>
             <tbody>`;
 
                 collection.forEach(podcast => {
@@ -1069,12 +1071,15 @@
                     const name = escapeHTML(podcast.collectionName || 'N/A');
                     const artist = escapeHTML(podcast.artistName || 'N/A');
                     const artworkUrl = podcast.artworkUrl60 || 'https://placehold.co/40x40/f5f5f7/333?text=NA';
+                    const podcastLink = escapeHTML(podcast.collectionViewUrl || '#');
+                    
                     htmlContent += `
                         <tr data-collection-name="${name}" data-artist-name="${artist}">
                            <td>${genre}</td>
                            <td><img src="${artworkUrl}" alt="icon" class="podcast-icon"></td>
                            <td>${name}</td>
                            <td>${artist}</td>
+                           <td><a href="${podcastLink}" target="_blank">收聽頁面</a></td>
                         </tr>`;
                 });
                 
