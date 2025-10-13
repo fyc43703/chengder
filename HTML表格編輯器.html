@@ -167,6 +167,15 @@
       #row-height-input, #col-width-input { width: 40px; }
       input[type="text"]:focus, input[type="number"]:focus { outline: none; border-color: var(--system-blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--system-blue) 30%, transparent); background-color: color-mix(in srgb, var(--editor-background-color) 95%, white); }
       
+      #font-size-input::-webkit-outer-spin-button,
+      #font-size-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      #font-size-input {
+        -moz-appearance: textfield;
+      }
+      
       input[type="color"] {
           -webkit-appearance: none;
           width: 28px; height: 28px; border: none; padding: 0; background-color: transparent;
@@ -294,6 +303,12 @@
            outline: 1px solid var(--system-blue); 
            outline-offset: -1px; 
            background-color: color-mix(in srgb, var(--system-blue) 5%, transparent) !important; 
+      }
+      
+      #main-title.editing-target {
+          outline: 2px solid var(--system-blue);
+          border-radius: 4px;
+          cursor: text;
       }
 
       mark.highlight { background-color: #ffdd57; color: black; border-radius: 2px; padding: 0 2px; }
@@ -440,6 +455,8 @@
       }
 
   </style>
+  
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 </head>
 <body>
 
@@ -453,7 +470,7 @@
                   <span id="current-filename"></span>
               </div>
                <div class="title-content">
-                  <h1 class="window-title">HTML 視覺化編輯器</h1>
+                  <h1 id="main-title" class="window-title">HTML 視覺化編輯器</h1>
               </div>
               <button id="theme-toggle" title="切換明暗主題">
                     <span id="theme-icon-sun">
@@ -515,6 +532,9 @@
                         <button id="insert-image-btn" class="icon-btn btn-insert" title="插入圖片">
                             <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
                         </button>
+                        <button id="insert-link-btn" class="icon-btn btn-insert" title="新增超連結 (Ctrl+K)">
+                            <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+                        </button>
                     </div>
                     <div class="separator"></div>
                      <div class="control-group">
@@ -567,13 +587,18 @@
                     <div class="control-group">
                         <label>文字:</label>
                         <button id="bold-btn" class="icon-btn" title="粗體 (Ctrl+B)"><svg viewBox="0 0 24 24"><path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4.25-4H7v14h7.04c2.1 0 3.71-1.7 3.71-3.78 0-1.52-.86-2.82-2.15-3.43zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/></svg></button>
+                        <!-- 【新增】底線按鈕 -->
+                        <button id="underline-btn" class="icon-btn" title="底線 (Ctrl+U)"><svg viewBox="0 0 24 24"><path d="M12 17c3.31 0 6-2.69 6-6V3h-2.5v8c0 1.93-1.57 3.5-3.5 3.5S8.5 12.93 8.5 11V3H6v8c0 3.31 2.69 6 6 6zm-7 2v2h14v-2H5z"/></svg></button>
                         <button id="decrease-font-size-btn" class="icon-btn" title="縮小文字">A-</button>
                         <input type="number" id="font-size-input" min="8" max="72" value="14" title="文字大小">
                         <button id="increase-font-size-btn" class="icon-btn" title="放大文字">A+</button>
                         <input type="color" id="font-color-input" value="#000000" title="文字顏色">
+                        <!-- 【新增】文字背景顏色 -->
+                        <label for="text-bg-color-input" style="margin-left: 4px;">文字背景:</label>
+                        <input type="color" id="text-bg-color-input" value="#FFFFFF" title="文字背景顏色">
                     </div>
                      <div class="control-group">
-                        <label>背景:</label>
+                        <label>儲存格背景:</label>
                         <input type="color" id="bg-color-input" value="#FFFFFF" title="儲存格背景顏色">
                     </div>
                     <div class="separator"></div>
@@ -676,10 +701,12 @@
             const mergeCellsBtn = getEl('merge-cells-btn'), splitCellBtn = getEl('split-cell-btn');
             const themeToggle = getEl('theme-toggle'), themeIconSun = getEl('theme-icon-sun'), themeIconMoon = getEl('theme-icon-moon');
             const boldBtn = getEl('bold-btn');
+            const underlineBtn = getEl('underline-btn');
             const fontSizeInput = getEl('font-size-input');
             const decreaseFontSizeBtn = getEl('decrease-font-size-btn');
             const increaseFontSizeBtn = getEl('increase-font-size-btn');
             const fontColorInput = getEl('font-color-input');
+            const textBgColorInput = getEl('text-bg-color-input');
             const bgColorInput = getEl('bg-color-input');
             const borderColorInput = getEl('border-color-input');
             const borderWidthInput = getEl('border-width-input');
@@ -689,6 +716,7 @@
             const insertTableBtn = getEl('insert-table-btn');
             const insertShapeBtn = getEl('insert-shape-btn');
             const shapeOptions = getEl('shape-options');
+            const insertLinkBtn = getEl('insert-link-btn');
             const imageUploadInput = getEl('image-upload-input');
             const rowHeightInput = getEl('row-height-input'), colWidthInput = getEl('col-width-input');
             const currentFilename = getEl('current-filename');
@@ -698,10 +726,12 @@
             let historyStack = [], HISTORY_MAX_SIZE = 30;
             let selectedCells = [], isSelecting = false, startCell = null, endCell = null, dragStart = false;
             let resizing = null;
-            let objectResizing = null; // General purpose for images and shapes
-            let objectDragging = null; // For dragging shapes
+            let objectResizing = null;
+            let objectDragging = null;
             let originalFilename = 'untitled';
             let currentSelectionRange = null;
+            const mainTitle = getEl('main-title'); 
+            let activeEditingTarget = null;
             
             // --- Core Functions ---
             function showNotification(message) {
@@ -728,6 +758,13 @@
                     clearSelection();
                 }
                 undoBtn.disabled = historyStack.length <= 1;
+            }
+            
+            function clearTitleSelection() {
+                if (activeEditingTarget) {
+                    mainTitle.classList.remove('editing-target');
+                    activeEditingTarget = null;
+                }
             }
             
             function colorToHex(colorStr) {
@@ -796,7 +833,7 @@
                          while(parent && parent !== contentDisplay) {
                              size = window.getComputedStyle(parent).fontSize;
                              color = window.getComputedStyle(parent).color;
-                             if(size !== "16px") break; // Base font size
+                             if(size !== "16px") break;
                              parent = parent.parentElement;
                          }
 
@@ -857,13 +894,23 @@
             
             async function execCmd(command, value = null) {
                 contentDisplay.focus(); 
-                
                 document.execCommand(command, false, value);
-                
                 saveState();
             }
             
             // --- Event Listeners ---
+            
+            mainTitle.addEventListener('click', (e) => {
+                e.stopPropagation(); 
+                clearSelection(); 
+                mainTitle.classList.add('editing-target');
+                activeEditingTarget = mainTitle; 
+
+                const titleStyle = window.getComputedStyle(mainTitle);
+                fontSizeInput.value = parseInt(titleStyle.fontSize);
+                fontColorInput.value = colorToHex(titleStyle.color);
+            });
+
             selectFileBtn.addEventListener('click', () => fileInput.click());
             
             newPageBtn.addEventListener('click', () => {
@@ -876,12 +923,11 @@
             });
 
             function processImages() {
-                // 擴展處理：不僅td/th，也處理一般img（如grid模擬表格）
                 const allImgs = contentDisplay.querySelectorAll('img:not(.resizable-image-container img)');
                 allImgs.forEach(img => {
-                    const parent = img.closest('td, th') || img.parentElement; // 如果在td/th，用cell；否則用parent
+                    const parent = img.closest('td, th') || img.parentElement;
                     const isTableCell = !!img.closest('td, th');
-                    const currentH = parent.offsetHeight || 250; // 保留原高度
+                    const currentH = parent.offsetHeight || 250; 
                     const container = document.createElement('div');
                     container.className = isTableCell ? 'resizable-image-container image-in-cell' : 'resizable-image-container';
                     container.style.width = '100%';
@@ -903,10 +949,8 @@
                 reader.onload = (e) => {
                     const doc = new DOMParser().parseFromString(e.target.result, 'text/html');
                     if (doc.body && doc.body.innerHTML.trim()) {
-                        // 修正：注入原檔style
                         const styleContent = doc.querySelector('style') ? doc.querySelector('style').innerHTML : '';
                         contentDisplay.innerHTML = styleContent ? `<style>${styleContent}</style>${doc.body.innerHTML}` : doc.body.innerHTML;
-                        // 最小化衝突：移除min-height與box-shadow，讓原style主導
                         contentDisplay.style.minHeight = 'auto';
                         contentDisplay.style.boxShadow = 'none';
                         processImages();
@@ -1033,7 +1077,7 @@
             zoomResetBtn.addEventListener('click', () => { currentZoom = 1.0; updateZoom(); });
             
             const preventFocusSteal = (e) => e.preventDefault();
-            const commandButtons = [cutBtn, copyBtn, pasteBtn, undoBtn, boldBtn, alignLeftBtn, alignCenterBtn, alignRightBtn, alignTopBtn, alignMiddleBtn, alignBottomBtn];
+            const commandButtons = [cutBtn, copyBtn, pasteBtn, undoBtn, boldBtn, underlineBtn, alignLeftBtn, alignCenterBtn, alignRightBtn, alignTopBtn, alignMiddleBtn, alignBottomBtn];
             commandButtons.forEach(btn => btn.addEventListener('mousedown', preventFocusSteal));
 
             undoBtn.addEventListener('click', undoState);
@@ -1041,11 +1085,17 @@
             copyBtn.addEventListener('click', () => execCmd('copy'));
             pasteBtn.addEventListener('click', () => execCmd('paste'));
             boldBtn.addEventListener('click', () => execCmd('bold'));
+            underlineBtn.addEventListener('click', () => execCmd('underline'));
 
 
             document.addEventListener('keydown', (e) => { 
                 if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (!undoBtn.disabled) undoState(); }
                 if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); execCmd('bold'); }
+                if ((e.ctrlKey || e.metaKey) && e.key === 'u') { e.preventDefault(); execCmd('underline'); }
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') { 
+                    e.preventDefault(); 
+                    insertLinkBtn.click();
+                }
             });
 
             function onMouseMove(e) {
@@ -1102,6 +1152,7 @@
                 const table = contentDisplay.querySelector('table');
                 if (currentCell && table?.contains(currentCell) && currentCell !== endCell) {
                     endCell = currentCell;
+                    clearTitleSelection();
                     selectCells(startCell, endCell, table);
                 }
             });
@@ -1160,15 +1211,23 @@
             });
 
 
+            contentDisplay.addEventListener('click', (e) => {
+                if (isSelecting) return;
+                const cell = e.target.closest('td, th');
+                if (cell) {
+                    clearTitleSelection();
+                    clearSelection();
+                    cell.classList.add('selected-cell');
+                    selectedCells.push(cell);
+                    updateToolbarForSelection();
+                } else {
+                    clearTitleSelection();
+                    clearSelection();
+                }
+            });
+
             window.addEventListener('mouseup', () => {
-                if (dragStart) {
-                    if (!isSelecting) { 
-                        if (startCell && !startCell.querySelector('.resizable-image-container, .shape-container')) {
-                            clearSelection();
-                            startCell.classList.add('selected-cell');
-                            selectedCells.push(startCell);
-                        }
-                    }
+                if (dragStart && isSelecting) {
                     updateToolbarForSelection();
                 }
                 dragStart = false;
@@ -1204,49 +1263,70 @@
                  input.addEventListener('input', () => {
                     const value = input.value + unit;
                     const rawValue = input.value;
-                    if (!rawValue) return;
 
-                    contentDisplay.focus();
-                    if (currentSelectionRange) {
-                        const selection = window.getSelection();
-                        selection.removeAllRanges();
-                        selection.addRange(currentSelectionRange);
-                    }
-
-                    if (selectedCells.length > 0) {
-                        input.classList.remove('mixed');
-                        applyToSelectedCells(c => c.style[styleProp] = value, false);
-                    } else {
-                         const selection = window.getSelection();
-                        if (!selection || selection.isCollapsed) {
-                           if(styleProp !== 'height' && styleProp !== 'width') {
-                                showNotification('請先選取文字以套用樣式。');
-                           }
-                           return;
+                    const restoreSelection = () => {
+                        contentDisplay.focus();
+                        if (currentSelectionRange) {
+                            const selection = window.getSelection();
+                            selection.removeAllRanges();
+                            selection.addRange(currentSelectionRange);
                         }
-                        
-                         if (styleProp === 'fontSize') {
-                             document.execCommand("fontSize", false, "1"); // Use a placeholder size
-                             const fontElements = contentDisplay.getElementsByTagName("font");
-                             for (let i = 0; i < fontElements.length; i++) {
-                                 if (fontElements[i].size === "1") {
-                                     fontElements[i].removeAttribute("size");
-                                     fontElements[i].style.fontSize = value;
-                                 }
-                             }
-                         } else if (styleProp === 'color') {
-                            execCmd('foreColor', rawValue);
-                         } else if (styleProp === 'backgroundColor') {
-                            execCmd('backColor', rawValue);
-                         }
+                    };
+
+                    if (styleProp === 'color') { // 文字顏色
+                        restoreSelection();
+                        execCmd('foreColor', rawValue);
+                        return; 
                     }
-                    clearTimeout(input.timer);
-                    input.timer = setTimeout(saveState, 500);
+                    
+                    if (styleProp === 'backColor') { // 文字背景顏色
+                        restoreSelection();
+                        execCmd('backColor', rawValue);
+                        return;
+                    }
+                    
+                    if (!rawValue && styleProp !== 'backgroundColor') return;
+
+                    if (activeEditingTarget === mainTitle) {
+                        mainTitle.style[styleProp] = value;
+                    } else {
+                        restoreSelection();
+
+                        if (selectedCells.length > 0 && styleProp !== 'fontSize') {
+                            input.classList.remove('mixed');
+                            applyToSelectedCells(c => c.style[styleProp] = value, false);
+                        } else {
+                            const selection = window.getSelection();
+                            if (!selection || selection.isCollapsed ) {
+                               if(styleProp !== 'height' && styleProp !== 'width') {
+                                    showNotification('請先選取文字以套用樣式。');
+                               }
+                               return;
+                            }
+                            
+                             if (styleProp === 'fontSize') {
+                                 document.execCommand("fontSize", false, "1");
+                                 const fontElements = contentDisplay.getElementsByTagName("font");
+                                 for (let i = 0; i < fontElements.length; i++) {
+                                     if (fontElements[i].size === "1") {
+                                         fontElements[i].removeAttribute("size");
+                                         fontElements[i].style.fontSize = value;
+                                     }
+                                 }
+                             } else if (styleProp === 'backgroundColor') {
+                                // 這個是儲存格背景，邏輯保持不變
+                                execCmd('backColor', rawValue);
+                             }
+                        }
+                        clearTimeout(input.timer);
+                        input.timer = setTimeout(saveState, 500);
+                    }
                 });
             };
             
             addInputListener(fontSizeInput, 'fontSize', 'px');
             addInputListener(fontColorInput, 'color');
+            addInputListener(textBgColorInput, 'backColor');
             addInputListener(bgColorInput, 'backgroundColor');
             addInputListener(rowHeightInput, 'height', 'px');
             addInputListener(colWidthInput, 'width', 'px');
@@ -1395,7 +1475,6 @@
                 const processImage = (imageBlob) => {
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        // --- 全新核心演算法開始 ---
                         let isTableCell = false;
                         if (currentSelectionRange) {
                             let node = currentSelectionRange.startContainer;
@@ -1407,19 +1486,16 @@
                             }
                         }
 
-                        // 智慧判斷並賦予專屬 class
                         const containerClass = isTableCell 
                             ? "resizable-image-container image-in-cell" 
                             : "resizable-image-container";
                         
-                        // 表格外預設樣式
                         const style = isTableCell 
                             ? '' 
                             : 'width: 150px; height: auto;';
 
                         const imgHTML = `<div class="${containerClass}" contenteditable="false" style="${style}">` + `<img src="${ev.target.result}" alt="">` + `<div class="resize-handle"></div>` + `</div>`;
                         execCmd('insertHTML', imgHTML);
-                        // --- 全新核心演算法結束 ---
                     };
                     reader.readAsDataURL(imageBlob);
                 };
@@ -1430,6 +1506,35 @@
                     .catch(err => { console.error(err); showNotification('HEIC 轉換失敗。'); });
                 } else { processImage(file); }
                 imageUploadInput.value = '';
+            });
+
+            insertLinkBtn.addEventListener('click', () => {
+                const selection = window.getSelection();
+                if (!selection || selection.isCollapsed) {
+                    showNotification('請先選取要加上連結的文字。');
+                    return;
+                }
+                
+                const savedRange = selection.getRangeAt(0).cloneRange();
+                let url = prompt("請輸入網址:", "https://");
+
+                if (url && url.trim() !== "" && url !== "https://") {
+                    selection.removeAllRanges();
+                    selection.addRange(savedRange);
+                    document.execCommand('createLink', false, url);
+                    
+                    let parentElement = selection.getRangeAt(0).commonAncestorContainer;
+                    if (parentElement.nodeType === Node.TEXT_NODE) {
+                        parentElement = parentElement.parentNode;
+                    }
+                    const linkElement = parentElement.closest('a');
+                    if (linkElement) {
+                        linkElement.target = '_blank';
+                        linkElement.rel = 'noopener noreferrer';
+                    }
+                    
+                    saveState();
+                }
             });
 
             insertTableBtn.addEventListener('click', () => {
