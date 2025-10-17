@@ -20,6 +20,9 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
     </script>
 
+    <!-- 新增：引入 JSZip 用於打包檔案 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
     <style>
         /* 使用 Google Fonts 的 Noto Sans TC */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
@@ -357,7 +360,7 @@
                 施工照片排版輸出工具
             </h1>
             <p class="text-center text-sm mt-2">
-                匯入多張圖片（亦可 PDF 轉圖片）自動排版為一頁2、4、6、8、10張圖片，可自訂主題、標號、日期及頁碼，生成 HTML 檔案並列印為 PDF 報告。
+                匯入多張圖片（可 PDF 轉圖片）自動排版為一頁2~10張圖片，可裁切照片(直→橫)，自訂主題、標號、日期及頁碼，生成 HTML 檔案並列印為 PDF 報告。
             </p>
             <p class="text-center text-xs mt-1">製作者：陳政德</p>
         </header>
@@ -434,6 +437,11 @@
                     </div>
 
                     <div class="flex items-center gap-2">
+                        <!-- 新增：裁切並打包按鈕 -->
+                        <button id="crop-zip-btn" class="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="將直式照片裁切為橫式(4:3)，並將所有照片打包下載為 ZIP 檔">
+                            <i data-lucide="crop" class="w-5 h-5"></i>
+                            <span class="font-medium">裁切並打包</span>
+                        </button>
                         <button id="generate-html-btn" class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="將目前的設定與照片生成可列印的 HTML 報告">
                             <i data-lucide="file-code-2" class="w-5 h-5"></i>
                             <span id="generate-html-btn-text" class="font-medium">生成 HTML</span>
@@ -472,12 +480,13 @@
                 <div class="glass-effect rounded-lg p-6">
                     <div class="flex items-center mb-3">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500 mr-3"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path><line x1="16" y1="5" x2="22" y2="5"></line><line x1="19" y1="2" x2="19" y2="8"></line><path d="M12 18L12 12L15 15L12 12L9 15"></path></svg>
-                        <h3 class="text-lg font-semibold">檔案匯入</h3>
+                        <h3 class="text-lg font-semibold">檔案匯入與輸出</h3>
                     </div>
                     <ul class="list-disc list-inside space-y-2 text-sm">
                         <li><b class="instruction-keyword">選擇檔案：</b>支援多選，可同時匯入圖片 (JPG, PNG, HEIC) 或 PDF 檔案。</li>
                         <li><b class="instruction-keyword">PDF 匯入：</b>程式會自動將 PDF 的每一頁完整擷取成一張張圖片並匯入。</li>
-                        <li><b class="instruction-keyword">匯入畫質：</b>可選擇「低/中/高」三種品質，此設定會影響 PDF 渲染的清晰度與最終報告的檔案大小。</li>
+                        <li><b class="instruction-keyword">生成 HTML：</b>產生可列印的報告頁面，可透過瀏覽器的列印功能另存為 PDF。</li>
+                        <li><b class="instruction-keyword">裁切並打包：</b>將直式照片裁切為 4:3 橫式，並將所有照片打包成一個 ZIP 檔下載。</li>
                     </ul>
                 </div>
                 
@@ -568,6 +577,7 @@
             rocDateDisplay: document.getElementById('roc-date-display'),
             selectPhotosLabel: document.getElementById('select-photos-label'),
             generateHtmlBtn: document.getElementById('generate-html-btn'),
+            cropZipBtn: document.getElementById('crop-zip-btn'), // 新增
             photoCountInfo: document.getElementById('photo-count-info'),
             emptyState: document.getElementById('empty-state'),
             photoGrid: document.getElementById('photo-grid'),
@@ -619,7 +629,7 @@
             document.getElementById('error-modal-close').addEventListener('click', hideLoaderAndResetState, { once: true });
         };
         const showSuccess = (downloadUrl, fileName) => {
-            dom.loaderOverlay.innerHTML = `<div class="glass-effect rounded-xl shadow-lg p-6 w-full max-w-lg relative text-center"><i data-lucide="check-circle-2" class="w-12 h-12 mx-auto text-green-500 mb-4"></i><h2 class="text-xl font-semibold text-gray-800 mb-2">HTML 已生成！</h2><p class="text-gray-600 mb-4">請點擊下方按鈕下載檔案。</p><a href="${downloadUrl}" download="${fileName}" id="download-link" class="inline-block bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-semibold">下載檔案</a><br/><button id="success-modal-close" class="mt-6 text-sm text-gray-500 hover:text-gray-700 underline">關閉視窗</button></div>`;
+            dom.loaderOverlay.innerHTML = `<div class="glass-effect rounded-xl shadow-lg p-6 w-full max-w-lg relative text-center"><i data-lucide="check-circle-2" class="w-12 h-12 mx-auto text-green-500 mb-4"></i><h2 class="text-xl font-semibold text-gray-800 mb-2">檔案已生成！</h2><p class="text-gray-600 mb-4">請點擊下方按鈕下載檔案。</p><a href="${downloadUrl}" download="${fileName}" id="download-link" class="inline-block bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-semibold">下載檔案</a><br/><button id="success-modal-close" class="mt-6 text-sm text-gray-500 hover:text-gray-700 underline">關閉視窗</button></div>`;
             lucide.createIcons();
             dom.loaderOverlay.style.display = 'flex';
             const closeBtn = document.getElementById('success-modal-close');
@@ -637,6 +647,7 @@
             dom.fileInput.disabled = !isIdle;
             dom.selectPhotosLabel.classList.toggle('disabled-label', !isIdle);
             dom.generateHtmlBtn.disabled = !isIdle || !hasPhotos;
+            dom.cropZipBtn.disabled = !isIdle || !hasPhotos; // 新增
         };
         
         const adjustTextareaHeight = (textarea) => { textarea.style.height = 'auto'; textarea.style.height = `${textarea.scrollHeight}px`; };
@@ -910,6 +921,70 @@
                 showError(`產生過程發生問題：${error.message}`);
             }
         };
+
+        // --- 新增：裁切並打包為 ZIP 的功能 ---
+        const cropAndZipPhotos = async () => {
+            if (appState !== AppState.IDLE || photos.length === 0) return;
+            setAppState(AppState.PROCESSING_FILES);
+            showLoader('準備裁切與打包照片...');
+
+            try {
+                const zip = new JSZip();
+                const ASPECT_RATIO = 4 / 3;
+
+                for (let i = 0; i < photos.length; i++) {
+                    const photo = photos[i];
+                    updateLoaderText(`正在處理第 ${i + 1} / ${photos.length} 張照片...`);
+
+                    const imageBlob = await new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.crossOrigin = 'Anonymous';
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            // 判斷是否為直式照片 (height > width)
+                            if (img.height > img.width) {
+                                // 裁切為 4:3 橫式
+                                const newHeight = img.width / ASPECT_RATIO;
+                                const yOffset = (img.height - newHeight) / 2;
+
+                                canvas.width = img.width;
+                                canvas.height = newHeight;
+                                ctx.drawImage(img, 0, yOffset, img.width, newHeight, 0, 0, img.width, newHeight);
+                            } else {
+                                // 橫式或方形照片，直接使用原尺寸
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                                ctx.drawImage(img, 0, 0);
+                            }
+                            canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.9);
+                        };
+                        img.onerror = () => reject(new Error(`圖片 #${i+1} 載入失敗`));
+                        img.src = photo.url;
+                    });
+                    
+                    const sanitizedThemeName = (reportInfo.themeName || '照片').replace(/[\\/:*?"<>|]/g, '_');
+                    const fileName = `${sanitizedThemeName}_${String(i + 1).padStart(3, '0')}.jpg`;
+                    zip.file(fileName, imageBlob);
+                }
+
+                updateLoaderText('正在生成 ZIP 檔案...');
+                const zipBlob = await zip.generateAsync({
+                    type: "blob",
+                    compression: "DEFLATE",
+                    compressionOptions: { level: 9 }
+                });
+
+                const url = URL.createObjectURL(zipBlob);
+                const zipFileName = `${reportInfo.themeName || '照片報告'}_橫式照片.zip`;
+                showSuccess(url, zipFileName);
+
+            } catch (error) {
+                console.error('裁切打包失敗:', error);
+                showError(`處理過程發生問題：${error.message}`);
+            }
+        };
         
         const saveSessionData = () => { const data = { ...reportInfo }; delete data.constructionLotSelect; delete data.constructionLotInput; localStorage.setItem('reportSession', JSON.stringify(data)); };
         const loadSessionData = () => { const data = JSON.parse(localStorage.getItem('reportSession')); if (data) { applySettings(data); } };
@@ -932,6 +1007,7 @@
         [dom.fileInput, dom.insertFileInput].forEach(input => input.addEventListener('change', (e) => handleFileSelect(e, input === dom.insertFileInput)));
         [dom.themeNameInput, dom.constructionLotSelect, dom.constructionLotInput, dom.reportDateInput, dom.showThemeName, dom.showConstructionLot, dom.showReportDate, dom.importResolution].forEach(input => { input.addEventListener('input', updateReportInfo); input.addEventListener('change', updateReportInfo); });
         dom.generateHtmlBtn.addEventListener('click', generateHTML);
+        dom.cropZipBtn.addEventListener('click', cropAndZipPhotos); // 新增
         dom.photoGrid.addEventListener('input', (e) => { if (e.target.classList.contains('text-input')) { const id = parseFloat(e.target.dataset.id); updatePhotoText(id, e.target.value); if(e.target.tagName === 'TEXTAREA') { adjustTextareaHeight(e.target); } } });
         
         dom.photoGrid.addEventListener('click', (e) => { 
