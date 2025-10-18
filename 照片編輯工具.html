@@ -31,7 +31,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@100..900&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Fandol+Kai&display=swap');
         
-        /* [NEW] Light/Dark Theme Variables */
+        /* Light/Dark Theme Variables */
         :root {
             --bg-color: #f0f4f8;
             --text-color: #1a202c;
@@ -120,14 +120,37 @@
         html.dark #layer-list .layer-item.active { background-color: #374151; color: #eff6ff; }
         .layer-controls button:disabled { color: #cbd5e1; cursor: not-allowed; }
 
-        /* [NEW] Instruction Section Style */
-        #instructions-section .step { border-left: 3px solid var(--panel-heading-color); padding-left: 1rem; transition: border-color 0.3s; }
-        #instructions-section .step p { color: var(--text-muted-color); }
+        /* [NEW] Instruction Card Styles */
+        .instruction-card {
+            background-color: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-align: left;
+        }
+        .instruction-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+        .instruction-card svg {
+            width: 40px;
+            height: 40px;
+            color: var(--panel-heading-color);
+        }
+        .instruction-card h3 {
+            color: var(--text-color);
+            font-size: 1.125rem;
+        }
+        .instruction-card p {
+             color: var(--text-muted-color);
+        }
     </style>
 </head>
 <body class="flex flex-col items-center justify-start p-4 md:p-8 min-h-screen">
     
-    <!-- [NEW] Theme Toggle Button -->
+    <!-- Theme Toggle Button -->
     <div class="absolute top-4 right-4 z-10">
         <button id="theme-toggle" title="切換明暗主題" class="tool-button p-2 rounded-full shadow-md w-10 h-10 flex items-center justify-center">
             <i id="theme-icon" class="fas fa-sun"></i>
@@ -245,8 +268,8 @@
                         <button onclick="applyPreset('night')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="增亮夜景並添加冷色調">夜景</button>
                         <button onclick="applyFilter('grayscale')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用黑白濾鏡">黑白</button>
                         <button onclick="applyFilter('sepia')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用復古棕褐色濾鏡">復古</button>
-                        <button onclick="applyFilter('invert')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用負片效果">負片</button>
-                        <button onclick="applyFilter('blur')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用模糊效果">模糊</button>
+                        <button onclick="applyFilter('sharpen')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用銳化效果">銳化</button>
+                        <button onclick="applyFilter('clarity')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用清晰效果">清晰</button>
                         <button onclick="applyFilter('pixelate')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用像素化效果">像素化</button>
                         <button onclick="applyFilter('vignette')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="新增暗角效果">暈影</button>
                         <button onclick="applyFilter('noise')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="新增雜訊顆粒效果">雜訊</button>
@@ -295,9 +318,9 @@
                 </div>
                 <div class="collapsible-content">
                     <div class="p-1 rounded-lg shadow-sm tool-panel tool-slider-container">
-                        <div id="blur-control" class="slider-control-group hidden">
-                            <label for="blur-slider" class="text-xs font-medium text-muted flex-shrink-0">模糊強度</label>
-                            <input type="range" id="blur-slider" min="0" max="1" value="0.3" step="0.01" title="調整模糊強度">
+                        <div id="clarity-control" class="slider-control-group hidden">
+                            <label for="clarity-slider" class="text-xs font-medium text-muted flex-shrink-0">清晰度</label>
+                            <input type="range" id="clarity-slider" min="0" max="1.5" value="0.5" step="0.05" title="調整清晰度">
                         </div>
                         <div id="pixelate-control" class="slider-control-group hidden">
                             <label for="pixelate-slider" class="text-xs font-medium text-muted flex-shrink-0">像素大小</label>
@@ -414,8 +437,8 @@
                             <div class="w-1/2">
                                 <label for="download-format" class="block mb-1 text-xs font-bold text-muted">照片類型</label>
                                 <select id="download-format" class="w-full px-1 py-0.5 rounded-md border text-xs bg-input" style="border-color: var(--border-color);">
+                                    <option value="jpeg" selected>JPG</option>
                                     <option value="png">PNG</option>
-                                    <option value="jpeg">JPEG</option>
                                     <option value="svg">SVG</option>
                                     <option value="pdf">PDF</option>
                                 </select>
@@ -439,32 +462,56 @@
     </div>
     
     <!-- [NEW] Instructions Section -->
-    <div id="instructions-section" class="w-full max-w-7xl mt-8 p-6 rounded-xl container-card">
+    <div id="instructions-section" class="w-full max-w-7xl mt-8">
         <h2 class="text-xl font-bold panel-heading mb-6 text-center"><i class="fas fa-book-open mr-2"></i>功能與操作說明</h2>
-        <div class="grid md:grid-cols-2 gap-x-8 gap-y-6 text-sm">
-            <div class="step">
-                <h3 class="font-bold mb-1"><i class="fas fa-upload text-apple-blue w-6"></i> 1. 選擇與插入照片</h3>
-                <p>點擊 <span class="font-bold text-apple-blue">「選擇照片」</span> 按鈕，從您的裝置上傳一張照片。支援 <span class="font-bold text-apple-blue">JPG, PNG, PDF</span>，以及 iPhone 的 <span class="font-bold text-apple-blue">HEIC</span> 格式。您也可以使用 <span class="font-bold text-apple-blue">「插入圖片」</span> 功能在現有照片上疊加另一張圖。</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Card 1 -->
+            <div class="instruction-card">
+                <div class="flex items-center mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                    <h3 class="font-bold">1. 選擇與插入照片</h3>
+                </div>
+                <p>點擊 <span class="font-bold text-apple-blue">「選擇照片」</span>，支援 <span class="font-bold text-apple-blue">JPG, PNG, PDF</span> 及 <span class="font-bold text-apple-blue">HEIC</span> 格式。也可使用 <span class="font-bold text-apple-blue">「插入圖片」</span> 疊加另一張圖。</p>
             </div>
-            <div class="step">
-                <h3 class="font-bold mb-1"><i class="fas fa-ruler-combined text-apple-blue w-6"></i> 2. 基本調整</h3>
-                <p>使用 <span class="font-bold text-apple-blue">縮放</span> 與 <span class="font-bold text-apple-blue">旋轉</span> 滑桿對照片進行基本變形。透過 <span class="font-bold text-apple-blue">剪裁</span> 工具，您可以選取並保留照片的特定區域。還能進行 <span class="font-bold text-apple-blue">水平/垂直翻轉</span>。</p>
+            <!-- Card 2 -->
+            <div class="instruction-card">
+                 <div class="flex items-center mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M22 7h-7V2H9v5H2v2h7v3H9v5h2v-3h2v3h2v-5h7zM7 9H4V4h3v5zm10 0h3V4h-3v5zm-5 8H9v-5h3v5zm0-8H9V4h3v5z"/></svg>
+                    <h3 class="font-bold">2. 基本調整</h3>
+                </div>
+                <p>使用 <span class="font-bold text-apple-blue">縮放</span> 與 <span class="font-bold text-apple-blue">旋轉</span> 滑桿進行變形，透過 <span class="font-bold text-apple-blue">剪裁</span> 工具保留特定區域，亦可進行 <span class="font-bold text-apple-blue">水平/垂直翻轉</span>。</p>
             </div>
-            <div class="step">
-                <h3 class="font-bold mb-1"><i class="fas fa-magic-sparkles text-apple-blue w-6"></i> 3. 濾鏡與進階工具</h3>
-                <p>提供多種一鍵套用的 <span class="font-bold text-apple-blue">風格濾鏡</span> (如黑白、復古)。若想更精細地調整，可至 <span class="font-bold text-apple-blue">進階工具</span> 區塊，手動調整 <span class="font-bold text-apple-blue">亮度、對比度、飽和度</span> 等參數。</p>
+             <!-- Card 3 -->
+            <div class="instruction-card">
+                <div class="flex items-center mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.69l.94 2.06.94 2.05h2.16h2.16l-1.75 1.27-1.75 1.27.67 2.53.67 2.53-1.75-1.27-1.75-1.27-1.75 1.27-1.75 1.27.67-2.53.67-2.53-1.75-1.27L7.36 9.8l2.16-.01h2.16l.94-2.05L12 2.69zm-5 13.62l.94 2.06.94 2.05h2.16h2.16l-1.75 1.27-1.75 1.27.67 2.53.67 2.53-1.75-1.27-1.75-1.27-1.75 1.27-1.75 1.27.67-2.53.67-2.53-1.75-1.27-1.75-1.27h2.16h2.16l.94-2.05L7 16.31z"/></svg>
+                    <h3 class="font-bold">3. 濾鏡與進階工具</h3>
+                </div>
+                <p>套用多種一鍵 <span class="font-bold text-apple-blue">風格濾鏡</span>，或至 <span class="font-bold text-apple-blue">進階工具</span> 區塊，手動調整 <span class="font-bold text-apple-blue">亮度、對比度、飽和度</span> 等參數。</p>
             </div>
-            <div class="step">
-                <h3 class="font-bold mb-1"><i class="fas fa-pencil-ruler text-apple-blue w-6"></i> 4. 添加文字與圖形</h3>
-                <p>使用 <span class="font-bold text-apple-blue">「加入文字」</span> 功能來添加可自訂字型、大小和顏色的文字。透過 <span class="font-bold text-apple-blue">「加入圖形」</span>，可以繪製線條、方框、圓形等，並可使用 <span class="font-bold text-apple-blue">自由劃線</span> 工具隨意塗鴉。</p>
+             <!-- Card 4 -->
+            <div class="instruction-card">
+                <div class="flex items-center mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83zM3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM5.92 19H5v-.92l9.06-9.06.92.92L5.92 19z"/></svg>
+                    <h3 class="font-bold">4. 添加文字與圖形</h3>
+                </div>
+                <p>使用 <span class="font-bold text-apple-blue">「加入文字」</span> 功能自訂內容，或透過 <span class="font-bold text-apple-blue">「加入圖形」</span> 繪製線條、方框，還能使用 <span class="font-bold text-apple-blue">自由劃線</span> 工具隨意塗鴉。</p>
             </div>
-            <div class="step">
-                <h3 class="font-bold mb-1"><i class="fas fa-layer-group text-apple-blue w-6"></i> 5. 圖層與物件管理</h3>
-                <p><span class="font-bold text-apple-blue">圖層管理</span> 面板會顯示所有您加入的物件。您可以調整它們的上下順序、進行 <span class="font-bold text-apple-blue">鎖定</span> 或 <span class="font-bold text-apple-blue">隱藏</span>。按住 Shift 鍵可選取多個物件進行 <span class="font-bold text-apple-blue">群組</span> 或 <span class="font-bold text-apple-blue">對齊</span> 操作。</p>
+             <!-- Card 5 -->
+            <div class="instruction-card">
+                <div class="flex items-center mb-3">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-12h2v4h-2zm0 6h2v2h-2z" opacity=".3"/><path d="M21.99 12c0-5.52-4.47-10-9.99-10S2 6.48 2 12s4.47 10 9.99 10S21.99 17.52 21.99 12zM12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm1-8h-2V8h2v4zm0 4h-2v-2h2v2z"/></svg>
+                    <h3 class="font-bold">5. 圖層與物件管理</h3>
+                </div>
+                <p>在 <span class="font-bold text-apple-blue">圖層管理</span> 面板中調整物件順序、<span class="font-bold text-apple-blue">鎖定</span> 或 <span class="font-bold text-apple-blue">隱藏</span>。按住 Shift 鍵可選取多個物件進行 <span class="font-bold text-apple-blue">群組</span> 或 <span class="font-bold text-apple-blue">對齊</span> 操作。</p>
             </div>
-            <div class="step">
-                <h3 class="font-bold mb-1"><i class="fas fa-download text-apple-blue w-6"></i> 6. 下載成品</h3>
-                <p>完成編輯後，在 <span class="font-bold text-apple-blue">下載</span> 區塊選擇您需要的 <span class="font-bold text-apple-blue">檔案格式</span> (PNG, JPEG, SVG, PDF) 和 <span class="font-bold text-apple-blue">解析度</span>，然後點擊 <span class="font-bold text-apple-blue">「下載照片」</span> 即可儲存。</p>
+            <!-- Card 6 -->
+            <div class="instruction-card">
+                 <div class="flex items-center mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    <h3 class="font-bold">6. 下載成品</h3>
+                </div>
+                <p>選擇需要的 <span class="font-bold text-apple-blue">檔案格式</span> (JPG, PNG, SVG, PDF) 和 <span class="font-bold text-apple-blue">解析度</span>，然後點擊 <span class="font-bold text-apple-blue">「下載照片」</span> 即可儲存。</p>
             </div>
         </div>
     </div>
@@ -611,13 +658,13 @@
             document.getElementById('flip-h-btn').addEventListener('click', () => handleFlip('horizontal'));
             document.getElementById('flip-v-btn').addEventListener('click', () => handleFlip('vertical'));
             document.getElementById('grid-btn').addEventListener('click', toggleGrid);
-            document.getElementById('theme-toggle').addEventListener('click', toggleTheme); // [NEW]
+            document.getElementById('theme-toggle').addEventListener('click', toggleTheme); 
 
             ['brightness', 'contrast', 'saturation', 'hue', 'temperature'].forEach(id => {
                  document.getElementById(`${id}-slider`).addEventListener('input', () => debounce(handleAdvancedAdjustments, 100)());
             });
 
-            ['blur', 'pixelate', 'vignette', 'noise'].forEach(id => {
+            ['clarity', 'pixelate', 'vignette', 'noise'].forEach(id => {
                 const slider = document.getElementById(`${id}-slider`);
                 if (slider) slider.addEventListener('input', () => debounce(handleEffectAdjustments, 100)());
             });
@@ -650,7 +697,7 @@
             setupLayerPanel();
         }
 
-        // [NEW] Theme handling
+        // Theme handling
         function applyInitialTheme() {
             const theme = localStorage.getItem('theme') || 'light';
             const html = document.documentElement;
@@ -671,7 +718,7 @@
             applyInitialTheme();
         }
         
-        // [MODIFIED] Tooltip setup
+        // Tooltip setup
         function setupCustomTooltip() {
             const tooltip = document.getElementById('custom-tooltip');
             let currentTarget;
@@ -726,9 +773,8 @@
             canvas.renderAll();
         }
 
-        // [FIXED] HEIC & PDF handling
+        // HEIC & PDF handling
         async function convertFileToDataURL(file) {
-            // [FIXED] Improved HEIC detection to handle MIME types correctly
             const isHeic = file.type.startsWith('image/heic') || file.type.startsWith('image/heif') || (file.type === '' && (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')));
 
             let processedFile = file;
@@ -841,15 +887,19 @@
         function handleEffectAdjustments() {
             if (!img) return;
             const effects = {
-                blur: document.getElementById('blur-slider').value,
+                clarity: document.getElementById('clarity-slider').value,
                 pixelate: document.getElementById('pixelate-slider').value,
                 vignette: document.getElementById('vignette-slider').value,
                 noise: document.getElementById('noise-slider').value
             };
-            img.filters = img.filters.filter(f => !['Blur', 'Pixelate', 'Vignette', 'Noise'].includes(f.type));
+            img.filters = img.filters.filter(f => !['Convolute', 'Pixelate', 'Vignette', 'Noise'].includes(f.type));
             const panel = document.getElementById('effects-adjustment-panel');
             if(!panel.classList.contains('hidden')) {
-                if(!document.getElementById('blur-control').classList.contains('hidden')) img.filters.push(new fabric.Image.filters.Blur({ blur: parseFloat(effects.blur) }));
+                if(!document.getElementById('clarity-control').classList.contains('hidden')) {
+                     const clarityValue = parseFloat(effects.clarity);
+                     const matrix = [ 0, -clarityValue, 0, -clarityValue, 4 * clarityValue + 1, -clarityValue, 0, -clarityValue, 0 ];
+                     img.filters.push(new fabric.Image.filters.Convolute({ matrix: matrix }));
+                }
                 if(!document.getElementById('pixelate-control').classList.contains('hidden')) img.filters.push(new fabric.Image.filters.Pixelate({ blocksize: parseInt(effects.pixelate) }));
                 if(!document.getElementById('vignette-control').classList.contains('hidden')) img.filters.push(new fabric.Image.filters.Vignette({ radius: 0.7, darkness: parseFloat(effects.vignette) }));
                 if(!document.getElementById('noise-control').classList.contains('hidden')) img.filters.push(new fabric.Image.filters.Noise({ noise: parseInt(effects.noise) }));
@@ -876,16 +926,16 @@
             if (!img) return; 
             resetImageState();
             const panel = document.getElementById('effects-adjustment-panel');
-            const controls = { blur: document.getElementById('blur-control'), pixelate: document.getElementById('pixelate-control'), vignette: document.getElementById('vignette-control'), noise: document.getElementById('noise-control') };
+            const controls = { clarity: document.getElementById('clarity-control'), pixelate: document.getElementById('pixelate-control'), vignette: document.getElementById('vignette-control'), noise: document.getElementById('noise-control') };
             Object.values(controls).forEach(c => c.classList.add('hidden'));
             panel.classList.add('hidden');
             let hasAdjustableFilter = false;
             switch (filterName) {
                 case 'grayscale': img.filters.push(new fabric.Image.filters.Grayscale()); break;
                 case 'sepia': img.filters.push(new fabric.Image.filters.Sepia()); break;
-                case 'invert': img.filters.push(new fabric.Image.filters.Invert()); break;
+                case 'sharpen': img.filters.push(new fabric.Image.filters.Convolute({ matrix: [ 0, -1, 0, -1, 5, -1, 0, -1, 0 ] })); break;
                 case 'emboss': img.filters.push(new fabric.Image.filters.Convolute({ matrix: [ 1, 1, 1, 1, 0.7, -1, -1, -1, -1 ] })); break;
-                case 'blur': case 'pixelate': case 'vignette': case 'noise':
+                case 'clarity': case 'pixelate': case 'vignette': case 'noise':
                     hasAdjustableFilter = true;
                     panel.classList.remove('hidden');
                     controls[filterName].classList.remove('hidden');
@@ -920,9 +970,31 @@
 
         function handleKeyDown(e) { const activeObject = canvas.getActiveObject(); if (!activeObject || activeObject.isEditing) return; const step = e.shiftKey ? 10 : 1; let moved = false; switch (e.key) { case 'ArrowUp': activeObject.top -= step; moved = true; break; case 'ArrowDown': activeObject.top += step; moved = true; break; case 'ArrowLeft': activeObject.left -= step; moved = true; break; case 'ArrowRight': activeObject.left += step; moved = true; break; } if (moved) { e.preventDefault(); activeObject.setCoords(); canvas.renderAll(); debouncedSaveState(); return; } if (e.ctrlKey || e.metaKey) { if (['c', 'x', 'v', 'z'].includes(e.key.toLowerCase())) e.preventDefault(); switch(e.key.toLowerCase()) { case 'c': handleCopy(); break; case 'x': handleCut(); break; case 'v': handlePaste(); break; case 'z': undo(); break; } } else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); handleDeleteObject(); } }
         
-        function resetImageState() { if (img) { img.filters = []; img.applyFilters(); img.set({ flipX: false, flipY: false }); } ['brightness', 'contrast', 'saturation', 'hue', 'temperature'].forEach(id => document.getElementById(`${id}-slider`).value = 0); const panel = document.getElementById('effects-adjustment-panel'); panel.classList.add('hidden'); ['blur', 'pixelate', 'vignette', 'noise'].forEach(id => document.getElementById(`${id}-control`).classList.add('hidden')); canvas.renderAll(); }
+        function resetImageState() { if (img) { img.filters = []; img.applyFilters(); img.set({ flipX: false, flipY: false }); } ['brightness', 'contrast', 'saturation', 'hue', 'temperature'].forEach(id => document.getElementById(`${id}-slider`).value = 0); const panel = document.getElementById('effects-adjustment-panel'); panel.classList.add('hidden'); ['clarity', 'pixelate', 'vignette', 'noise'].forEach(id => document.getElementById(`${id}-control`).classList.add('hidden')); canvas.renderAll(); }
         function handleReset(addToHistory = true) { if (originalImageSrc) { resetImageState(); fitImageToCanvas(); if (addToHistory) saveState(); } }
-        function handleDownload() { const format = document.getElementById('download-format').value; const link = document.createElement('a'); if (format === 'pdf') { const { jsPDF } = window.jspdf; const imgData = canvas.toDataURL({format: 'jpeg', quality: 1.0}); const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'landscape' : 'portrait', unit: 'px', format: [canvas.width, canvas.height] }); pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height); pdf.save('edited-photo.pdf'); } else if (format === 'svg') { const svgData = canvas.toSVG(); const blob = new Blob([svgData], { type: 'image/svg+xml' }); link.href = URL.createObjectURL(blob); link.download = `edited-photo.svg`; link.click(); URL.revokeObjectURL(link.href); } else { link.href = canvas.toDataURL({ format: format, quality: 1.0 }); link.download = `edited-photo.${format}`; link.click(); } }
+        function handleDownload() {
+            const format = document.getElementById('download-format').value;
+            const link = document.createElement('a');
+            if (format === 'pdf') {
+                const { jsPDF } = window.jspdf;
+                const imgData = canvas.toDataURL({format: 'jpeg', quality: 1.0});
+                const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'landscape' : 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
+                pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+                pdf.save('edited-photo.pdf');
+            } else if (format === 'svg') {
+                const svgData = canvas.toSVG();
+                const blob = new Blob([svgData], { type: 'image/svg+xml' });
+                link.href = URL.createObjectURL(blob);
+                link.download = `edited-photo.svg`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+            } else {
+                const fileExtension = format === 'jpeg' ? 'jpg' : format;
+                link.href = canvas.toDataURL({ format: format, quality: 1.0 });
+                link.download = `edited-photo.${fileExtension}`;
+                link.click();
+            }
+        }
         
         function updateObjectActionButtons(e) {
             const activeObject = canvas.getActiveObject();
@@ -1008,7 +1080,6 @@
         // Collapsed functions for brevity
         enterFsViewer = function() { if (!img) return; const overlay = document.getElementById('fullscreen-overlay'); const fsImage = document.getElementById('fullscreen-image'); const zoomInBtn = document.getElementById('zoom-in-fs'); const zoomOutBtn = document.getElementById('zoom-out-fs'); let scale = 1, isPanning = false, start = { x: 0, y: 0 }, translate = { x: 0, y: 0 }; fsImage.src = canvas.toDataURL({ format: 'png', quality: 1.0 }); overlay.classList.remove('hidden'); overlay.classList.add('flex'); const updateTransform = () => { fsImage.style.transform = `translate(${translate.x}px, ${translate.y}px) scale(${scale})`; }; const handleMouseDown = e => { e.preventDefault(); isPanning = true; start = { x: e.clientX - translate.x, y: e.clientY - translate.y }; fsImage.classList.add('grabbing'); }; const handleMouseMove = e => { if (!isPanning) return; e.preventDefault(); translate.x = e.clientX - start.x; translate.y = e.clientY - start.y; updateTransform(); }; const handleMouseUp = () => { isPanning = false; fsImage.classList.remove('grabbing'); }; const handleWheel = (e) => { e.preventDefault(); scale += e.deltaY * -0.001; scale = Math.min(Math.max(.125, scale), 8); updateTransform(); }; const exitFs = () => { overlay.classList.add('hidden'); overlay.classList.remove('flex'); fsImage.removeEventListener('mousedown', handleMouseDown); window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); overlay.removeEventListener('wheel', handleWheel); overlay.removeEventListener('click', exitFsOnClick); document.removeEventListener('keydown', exitFsOnEsc); }; const exitFsOnClick = (e) => { if (e.target === overlay) exitFs(); }; const exitFsOnEsc = (e) => { if (e.key === "Escape") exitFs(); }; zoomInBtn.onclick = () => { scale = Math.min(8, scale * 1.2); updateTransform(); }; zoomOutBtn.onclick = () => { scale = Math.max(0.125, scale / 1.2); updateTransform(); }; fsImage.addEventListener('mousedown', handleMouseDown); window.addEventListener('mousemove', handleMouseMove); window.addEventListener('mouseup', handleMouseUp); overlay.addEventListener('wheel', handleWheel); overlay.addEventListener('click', exitFsOnClick); document.addEventListener('keydown', exitFsOnEsc); updateTransform(); }
         
-        // [FIXED] Reworked crop function to handle async operations correctly
         handleCrop = function() {
             const cropButton = document.getElementById('crop-btn');
             
@@ -1028,11 +1099,9 @@
                 canvas.off('mouse:up', endCropSelection);
             };
 
-            if (isCropping) { // If we are in crop mode...
-                // And a valid crop rectangle exists, we are confirming the crop
+            if (isCropping) { 
                 if (cropRect && cropRect.width > 0 && cropRect.height > 0) {
-                    // [FIXED] Correctly remove the cropRect before generating the new image
-                    cropRect.set({ visible: false }); // Hide it immediately
+                    cropRect.set({ visible: false }); 
 
                     const dataURL = canvas.toDataURL({
                         left: cropRect.left,
@@ -1041,7 +1110,6 @@
                         height: cropRect.getScaledHeight()
                     });
                     
-                    // Now, fully clear the canvas to ensure nothing is left over
                     canvas.clear();
 
                     fabric.Image.fromURL(dataURL, (newImg) => {
@@ -1053,13 +1121,12 @@
                         canvas.add(img);
                         fitImageToCanvas();
                         saveState();
-                        exitCropMode(); // Exit crop mode AFTER the new image is loaded and canvas is clean
+                        exitCropMode(); 
                     });
                 } else {
-                    // In crop mode but no valid rectangle drawn, just exit without cropping.
                     exitCropMode();
                 }
-            } else { // If not in crop mode, then enter it
+            } else { 
                 isCropping = true;
                 cropButton.classList.add('mode-active');
                 cropButton.innerHTML = '<i class="fas fa-check text-xs mr-1"></i> 確認剪裁';
@@ -1071,7 +1138,6 @@
             }
         }
 
-        // [MODIFIED] Crop rectangle style
         const startCropSelection = (o) => { if (!isCropping) return; isDrawingCropRect = true; const pointer = canvas.getPointer(o.e); cropOrigin.x = pointer.x; cropOrigin.y = pointer.y; if(cropRect) canvas.remove(cropRect); cropRect = new fabric.Rect({ left: cropOrigin.x, top: cropOrigin.y, width: 0, height: 0, fill: 'transparent', stroke: '#0d6efd', strokeDashArray: [5, 5], strokeWidth: 2, selectable: false }); canvas.add(cropRect); }; const moveCropSelection = (o) => { if (!isDrawingCropRect) return; const pointer = canvas.getPointer(o.e); let left = cropOrigin.x, top = cropOrigin.y, width = pointer.x - cropOrigin.x, height = pointer.y - cropOrigin.y; if (width < 0) { left = pointer.x; width = Math.abs(width); } if (height < 0) { top = pointer.y; height = Math.abs(height); } cropRect.set({ left, top, width, height }); canvas.renderAll(); }; const endCropSelection = (o) => { isDrawingCropRect = false; if (cropRect) { if (cropRect.width < 10 || cropRect.height < 10) { canvas.remove(cropRect); cropRect = null; } else { cropRect.set({ selectable: true }); canvas.setActiveObject(cropRect); } } canvas.renderAll(); };
     </script>
 </body>
