@@ -970,14 +970,37 @@
                 });
             }
 
+            // --- 【修正】檔案讀取與中文編碼處理 ---
             fileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
-                originalFilename = file.name.replace(/\.[^/.]+$/, ""); 
+                originalFilename = file.name.replace(/\.[^/.]+$/, "");
                 currentFilename.textContent = file.name;
+                
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const doc = new DOMParser().parseFromString(e.target.result, 'text/html');
+                    const buffer = e.target.result;
+                    let decodedContent;
+
+                    // 參照成功案例，優先使用 UTF-8 解碼
+                    try {
+                        decodedContent = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+                    } catch (error) {
+                        // 若 UTF-8 解碼失敗，則嘗試使用 BIG5 作為備用解碼方案
+                        console.warn('UTF-8 decoding failed, trying BIG5.', error);
+                        try {
+                           decodedContent = new TextDecoder('big5').decode(buffer);
+                           showNotification('提示：檔案已成功使用 BIG5 編碼讀取。');
+                        } catch (big5Error) {
+                           showNotification('錯誤：無法識別檔案編碼，請確認檔案為 UTF-8 或 BIG5。');
+                           console.error('BIG5 decoding also failed.', big5Error);
+                           contentDisplay.innerHTML = '<p style="color: red;">錯誤：無法解析檔案編碼。</p>';
+                           return;
+                        }
+                    }
+
+                    // 使用解碼後的內容繼續後續操作
+                    const doc = new DOMParser().parseFromString(decodedContent, 'text/html');
                     if (doc.body && doc.body.innerHTML.trim()) {
                         const styleContent = doc.querySelector('style') ? doc.querySelector('style').innerHTML : '';
                         contentDisplay.innerHTML = styleContent ? `<style>${styleContent}</style>${doc.body.innerHTML}` : doc.body.innerHTML;
@@ -1000,7 +1023,8 @@
                     historyStack = [];
                     saveState();
                 };
-                reader.readAsText(file);
+                // 將讀取方式從 readAsText 改為 readAsArrayBuffer
+                reader.readAsArrayBuffer(file);
                 fileInput.value = '';
             });
             
