@@ -146,315 +146,348 @@
         .instruction-card p {
              color: var(--text-muted-color);
         }
+
+        /* ===== 仿macOS視窗圓點 ===== */
+        .traffic-lights {
+            position: absolute;
+            top: 1rem; /* 16px */
+            left: 1rem; /* 16px */
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 0.5px solid rgba(0, 0, 0, 0.06);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06) inset;
+        }
+        .dot.red { background: #ff5f57; }
+        .dot.yellow { background: #febc2e; }
+        .dot.green { background: #28c840; }
     </style>
 </head>
 <body class="flex flex-col items-center justify-start p-4 md:p-8 min-h-screen">
     
     <!-- Theme Toggle Button -->
-    <div class="absolute top-4 right-4 z-10">
+    <div class="absolute top-4 right-4 z-50">
         <button id="theme-toggle" title="切換明暗主題" class="tool-button p-2 rounded-full shadow-md w-10 h-10 flex items-center justify-center">
             <i id="theme-icon" class="fas fa-sun"></i>
         </button>
     </div>
 
-    <div class="w-full mb-4 text-center">
-        <h1 class="text-xl md:text-2xl font-bold panel-heading">照片編輯工具</h1>
-        <p class="text-sm text-muted mt-0.5">在瀏覽器端編輯照片，提供風格濾鏡特效、色彩光影調整及文字添加等功能</p>
-        <p class="text-sm text-muted mt-0">製作者：陳政德</p>
-    </div>
-
-    <div id="main-container" class="flex flex-col md:flex-row w-full gap-3 items-start max-w-7xl">
+    <!-- (修正後) 新增主應用程式容器，用於統一佈局與定位 -->
+    <div class="relative w-full max-w-7xl p-4 md:p-6 rounded-xl container-card">
         
-        <div id="canvas-wrapper" class="relative flex-1 w-full bg-gray-200 rounded-xl shadow-inner flex items-center justify-center p-2 overflow-auto container-card" style="height: 80vh;">
-            <canvas id="photo-canvas" class="rounded-xl"></canvas>
-            <canvas id="grid-canvas" class="absolute top-0 left-0 pointer-events-none hidden"></canvas>
+        <!-- (修正後) macOS視窗圓點移至此處 -->
+        <div class="traffic-lights" aria-hidden="true">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+        </div>
+        
+        <!-- 標題區塊 -->
+        <div class="w-full mb-4 text-center pt-5">
+            <h1 class="text-xl md:text-2xl font-bold panel-heading">照片編輯工具</h1>
+            <p class="text-sm text-muted mt-0.5">在瀏覽器端編輯照片，提供風格濾鏡特效、色彩光影調整及文字添加等功能</p>
+            <p class="text-sm text-muted mt-0">製作者：陳政德</p>
         </div>
 
-        <div id="tools-panel" class="w-full md:w-80 flex flex-col gap-2 p-2 rounded-xl container-card max-h-[80vh] overflow-y-auto">
+        <!-- 主要內容區塊 -->
+        <div id="main-container" class="flex flex-col md:flex-row w-full gap-3 items-start">
             
-            <!-- Layer Panel -->
-            <div>
-                <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
-                    <h2 class="text-base font-bold panel-heading">圖層管理</h2>
-                    <i class="fas fa-chevron-down chevron text-muted"></i>
-                </div>
-                <div class="collapsible-content">
-                    <div id="layer-panel" class="p-1 rounded-lg shadow-sm tool-panel">
-                        <div id="layer-list" class="max-h-48 overflow-y-auto border rounded-md bg-input text-xs" style="border-color: var(--border-color);">
-                           <!-- Layer items will be dynamically inserted here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Basic Tools -->
-            <div>
-                <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
-                    <h2 class="text-base font-bold panel-heading">基本工具</h2>
-                    <i class="fas fa-chevron-down chevron text-muted"></i>
-                </div>
-                <div class="collapsible-content">
-                    <div class="p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1">
-                        <div class="flex justify-between items-center gap-1">
-                            <label for="image-upload" title="從電腦選擇一張照片 (支援 JPG, PNG, HEIC, PDF)" class="cursor-pointer tool-button upload-btn py-2 px-3 rounded-xl shadow-sm text-sm font-bold w-1/2 text-center">
-                                <i class="fas fa-upload text-sm mr-1"></i> 選擇照片
-                            </label>
-                            <input type="file" id="image-upload" accept="image/*,.heic,.heif,.pdf" class="hidden">
-                            <button id="undo-btn" class="tool-button undo-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="復原上一步 (Ctrl+Z)"><i class="fas fa-reply text-sm"></i></button>
-                            <button id="reset-btn" class="tool-button reset-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="重設所有變更"><i class="fas fa-rotate-left text-sm"></i></button>
-                        </div>
-                        <div class="slider-control-group">
-                            <label for="zoom-slider" class="block text-xs font-medium text-muted flex-shrink-0">縮放</label>
-                            <button class="slider-arrow-btn" onclick="adjustSlider('zoom-slider', -0.05)" title="縮小">-</button>
-                            <input type="range" id="zoom-slider" min="0.1" max="5" value="1" step="0.05" title="調整圖片縮放比例">
-                            <button class="slider-arrow-btn" onclick="adjustSlider('zoom-slider', 0.05)" title="放大">+</button>
-                            <span id="zoom-value" class="text-xs text-muted w-8 text-right">100%</span>
-                        </div>
-                        <div class="slider-control-group">
-                            <label for="rotate-slider" class="block text-xs font-medium text-muted flex-shrink-0">旋轉</label>
-                            <button class="slider-arrow-btn" onclick="adjustSlider('rotate-slider', -1)" title="逆時針旋轉">-</button>
-                            <input type="range" id="rotate-slider" min="-180" max="180" value="0" step="1" title="旋轉圖片">
-                            <button class="slider-arrow-btn" onclick="adjustSlider('rotate-slider', 1)" title="順時針旋轉">+</button>
-                            <span id="rotate-value" class="text-xs text-muted w-8 text-right">0°</span>
-                        </div>
-                        <button id="crop-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm w-full text-xs" title="剪裁圖片"><i class="fas fa-crop-simple text-xs mr-1"></i> 剪裁</button>
-                        <div class="grid grid-cols-3 gap-1 mt-1">
-                            <button id="flip-h-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="水平翻轉"><i class="fas fa-arrows-alt-h text-xs mr-1"></i>水平翻轉</button>
-                            <button id="flip-v-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="垂直翻轉"><i class="fas fa-arrows-alt-v text-xs mr-1"></i>垂直翻轉</button>
-                             <button id="grid-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="顯示/隱藏網格線"><i class="fas fa-border-all text-xs mr-1"></i>網格線</button>
-                        </div>
-                    </div>
-                </div>
+            <div id="canvas-wrapper" class="relative flex-1 w-full bg-gray-200 rounded-xl shadow-inner flex items-center justify-center p-2 overflow-auto container-card" style="height: 80vh;">
+                <canvas id="photo-canvas" class="rounded-xl"></canvas>
+                <canvas id="grid-canvas" class="absolute top-0 left-0 pointer-events-none hidden"></canvas>
             </div>
 
-            <!-- View Tools -->
-            <div>
-                <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
-                    <h2 class="text-base font-bold panel-heading">檢視工具</h2>
-                    <i class="fas fa-chevron-down chevron text-muted"></i>
-                </div>
-                <div class="collapsible-content">
-                    <div class="p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1">
-                        <div class="flex flex-wrap gap-1 justify-center">
-                            <button id="fullscreen-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs" title="進入全螢幕相片檢視模式 (ESC退出)">全螢幕</button>
-                            <button id="fit-canvas-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs" title="將圖片縮放至最適合畫布的大小">縮放至畫布</button>
-                            <button id="color-picker-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs" title="點選畫布獲取顏色資訊">色彩選擇器</button>
-                        </div>
-                        <div id="color-picker-display" class="hidden mt-1 p-2 bg-input rounded-lg text-xs font-mono flex justify-between items-center">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold">RGB:</span>
-                                <span id="rgb-value">---, ---, ---</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold">HEX:</span>
-                                <span id="hex-value">#------</span>
+            <div id="tools-panel" class="w-full md:w-80 flex flex-col gap-2 p-2 rounded-xl container-card max-h-[80vh] overflow-y-auto">
+                
+                <!-- Layer Panel -->
+                <div>
+                    <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                        <h2 class="text-base font-bold panel-heading">圖層管理</h2>
+                        <i class="fas fa-chevron-down chevron text-muted"></i>
+                    </div>
+                    <div class="collapsible-content">
+                        <div id="layer-panel" class="p-1 rounded-lg shadow-sm tool-panel">
+                            <div id="layer-list" class="max-h-48 overflow-y-auto border rounded-md bg-input text-xs" style="border-color: var(--border-color);">
+                               <!-- Layer items will be dynamically inserted here -->
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+                
+                <!-- Basic Tools -->
+                <div>
+                    <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                        <h2 class="text-base font-bold panel-heading">基本工具</h2>
+                        <i class="fas fa-chevron-down chevron text-muted"></i>
+                    </div>
+                    <div class="collapsible-content">
+                        <div class="p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1">
+                            <div class="flex justify-between items-center gap-1">
+                                <label for="image-upload" title="從電腦選擇一張照片 (支援 JPG, PNG, HEIC, PDF)" class="cursor-pointer tool-button upload-btn py-2 px-3 rounded-xl shadow-sm text-sm font-bold w-1/2 text-center">
+                                    <i class="fas fa-upload text-sm mr-1"></i> 選擇照片
+                                </label>
+                                <input type="file" id="image-upload" accept="image/*,.heic,.heif,.pdf" class="hidden">
+                                <button id="undo-btn" class="tool-button undo-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="復原上一步 (Ctrl+Z)"><i class="fas fa-reply text-sm"></i></button>
+                                <button id="reset-btn" class="tool-button reset-btn py-2 px-3 rounded-xl shadow-sm w-1/4" title="重設所有變更"><i class="fas fa-rotate-left text-sm"></i></button>
+                            </div>
+                            <div class="slider-control-group">
+                                <label for="zoom-slider" class="block text-xs font-medium text-muted flex-shrink-0">縮放</label>
+                                <button class="slider-arrow-btn" onclick="adjustSlider('zoom-slider', -0.05)" title="縮小">-</button>
+                                <input type="range" id="zoom-slider" min="0.1" max="5" value="1" step="0.05" title="調整圖片縮放比例">
+                                <button class="slider-arrow-btn" onclick="adjustSlider('zoom-slider', 0.05)" title="放大">+</button>
+                                <span id="zoom-value" class="text-xs text-muted w-8 text-right">100%</span>
+                            </div>
+                            <div class="slider-control-group">
+                                <label for="rotate-slider" class="block text-xs font-medium text-muted flex-shrink-0">旋轉</label>
+                                <button class="slider-arrow-btn" onclick="adjustSlider('rotate-slider', -1)" title="逆時針旋轉">-</button>
+                                <input type="range" id="rotate-slider" min="-180" max="180" value="0" step="1" title="旋轉圖片">
+                                <button class="slider-arrow-btn" onclick="adjustSlider('rotate-slider', 1)" title="順時針旋轉">+</button>
+                                <span id="rotate-value" class="text-xs text-muted w-8 text-right">0°</span>
+                            </div>
+                            <button id="crop-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm w-full text-xs" title="剪裁圖片"><i class="fas fa-crop-simple text-xs mr-1"></i> 剪裁</button>
+                            <div class="grid grid-cols-3 gap-1 mt-1">
+                                <button id="flip-h-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="水平翻轉"><i class="fas fa-arrows-alt-h text-xs mr-1"></i>水平翻轉</button>
+                                <button id="flip-v-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="垂直翻轉"><i class="fas fa-arrows-alt-v text-xs mr-1"></i>垂直翻轉</button>
+                                 <button id="grid-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="顯示/隱藏網格線"><i class="fas fa-border-all text-xs mr-1"></i>網格線</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- Filter & Effects -->
-            <div>
-                 <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
-                    <h2 class="text-base font-bold panel-heading">濾鏡與特效</h2>
-                    <i class="fas fa-chevron-down chevron text-muted"></i>
-                </div>
-                <div class="collapsible-content">
-                    <div class="p-1 rounded-lg shadow-sm tool-panel flex flex-wrap gap-1">
-                        <button onclick="applyPreset('optimize')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="自動最佳化亮度、對比與色彩">最佳化</button>
-                        <button onclick="applyPreset('landscape')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="增強風景照的色彩與對比">風景</button>
-                        <button onclick="applyPreset('food')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="讓食物照片更鮮豔可口">食物</button>
-                        <button onclick="applyPreset('night')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="增亮夜景並添加冷色調">夜景</button>
-                        <button onclick="applyFilter('grayscale')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用黑白濾鏡">黑白</button>
-                        <button onclick="applyFilter('sepia')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用復古棕褐色濾鏡">復古</button>
-                        <button onclick="applyFilter('sharpen')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用銳化效果">銳化</button>
-                        <button onclick="applyFilter('clarity')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用清晰效果">清晰</button>
-                        <button onclick="applyFilter('pixelate')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用像素化效果">像素化</button>
-                        <button onclick="applyFilter('vignette')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="新增暗角效果">暈影</button>
-                        <button onclick="applyFilter('noise')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="新增雜訊顆粒效果">雜訊</button>
-                        <button onclick="applyFilter('emboss')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用浮雕效果">浮雕</button>
+                <!-- View Tools -->
+                <div>
+                    <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                        <h2 class="text-base font-bold panel-heading">檢視工具</h2>
+                        <i class="fas fa-chevron-down chevron text-muted"></i>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Advanced Tools -->
-            <div>
-                <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
-                    <h2 class="text-base font-bold panel-heading">進階工具</h2>
-                    <i class="fas fa-chevron-down chevron text-muted"></i>
-                </div>
-                <div class="collapsible-content">
-                    <div class="p-1 rounded-lg shadow-sm tool-panel tool-slider-container">
-                        <div class="slider-control-group">
-                            <label for="brightness-slider" class="text-xs font-medium text-muted flex-shrink-0">亮度</label>
-                            <input type="range" id="brightness-slider" min="-1" max="1" value="0" step="0.01" title="調整亮度">
-                        </div>
-                        <div class="slider-control-group">
-                            <label for="contrast-slider" class="text-xs font-medium text-muted flex-shrink-0">對比度</label>
-                            <input type="range" id="contrast-slider" min="-1" max="1" value="0" step="0.01" title="調整對比度">
-                        </div>
-                        <div class="slider-control-group">
-                            <label for="saturation-slider" class="text-xs font-medium text-muted flex-shrink-0">飽和度</label>
-                            <input type="range" id="saturation-slider" min="-1" max="1" value="0" step="0.01" title="調整飽和度">
-                        </div>
-                        <div class="slider-control-group">
-                            <label for="hue-slider" class="text-xs font-medium text-muted flex-shrink-0">色相</label>
-                            <input type="range" id="hue-slider" min="-1" max="1" value="0" step="0.01" title="調整色相">
-                        </div>
-                        <div class="slider-control-group">
-                            <label for="temperature-slider" class="text-xs font-medium text-muted flex-shrink-0">色溫</label>
-                            <input type="range" id="temperature-slider" min="-100" max="100" value="0" step="1" title="調整色溫 (冷-暖)">
+                    <div class="collapsible-content">
+                        <div class="p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1">
+                            <div class="flex flex-wrap gap-1 justify-center">
+                                <button id="fullscreen-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs" title="進入全螢幕相片檢視模式 (ESC退出)">全螢幕</button>
+                                <button id="fit-canvas-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs" title="將圖片縮放至最適合畫布的大小">縮放至畫布</button>
+                                <button id="color-picker-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs" title="點選畫布獲取顏色資訊">色彩選擇器</button>
+                            </div>
+                            <div id="color-picker-display" class="hidden mt-1 p-2 bg-input rounded-lg text-xs font-mono flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold">RGB:</span>
+                                    <span id="rgb-value">---, ---, ---</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold">HEX:</span>
+                                    <span id="hex-value">#------</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Special Effects Adjustment Panel -->
-            <div id="effects-adjustment-panel" class="hidden">
-                 <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
-                    <h2 class="text-base font-bold panel-heading">特效調整</h2>
-                    <i class="fas fa-chevron-down chevron text-muted"></i>
-                </div>
-                <div class="collapsible-content">
-                    <div class="p-1 rounded-lg shadow-sm tool-panel tool-slider-container">
-                        <div id="clarity-control" class="slider-control-group hidden">
-                            <label for="clarity-slider" class="text-xs font-medium text-muted flex-shrink-0">清晰度</label>
-                            <input type="range" id="clarity-slider" min="0" max="1.5" value="0.5" step="0.05" title="調整清晰度">
-                        </div>
-                        <div id="pixelate-control" class="slider-control-group hidden">
-                            <label for="pixelate-slider" class="text-xs font-medium text-muted flex-shrink-0">像素大小</label>
-                            <input type="range" id="pixelate-slider" min="2" max="30" value="8" step="1" title="調整像素大小">
-                        </div>
-                        <div id="vignette-control" class="slider-control-group hidden">
-                            <label for="vignette-slider" class="text-xs font-medium text-muted flex-shrink-0">暈影強度</label>
-                            <input type="range" id="vignette-slider" min="0" max="1" value="0.5" step="0.01" title="調整暈影強度">
-                        </div>
-                        <div id="noise-control" class="slider-control-group hidden">
-                            <label for="noise-slider" class="text-xs font-medium text-muted flex-shrink-0">雜訊密度</label>
-                            <input type="range" id="noise-slider" min="0" max="500" value="100" step="10" title="調整雜訊密度">
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Text & Shape Tools -->
-            <div>
-                 <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
-                    <h2 class="text-base font-bold panel-heading">文字與圖形工具</h2>
-                    <i class="fas fa-chevron-down chevron text-muted"></i>
+                <!-- Filter & Effects -->
+                <div>
+                     <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                        <h2 class="text-base font-bold panel-heading">濾鏡與特效</h2>
+                        <i class="fas fa-chevron-down chevron text-muted"></i>
+                    </div>
+                    <div class="collapsible-content">
+                        <div class="p-1 rounded-lg shadow-sm tool-panel flex flex-wrap gap-1">
+                            <button onclick="applyPreset('optimize')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="自動最佳化亮度、對比與色彩">最佳化</button>
+                            <button onclick="applyPreset('landscape')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="增強風景照的色彩與對比">風景</button>
+                            <button onclick="applyPreset('food')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="讓食物照片更鮮豔可口">食物</button>
+                            <button onclick="applyPreset('night')" class="filter-btn tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="增亮夜景並添加冷色調">夜景</button>
+                            <button onclick="applyFilter('grayscale')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用黑白濾鏡">黑白</button>
+                            <button onclick="applyFilter('sepia')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用復古棕褐色濾鏡">復古</button>
+                            <button onclick="applyFilter('sharpen')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用銳化效果">銳化</button>
+                            <button onclick="applyFilter('clarity')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用清晰效果">清晰</button>
+                            <button onclick="applyFilter('pixelate')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用像素化效果">像素化</button>
+                            <button onclick="applyFilter('vignette')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="新增暗角效果">暈影</button>
+                            <button onclick="applyFilter('noise')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="新增雜訊顆粒效果">雜訊</button>
+                            <button onclick="applyFilter('emboss')" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs" title="套用浮雕效果">浮雕</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="collapsible-content">
-                    <div class="p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1 mb-1">
-                        <div class="flex gap-1">
-                            <label for="insert-image-upload" class="cursor-pointer tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3 text-center flex items-center justify-center" title="在照片上插入一張圖片"><i class="fas fa-image text-xs mr-1"></i>插入圖片</label>
-                            <input type="file" id="insert-image-upload" accept="image/*,.heic,.heif,.pdf" class="hidden">
-                            <button id="add-text-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3" title="在照片上加入可編輯的文字"><i class="fas fa-font text-xs mr-1"></i>加入文字</button>
-                            <button id="add-shape-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3" title="在照片上加入圖形"><i class="fas fa-shapes text-xs mr-1"></i>加入圖形</button>
+                
+                <!-- Advanced Tools -->
+                <div>
+                    <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                        <h2 class="text-base font-bold panel-heading">進階工具</h2>
+                        <i class="fas fa-chevron-down chevron text-muted"></i>
+                    </div>
+                    <div class="collapsible-content">
+                        <div class="p-1 rounded-lg shadow-sm tool-panel tool-slider-container">
+                            <div class="slider-control-group">
+                                <label for="brightness-slider" class="text-xs font-medium text-muted flex-shrink-0">亮度</label>
+                                <input type="range" id="brightness-slider" min="-1" max="1" value="0" step="0.01" title="調整亮度">
+                            </div>
+                            <div class="slider-control-group">
+                                <label for="contrast-slider" class="text-xs font-medium text-muted flex-shrink-0">對比度</label>
+                                <input type="range" id="contrast-slider" min="-1" max="1" value="0" step="0.01" title="調整對比度">
+                            </div>
+                            <div class="slider-control-group">
+                                <label for="saturation-slider" class="text-xs font-medium text-muted flex-shrink-0">飽和度</label>
+                                <input type="range" id="saturation-slider" min="-1" max="1" value="0" step="0.01" title="調整飽和度">
+                            </div>
+                            <div class="slider-control-group">
+                                <label for="hue-slider" class="text-xs font-medium text-muted flex-shrink-0">色相</label>
+                                <input type="range" id="hue-slider" min="-1" max="1" value="0" step="0.01" title="調整色相">
+                            </div>
+                            <div class="slider-control-group">
+                                <label for="temperature-slider" class="text-xs font-medium text-muted flex-shrink-0">色溫</label>
+                                <input type="range" id="temperature-slider" min="-100" max="100" value="0" step="1" title="調整色溫 (冷-暖)">
+                            </div>
                         </div>
-                        <div id="text-options" class="hidden flex flex-col gap-1 mt-1 p-2 bg-input rounded-lg">
-                            <label for="font-family" class="text-xs font-medium text-muted">字型</label>
-                            <select id="font-family" class="w-full p-1 rounded-md border text-sm" style="border-color: var(--border-color);">
-                                 <option value="Noto Sans TC" style="--font-family-name: 'Noto Sans TC'">思源黑體 (標準)</option>
-                                 <option value="Noto Serif TC" style="--font-family-name: 'Noto Serif TC'">思源宋體 (優雅)</option>
-                                 <option value="GenSenRounded TW" style="--font-family-name: 'GenSenRounded TW'">源泉圓體 (圓潤)</option>
-                                 <option value="GenYoMin" style="--font-family-name: 'GenYoMin'">源樣明體 (復古)</option>
-                                 <option value="Ma Shan Zheng" style="--font-family-name: 'Ma Shan Zheng'">馬善政 (書法)</option>
-                                 <option value="ZCOOL KuaiLe" style="--font-family-name: 'ZCOOL KuaiLe'">站酷快樂體 (可愛)</option>
-                                 <option value="sans-serif" style="--font-family-name: sans-serif">系統無襯線</option>
-                                 <option value="serif" style="--font-family-name: serif">系統襯線</option>
-                            </select>
-                            <label for="font-size" class="text-xs font-medium text-muted mt-2">大小</label>
-                            <input type="range" id="font-size" min="10" max="200" value="40" class="w-full">
-                            <label for="font-color" class="text-xs font-medium text-muted mt-2">顏色</label>
-                            <input type="color" id="font-color" value="#000000" class="w-full h-8 p-0 border-none cursor-pointer rounded-md">
+                    </div>
+                </div>
+                
+                <!-- Special Effects Adjustment Panel -->
+                <div id="effects-adjustment-panel" class="hidden">
+                     <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                        <h2 class="text-base font-bold panel-heading">特效調整</h2>
+                        <i class="fas fa-chevron-down chevron text-muted"></i>
+                    </div>
+                    <div class="collapsible-content">
+                        <div class="p-1 rounded-lg shadow-sm tool-panel tool-slider-container">
+                            <div id="clarity-control" class="slider-control-group hidden">
+                                <label for="clarity-slider" class="text-xs font-medium text-muted flex-shrink-0">清晰度</label>
+                                <input type="range" id="clarity-slider" min="0" max="1.5" value="0.5" step="0.05" title="調整清晰度">
+                            </div>
+                            <div id="pixelate-control" class="slider-control-group hidden">
+                                <label for="pixelate-slider" class="text-xs font-medium text-muted flex-shrink-0">像素大小</label>
+                                <input type="range" id="pixelate-slider" min="2" max="30" value="8" step="1" title="調整像素大小">
+                            </div>
+                            <div id="vignette-control" class="slider-control-group hidden">
+                                <label for="vignette-slider" class="text-xs font-medium text-muted flex-shrink-0">暈影強度</label>
+                                <input type="range" id="vignette-slider" min="0" max="1" value="0.5" step="0.01" title="調整暈影強度">
+                            </div>
+                            <div id="noise-control" class="slider-control-group hidden">
+                                <label for="noise-slider" class="text-xs font-medium text-muted flex-shrink-0">雜訊密度</label>
+                                <input type="range" id="noise-slider" min="0" max="500" value="100" step="10" title="調整雜訊密度">
+                            </div>
                         </div>
-                        <div id="shape-options" class="hidden flex flex-col gap-1 mt-1 p-2 bg-input rounded-lg">
+                    </div>
+                </div>
+
+                <!-- Text & Shape Tools -->
+                <div>
+                     <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                        <h2 class="text-base font-bold panel-heading">文字與圖形工具</h2>
+                        <i class="fas fa-chevron-down chevron text-muted"></i>
+                    </div>
+                    <div class="collapsible-content">
+                        <div class="p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1 mb-1">
+                            <div class="flex gap-1">
+                                <label for="insert-image-upload" class="cursor-pointer tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3 text-center flex items-center justify-center" title="在照片上插入一張圖片"><i class="fas fa-image text-xs mr-1"></i>插入圖片</label>
+                                <input type="file" id="insert-image-upload" accept="image/*,.heic,.heif,.pdf" class="hidden">
+                                <button id="add-text-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3" title="在照片上加入可編輯的文字"><i class="fas fa-font text-xs mr-1"></i>加入文字</button>
+                                <button id="add-shape-btn" class="tool-button py-1 px-3 rounded-xl shadow-sm text-xs w-1/3" title="在照片上加入圖形"><i class="fas fa-shapes text-xs mr-1"></i>加入圖形</button>
+                            </div>
+                            <div id="text-options" class="hidden flex flex-col gap-1 mt-1 p-2 bg-input rounded-lg">
+                                <label for="font-family" class="text-xs font-medium text-muted">字型</label>
+                                <select id="font-family" class="w-full p-1 rounded-md border text-sm" style="border-color: var(--border-color);">
+                                     <option value="Noto Sans TC" style="--font-family-name: 'Noto Sans TC'">思源黑體 (標準)</option>
+                                     <option value="Noto Serif TC" style="--font-family-name: 'Noto Serif TC'">思源宋體 (優雅)</option>
+                                     <option value="GenSenRounded TW" style="--font-family-name: 'GenSenRounded TW'">源泉圓體 (圓潤)</option>
+                                     <option value="GenYoMin" style="--font-family-name: 'GenYoMin'">源樣明體 (復古)</option>
+                                     <option value="Ma Shan Zheng" style="--font-family-name: 'Ma Shan Zheng'">馬善政 (書法)</option>
+                                     <option value="ZCOOL KuaiLe" style="--font-family-name: 'ZCOOL KuaiLe'">站酷快樂體 (可愛)</option>
+                                     <option value="sans-serif" style="--font-family-name: sans-serif">系統無襯線</option>
+                                     <option value="serif" style="--font-family-name: serif">系統襯線</option>
+                                </select>
+                                <label for="font-size" class="text-xs font-medium text-muted mt-2">大小</label>
+                                <input type="range" id="font-size" min="10" max="200" value="40" class="w-full">
+                                <label for="font-color" class="text-xs font-medium text-muted mt-2">顏色</label>
+                                <input type="color" id="font-color" value="#000000" class="w-full h-8 p-0 border-none cursor-pointer rounded-md">
+                            </div>
+                            <div id="shape-options" class="hidden flex flex-col gap-1 mt-1 p-2 bg-input rounded-lg">
+                                <div class="flex flex-wrap gap-1">
+                                    <button onclick="handleAddShape('line')" class="tool-button p-2 rounded-xl" title="直線"><i class="fas fa-minus"></i></button>
+                                    <button onclick="handleAddShape('rect')" class="tool-button p-2 rounded-xl" title="框線"><i class="far fa-square"></i></button>
+                                    <button onclick="handleAddShape('circle')" class="tool-button p-2 rounded-xl" title="圓形"><i class="far fa-circle"></i></button>
+                                    <button onclick="handleAddShape('arrow')" class="tool-button p-2 rounded-xl" title="箭頭"><i class="fas fa-long-arrow-alt-right"></i></button>
+                                    <button onclick="handleAddShape('diamond')" class="tool-button p-2 rounded-xl" title="菱形"><i class="far fa-gem"></i></button>
+                                    <button onclick="handleAddShape('rounded-rect')" class="tool-button p-2 rounded-xl" title="圓角矩形"><i class="fas fa-vector-square"></i></button>
+                                    <button id="free-draw-btn" class="tool-button p-2 rounded-xl" title="自由劃線"><i class="fas fa-pencil-alt"></i></button>
+                                </div>
+                                <div class="mt-2 flex flex-col gap-1">
+                                    <label for="shape-stroke-width" class="text-xs font-medium text-muted">線條寬度</label>
+                                    <input type="range" id="shape-stroke-width" min="1" max="50" value="3" class="w-full">
+                                    <label for="shape-stroke-color" class="text-xs font-medium text-muted">線條顏色</label>
+                                    <input type="color" id="shape-stroke-color" value="#000000" class="w-full h-8 p-0 border-none cursor-pointer rounded-md">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Object Tools -->
+                <div>
+                     <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                        <h2 class="text-base font-bold panel-heading">物件工具</h2>
+                        <i class="fas fa-chevron-down chevron text-muted"></i>
+                    </div>
+                    <div class="collapsible-content">
+                        <div class="p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1">
                             <div class="flex flex-wrap gap-1">
-                                <button onclick="handleAddShape('line')" class="tool-button p-2 rounded-xl" title="直線"><i class="fas fa-minus"></i></button>
-                                <button onclick="handleAddShape('rect')" class="tool-button p-2 rounded-xl" title="框線"><i class="far fa-square"></i></button>
-                                <button onclick="handleAddShape('circle')" class="tool-button p-2 rounded-xl" title="圓形"><i class="far fa-circle"></i></button>
-                                <button onclick="handleAddShape('arrow')" class="tool-button p-2 rounded-xl" title="箭頭"><i class="fas fa-long-arrow-alt-right"></i></button>
-                                <button onclick="handleAddShape('diamond')" class="tool-button p-2 rounded-xl" title="菱形"><i class="far fa-gem"></i></button>
-                                <button onclick="handleAddShape('rounded-rect')" class="tool-button p-2 rounded-xl" title="圓角矩形"><i class="fas fa-vector-square"></i></button>
-                                <button id="free-draw-btn" class="tool-button p-2 rounded-xl" title="自由劃線"><i class="fas fa-pencil-alt"></i></button>
+                                <button id="cut-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="剪下 (Ctrl+X)"><i class="fas fa-cut text-xs mr-1"></i> 剪下</button>
+                                <button id="copy-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="複製 (Ctrl+C)"><i class="fas fa-copy text-xs mr-1"></i> 複製</button>
+                                <button id="paste-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="貼上 (Ctrl+V)"><i class="fas fa-paste text-xs mr-1"></i> 貼上</button>
+                                <button id="group-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="群組物件 (Shift+點選多個物件)"><i class="fas fa-object-group text-xs mr-1"></i> 群組</button>
+                                <button id="ungroup-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="取消群組"><i class="fas fa-object-ungroup text-xs mr-1"></i> 取消群組</button>
+                                <button id="delete-btn" class="tool-button reset-btn py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="刪除 (Delete)"><i class="fas fa-trash-alt text-xs mr-1"></i> 刪除</button>
                             </div>
-                            <div class="mt-2 flex flex-col gap-1">
-                                <label for="shape-stroke-width" class="text-xs font-medium text-muted">線條寬度</label>
-                                <input type="range" id="shape-stroke-width" min="1" max="50" value="3" class="w-full">
-                                <label for="shape-stroke-color" class="text-xs font-medium text-muted">線條顏色</label>
-                                <input type="color" id="shape-stroke-color" value="#000000" class="w-full h-8 p-0 border-none cursor-pointer rounded-md">
+                            <div id="object-options" class="hidden p-1 mt-1 tool-slider-container">
+                                 <div class="slider-control-group">
+                                    <label for="object-rotate-slider" class="text-xs font-medium text-muted flex-shrink-0">旋轉</label>
+                                    <input type="range" id="object-rotate-slider" min="-180" max="180" value="0" step="1" title="旋轉物件">
+                                    <span id="object-rotate-value" class="text-xs text-muted w-8 text-right">0°</span>
+                                </div>
+                            </div>
+                            <div id="align-options" class="hidden p-1 mt-1 bg-input rounded-lg grid grid-cols-6 gap-1">
+                                <button onclick="handleAlign('left')" class="tool-button p-2 rounded-md" title="靠左對齊"><i class="fas fa-align-left"></i></button>
+                                <button onclick="handleAlign('h-center')" class="tool-button p-2 rounded-md" title="水平置中"><i class="fas fa-align-center"></i></button>
+                                <button onclick="handleAlign('right')" class="tool-button p-2 rounded-md" title="靠右對齊"><i class="fas fa-align-right"></i></button>
+                                <button onclick="handleAlign('top')" class="tool-button p-2 rounded-md" title="靠上對齊"><i class="fas fa-align-left fa-rotate-90"></i></button>
+                                <button onclick="handleAlign('v-center')" class="tool-button p-2 rounded-md" title="垂直置中"><i class="fas fa-align-center fa-rotate-90"></i></button>
+                                <button onclick="handleAlign('bottom')" class="tool-button p-2 rounded-md" title="靠下對齊"><i class="fas fa-align-right fa-rotate-90"></i></button>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Object Tools -->
-            <div>
-                 <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
-                    <h2 class="text-base font-bold panel-heading">物件工具</h2>
-                    <i class="fas fa-chevron-down chevron text-muted"></i>
-                </div>
-                <div class="collapsible-content">
-                    <div class="p-1 rounded-lg shadow-sm tool-panel flex flex-col gap-1">
-                        <div class="flex flex-wrap gap-1">
-                            <button id="cut-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="剪下 (Ctrl+X)"><i class="fas fa-cut text-xs mr-1"></i> 剪下</button>
-                            <button id="copy-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="複製 (Ctrl+C)"><i class="fas fa-copy text-xs mr-1"></i> 複製</button>
-                            <button id="paste-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="貼上 (Ctrl+V)"><i class="fas fa-paste text-xs mr-1"></i> 貼上</button>
-                            <button id="group-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="群組物件 (Shift+點選多個物件)"><i class="fas fa-object-group text-xs mr-1"></i> 群組</button>
-                            <button id="ungroup-btn" class="tool-button py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="取消群組"><i class="fas fa-object-ungroup text-xs mr-1"></i> 取消群組</button>
-                            <button id="delete-btn" class="tool-button reset-btn py-1 px-2 rounded-xl shadow-sm text-xs grow" disabled title="刪除 (Delete)"><i class="fas fa-trash-alt text-xs mr-1"></i> 刪除</button>
-                        </div>
-                        <div id="object-options" class="hidden p-1 mt-1 tool-slider-container">
-                             <div class="slider-control-group">
-                                <label for="object-rotate-slider" class="text-xs font-medium text-muted flex-shrink-0">旋轉</label>
-                                <input type="range" id="object-rotate-slider" min="-180" max="180" value="0" step="1" title="旋轉物件">
-                                <span id="object-rotate-value" class="text-xs text-muted w-8 text-right">0°</span>
-                            </div>
-                        </div>
-                        <div id="align-options" class="hidden p-1 mt-1 bg-input rounded-lg grid grid-cols-6 gap-1">
-                            <button onclick="handleAlign('left')" class="tool-button p-2 rounded-md" title="靠左對齊"><i class="fas fa-align-left"></i></button>
-                            <button onclick="handleAlign('h-center')" class="tool-button p-2 rounded-md" title="水平置中"><i class="fas fa-align-center"></i></button>
-                            <button onclick="handleAlign('right')" class="tool-button p-2 rounded-md" title="靠右對齊"><i class="fas fa-align-right"></i></button>
-                            <button onclick="handleAlign('top')" class="tool-button p-2 rounded-md" title="靠上對齊"><i class="fas fa-align-left fa-rotate-90"></i></button>
-                            <button onclick="handleAlign('v-center')" class="tool-button p-2 rounded-md" title="垂直置中"><i class="fas fa-align-center fa-rotate-90"></i></button>
-                            <button onclick="handleAlign('bottom')" class="tool-button p-2 rounded-md" title="靠下對齊"><i class="fas fa-align-right fa-rotate-90"></i></button>
-                        </div>
+                
+                <!-- Download Section -->
+                <div>
+                    <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
+                        <h2 class="text-base font-bold panel-heading">下載</h2>
+                        <i class="fas fa-chevron-down chevron text-muted"></i>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Download Section -->
-            <div>
-                <div class="collapsible-header flex justify-between items-center cursor-pointer p-1">
-                    <h2 class="text-base font-bold panel-heading">下載</h2>
-                    <i class="fas fa-chevron-down chevron text-muted"></i>
-                </div>
-                <div class="collapsible-content">
-                    <div class="p-1 rounded-lg shadow-sm tool-panel">
-                        <div class="flex gap-2 mb-2">
-                            <div class="w-1/2">
-                                <label for="download-format" class="block mb-1 text-xs font-bold text-muted">照片類型</label>
-                                <select id="download-format" class="w-full px-1 py-0.5 rounded-md border text-xs bg-input" style="border-color: var(--border-color);">
-                                    <option value="jpeg" selected>JPG</option>
-                                    <option value="png">PNG</option>
-                                    <option value="svg">SVG</option>
-                                    <option value="pdf">PDF</option>
-                                </select>
+                    <div class="collapsible-content">
+                        <div class="p-1 rounded-lg shadow-sm tool-panel">
+                            <div class="flex gap-2 mb-2">
+                                <div class="w-1/2">
+                                    <label for="download-format" class="block mb-1 text-xs font-bold text-muted">照片類型</label>
+                                    <select id="download-format" class="w-full px-1 py-0.5 rounded-md border text-xs bg-input" style="border-color: var(--border-color);">
+                                        <option value="jpeg" selected>JPG</option>
+                                        <option value="png">PNG</option>
+                                        <option value="svg">SVG</option>
+                                        <option value="pdf">PDF</option>
+                                    </select>
+                                </div>
+                                <div class="w-1/2">
+                                    <label for="download-resolution" class="block mb-1 text-xs font-bold text-muted">解析度</label>
+                                    <select id="download-resolution" class="w-full px-1 py-0.5 rounded-md border text-xs bg-input" style="border-color: var(--border-color);">
+                                        <option value="original">原始</option>
+                                        <option value="1280x720">HD (1280x720)</option>
+                                        <option value="1920x1080">Full HD (1920x1080)</option>
+                                        <option value="2560x1440">2K (2560x1440)</option>
+                                        <option value="3840x2160">4K (3840x2160)</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="w-1/2">
-                                <label for="download-resolution" class="block mb-1 text-xs font-bold text-muted">解析度</label>
-                                <select id="download-resolution" class="w-full px-1 py-0.5 rounded-md border text-xs bg-input" style="border-color: var(--border-color);">
-                                    <option value="original">原始</option>
-                                    <option value="1280x720">HD (1280x720)</option>
-                                    <option value="1920x1080">Full HD (1920x1080)</option>
-                                    <option value="2560x1440">2K (2560x1440)</option>
-                                    <option value="3840x2160">4K (3840x2160)</option>
-                                </select>
-                            </div>
+                            <button id="download-btn" class="tool-button download-btn w-full py-2 rounded-xl shadow-md" title="將編輯完成的照片儲存至電腦"><i class="fas fa-download text-sm mr-1"></i>下載照片</button>
                         </div>
-                        <button id="download-btn" class="tool-button download-btn w-full py-2 rounded-xl shadow-md" title="將編輯完成的照片儲存至電腦"><i class="fas fa-download text-sm mr-1"></i>下載照片</button>
                     </div>
                 </div>
             </div>
