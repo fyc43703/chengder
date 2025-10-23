@@ -1,0 +1,636 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>逐字稿校正系統</title>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
+      <style>
+      html, body { margin: 0; padding: 24px; background: #FFFFFF; color: #1d1d1f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; font-size: 15px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+      h1, h2, h3, h4, h5, h6, b, strong { font-weight: 600; } h1 { font-weight: 700; }
+      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; } ul { list-style-type: disc; } ol { list-style-type: decimal; } li { display: list-item; }
+      .hljs-container { padding: 1.5rem; border-radius: .75rem; overflow-x: auto; background: #fcfcfd; border: 1px solid #d2d2d7; }
+      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
+      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
+    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逐字稿校正系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* * 1. macOS 系統字體堆疊 (SF Pro)
+         * 2. 基礎背景色
+         * 3. 明暗主題切換
+        */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background-color: #f5f5f7; /* macOS 淺灰背景 */
+            color: #1d1d1f;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            overflow-x: hidden;
+        }
+
+        /* 暗黑模式 */
+        body.dark-mode {
+            background-color: #1e1e1e;
+            color: #f5f5f7;
+        }
+
+        /* * 視窗容器 - 毛玻璃效果
+         * 採用 backdrop-filter 實現模糊
+        */
+        .window-container {
+            width: 90vw;
+            max-width: 1400px;
+            margin: 3vh auto; /* 減少頂部邊界，並保持水平置中 */
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            overflow: hidden;
+
+            /* 毛玻璃背景 */
+            background: rgba(255, 255, 255, 0.6); /* 淺色模式 */
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            transition: background-color 0.3s ease;
+        }
+
+        body.dark-mode .window-container {
+            background: rgba(40, 40, 40, 0.6); /* 暗色模式 */
+            border: 1px solid rgba(70, 70, 70, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        /* * 標題列
+         * 包含紅綠燈、置中標題、主題切換
+        */
+        .title-bar {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(240, 240, 240, 0.7); /* 淺色模式 */
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, border-bottom 0.3s ease;
+        }
+        
+        body.dark-mode .title-bar {
+            background: rgba(50, 50, 50, 0.7); /* 暗色模式 */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* macOS 紅綠燈 */
+        .traffic-lights {
+            display: flex;
+            gap: 8px;
+        }
+        .traffic-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .dot-red { background-color: #ff5f57; }
+        .dot-yellow { background-color: #ffbd2e; }
+        .dot-green { background-color: #27c93f; }
+
+        .window-title {
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+        }
+        body.dark-mode .window-title {
+            color: #eee;
+        }
+
+        /* 主題切換按鈕 */
+        .theme-toggle-container {
+            display: flex;
+            justify-content: flex-end;
+        }
+        .theme-toggle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.05);
+            transition: background-color 0.2s ease;
+        }
+        .theme-toggle:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+        body.dark-mode .theme-toggle {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        body.dark-mode .theme-toggle:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .theme-icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* 內容區域 */
+        .content-wrapper {
+            padding: 24px;
+        }
+        
+        .main-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .main-title {
+            font-size: 2.25rem; /* 36px */
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        .subtitle {
+            font-size: 1.125rem; /* 18px */
+            color: #6e6e73;
+            margin-top: 8px;
+        }
+        body.dark-mode .subtitle {
+            color: #a1a1a6;
+        }
+
+        /* 控制按鈕列 */
+        .controls {
+            display: flex;
+            justify-content: space-between; /* 改為 space-between */
+            align-items: center; /* 垂直置中 */
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .controls-left-group {
+            display: flex;
+            gap: 16px;
+        }
+
+        /* macOS 風格按鈕 */
+        .mac-button {
+            padding: 10px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #ffffff;
+            background-color: #007aff; /* 系統藍 */
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .mac-button:hover {
+            background-color: #0056b3;
+        }
+        .mac-button:active {
+            transform: scale(0.98);
+        }
+        
+        /* 新增：圖示按鈕樣式 */
+        .mac-button-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px; /* 調整大小為 40x40 */
+            height: 40px;
+            padding: 0;
+            font-size: 16px;
+            font-weight: 500;
+            color: #007aff; /* 系統藍 */
+            background-color: rgba(0, 122, 255, 0.1); /* 淺藍背景 */
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .mac-button-icon:hover {
+            background-color: rgba(0, 122, 255, 0.2);
+        }
+        .mac-button-icon:active {
+            transform: scale(0.95);
+        }
+        body.dark-mode .mac-button-icon {
+            color: #0A84FF;
+            background-color: rgba(10, 132, 255, 0.15);
+        }
+        body.dark-mode .mac-button-icon:hover {
+            background-color: rgba(10, 132, 255, 0.3);
+        }
+        
+        /* 次要按鈕 (清除) */
+        .mac-button-secondary {
+            background-color: #8e8e93; /* 系統灰 */
+        }
+        .mac-button-secondary:hover {
+            background-color: #636366;
+        }
+
+        /* 編輯器容器 */
+        .editor-container {
+            display: flex;
+            flex-direction: row; /* 改為水平排列 */
+            /* md:flex-direction: row; */ /* 在中等螢幕上改為水平 */
+            gap: 24px;
+        }
+
+        /* 編輯器方塊 (毛玻璃) */
+        .editor-box {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.5); /* 淺色模式 */
+            backdrop-filter: blur(10px) saturate(150%);
+            -webkit-backdrop-filter: blur(10px) saturate(150%);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: background-color 0.3s ease;
+        }
+        body.dark-mode .editor-box {
+            background: rgba(60, 60, 60, 0.5); /* 暗色模式 */
+            border: 1px solid rgba(80, 80, 80, 0.1);
+        }
+
+        .editor-box h3 {
+            margin-top: 0;
+            font-weight: 600;
+            font-size: 1.125rem; /* 18px */
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        body.dark-mode .editor-box h3 {
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* 文字區域 */
+        textarea, .output-div {
+            width: 100%;
+            height: 450px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 16px;
+            line-height: 1.6;
+            box-sizing: border-box;
+            resize: vertical;
+            background-color: rgba(255, 255, 255, 0.7); /* 淺色模式 */
+            color: #1d1d1f;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        
+        textarea:focus, .output-div:focus {
+            outline: none;
+            border-color: #007aff;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+        }
+
+        body.dark-mode textarea, body.dark-mode .output-div {
+            background-color: rgba(30, 30, 30, 0.7); /* 暗色模式 */
+            color: #f5f5f7;
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        body.dark-mode textarea:focus, body.dark-mode .output-div:focus {
+             border-color: #007aff;
+        }
+
+        .output-div {
+            white-space: pre-wrap;
+            overflow-y: auto;
+        }
+
+        /* 校正後高亮 */
+        .corrected {
+            color: #ff3b30; /* macOS 紅色 */
+            font-weight: bold;
+            background-color: rgba(255, 59, 48, 0.1);
+            border-radius: 4px;
+            padding: 1px 3px;
+        }
+        body.dark-mode .corrected {
+            color: #ff453a;
+            background-color: rgba(255, 69, 58, 0.15);
+        }
+
+        /* 載入遮罩 (毛玻璃) */
+        .loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(245, 245, 247, 0.5); /* 淺色背景 */
+            backdrop-filter: blur(10px) saturate(150%);
+            -webkit-backdrop-filter: blur(10px) saturate(150%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        body.dark-mode .loader-overlay {
+             background: rgba(30, 30, 30, 0.5); /* 暗色背景 */
+        }
+
+        .loader-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* 簡易的 Spinner */
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #007aff; /* 系統藍 */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        body.dark-mode .spinner {
+            border-color: rgba(255, 255, 255, 0.1);
+            border-left-color: #007aff;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .window-container {
+                width: 95vw;
+                margin: 2.5vh auto;
+            }
+            .title-bar {
+                grid-template-columns: 1fr 1fr;
+                padding: 10px 12px;
+            }
+            .window-title {
+                grid-column: 2;
+                text-align: right;
+                padding-right: 40px; /* 留空間給絕對定位的 theme toggle */
+            }
+            .theme-toggle-container {
+                position: absolute;
+                right: 12px;
+                top: 7px; /* 手動對齊 */
+            }
+            
+            .main-title {
+                font-size: 1.75rem; /* 28px */
+            }
+            .subtitle {
+                font-size: 1rem; /* 16px */
+            }
+            
+            .editor-container {
+                flex-direction: column;
+            }
+            
+            textarea, .output-div {
+                height: 300px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .mac-button {
+                width: 100%;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- 載入中遮罩 -->
+    <div id="loader" class="loader-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- macOS 視窗 -->
+    <div class="window-container">
+        <!-- 標題列 -->
+        <div class="title-bar">
+            <div class="traffic-lights">
+                <div class="traffic-dot dot-red"></div>
+                <div class="traffic-dot dot-yellow"></div>
+                <div class="traffic-dot dot-green"></div>
+            </div>
+            
+            <div class="window-title">
+                <!-- AI 文字校正 (已移除) -->
+            </div>
+            
+            <div class="theme-toggle-container">
+                <div id="theme-toggle" class="theme-toggle" title="切換明暗主題">
+                    <!-- 月亮 (暗黑模式) -->
+                    <svg id="icon-moon" class="theme-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                    </svg>
+                    <!-- 太陽 (淺色模式) -->
+                    <svg id="icon-sun" class="theme-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display: none;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-6.364-.386l1.591-1.591M3 12H.75m.386-6.364l1.591 1.591M12 6.375a5.625 5.625 0 100 11.25 5.625 5.625 0 000-11.25z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- 內容區域 -->
+        <div class="content-wrapper">
+            <header class="main-header">
+                <h1 class="main-title">逐字稿校正系統</h1>
+                <h2 class="subtitle">將會議紀錄之語音檔轉錄為文字校錯系統</h2>
+            </header>
+
+            <div class="controls">
+                <div class="controls-left-group">
+                    <button id="check-btn" class="mac-button">開始校正</button>
+                    <button id="clear-btn" class="mac-button mac-button-secondary">清除內容</button>
+                </div>
+                <div class="controls-right-group">
+                    <button id="copy-btn" class="mac-button-icon" title="複製校正後文字">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-5.25A2.25 2.25 0 0110.5 18v-5.25a2.25 2.25 0 012.25-2.25m3-3h-3v-3h3v3z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="editor-container">
+                <div class="editor-box">
+                    <h3>文章輸入區</h3>
+                    <textarea id="input-text" placeholder="請在此貼上您的逐字稿...">匯入文字內容，自動偵測並校正語音辨識產生的錯別字。
+※ 提醒：系統辨識準確度非 100% 請務必人工複核。
+</textarea>
+                </div>
+                <div class="editor-box">
+                    <h3>校正後之文字</h3>
+                    <div id="output-div" class="output-div" contenteditable="false" aria-readonly="true"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 錯別字字典
+        // 實際應用中，這個字典會非常龐大
+        const typoMap = {
+            "一攻": "一工", "一宮": "一工", "衣工": "一工", "衣公": "一工",
+            "衣功": "一工", "衣攻": "一工", "衣宮": "一工", "依公": "一工",
+            "依功": "一工", "依攻": "一工", "依宮": "一工", "移宮": "一工",
+            "醫工": "一工", "醫公": "一工", "醫功": "一工", "醫攻": "一工",
+            "巴士林": "八勢里",
+            "一公處": "一工處",
+            "不能不能": "不能", "不過不過": "不過", "什麼什麼": "什麼", "今天今天": "今天",
+            "然後然後": "然後", "就是就是": "就是"
+        };
+
+        // DOM 元素
+        const checkBtn = document.getElementById('check-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const inputText = document.getElementById('input-text');
+        const outputDiv = document.getElementById('output-div');
+        const loader = document.getElementById('loader');
+        const themeToggle = document.getElementById('theme-toggle');
+        const iconMoon = document.getElementById('icon-moon');
+        const iconSun = document.getElementById('icon-sun');
+        const copyBtn = document.getElementById('copy-btn'); // 新增複製按鈕
+
+        // 檢查錯別字
+        function checkTypos() {
+            // 顯示載入動畫
+            loader.classList.add('visible');
+
+            const text = inputText.value;
+
+            // 取得字典的所有鍵（錯字），並依照長度由長到短排序
+            // 這是為了優先匹配較長的詞彙，例如先匹配 "一公處" 而非 "一公"
+            const typos = Object.keys(typoMap).sort((a, b) => b.length - a.length);
+
+            // 建立一個正規表示式，用 | (OR) 來匹配所有可能的錯字
+            // 'g' 表示全域匹配
+            const regex = new RegExp(typos.join('|'), 'g');
+
+            // 使用 replace 方法與一個回呼函式來進行替換
+            // 我們需要先將 < > & " 轉換為 HTML 實體，避免 XSS
+            const safeText = text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+                
+            const correctedHtml = safeText.replace(regex, (matchedTypo) => {
+                const correction = typoMap[matchedTypo];
+                // 使用 title 屬性在滑鼠懸停時顯示原文
+                return `<span class="corrected" title="原文: ${matchedTypo}">${correction}</span>`;
+            });
+
+            // 模擬 API 延遲，讓載入動畫更明顯
+            setTimeout(() => {
+                // 為了在輸出區保留換行符號，將 \n 轉換為 <br>
+                outputDiv.innerHTML = correctedHtml.replace(/\n/g, '<br>');
+                // 隱藏載入動畫
+                loader.classList.remove('visible');
+            }, 500); // 模擬 0.5 秒延遲
+        }
+
+        // 清除內容
+        function clearContent() {
+            inputText.value = '';
+            outputDiv.innerHTML = '';
+        }
+        
+        // 新增：複製校正後文字
+        function copyOutputText() {
+            const outputText = outputDiv.innerText; // 取得純文字
+            const originalTitle = "複製校正後文字";
+            const originalIcon = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-5.25A2.25 2.25 0 0110.5 18v-5.25a2.25 2.25 0 012.25-2.25m3-3h-3v-3h3v3z" />
+                </svg>`;
+            const successIcon = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px; color: #27c93f;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>`;
+
+            try {
+                // 建立一個暫時的 textarea 來輔助複製
+                const textArea = document.createElement("textarea");
+                textArea.value = outputText;
+                
+                // 隱藏它
+                textArea.style.position = "absolute";
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                
+                textArea.select();
+                document.execCommand('copy'); // 使用 execCommand
+                
+                document.body.removeChild(textArea);
+
+                // 顯示成功反饋
+                copyBtn.title = "已複製！";
+                copyBtn.innerHTML = successIcon;
+                
+                setTimeout(() => {
+                    copyBtn.title = originalTitle;
+                    copyBtn.innerHTML = originalIcon;
+                }, 2000); // 2 秒後恢復
+
+            } catch (err) {
+                console.error('無法複製文字: ', err);
+                copyBtn.title = "複製失敗";
+            }
+        }
+        
+        // 切換主題
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            
+            if (isDarkMode) {
+                iconMoon.style.display = 'none';
+                iconSun.style.display = 'block';
+                localStorage.setItem('theme', 'dark'); // 儲存偏好
+            } else {
+                iconMoon.style.display = 'block';
+                iconSun.style.display = 'none';
+                localStorage.setItem('theme', 'light'); // 儲存偏好
+            }
+        }
+        
+        // 檢查儲存的偏好或系統偏好
+        function checkInitialTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+                toggleTheme(); // 切換到暗黑模式
+            }
+            // 預設是淺色模式，所以 'light' 或 null (且系統非暗黑) 不需動作
+        }
+
+        // 綁定事件
+        checkBtn.addEventListener('click', checkTypos);
+        clearBtn.addEventListener('click', clearContent);
+        themeToggle.addEventListener('click', toggleTheme);
+        copyBtn.addEventListener('click', copyOutputText); // 綁定複製事件
+        
+        // 頁面載入後
+        document.addEventListener('DOMContentLoaded', () => {
+            checkInitialTheme(); // 檢查主題
+            checkTypos(); // 自動執行一次檢查
+        });
+
+    </script>
+
+</body>
+</html></div></body></html>
