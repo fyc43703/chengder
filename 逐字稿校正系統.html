@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>逐字稿校正系統 (Pro)</title>
+    <title>逐字稿校正系統</title>
     
     <script src="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com/"></script>
     <style>
         /* ==== 基礎與主題設定 ==== */
         :root {
@@ -72,7 +72,6 @@
         
         .editor-box h3 {
             margin: 0; padding: 0; border: none; font-weight: 600; font-size: 1.125rem; color: #007aff; display: flex; align-items: center; gap: 8px;
-            flex-grow: 1;
         }
         body.dark-mode .editor-box h3 { color: #0A84FF; }
         .input-area-note { font-size: 0.85rem; font-weight: 400; color: #1d1d1f; }
@@ -135,21 +134,24 @@
         body.dark-mode .icon-button { color: #a1a1a6; }
         body.dark-mode .icon-button:hover { background-color: rgba(255, 255, 255, 0.1); color: #f5f5f7; }
         
-        .feature-settings { display: flex; align-items: center; gap: 16px; margin-top: 16px; margin-bottom: 16px; justify-content: center; }
-        .setting-item { 
-            display: flex; align-items: center; gap: 8px; font-size: 1rem;
-            font-weight: 600;
-        }
+        .feature-settings { display: flex; align-items: center; gap: 32px; margin-top: 16px; margin-bottom: 16px; justify-content: center; }
+        .setting-item { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 600; }
+        /* MODIFIED: Changed background color to navy blue */
         .setting-item > span,
-        .setting-item > label,
+        .setting-item > label[for="realtime-toggle"],
         .setting-item .icon-button span {
-            font-size: 1rem;
-            color: #007aff;
+            font-size: 1.05rem;
+            color: white !important;
+            background-color: #000080; /* Navy Blue */
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 500;
+            display: inline-block;
         }
         body.dark-mode .setting-item > span,
-        body.dark-mode .setting-item > label,
+        body.dark-mode .setting-item > label[for="realtime-toggle"],
         body.dark-mode .setting-item .icon-button span {
-            color: #0A84FF;
+            background-color: #000080; /* Navy Blue */
         }
 
         .stats-dashboard { 
@@ -210,6 +212,8 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
             animation: fadeIn 0.3s var(--ease-out);
             transition: box-shadow 0.3s var(--ease-out);
+            display: flex;
+            flex-direction: column;
         }
         .modal:hover {
              box-shadow: 0 12px 40px rgba(0,0,0,0.2);
@@ -225,7 +229,7 @@
 
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .modal-header h4 { margin: 0; font-size: 1.2rem; }
-        .modal-body { max-height: 45vh; overflow-y: auto; }
+        .modal-body { flex-shrink: 1; min-height: 0; }
         .modal-body #dict-table { width: 100%; border-collapse: collapse; }
         
         .modal-body #dict-table th {
@@ -278,6 +282,7 @@
             flex-direction: column;
             gap: 16px;
             align-items: stretch;
+            flex-shrink: 0;
         }
         .modal-io-container {
             display: flex;
@@ -314,6 +319,48 @@
         
         body.dark-mode .modal-footer input { background-color: #555; border-color: #777; color: #fff; }
         
+        .dict-table-container {
+            max-height: 40vh;
+            overflow-y: auto;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+        body.dark-mode .dict-table-container {
+            border-color: rgba(255,255,255,0.15);
+        }
+        #dict-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .search-highlight {
+            background-color: yellow !important;
+            color: black !important;
+        }
+        .current-search {
+            outline: 2px solid #ff3b30;
+            outline-offset: -2px;
+        }
+        .sortable-header {
+            position: relative;
+        }
+        .sortable-header::after {
+            content: '';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 6px solid transparent;
+            opacity: 0.9;
+        }
+        .sortable-header.sort-asc::after {
+            border-bottom-color: white;
+        }
+        .sortable-header.sort-desc::after {
+            border-top-color: white;
+        }
+
+
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         
@@ -337,7 +384,6 @@
 </head>
 <body>
     <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
-    <!-- MODIFIED: Removed .rtf from accept attribute -->
     <input type="file" id="import-dict-input" accept=".html,.csv" style="display: none;">
 
     <div id="loader" class="overlay"><div class="spinner"></div></div>
@@ -345,16 +391,23 @@
     <div id="dictionary-modal" class="overlay">
         <div class="modal">
             <div class="modal-header">
-                <h4>自訂詞典</h4>
+                <h4 style="font-weight: bold;">自訂詞典</h4>
                 <button id="close-modal-btn" class="icon-button" title="關閉"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <div class="modal-body">
-                <!-- MODIFIED: Updated text and made it bold -->
-                <p style="font-size:14px; color:#6e6e73; margin-top:0; margin-bottom:12px; text-align: center;"><strong>此處列表的詞彙於『套用自訂校正』按鈕執行</strong></p>
-                <table id="dict-table">
-                    <thead><tr><th>錯別字</th><th>校正字</th><th>刪除</th></tr></thead>
-                    <tbody id="dict-list-body"></tbody>
-                </table>
+                <p style="text-align:center; font-size: 16px; font-weight: bold; color:#6e6e73; margin-bottom: 8px; margin-top: 0;"><strong>此處列表的詞彙校正於文章輸入區，點選圖示執行「套用自訂校正」</strong></p>
+                <div id="dict-search-container" style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; padding: 4px; background-color: rgba(0,0,0,0.05); border-radius: 8px;">
+                    <input type="text" id="dict-search-input" placeholder="搜尋列表中的文字..." style="flex-grow: 1; border: 1px solid #ccc; border-radius: 6px; padding: 4px 8px;">
+                    <span id="dict-search-count" style="font-size: 14px; min-width: 60px; text-align: center; color: #6e6e73;">0 / 0</span>
+                    <button id="dict-search-prev-btn" class="mac-button mac-button-secondary" style="padding: 4px 8px;">&lt;</button>
+                    <button id="dict-search-next-btn" class="mac-button mac-button-secondary" style="padding: 4px 8px;">&gt;</button>
+                </div>
+                <div class="dict-table-container">
+                    <table id="dict-table">
+                        <thead><tr><th style="width: 50px;">序號</th><th class="sortable-header" data-sort-key="typo" style="cursor: pointer;">錯別字<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:1em; height:1em; display: inline-block; vertical-align: text-bottom; margin-left: 4px; opacity: 0.7;" stroke="currentColor"><path d="M7 15L12 20L17 15M7 9L12 4L17 9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></th><th class="sortable-header" data-sort-key="correction" style="cursor: pointer;">校正字<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:1em; height:1em; display: inline-block; vertical-align: text-bottom; margin-left: 4px; opacity: 0.7;" stroke="currentColor"><path d="M7 15L12 20L17 15M7 9L12 4L17 9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></th><th>刪除</th></tr></thead>
+                        <tbody id="dict-list-body"></tbody>
+                    </table>
+                </div>
             </div>
             <div class="modal-footer">
                 <div class="modal-io-container">
@@ -366,8 +419,7 @@
                     </div>
                 </div>
                 <div style="width:100%; border-top: 1px solid rgba(0,0,0,0.1); margin-top: 8px; padding-top: 16px;">
-                    <!-- MODIFIED: Updated text and made it bold -->
-                     <p style="text-align:center; font-size:14px; color:#6e6e73; margin-bottom: 8px; margin-top: 0;"><strong>請由此自行添加詞彙</strong></p>
+                     <p style="text-align:center; font-size: 16px; font-weight: bold; color:#6e6e73; margin-bottom: 8px; margin-top: 0;">請由此欄位單筆添加詞彙，建議由 Excel 彙整後，再行匯入詞典</p>
                     <div class="input-group">
                         <input type="text" id="dict-typo-input" placeholder="錯別字...">
                         <input type="text" id="dict-correction-input" placeholder="校正字...">
@@ -415,12 +467,14 @@
             <div id="editor-container" class="editor-container">
                 <div class="editor-box">
                     <div class="editor-header">
-                        <h3>文章輸入區：<span class="input-area-note">※文字間空格請刪除</span></h3>
-                        <div class="controls-group">
+                        <h3>文章輸入區：<span class="input-area-note">※ 文字間空格請刪除</span></h3>
+                        <div class="header-controls-wrapper" style="flex-grow: 1; display: flex; justify-content: space-between; align-items: center;">
                             <button id="import-pdf-btn" class="mac-button mac-button-accent" title="從電腦匯入 PDF 檔案"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg><span>匯入PDF</span></button>
-                            <button id="apply-custom-dict-btn" class="mac-button" title="根據自訂詞典取代文章內的錯字"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.998 15.998 0 011.622-3.385m5.043.025a15.998 15.998 0 001.622-3.385m3.388 1.62a15.998 15.998 0 00-1.622-3.385m-5.043-.025a15.998 15.998 0 01-3.388-1.621m7.732 0c.618-.349 1.295-.65 2.008-.864m-7.732 0c.618-.349 1.295-.65 2.008-.864m-1.788 6.443a.75.75 0 00.158.848l.301.301A.75.75 0 0015.63 17.62a3.75 3.75 0 005.272-5.272l.301.301a.75.75 0 001.06-1.06l-1.5-1.5a.75.75 0 00-1.06 0l-.301.301a.75.75 0 00-.158.848z"></path></svg><span>套用自訂校正</span></button>
-                            <button id="check-btn" class="mac-button" title="手動執行一次校正"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>開始校正</span></button>
-                            <button id="clear-btn" class="mac-button mac-button-secondary" title="清除左右兩邊的所有文字"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.576 0c-.245.035-.488.072-.732.114m15.026 0a48.232 48.232 0 01-4.042-.392M6.343 5.79l-1.246-1.37a1.5 1.5 0 010-2.122l1.246-1.372a1.5 1.5 0 012.122 0l1.246 1.37a1.5 1.5 0 010 2.122l-1.246 1.372a1.5 1.5 0 01-2.122 0z" /></svg><span>清除內容</span></button>
+                            <div class="controls-group">
+                                <button id="apply-custom-dict-btn" class="mac-button" title="根據自訂詞典取代文章內的錯字"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.998 15.998 0 011.622-3.385m5.043.025a15.998 15.998 0 001.622-3.385m3.388 1.62a15.998 15.998 0 00-1.622-3.385m-5.043-.025a15.998 15.998 0 01-3.388-1.621m7.732 0c.618-.349 1.295-.65 2.008-.864m-7.732 0c.618-.349 1.295-.65 2.008-.864m-1.788 6.443a.75.75 0 00.158.848l.301.301A.75.75 0 0015.63 17.62a3.75 3.75 0 005.272-5.272l.301.301a.75.75 0 001.06-1.06l-1.5-1.5a.75.75 0 00-1.06 0l-.301.301a.75.75 0 00-.158.848z"></path></svg><span>套用自訂校正</span></button>
+                                <button id="check-btn" class="mac-button" title="手動執行一次校正"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>開始校正</span></button>
+                                <button id="clear-btn" class="mac-button mac-button-secondary" title="清除左右兩邊的所有文字"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.576 0c-.245.035-.488.072-.732.114m15.026 0a48.232 48.232 0 01-4.042-.392M6.343 5.79l-1.246-1.37a1.5 1.5 0 010-2.122l1.246-1.372a1.5 1.5 0 012.122 0l1.246 1.37a1.5 1.5 0 010 2.122l-1.246 1.372a1.5 1.5 0 01-2.122 0z" /></svg><span>清除內容</span></button>
+                            </div>
                         </div>
                     </div>
                     <div id="input-text" class="input-div" contenteditable="true" data-placeholder="點擊「匯入PDF」選擇檔案，或直接貼上文字內容進行校正。"></div>
@@ -440,7 +494,6 @@
             </div>
             
             <div class="feature-explanation-container">
-                <!-- MODIFIED: Card descriptions updated -->
                 <div class="feature-card"><svg class="feature-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g fill-rule="evenodd"><path fill="#FFD766" d="M40 61H10c-2.21 0-4-1.79-4-4V7c0-2.21 1.79-4 4-4h20l14 14v40c0 2.21-1.79 4-4 4z"></path><path fill="#FFF" d="M30 3h- पॉइंट586L43.586 17H30z" opacity=".5"></path><path fill="#F37E7E" d="M26 21h12v4H26zm0 8h4v4h-4zm-8-4h4v4h-4zm8 12h12v4H26zm-8-4h4v4h-4zm16-8h4v4h-4zm-8-4h12v4H26zm-8 8h4v4h-4zm16 4h4v4h-4zm-8 8h12v4H26z"></path><path fill="#F3A2A2" d="M18 25h4v4h-4zm8-4h4v4h-4zm-8 8h4v4h-4zm8 4h4v4h-4zm-8 8h4v4h-4z"></path><path fill="#5955A5" d="M46 37h12v4H46zm0 8h4v4h-4zm-8-4h4v4h-4zm8 12h12v4H46zm-8-4h4v4h-4zm16-8h4v4h-4zm-8-4h12v4H46zm-8 8h4v4h-4zm16 4h4v4h-4zm-8 8h12v4H46z"></path><path fill="#9FA4F5" d="M38 41h4v4h-4zm8-4h4v4h-4zm-8 8h4v4h-4zm8 4h4v4h-4zm-8 8h4v4h-4z"></path></g></svg>
                     <h4>匯入 PDF 文字</h4><p>無須手動複製貼上。點擊 <span class="text-apple-blue">匯入PDF</span> 按鈕，系統將自動讀取並解析您選擇的 PDF 文件，直接將內文填入編輯區。此功能大幅簡化了處理數位逐字稿或會議記錄的流程，讓您能更快速地開始校對工作。</p></div>
                 <div class="feature-card"><svg class="feature-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g fill-rule="evenodd"><path fill="#5955A5" d="M44 61H16c-2.21 0-4-1.79-4-4V7c0-2.21 1.79-4 4-4h32c2.21 0 4 1.79 4 4v28l-12 12v10c0 2.21-1.79 4-4 4z"></path><path fill="#FFF" d="M52 35h- पॉइंट586L40.586 46H52z" opacity=".5"></path><path fill="#FFD766" d="M22 17h20v2H22zm0 8h20v2H22zm0 8h20v2H22zm0 8h12v2H22z"></path><path fill="#9FA4F5" d="M40 45h12v12H40z"></path><path fill="#5955A5" d="M47.333 48.071l-1.414 1.414 2.828 2.828-2.828 2.828 1.414 1.414 2.828-2.828 2.829 2.828 1.414-1.414-2.829-2.828 2.829-2.828-1.414-1.414-2.829 2.828z"></path></g></svg>
@@ -477,10 +530,11 @@
             exportDictCSVBtn: $('#export-dict-csv-btn'),
             exportDictRTFBtn: $('#export-dict-rtf-btn'),
             importDictBtn: $('#import-dict-btn'), importDictInput: $('#import-dict-input'),
+            dictSearchInput: $('#dict-search-input'), dictSearchCount: $('#dict-search-count'),
+            dictSearchPrevBtn: $('#dict-search-prev-btn'), dictSearchNextBtn: $('#dict-search-next-btn'),
         };
 
-        const builtInTypoMap = {"E市G":"ESG","共期":"工期","奔襲":"本市","胃服部":"衛福部","基術出":"技術處","痦水":"污水","境硤":"逕洽","篡寫":"撰寫",
-"回田":"回填","尋解":"巡檢","啟重擊":"起重機","其樓":"騎樓","鬆托":"鬆脫","商者":"傷者","鋼糧":"鋼梁","木林":"睦鄰","副救":"復舊","西煙":"吸菸","羊角":"仰角","帆部":"帆布","補錯":"補充","安見":"案件","離在者":"罹災者","封善":"風扇","共插":"共築","奔灑":"本市","胃拓":"委託","基莊":"基樁","痛績":"統計","境掐":"逕洽","篡屑":"撰寫","一攻":"一工","一宮":"一工","衣工":"一工","衣公":"一工","衣功":"一工","衣攻":"一工","衣宮":"一工","依公":"一工","依功":"一工","依攻":"一工","依宮":"一工","移宮":"一工","醫工":"一工","醫公":"一工","醫功":"一工","醫攻":"一工","一公處":"一工處","不能不能":"不能","不過不過":"不過","什麼什麼":"什麼","今天今天":"今天","然後然後":"然後","就是就是":"就是"};
+        const builtInTypoMap = {"一攻":"一工","一宮":"一工"};
         
         let customDictionary = JSON.parse(localStorage.getItem('customCorrectionDictionary')) || {};
         let isSyncingScroll = false;
@@ -491,6 +545,9 @@
         const FONT_SIZE_MIN = 10;
         const FONT_SIZE_MAX = 32;
         let currentFontSize = parseInt(localStorage.getItem('editorFontSize')) || FONT_SIZE_DEFAULT;
+        
+        let currentSort = { key: null, direction: 'asc' };
+        let searchState = { results: [], currentIndex: -1, term: '' };
 
         const updateFontSize = (newSize) => {
             const clampedSize = Math.max(FONT_SIZE_MIN, Math.min(FONT_SIZE_MAX, newSize));
@@ -585,24 +642,36 @@
         };
         
         const renderDictionary = () => {
-            elements.dictListBody.innerHTML = '';
-            const typos = Object.keys(customDictionary).reverse(); 
-            for (const typo of typos) {
-                const correction = customDictionary[typo];
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${typo}</td>
-                    <td>${correction}</td>
-                    <td><button class="icon-button delete-btn" data-typo="${typo}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button></td>
-                `;
-                tr.querySelector('button').onclick = (e) => {
+            let dictionaryItems = Object.keys(customDictionary).map(typo => ({ typo, correction: customDictionary[typo] }));
+
+            if (currentSort.key) {
+                dictionaryItems.sort((a, b) => {
+                    const valA = a[currentSort.key] || '';
+                    const valB = b[currentSort.key] || '';
+                    const comparison = valA.localeCompare(valB, 'zh-Hans-CN');
+                    return currentSort.direction === 'asc' ? comparison : -comparison;
+                });
+            }
+
+            elements.dictListBody.innerHTML = dictionaryItems.map((item, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.typo}</td>
+                    <td>${item.correction}</td>
+                    <td><button class="icon-button delete-btn" data-typo="${item.typo}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button></td>
+                </tr>
+            `).join('');
+
+            elements.dictListBody.querySelectorAll('.delete-btn').forEach(button => {
+                button.onclick = (e) => {
                     const keyToRemove = e.currentTarget.dataset.typo;
                     delete customDictionary[keyToRemove];
                     localStorage.setItem('customCorrectionDictionary', JSON.stringify(customDictionary));
                     renderDictionary();
                 };
-                elements.dictListBody.appendChild(tr);
-            }
+            });
+            
+            performSearch();
         };
 
         const syncScroll = (source, target) => {
@@ -612,6 +681,55 @@
             target.scrollTop = percentage * (target.scrollHeight - target.clientHeight);
             setTimeout(() => { isSyncingScroll = false; }, 50);
         };
+
+        const clearSearch = () => {
+            $$('#dict-table .search-highlight').forEach(el => el.classList.remove('search-highlight', 'current-search'));
+            searchState.results = [];
+            searchState.currentIndex = -1;
+            elements.dictSearchCount.textContent = '0 / 0';
+        };
+
+        const performSearch = () => {
+            const searchTerm = elements.dictSearchInput.value.trim().toLowerCase();
+            clearSearch();
+            searchState.term = searchTerm;
+
+            if (searchTerm === '') return;
+
+            const cells = $$('#dict-list-body td:nth-child(2), #dict-list-body td:nth-child(3)');
+            cells.forEach(cell => {
+                if (cell.textContent.toLowerCase().includes(searchTerm)) {
+                    cell.classList.add('search-highlight');
+                    searchState.results.push(cell);
+                }
+            });
+
+            if (searchState.results.length > 0) {
+                searchState.currentIndex = 0;
+                const currentCell = searchState.results[searchState.currentIndex];
+                currentCell.classList.add('current-search');
+                currentCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                elements.dictSearchCount.textContent = `${searchState.currentIndex + 1} / ${searchState.results.length}`;
+            }
+        };
+        
+        const navigateSearch = (direction) => {
+            if (searchState.results.length === 0) return;
+            
+            searchState.results[searchState.currentIndex].classList.remove('current-search');
+            
+            if (direction === 'next') {
+                searchState.currentIndex = (searchState.currentIndex + 1) % searchState.results.length;
+            } else {
+                searchState.currentIndex = (searchState.currentIndex - 1 + searchState.results.length) % searchState.results.length;
+            }
+
+            const currentCell = searchState.results[searchState.currentIndex];
+            currentCell.classList.add('current-search');
+            currentCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            elements.dictSearchCount.textContent = `${searchState.currentIndex + 1} / ${searchState.results.length}`;
+        };
+
 
         elements.checkBtn.addEventListener('click', checkTypos);
         elements.clearBtn.addEventListener('click', () => {
@@ -840,6 +958,25 @@
 
         elements.fontSizeIncreaseBtn.addEventListener('click', () => updateFontSize(currentFontSize + FONT_SIZE_STEP));
         elements.fontSizeDecreaseBtn.addEventListener('click', () => updateFontSize(currentFontSize - FONT_SIZE_STEP));
+
+        elements.dictSearchInput.addEventListener('input', debounce(performSearch, 300));
+        elements.dictSearchNextBtn.addEventListener('click', () => navigateSearch('next'));
+        elements.dictSearchPrevBtn.addEventListener('click', () => navigateSearch('prev'));
+
+        $$('.sortable-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const sortKey = header.dataset.sortKey;
+                if (currentSort.key === sortKey) {
+                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSort.key = sortKey;
+                    currentSort.direction = 'asc';
+                }
+                $$('.sortable-header').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+                header.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                renderDictionary();
+            });
+        });
 
         const setupExistingFeatures = () => {
             elements.copyBtn.addEventListener('click', () => {
