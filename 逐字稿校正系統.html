@@ -6,6 +6,7 @@
     <title>逐字稿校正系統</title>
     
     <script src="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com/"></script>
     <style>
         /* ==== 基礎與主題設定 ==== */
@@ -158,6 +159,11 @@
             font-size: 0.85rem; color: #6e6e73; white-space: nowrap;
         }
         body.dark-mode .stats-dashboard { color: #a1a1a6; }
+        .stat-word-count { color: #28a745; font-weight: 600; }
+        .stat-typo-count { color: #ff3b30; font-weight: 600; }
+        body.dark-mode .stat-word-count { color: #30d158; }
+        body.dark-mode .stat-typo-count { color: #ff453a; }
+
         .font-size-display { font-weight: 600; min-width: 3ch; text-align: center; color: #1d1d1f; }
         body.dark-mode .font-size-display { color: #f5f5f7; }
         
@@ -384,7 +390,7 @@
 </head>
 <body>
     <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
-    <input type="file" id="import-dict-input" accept=".html,.csv" style="display: none;">
+    <input type="file" id="import-dict-input" accept=".html,.csv,.xlsx,.xls" style="display: none;">
 
     <div id="loader" class="overlay"><div class="spinner"></div></div>
 
@@ -411,7 +417,11 @@
             </div>
             <div class="modal-footer">
                 <div class="modal-io-container">
-                    <button id="import-dict-btn" class="mac-button mac-button-accent">匯入詞典</button>
+                    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <button id="import-dict-btn" class="mac-button mac-button-accent">匯入詞典</button>
+                        <a href="https://fyc43703.github.io/chengder/%E9%80%90%E5%AD%97%E7%A8%BF%E6%A0%A1%E6%AD%A3%E7%B3%BB%E7%B5%B1%E8%87%AA%E8%A8%82%E8%A9%9E%E5%85%B8%E5%8F%83%E8%80%83%E7%AF%84%E4%BE%8B.csv" target="_blank" style="font-size: 14px; font-weight: 500; text-decoration: none; color: #007aff;">自訂詞典參考範例檔</a>
+                        <button id="dict-delete-all-btn" class="mac-button" style="background-color: #ff3b30;">刪除全部詞彙</button>
+                    </div>
                     <div class="export-buttons-group">
                         <button id="export-dict-html-btn" class="mac-button mac-button-success">匯出 HTML</button>
                         <button id="export-dict-csv-btn" class="mac-button mac-button-success">匯出 CSV</button>
@@ -482,9 +492,10 @@
                 <div class="editor-box">
                     <div class="editor-header">
                         <h3>校正後之文字：</h3>
-                        <div id="stats-dashboard" class="stats-dashboard"><span>總字數: 0 | 發現錯字: 0</span></div>
+                        <div id="stats-dashboard" class="stats-dashboard"><span>總字數: <span class="stat-word-count">0</span> | 發現錯字: <span class="stat-typo-count">0</span></span></div>
                     </div>
                     <div class="controls-group" style="justify-content: flex-end; margin-bottom: 12px;">
+                        <button id="compare-diff-btn" class="mac-button mac-button-secondary" title="將目前標示的差異匯出為 CSV 報告"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125A1.125 1.125 0 003 5.625v12.75c0 .621.504 1.125 1.125 1.125z" /></svg><span>差異比對</span></button>
                         <button id="accept-all-btn" class="mac-button" title="採納所有修正建議"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width:20px;height:20px;"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.052-.143z" clip-rule="evenodd" /></svg><span>全部採納</span></button>
                         <button id="copy-btn" class="mac-button" title="複製校正後的純文字內容"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5 .124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" /></svg><span>複製文字</span></button>
                         <button id="download-btn" class="mac-button mac-button-success" title="將校正後的文字下載為 RTF 檔案"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg><span>下載檔案</span></button>
@@ -526,10 +537,12 @@
             acceptAllBtn: $('#accept-all-btn'), fontSizeDecreaseBtn: $('#font-size-decrease-btn'),
             fontSizeIncreaseBtn: $('#font-size-increase-btn'), fontSizeDisplay: $('#font-size-display'),
             applyCustomDictBtn: $('#apply-custom-dict-btn'), 
+            compareDiffBtn: $('#compare-diff-btn'),
             exportDictHTMLBtn: $('#export-dict-html-btn'),
             exportDictCSVBtn: $('#export-dict-csv-btn'),
             exportDictRTFBtn: $('#export-dict-rtf-btn'),
             importDictBtn: $('#import-dict-btn'), importDictInput: $('#import-dict-input'),
+            dictDeleteAllBtn: $('#dict-delete-all-btn'),
             dictSearchInput: $('#dict-search-input'), dictSearchCount: $('#dict-search-count'),
             dictSearchPrevBtn: $('#dict-search-prev-btn'), dictSearchNextBtn: $('#dict-search-next-btn'),
         };
@@ -611,7 +624,7 @@
 
         const updateStats = (text, typoCount) => {
             const wordCount = text.trim().length;
-            elements.statsDashboard.innerHTML = `<span>總字數: ${wordCount} | 發現錯字: ${typoCount}</span>`;
+            elements.statsDashboard.innerHTML = `<span>總字數: <span class="stat-word-count">${wordCount}</span> | 發現錯字: <span class="stat-typo-count">${typoCount}</span></span>`;
         };
         
         const showCorrectionPopover = (target) => {
@@ -770,6 +783,29 @@
             }
             if (!e.target.closest('#correction-popover')) hideCorrectionPopover();
         });
+        
+        elements.compareDiffBtn.addEventListener('click', () => {
+            const correctedSpans = $$('#output-div .typo.corrected');
+
+            if (correctedSpans.length === 0) {
+                alert('沒有偵測到任何自動修正的差異可供比對。\n請先執行「開始校正」。');
+                return;
+            }
+
+            const csvRows = ['"序號","原文","修正後"'];
+            
+            correctedSpans.forEach((span, index) => {
+                const original = span.dataset.original;
+                const correction = span.innerText;
+                
+                const escapedOriginal = `"${original.replace(/"/g, '""')}"`;
+                const escapedCorrection = `"${correction.replace(/"/g, '""')}"`;
+                csvRows.push(`${index + 1},${escapedOriginal},${escapedCorrection}`);
+            });
+            
+            const csvContent = '\uFEFF' + csvRows.join('\n');
+            downloadFile(csvContent, '文字修正比對報告.csv', 'text/csv;charset=utf-8;');
+        });
 
         elements.acceptAllBtn.addEventListener('click', () => {
             $$('#output-div .typo.corrected').forEach(span => {
@@ -791,17 +827,25 @@
         const addDictEntry = () => {
             const typo = elements.dictTypoInput.value.trim();
             const correction = elements.dictCorrectionInput.value.trim();
-            if (typo && correction) {
-                if(customDictionary[typo]) {
-                    delete customDictionary[typo];
-                }
-                customDictionary[typo] = correction;
-                localStorage.setItem('customCorrectionDictionary', JSON.stringify(customDictionary));
-                renderDictionary();
-                elements.dictTypoInput.value = '';
-                elements.dictCorrectionInput.value = '';
-                elements.dictTypoInput.focus();
+            
+            if (!typo || !correction) return;
+
+            if (builtInTypoMap.hasOwnProperty(typo)) {
+                alert(`詞彙 "${typo}" 已存在於內建詞典中，無法新增。`);
+                return;
             }
+
+            if (customDictionary.hasOwnProperty(typo)) {
+                alert(`詞彙 "${typo}" 已存在於您的自訂詞典中。`);
+                return;
+            }
+
+            customDictionary[typo] = correction;
+            localStorage.setItem('customCorrectionDictionary', JSON.stringify(customDictionary));
+            renderDictionary();
+            elements.dictTypoInput.value = '';
+            elements.dictCorrectionInput.value = '';
+            elements.dictTypoInput.focus();
         };
 
         elements.dictAddBtn.addEventListener('click', addDictEntry);
@@ -900,17 +944,18 @@
         elements.importDictInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if(!file) return;
-            
+
             const reader = new FileReader();
+            const extension = file.name.split('.').pop().toLowerCase();
+
             reader.onload = (event) => {
-                const fileContent = event.target.result;
-                const extension = file.name.split('.').pop().toLowerCase();
+                const fileData = event.target.result;
                 let importCount = 0;
 
                 try {
                     if (extension === 'html') {
                         const parser = new DOMParser();
-                        const doc = parser.parseFromString(fileContent, 'text/html');
+                        const doc = parser.parseFromString(fileData, 'text/html');
                         const table = doc.getElementById('dict-export-table');
                         if(!table) throw new Error('HTML 檔案格式不符。');
                         
@@ -927,7 +972,7 @@
                             }
                         });
                     } else if (extension === 'csv') {
-                        const lines = fileContent.split(/\r\n|\n/);
+                        const lines = fileData.split(/\r\n|\n/);
                         lines.forEach((line, index) => {
                             if(index === 0 && (line.includes('錯別字') || line.includes('typo'))) return;
                             const parts = line.split(',');
@@ -940,8 +985,30 @@
                                 }
                             }
                         });
+                    } else if (['xlsx', 'xls'].includes(extension)) {
+                         if (typeof XLSX === 'undefined') {
+                            throw new Error('Excel讀取功能所需的程式庫 (XLSX) 尚未載入。');
+                        }
+                        const workbook = XLSX.read(fileData, { type: 'binary' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                        const startIndex = (data.length > 0 && data[0][0] && (data[0][0].includes('錯別字') || String(data[0][0]).toLowerCase().includes('typo'))) ? 1 : 0;
+
+                        for (let i = startIndex; i < data.length; i++) {
+                            const row = data[i];
+                            if (row && row.length >= 2 && row[0] && row[1]) {
+                                 const typo = String(row[0]).trim();
+                                 const correction = String(row[1]).trim();
+                                 if (typo && correction) {
+                                     customDictionary[typo] = correction;
+                                     importCount++;
+                                 }
+                            }
+                        }
                     } else {
-                        throw new Error('不支援的檔案格式。');
+                        throw new Error('不支援的檔案格式。請選擇 .html, .csv, .xlsx, 或 .xls 檔案。');
                     }
                     localStorage.setItem('customCorrectionDictionary', JSON.stringify(customDictionary));
                     renderDictionary();
@@ -951,9 +1018,29 @@
                     alert(`匯入失敗：${error.message}`);
                 }
             };
+            
             reader.onerror = () => alert('讀取檔案失敗。');
-            reader.readAsText(file, 'utf-8');
+
+            if (['xlsx', 'xls'].includes(extension)) {
+                reader.readAsBinaryString(file);
+            } else {
+                reader.readAsText(file, 'utf-8');
+            }
+            
             e.target.value = null;
+        });
+
+        elements.dictDeleteAllBtn.addEventListener('click', () => {
+            if (Object.keys(customDictionary).length === 0) {
+                alert('自訂詞典已經是空的！');
+                return;
+            }
+            if (confirm('確定要刪除所有自訂詞彙嗎？此操作無法復原。')) {
+                customDictionary = {};
+                localStorage.setItem('customCorrectionDictionary', JSON.stringify(customDictionary));
+                renderDictionary();
+                alert('已刪除所有自訂詞彙。');
+            }
         });
 
         elements.fontSizeIncreaseBtn.addEventListener('click', () => updateFontSize(currentFontSize + FONT_SIZE_STEP));
