@@ -1,15 +1,4 @@
-<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>PDF 替換文字</title>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
-      <style>
-      html, body { margin: 0; padding: 24px; background: #FFFFFF; color: #1d1d1f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; font-size: 15px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-      h1, h2, h3, h4, h5, h6, b, strong { font-weight: 600; } h1 { font-weight: 700; }
-      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; } ul { list-style-type: disc; } ol { list-style-type: decimal; } li { display: list-item; }
-      .hljs-container { padding: 1.5rem; border-radius: .75rem; overflow-x: auto; background: #fcfcfd; border: 1px solid #d2d2d7; }
-      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
-      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
-    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -88,17 +77,13 @@
             min-height: 100vh;
             padding: 20px;
             transition: background 0.3s ease, color 0.3s ease;
-            /* --- 1. 移除 body 捲動 --- */
-            overflow-y: auto; /* --- (修改) 允許 body 捲動以查看說明 --- */
+            overflow-y: auto; 
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            /* 增加 3D 視角 */
             perspective: 1500px;
-            /* --- 1. 設定 container 高度 (修改：不再固定高度) --- */
-            /* height: calc(100vh - 40px); */ /* (原) 100vh 減去 body 的 padding */
         }
 
         /* 主視窗容器 - 毛玻璃效果 */
@@ -110,37 +95,20 @@
             border: 1px solid var(--glass-border);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             overflow: hidden; /* 確保子元素圓角正確 */
-            /* --- 1. 移除 transform 和相關 transition --- */
             transition: background 0.3s ease, border 0.3s ease, box-shadow 0.4s ease;
-            /* transform: scale(1.0); */ /* 移除 */
-            /* --- 1. 讓主視窗填滿 container 並使用 flex column (修改：高度自動) --- */
-            /* height: 100%; */
             display: flex;
             flex-direction: column;
-            /* --- (新增) 增加最小高度 --- */
-            min-height: calc(100vh - 40px);
+            /* --- 【核心修正】將最小高度改為固定高度，為內部滾動建立絕對邊界 --- */
+            height: calc(100vh - 40px);
         }
         
-        /* --- 修改：移除 main-window:hover 效果 --- */
-        /*
-        .main-window:hover {
-            transform: scale(1.01);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
-        }
-        */
-
         /* 標題列 */
         .title-bar {
             display: flex;
             align-items: center;
-            justify-content: space-between; /* 調整為 space-between 以容納切換器 */
-            /* --- (修改) 移除 min-height，改回 padding --- */
-            /* min-height: 65px; */ /* (移除) */
+            justify-content: space-between;
             padding-top: 8px;
-            /* --- (修改) 再度縮小垂直間距 --- */
-            padding-bottom: 4px; /* (原 6px) */
-            /* position: relative; */ /* (移除) */
-            /* --- 1. 標題列不壓縮 --- */
+            padding-bottom: 4px;
             flex-shrink: 0;
         }
 
@@ -148,7 +116,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            /* --- (修改) 補回 side padding --- */
             padding-left: 15px;
         }
         
@@ -167,51 +134,33 @@
         .dot-yellow { background: var(--system-yellow); }
         .dot-green { background: var(--system-green); }
 
-        /* --- (修改) 新增標題中央容器 --- */
         .title-bar-center {
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* --- (修改) 移除 absolute positioning --- */
-            /* position: absolute; */
-            /* left: 50%; */
-            /* top: 50%; */
-            /* transform: translate(-50%, -50%); */
-            /* width: 80%; */ 
-            /* --- (修改) 移除 flex-grow --- */
-            /* flex-grow: 1; */ /* (移除) 讓其佔滿中間空間 */
         }
 
         .title-bar h1 {
-            /* 標題置中 */
             font-size: 1.8em; 
             font-weight: 600;
             text-align: center;
             margin: 0;
-            /* --- (修改 2) 調整主標題顏色 --- */
             color: var(--system-blue);
-            /* --- (修改) 移除 position 和 transform --- */
-            /* position: absolute; */
-            /* left: 50%; */
-            /* transform: translateX(-50%); */
             white-space: nowrap;
         }
         
-        /* --- (新增) 副標題和製作者 --- */
         .title-bar-subtitle {
             font-size: 0.9em;
             font-weight: 500;
             color: var(--system-text);
-            /* --- (修改 1) 再縮減垂直間距 --- */
-            margin-top: 1px; /* (原 2px) */
+            margin-top: 1px;
             text-align: center;
         }
         .title-bar-creator {
             font-size: 0.8em;
             font-weight: 400;
             color: var(--placeholder-text);
-            /* --- (修改 1) 再縮減垂直間距 --- */
-            margin-top: 0px; /* (原) margin-top: 1px; */
+            margin-top: 0px;
         }
         body.dark-mode .title-bar-subtitle,
         body.dark-mode .title-bar-creator {
@@ -219,8 +168,6 @@
         }
         
         .title-bar-right {
-             /* 用於放置切換器 */
-            /* --- (修改) 補回 side padding --- */
             padding-right: 15px;
         }
 
@@ -231,8 +178,8 @@
         .theme-switch {
             position: relative;
             display: inline-block;
-            width: 44px; /* 寬度 */
-            height: 24px; /* 高度 */
+            width: 44px;
+            height: 24px;
         }
         .theme-switch input {
             opacity: 0;
@@ -248,15 +195,15 @@
             bottom: 0;
             background-color: #ccc;
             transition: .4s;
-            border-radius: 24px; /* 高度 */
+            border-radius: 24px;
         }
         .slider:before {
             position: absolute;
             content: "";
-            height: 18px; /* 圓點高度 */
-            width: 18px; /* 圓點寬度 */
-            left: 3px; /* 邊距 */
-            bottom: 3px; /* 邊距 */
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
             background-color: white;
             transition: .4s;
             border-radius: 50%;
@@ -265,22 +212,21 @@
             background-color: var(--system-blue);
         }
         input:checked + .slider:before {
-            transform: translateX(20px); /* 44 - 18 - 3 - 3 = 20 */
+            transform: translateX(20px);
         }
         
         /* 主要內容區域 */
         .main-section {
-            /* --- (修改) 再度縮小上方間距 --- */
-            padding: 8px 25px 25px; /* (原 10px 25px 25px) */
-            /* --- 1. 讓 main-section 填滿並成為 flex column --- */
+            padding: 8px 25px 25px;
             display: flex;
             flex-direction: column;
             flex-grow: 1;
-            overflow: hidden; /* 確保 padding 不會導致
-            flex-grow 失效 */
+            /* 為了讓內部的 flex-grow: 1 正常運作，需要一個高度限制的父層 */
+            /* 同時為了避免 flex 佈局的捲軸問題，增加 min-height */
+            min-height: 0;
         }
 
-        /* --- 1. 控制區不壓縮 --- */
+        /* 控制區不壓縮 */
         #controlsContainer {
             flex-shrink: 0;
         }
@@ -288,39 +234,27 @@
         /* 控制面板 - 毛玻璃效果 */
         .control-panel {
             display: grid;
-            /* --- (修改 2) 調整網格為 7 欄 --- */
-            grid-template-columns: auto 1fr auto 1fr auto auto auto; /* (原 auto 1fr auto 1fr) */
-            /* --- (修改 2) 縮小間距 --- */
-            gap: 10px; /* (原 15px) */
-            /* --- (修改 3) 壓縮垂直間距 --- */
-            margin-bottom: 15px; /* (原 20px) */
-            align-items: center; /* (原 end) */
-            background: var(--control-panel-bg); /* 輕微不同的毛玻璃 */
+            grid-template-columns: auto 1fr auto 1fr auto auto auto;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+            background: var(--control-panel-bg);
             -webkit-backdrop-filter: blur(15px);
             backdrop-filter: blur(15px);
-            /* --- (修改 2) 縮小 padding --- */
-            padding: 12px 15px; /* (原 15px 20px) */
+            padding: 12px 15px;
             border-radius: 10px;
             border: 1px solid rgba(0, 0, 0, 0.05);
             transition: background 0.3s ease;
         }
 
         .input-group {
-            /* --- (修改 4&5) 移除 flex-direction --- */
-            /* display: flex; */
-            /* flex-direction: column; */
-            
-            /* --- (修改 4&5) 設定為 grid item --- */
-            display: contents; /* 讓 label 和 input 成為 grid 的子元素 */
+            display: contents;
         }
 
         .input-group label {
-            font-weight: 600; /* bold */
-            font-size: 1em;   /*加大 */
-            /* --- (修改 4&5) 移除 margin-bottom --- */
-            /* margin-bottom: 8px; */
-            color: var(--system-blue); /* 蘋果藍 */
-            /* --- (修改 4&5) 新增 label 樣式 --- */
+            font-weight: 600;
+            font-size: 1em;
+            color: var(--system-blue);
             padding-right: 10px;
             text-align: right;
             white-space: nowrap;
@@ -334,8 +268,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
             transition: all 0.3s ease;
             background: var(--input-bg);
-            color: var(--system-blue); /* 蘋果藍 */
-            /* --- (修改 4&5) 讓 input 佔滿寬度 --- */
+            color: var(--system-blue);
             width: 100%;
         }
         .input-group input::placeholder {
@@ -343,11 +276,9 @@
              opacity: 0.5;
         }
 
-
         .input-group input:focus {
             outline: none;
             border-color: var(--system-blue);
-            /* 改為 inset 陰影 */
             box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2), inset 0 1px 2px rgba(0,0,0,0.1);
         }
         
@@ -356,11 +287,8 @@
         }
 
         .search-wrapper {
-            position: relative;
-            /* --- (修改 4&5) 設定為 grid item --- */
-            display: contents; /* 讓 input 成為 grid 的子元素 */
+            display: contents;
         }
-        /* --- (修改 4&5) 獨立 input wrapper --- */
         .search-input-container {
             position: relative;
         }
@@ -369,11 +297,10 @@
             position: absolute;
             right: 12px;
             top: 50%;
-            /* --- (修改 4&5) 調整 Y 軸 --- */
-            transform: translateY(-50%); /* (原 calc(-50% + 12px)) */
-            background: #ffc; /* 淺黃色 */
-            color: #000;     /* 黑色 */
-            border: 1px solid #e6db55; /* 增加邊框 */
+            transform: translateY(-50%);
+            background: #ffc;
+            color: #000;
+            border: 1px solid #e6db55;
             padding: 3px 8px;
             border-radius: 5px;
             font-size: 0.9em;
@@ -385,7 +312,6 @@
             color: #000;
             border: 1px solid #e6db55;
         }
-
 
         /* 按鈕樣式 */
         .btn {
@@ -400,8 +326,6 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            
-            /* 3D 按鈕樣式 */
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
             transition: all 0.15s ease-out;
         }
@@ -412,13 +336,11 @@
         }
         
         .btn:hover:not(:disabled) {
-            /* 懸浮 3D 效果 */
             transform: translateY(-2px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
         }
         
         .btn:active:not(:disabled) {
-             /* 點擊 3D 效果 */
             transform: translateY(1px);
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             transition-duration: 0.1s;
@@ -442,7 +364,7 @@
         }
         
         .btn-import {
-            background-color: #f39c12; /* 橘色 */
+            background-color: #f39c12;
             color: white;
         }
         .btn-import:hover:not(:disabled) {
@@ -450,7 +372,7 @@
         }
 
         .btn-nav {
-            background-color: #28a745; /* 綠色 */
+            background-color: #28a745;
             color: white;
         }
         .btn-nav:hover:not(:disabled) {
@@ -458,13 +380,12 @@
         }
         
         .btn-zoom {
-            background-color: #8B4513; /* 棕色 */
+            background-color: #8B4513;
             color: white;
         }
         .btn-zoom:hover:not(:disabled) {
             background-color: #65340f;
         }
-
 
         .btn-warning {
             background: #fff;
@@ -497,11 +418,8 @@
             align-items: center;
         }
         
-        /* --- (修改 2) 按鈕組改為 display: contents --- */
         .control-panel .button-group {
-            /* grid-column: 1 / -1; */ /* (原) 跨越所有欄 */
-            /* justify-content: flex-end; */ /* (原) 按鈕靠右 */
-            display: contents; /* 讓按鈕成為 grid 的子元素 */
+            display: contents;
         }
         
         .main-action-bar {
@@ -511,8 +429,7 @@
             background: var(--control-panel-bg);
             padding: 12px 20px;
             border-radius: 10px;
-            /* --- (修改 3) 壓縮垂直間距 --- */
-            margin-bottom: 15px; /* (原 20px) */
+            margin-bottom: 15px;
             transition: background 0.3s ease;
             flex-wrap: wrap;
             gap: 10px;
@@ -541,33 +458,28 @@
         .pdf-viewer {
             border: 1px solid rgba(0, 0, 0, 0.08);
             border-radius: 10px;
-            /* --- (修改) 移除底部 padding --- */
-            padding: 20px 20px 0 20px; /* (原 padding: 20px;) */
+            padding: 20px 20px 0 20px;
             background: var(--glass-bg);
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
-            /* --- (修改) 移除最小高度以消除空白隙 --- */
-            /* min-height: 400px; */ /* (移除) */
             overflow: auto;
             text-align: center;
             display: flex;
             align-items: flex-start;
             justify-content: center;
             transition: background 0.3s ease, border 0.3s ease;
-            /* --- 1. 讓 PDF 預覽區填滿剩餘空間並獨立捲動 --- */
             flex-grow: 1;
-            /* --- (修改 3) 移除多餘間距 --- */
-            /* margin-top: 20px; */ /* 增加與上方控制區的間距 */
+            /* 新增 min-height 和 min-width 以解決 flex 捲軸問題 */
+            min-height: 0;
+            min-width: 0;
         }
         
         .initial-message-container {
             color: var(--placeholder-text);
             font-size: 1.1em; 
-            /* --- (修改) 移除多餘的 padding --- */
-            padding-top: 0; /* (原) padding-top: 30px; */
+            padding-top: 0;
             text-align: left; 
-            /* --- (修改 1) 加寬 --- */
-            max-width: 700px; /* (原 600px) */
+            max-width: 700px;
             margin: 0 auto;
         }
         .initial-message-container p {
@@ -575,19 +487,8 @@
             text-align: center; 
             font-weight: 600; 
             margin-bottom: 25px;
-            /* --- (修改 1 & 5) 調整提示文字顏色 --- */
             color: var(--placeholder-prompt-text);
         }
-        
-        /* --- (新增 3&4) 副標題和製作者 (現已移至標題列) --- */
-        /*
-        .placeholder-subtitle {
-            font-size: 0.9em; text-align: center; margin-bottom: 5px;
-        }
-        .placeholder-creator {
-            font-size: 0.8em; text-align: center; margin-bottom: 25px;
-        }
-        */
 
         .initial-message-container h4 {
             color: var(--placeholder-heading);
@@ -595,7 +496,6 @@
             margin-bottom: 10px; 
             border-bottom: 1px solid var(--placeholder-border); 
             padding-bottom: 5px;
-            /* --- (新增 2) 加上圖示 --- */
             display: flex;
             align-items: center;
             gap: 8px;
@@ -604,37 +504,30 @@
         .initial-message-container ul {
             padding-left: 20px; 
             line-height: 1.8;
-            /* --- (修改 2) 移除 ul 結尾的空白隙 --- */
             margin-bottom: 0;
         }
-        /* --- (新增 2) 調整 li 樣式 --- */
         .initial-message-container ul li {
-            list-style: none; /* 移除預設點 */
+            list-style: none;
             position: relative;
-            padding-left: 30px; /* 增加左側空間給圖示 */
-             /* --- (修改 1) 縮小垂直間距 --- */
-            margin-bottom: 8px; /* (原 10px) */
+            padding-left: 30px;
+            margin-bottom: 8px;
         }
-        /* --- (新增) 移除最後一項的下邊距 --- */
         .initial-message-container ul li:last-child {
             margin-bottom: 0;
         }
-        /* --- (新增 2) 新增 li 圖示 --- */
         .initial-message-container ul li::before {
-            content: ''; /* 預設為空 */
+            content: '';
             position: absolute;
             left: 0;
-            top: 2px; /* 微調垂直位置 */
+            top: 2px;
             font-size: 1.2em;
         }
-        /* --- (新增 2) 指定圖示 --- */
         .initial-message-container ul li:nth-child(1)::before { content: '⚠️'; }
         .initial-message-container ul li:nth-child(2)::before { content: '🎨'; }
         .initial-message-container ul li:nth-child(3)::before { content: '🔧'; }
         .initial-message-container ul li:nth-child(4)::before { content: '📑'; }
         .initial-message-container ul li:nth-child(5)::before { content: '🖱️'; }
         
-        /* --- (新增 1) 標示關鍵字顏色 --- */
         .keyword {
             color: var(--system-blue);
             font-weight: 600;
@@ -647,7 +540,6 @@
             text-align: center;
         }
 
-
         .pdf-page-container {
             position: relative;
             margin: 0 auto 30px auto;
@@ -656,19 +548,8 @@
             line-height: 0;
             border-radius: 6px;
             overflow: hidden;
-            
-            /* --- 修改：移除 transform 和相關 transition --- */
             transition: box-shadow 0.3s ease;
-            /* transform: translateZ(0); */ /* 移除 */
         }
-        
-        /* --- 修改：移除 pdf-viewer:hover .pdf-page-container 效果 --- */
-        /*
-        .pdf-viewer:hover .pdf-page-container {
-            transform: scale(1.02);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-        }
-        */
 
         .interaction-layer {
             position: absolute;
@@ -699,12 +580,12 @@
         
         .highlight-box-next {
             position: absolute;
-            background-color: rgba(255, 165, 0, 0.4); /* 橘色透明 */
-            border: 2px solid #e67e22; /* 實心橘色 */
+            background-color: rgba(255, 165, 0, 0.4);
+            border: 2px solid #e67e22;
             z-index: 6;
             pointer-events: none;
             border-radius: 3px;
-            box-sizing: border-box; /* 確保邊框不會增加寬度 */
+            box-sizing: border-box;
         }
         
         .text-editor {
@@ -723,7 +604,6 @@
             background-color: #333;
             color: #eee;
         }
-
 
         /* 狀態訊息 (用於頂部) */
         .status-message {
@@ -762,7 +642,7 @@
             background: rgba(0, 0, 0, 0.6);
             -webkit-backdrop-filter: blur(5px);
             backdrop-filter: blur(5px);
-            display: none; /* 預設隱藏 */
+            display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -770,7 +650,6 @@
             gap: 20px;
         }
         #spinnerStatus {
-            /* 狀態訊息 (如附圖) */
             background: var(--d9edf7, #d9edf7);
             color: var(--31708f, #31708f);
             border: 1px solid var(--bce8f1, #bce8f1);
@@ -791,7 +670,7 @@
             height: 50px;
             border: 5px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            border-top-color: #fff; /* 主 spinner 顏色 */
+            border-top-color: #fff;
             animation: spin 1s ease-in-out infinite;
         }
         @keyframes spin {
@@ -808,7 +687,7 @@
             background: rgba(0, 0, 0, 0.5);
             -webkit-backdrop-filter: blur(5px);
             backdrop-filter: blur(5px);
-            display: none; /* 預設隱藏 */
+            display: none;
             justify-content: center;
             align-items: center;
             z-index: 900;
@@ -834,10 +713,9 @@
             font-size: 1.05em;
         }
         
-        /* --- (新增 1) 功能說明區塊 --- */
         .feature-explanation-container {
             max-width: 1200px;
-            margin: 30px auto 0 auto; /* 移到 container 外部，並與主視窗保持間距 */
+            margin: 30px auto 0 auto;
             padding: 25px;
             background: var(--glass-bg);
             -webkit-backdrop-filter: blur(20px);
@@ -855,12 +733,11 @@
         }
         .feature-grid {
             display: grid;
-            /* --- (修改 1) 強制 4 欄 --- */
-            grid-template-columns: repeat(4, 1fr); /* (原 repeat(auto-fit, minmax(280px, 1fr))) */
+            grid-template-columns: repeat(4, 1fr);
             gap: 20px;
         }
         .feature-card {
-            background: var(--control-panel-bg); /* 使用控制面板的背景色 */
+            background: var(--control-panel-bg);
             border-radius: 10px;
             padding: 20px;
             border: 1px solid rgba(0, 0, 0, 0.05);
@@ -899,10 +776,8 @@
                     </div>
                 </div>
                 
-                <!-- --- (修改) H1 標題置中 --- -->
                 <div class="title-bar-center">
                     <h1>PDF 替換文字</h1>
-                    <!-- --- (新增 3&4) 副標題和製作者 --- -->
                     <div class="title-bar-subtitle">輸入欲取代的文字與新文字，一鍵全部取代後匯出 PDF</div>
                     <div class="title-bar-creator">製作者：陳政德</div>
                 </div>
@@ -925,7 +800,6 @@
                 <div id="controlsContainer">
                     <!-- 控制面板 -->
                     <div class="control-panel">
-                        <!-- --- (修改 4&5) 調整 Label 和 Input 順序 --- -->
                         <div class="input-group search-wrapper">
                             <label for="searchText">搜尋文字</label>
                             <div class="search-input-container">
@@ -960,7 +834,6 @@
                             </div>
                         </div>
 
-                        <!-- 合併儲存按鈕 -->
                         <button class="btn btn-success" id="openExportModalBtn" title="儲存檔案" style="display: none;">💾 儲存...</button>
                     </div>
                 </div>
@@ -973,11 +846,10 @@
         </div>
     </div>
     
-    <!-- --- (新增 1) 功能說明區塊 --- -->
+    <!-- 功能說明區塊 -->
     <div class="feature-explanation-container">
         <h2>主要功能說明</h2>
         <div class="feature-grid">
-            <!-- 卡片 1: 匯入與清除 -->
             <div class="feature-card">
                 <div class="feature-card-title">
                     <span class="icon">📂</span>
@@ -990,7 +862,6 @@
                 </p>
             </div>
             
-            <!-- 卡片 2: 搜尋與取代 -->
             <div class="feature-card">
                 <div class="feature-card-title">
                     <span class="icon">🔍</span>
@@ -1004,7 +875,6 @@
                 </p>
             </div>
             
-            <!-- 卡片 3: 頁面導覽 -->
             <div class="feature-card">
                 <div class="feature-card-title">
                     <span class="icon">🧭</span>
@@ -1017,7 +887,6 @@
                 </p>
             </div>
 
-            <!-- 卡片 4: 儲存與匯出 -->
             <div class="feature-card">
                 <div class="feature-card-title">
                     <span class="icon">💾</span>
@@ -1137,10 +1006,7 @@
                 setEditingControlsState(true);
                 document.getElementById('totalPages').textContent = pdfDoc.numPages;
                 pageNumberInput.max = pdfDoc.numPages;
-                /* --- 修改：移除載入成功提示 --- */
-                /* showStatus('PDF 載入成功！請點擊頁面中的文字進行編輯。', 'success'); */
-                /* --- 載入成功後，直接清除「載入中」的提示 --- */
-                showStatus('', 'info', 0); // 傳入空字串並立即隱藏
+                showStatus('', 'info', 0);
                 document.getElementById('statusMessage').style.display = 'none';
 
             } catch (error) {
@@ -1180,8 +1046,7 @@
             const ctx = canvas.getContext('2d');
             await page.render({ canvasContext: ctx, viewport: viewport }).promise;
             
-            // 重繪已修改的文字
-            const pageFont = "Arial, 'Microsoft JhengHei', sans-serif"; // 使用通用字體
+            const pageFont = "Arial, 'Microsoft JhengHei', sans-serif";
             pdfPageData[pageNum].textItems.forEach(item => {
                 if (item.isModified) {
                     const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
@@ -1198,7 +1063,7 @@
                 }
             });
             
-            pdfPageData[pageNum].canvas = canvas; // 保存畫布引用
+            pdfPageData[pageNum].canvas = canvas;
             
             const interactionLayer = document.createElement('div');
             interactionLayer.className = 'interaction-layer';
@@ -1233,7 +1098,7 @@
         }
 
         function createEditor(pageNum, itemIndex) {
-            document.querySelector('.text-editor')?.blur(); // 移除舊的編輯框
+            document.querySelector('.text-editor')?.blur();
             const item = pdfPageData[pageNum].textItems[itemIndex];
             const interactionLayer = document.getElementById(item.id).parentElement;
             const s = item.scaled;
@@ -1242,10 +1107,10 @@
             editor.type = 'text';
             editor.className = 'text-editor';
             editor.value = item.currentText;
-            editor.style.left = (s.tx[4] - 2) + 'px'; // 微調
-            editor.style.top = (s.tx[5] - s.fontSize - 2) + 'px'; // 微調
-            editor.style.width = (s.width + 4) + 'px'; // 微調
-            editor.style.height = (s.effectiveHeight + 4) + 'px'; // 微調
+            editor.style.left = (s.tx[4] - 2) + 'px';
+            editor.style.top = (s.tx[5] - s.fontSize - 2) + 'px';
+            editor.style.width = (s.width + 4) + 'px';
+            editor.style.height = (s.effectiveHeight + 4) + 'px';
             editor.style.fontSize = s.fontSize + 'px';
             
             editor.addEventListener('blur', () => {
@@ -1253,15 +1118,13 @@
                 if (interactionLayer && editor.parentNode === interactionLayer) {
                     interactionLayer.removeChild(editor);
                 }
-                // 手動編輯後，重新整理搜尋列表
                 findAndHighlightAll(); 
                 currentSearchIndex = 0;
                 drawAllHighlights();
                 drawNextHighlight();
             });
             editor.addEventListener('keydown', (e) => { 
-                if (e.key === 'Enter') editor.blur(); 
-                if (e.key === 'Escape') editor.blur();
+                if (e.key === 'Enter' || e.key === 'Escape') editor.blur(); 
             });
             
             interactionLayer.appendChild(editor);
@@ -1283,7 +1146,7 @@
             const s = item.scaled;
             const tx = s.tx;
             const yTop = tx[5] - s.fontSize;
-            const pageFont = "Arial, 'Microsoft JhengHei', sans-serif"; // 確保使用相同字體
+            const pageFont = "Arial, 'Microsoft JhengHei', sans-serif";
             
             ctx.fillStyle = 'white';
             ctx.fillRect(tx[4] - 1, yTop - 1, s.width + 2, s.effectiveHeight + 2);
@@ -1293,7 +1156,6 @@
             ctx.fillText(newText, tx[4], tx[5]);
         }
 
-        // 此函數現在只負責 "搜尋" 和 "更新列表"
         function findAndHighlightAll() {
             const term = searchText.value;
             
@@ -1327,7 +1189,6 @@
             document.getElementById('searchCount').textContent = totalCount;
         }
         
-        // 繪製所有藍色高亮框
         function drawAllHighlights() {
             document.querySelectorAll('.highlight-box').forEach(box => box.remove());
             const interactionLayer = document.querySelector('.interaction-layer');
@@ -1339,7 +1200,6 @@
             for (const result of searchResults) {
                 if (result.pageNum === currentPageNum) {
                     const item = pdfPageData[result.pageNum].textItems[result.itemIndex];
-                    // 檢查 item.currentText 是否仍然包含 result.term
                     if (item && item.scaled && item.currentText && item.currentText.includes(result.term)) { 
                         const s = item.scaled;
                         const charWidth = s.width / item.currentText.length;
@@ -1358,7 +1218,6 @@
             }
         }
         
-        // 繪製下一個橘色高亮框 (並滾動)
         function drawNextHighlight() {
             document.querySelectorAll('.highlight-box-next').forEach(box => box.remove());
             if (searchResults.length === 0 || currentSearchIndex >= searchResults.length) {
@@ -1371,7 +1230,6 @@
                 const item = pdfPageData[nextItem.pageNum].textItems[nextItem.itemIndex];
                 const interactionLayer = document.querySelector('.interaction-layer');
                 
-                // 檢查 item.currentText 是否仍然包含 nextItem.term
                 if (interactionLayer && item && item.scaled && item.currentText && item.currentText.includes(nextItem.term)) {
                     const s = item.scaled;
                     const charWidth = s.width / item.currentText.length;
@@ -1388,8 +1246,6 @@
                     
                     const viewer = document.getElementById('pdfViewer');
                     const itemTop = (s.tx[5] - s.fontSize);
-                    
-                    // 總是滾動到頁面中間
                     const desiredScrollTop = itemTop - (viewer.clientHeight / 2) + (s.effectiveHeight / 2);
                     
                     viewer.scrollTo({
@@ -1405,14 +1261,12 @@
             findAndHighlightAll();
         }
         
-        // 優化後的「依序替換」
         function replaceNext() {
             const findText = searchText.value;
             if (!findText) { showStatus('請輸入要搜尋的文字', 'error'); return; }
             const replaceTextValue = replaceText.value;
             
             if (searchResults.length === 0) {
-                // 如果是空的，執行一次同步搜尋
                 findAndHighlightAll(); 
                 currentSearchIndex = 0;
                 drawAllHighlights();
@@ -1424,8 +1278,6 @@
             }
             
             if (currentSearchIndex >= searchResults.length) {
-                /* --- (修改 1) 移除完成提示 --- */
-                // showStatus('已完成所有依序替換。再次點擊可重新開始。', 'info');
                 currentSearchIndex = 0;
                 drawNextHighlight();
                 return;
@@ -1433,19 +1285,13 @@
             
             const itemInfo = searchResults[currentSearchIndex];
             
-            // 1. 如果不在當前頁面，跳轉 (此操作很快，不需 spinner)
             if (itemInfo.pageNum !== currentPageNum) {
                 renderPage(itemInfo.pageNum);
-                // renderPage 會自動呼叫 drawNextHighlight 並滾動
                 return;
             }
             
-            // 2. 在當前頁面，執行替換 (此操作很慢，需要 spinner)
+            showSpinner('正在替換並尋找下一個...');
             
-            // --- 修改：使用 Spinner 改善使用者體驗 ---
-            showSpinner('正在替換並尋找下一個...'); // 顯示 spinner
-            
-            // 延遲 10ms 讓 spinner 有時間渲染
             setTimeout(() => {
                 const pageNum = itemInfo.pageNum;
                 const itemIndex = itemInfo.itemIndex;
@@ -1455,53 +1301,34 @@
                 const post = item.currentText.substring(itemInfo.startIndex + itemInfo.term.length);
                 const newText = pre + replaceTextValue + post;
                 
-                // 3. 更新畫布
                 updateTextAndCanvas(pageNum, itemIndex, newText);
                 
-                // 4. 重新掃描 (這是 "慢" 的部分)
                 findAndHighlightAll(); 
                 
-                // 5. 找出 *下一個* 項目
                 let newIndex = searchResults.findIndex(r => 
                     r.pageNum > itemInfo.pageNum ||
                     (r.pageNum === itemInfo.pageNum && r.itemIndex > itemInfo.itemIndex) ||
                     (r.pageNum === itemInfo.pageNum && r.itemIndex === itemInfo.itemIndex && r.startIndex >= itemInfo.startIndex)
                 );
                 
-                if (newIndex === -1) { // 如果沒有"之後"的項目 (我們在結尾)
-                    if (searchResults.length > 0) {
-                        currentSearchIndex = 0; // 繞回開頭
-                    } else {
-                        currentSearchIndex = 0; // 列表空了
-                    }
+                if (newIndex === -1) {
+                    currentSearchIndex = (searchResults.length > 0) ? 0 : 0;
                 } else {
                     currentSearchIndex = newIndex;
                 }
                 
-                // 6. 重新繪製高亮
-                drawAllHighlights(); // 繪製所有藍色框
-                drawNextHighlight(); // 繪製新的橘色框 (並滾動)
+                drawAllHighlights();
+                drawNextHighlight();
                 
-                // 7. 檢查是否需要跳頁
                 const nextItemInfo = searchResults[currentSearchIndex];
                 if (nextItemInfo && nextItemInfo.pageNum !== currentPageNum) {
                     renderPage(nextItemInfo.pageNum);
                 }
                 
-                // 8. 隱藏 spinner 並顯示狀態
                 hideSpinner();
-                if (searchResults.length > 0) {
-                    /* --- 修改：移除「已跳至下一個」的提示 --- */
-                    // showStatus('已跳至下一個', 'success'); 
-                } else {
-                    /* --- (修改 1) 移除完成提示 --- */
-                    // showStatus('已完成所有替換', 'success');
-                }
                 
-            }, 10); // 延遲 10ms 執行
-            // --- 結束修改 ---
+            }, 10);
         }
-
 
         function replaceAll() {
             const findText = searchText.value;
@@ -1536,7 +1363,7 @@
             try {
                 const { PDFDocument } = PDFLib;
                 const pdfLibDoc = await PDFDocument.create();
-                const EXPORT_SCALE = 5.0; // 提高品質
+                const EXPORT_SCALE = 5.0;
                 const pageFont = "Arial, 'Microsoft JhengHei', sans-serif";
                 
                 for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
@@ -1596,7 +1423,6 @@
             }
         }
         
-        // 匯出 PNG (ZIP) 功能
         async function exportPNGZip() {
             if (!pdfDoc) {
                 showStatus('沒有可匯出的 PDF', 'error');
@@ -1608,7 +1434,6 @@
             try {
                 const zip = new JSZip();
                 const pageFont = "Arial, 'Microsoft JhengHei', sans-serif";
-                // 使用當前的縮放比例 (currentScale) 進行匯出
                 const EXPORT_SCALE = currentScale; 
                 
                 for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
@@ -1625,7 +1450,6 @@
                     
                     await page.render({ canvasContext: tempCtx, viewport: viewport }).promise;
                     
-                    // 重繪已修改的文字
                     pdfPageData[pageNum].textItems.forEach(item => {
                         if (item.isModified) {
                             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
@@ -1643,7 +1467,6 @@
                         }
                     });
                     
-                    // 將 Canvas 轉為 Blob
                     const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
                     zip.file(`page_${pageNum}.png`, blob);
                 }
@@ -1702,11 +1525,8 @@
                 <div class="initial-message-container">
                     <p>請點擊「匯入PDF 檔案」按鈕以開始</p>
                     
-                    <!-- --- (修改 3&4) 移除副標題和製作者 --- -->
-
                     <h4>⚠️ 注意事項</h4>
                     <ul>
-                        <!-- --- (修改 2) 調整文字並加上 class --- -->
                         <li>使用 <span class="keyword">「全部替換」</span> 功能時，建議 <span class="keyword">「搜尋文字」</span> 與 <span class="keyword">「取代文字」</span> 的字數相同（例如：兩個字換兩個字），以獲得最佳排版效果。</li>
                         <li>替換後的文字將使用 <span class="keyword">標準字型</span>（如正黑體或 Arial），可能與 PDF 原始字型不同。</li>
                         <li>本工具是將新文字以 <span class="keyword">「白底黑字」</span> 的方式覆蓋到原始文字上，而非直接修改 PDF 結構。</li>
@@ -1721,7 +1541,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // --- Permanent Event Listeners ---
             importFileBtn.addEventListener('click', () => fileInput.click());
             clearBtn.addEventListener('click', clearSearch);
             replaceAllBtn.addEventListener('click', replaceAll);
@@ -1733,12 +1552,11 @@
                 }
             });
             
-            // 更新搜尋按鈕的事件
             searchText.addEventListener('input', () => {
-                findAndHighlightAll(); // 執行搜尋
-                currentSearchIndex = 0; // 重設索引
-                drawAllHighlights();  // 繪製
-                drawNextHighlight();  // 繪製
+                findAndHighlightAll();
+                currentSearchIndex = 0;
+                drawAllHighlights();
+                drawNextHighlight();
             });
             
             prevPageBtn.addEventListener('click', () => { if (!prevPageBtn.disabled && currentPageNum > 1) renderPage(currentPageNum - 1); });
@@ -1755,7 +1573,6 @@
                 document.body.classList.toggle('dark-mode');
             });
             
-            // 匯出 Modal 事件
             openExportModalBtn.addEventListener('click', () => {
                 exportModalOverlay.style.display = 'flex';
             });
@@ -1763,22 +1580,21 @@
                 exportModalOverlay.style.display = 'none';
             });
             exportModalOverlay.addEventListener('click', (e) => {
-                if (e.target === exportModalOverlay) { // 點擊背景遮罩
+                if (e.target === exportModalOverlay) {
                     exportModalOverlay.style.display = 'none';
                 }
             });
             exportPdfBtn.addEventListener('click', () => {
                 exportModalOverlay.style.display = 'none';
-                exportPDF(); // 呼叫 PDF 匯出
+                exportPDF();
             });
             exportPngZipBtn.addEventListener('click', () => {
                 exportModalOverlay.style.display = 'none';
-                exportPNGZip(); // 呼叫 PNG (ZIP) 匯出
+                exportPNGZip();
             });
-
 
             resetTool(true);
         });
     </script>
 </body>
-</html></div></body></html>
+</html>
