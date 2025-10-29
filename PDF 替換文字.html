@@ -1,4 +1,15 @@
-<!DOCTYPE html>
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>PDF 替換文字</title>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
+      <style>
+      html, body { margin: 0; padding: 24px; background: #FFFFFF; color: #1d1d1f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; font-size: 15px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+      h1, h2, h3, h4, h5, h6, b, strong { font-weight: 600; } h1 { font-weight: 700; }
+      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; } ul { list-style-type: disc; } ol { list-style-type: decimal; } li { display: list-item; }
+      .hljs-container { padding: 1.5rem; border-radius: .75rem; overflow-x: auto; background: #fcfcfd; border: 1px solid #d2d2d7; }
+      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
+      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
+    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -32,6 +43,9 @@
             --placeholder-border: #ccc;
             --modal-bg: #fff;
             --spinner-color: #555;
+            
+            /* --- (新增 1) 提示文字棕色 --- */
+            --placeholder-prompt-text: #8B4513;
         }
 
         /* --- Dark Mode --- */
@@ -53,6 +67,9 @@
             --placeholder-border: #555;
             --modal-bg: #333;
             --spinner-color: #eee;
+            
+             /* --- (新增 1) 提示文字淺棕色 --- */
+            --placeholder-prompt-text: #D2B48C;
         }
 
 
@@ -72,7 +89,7 @@
             padding: 20px;
             transition: background 0.3s ease, color 0.3s ease;
             /* --- 1. 移除 body 捲動 --- */
-            overflow: hidden;
+            overflow-y: auto; /* --- (修改) 允許 body 捲動以查看說明 --- */
         }
 
         .container {
@@ -80,8 +97,8 @@
             margin: 0 auto;
             /* 增加 3D 視角 */
             perspective: 1500px;
-            /* --- 1. 設定 container 高度 --- */
-            height: calc(100vh - 40px); /* 100vh 減去 body 的 padding */
+            /* --- 1. 設定 container 高度 (修改：不再固定高度) --- */
+            /* height: calc(100vh - 40px); */ /* (原) 100vh 減去 body 的 padding */
         }
 
         /* 主視窗容器 - 毛玻璃效果 */
@@ -96,10 +113,12 @@
             /* --- 1. 移除 transform 和相關 transition --- */
             transition: background 0.3s ease, border 0.3s ease, box-shadow 0.4s ease;
             /* transform: scale(1.0); */ /* 移除 */
-            /* --- 1. 讓主視窗填滿 container 並使用 flex column --- */
-            height: 100%;
+            /* --- 1. 讓主視窗填滿 container 並使用 flex column (修改：高度自動) --- */
+            /* height: 100%; */
             display: flex;
             flex-direction: column;
+            /* --- (新增) 增加最小高度 --- */
+            min-height: calc(100vh - 40px);
         }
         
         /* --- 修改：移除 main-window:hover 效果 --- */
@@ -115,9 +134,12 @@
             display: flex;
             align-items: center;
             justify-content: space-between; /* 調整為 space-between 以容納切換器 */
-            padding: 12px 15px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-            position: relative;
+            /* --- (修改) 移除 min-height，改回 padding --- */
+            /* min-height: 65px; */ /* (移除) */
+            padding-top: 8px;
+            /* --- (修改) 再度縮小垂直間距 --- */
+            padding-bottom: 4px; /* (原 6px) */
+            /* position: relative; */ /* (移除) */
             /* --- 1. 標題列不壓縮 --- */
             flex-shrink: 0;
         }
@@ -126,6 +148,8 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            /* --- (修改) 補回 side padding --- */
+            padding-left: 15px;
         }
         
         .traffic-lights {
@@ -143,21 +167,61 @@
         .dot-yellow { background: var(--system-yellow); }
         .dot-green { background: var(--system-green); }
 
+        /* --- (修改) 新增標題中央容器 --- */
+        .title-bar-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* --- (修改) 移除 absolute positioning --- */
+            /* position: absolute; */
+            /* left: 50%; */
+            /* top: 50%; */
+            /* transform: translate(-50%, -50%); */
+            /* width: 80%; */ 
+            /* --- (修改) 移除 flex-grow --- */
+            /* flex-grow: 1; */ /* (移除) 讓其佔滿中間空間 */
+        }
+
         .title-bar h1 {
             /* 標題置中 */
             font-size: 1.8em; 
             font-weight: 600;
             text-align: center;
             margin: 0;
-            color: var(--system-text);
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
+            /* --- (修改 2) 調整主標題顏色 --- */
+            color: var(--system-blue);
+            /* --- (修改) 移除 position 和 transform --- */
+            /* position: absolute; */
+            /* left: 50%; */
+            /* transform: translateX(-50%); */
             white-space: nowrap;
+        }
+        
+        /* --- (新增) 副標題和製作者 --- */
+        .title-bar-subtitle {
+            font-size: 0.9em;
+            font-weight: 500;
+            color: var(--system-text);
+            /* --- (修改 1) 再縮減垂直間距 --- */
+            margin-top: 1px; /* (原 2px) */
+            text-align: center;
+        }
+        .title-bar-creator {
+            font-size: 0.8em;
+            font-weight: 400;
+            color: var(--placeholder-text);
+            /* --- (修改 1) 再縮減垂直間距 --- */
+            margin-top: 0px; /* (原) margin-top: 1px; */
+        }
+        body.dark-mode .title-bar-subtitle,
+        body.dark-mode .title-bar-creator {
+            color: var(--placeholder-text);
         }
         
         .title-bar-right {
              /* 用於放置切換器 */
+            /* --- (修改) 補回 side padding --- */
+            padding-right: 15px;
         }
 
         .theme-switch-wrapper {
@@ -206,7 +270,8 @@
         
         /* 主要內容區域 */
         .main-section {
-            padding: 25px;
+            /* --- (修改) 再度縮小上方間距 --- */
+            padding: 8px 25px 25px; /* (原 10px 25px 25px) */
             /* --- 1. 讓 main-section 填滿並成為 flex column --- */
             display: flex;
             flex-direction: column;
@@ -223,29 +288,42 @@
         /* 控制面板 - 毛玻璃效果 */
         .control-panel {
             display: grid;
-            grid-template-columns: 1fr 1fr auto;
-            gap: 15px;
-            margin-bottom: 20px;
-            align-items: end;
+            /* --- (修改 2) 調整網格為 7 欄 --- */
+            grid-template-columns: auto 1fr auto 1fr auto auto auto; /* (原 auto 1fr auto 1fr) */
+            /* --- (修改 2) 縮小間距 --- */
+            gap: 10px; /* (原 15px) */
+            /* --- (修改 3) 壓縮垂直間距 --- */
+            margin-bottom: 15px; /* (原 20px) */
+            align-items: center; /* (原 end) */
             background: var(--control-panel-bg); /* 輕微不同的毛玻璃 */
             -webkit-backdrop-filter: blur(15px);
             backdrop-filter: blur(15px);
-            padding: 20px;
+            /* --- (修改 2) 縮小 padding --- */
+            padding: 12px 15px; /* (原 15px 20px) */
             border-radius: 10px;
             border: 1px solid rgba(0, 0, 0, 0.05);
             transition: background 0.3s ease;
         }
 
         .input-group {
-            display: flex;
-            flex-direction: column;
+            /* --- (修改 4&5) 移除 flex-direction --- */
+            /* display: flex; */
+            /* flex-direction: column; */
+            
+            /* --- (修改 4&5) 設定為 grid item --- */
+            display: contents; /* 讓 label 和 input 成為 grid 的子元素 */
         }
 
         .input-group label {
             font-weight: 600; /* bold */
             font-size: 1em;   /*加大 */
-            margin-bottom: 8px; /* 增加間距 */
+            /* --- (修改 4&5) 移除 margin-bottom --- */
+            /* margin-bottom: 8px; */
             color: var(--system-blue); /* 蘋果藍 */
+            /* --- (修改 4&5) 新增 label 樣式 --- */
+            padding-right: 10px;
+            text-align: right;
+            white-space: nowrap;
         }
 
         .input-group input {
@@ -257,6 +335,8 @@
             transition: all 0.3s ease;
             background: var(--input-bg);
             color: var(--system-blue); /* 蘋果藍 */
+            /* --- (修改 4&5) 讓 input 佔滿寬度 --- */
+            width: 100%;
         }
         .input-group input::placeholder {
              color: var(--system-blue);
@@ -277,13 +357,20 @@
 
         .search-wrapper {
             position: relative;
+            /* --- (修改 4&5) 設定為 grid item --- */
+            display: contents; /* 讓 input 成為 grid 的子元素 */
+        }
+        /* --- (修改 4&5) 獨立 input wrapper --- */
+        .search-input-container {
+            position: relative;
         }
 
         #searchCount {
             position: absolute;
             right: 12px;
             top: 50%;
-            transform: translateY(calc(-50% + 12px)); /* 調整位置以對齊輸入框 (因應 label 調整) */
+            /* --- (修改 4&5) 調整 Y 軸 --- */
+            transform: translateY(-50%); /* (原 calc(-50% + 12px)) */
             background: #ffc; /* 淺黃色 */
             color: #000;     /* 黑色 */
             border: 1px solid #e6db55; /* 增加邊框 */
@@ -410,6 +497,13 @@
             align-items: center;
         }
         
+        /* --- (修改 2) 按鈕組改為 display: contents --- */
+        .control-panel .button-group {
+            /* grid-column: 1 / -1; */ /* (原) 跨越所有欄 */
+            /* justify-content: flex-end; */ /* (原) 按鈕靠右 */
+            display: contents; /* 讓按鈕成為 grid 的子元素 */
+        }
+        
         .main-action-bar {
             display: flex;
             justify-content: space-between;
@@ -417,7 +511,8 @@
             background: var(--control-panel-bg);
             padding: 12px 20px;
             border-radius: 10px;
-            margin-bottom: 20px;
+            /* --- (修改 3) 壓縮垂直間距 --- */
+            margin-bottom: 15px; /* (原 20px) */
             transition: background 0.3s ease;
             flex-wrap: wrap;
             gap: 10px;
@@ -446,11 +541,13 @@
         .pdf-viewer {
             border: 1px solid rgba(0, 0, 0, 0.08);
             border-radius: 10px;
-            padding: 20px;
+            /* --- (修改) 移除底部 padding --- */
+            padding: 20px 20px 0 20px; /* (原 padding: 20px;) */
             background: var(--glass-bg);
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
-            min-height: 400px;
+            /* --- (修改) 移除最小高度以消除空白隙 --- */
+            /* min-height: 400px; */ /* (移除) */
             overflow: auto;
             text-align: center;
             display: flex;
@@ -459,15 +556,18 @@
             transition: background 0.3s ease, border 0.3s ease;
             /* --- 1. 讓 PDF 預覽區填滿剩餘空間並獨立捲動 --- */
             flex-grow: 1;
-            margin-top: 20px; /* 增加與上方控制區的間距 */
+            /* --- (修改 3) 移除多餘間距 --- */
+            /* margin-top: 20px; */ /* 增加與上方控制區的間距 */
         }
         
         .initial-message-container {
             color: var(--placeholder-text);
             font-size: 1.1em; 
-            padding-top: 30px; 
+            /* --- (修改) 移除多餘的 padding --- */
+            padding-top: 0; /* (原) padding-top: 30px; */
             text-align: left; 
-            max-width: 600px; 
+            /* --- (修改 1) 加寬 --- */
+            max-width: 700px; /* (原 600px) */
             margin: 0 auto;
         }
         .initial-message-container p {
@@ -475,19 +575,71 @@
             text-align: center; 
             font-weight: 600; 
             margin-bottom: 25px;
-            color: var(--placeholder-heading);
+            /* --- (修改 1 & 5) 調整提示文字顏色 --- */
+            color: var(--placeholder-prompt-text);
         }
+        
+        /* --- (新增 3&4) 副標題和製作者 (現已移至標題列) --- */
+        /*
+        .placeholder-subtitle {
+            font-size: 0.9em; text-align: center; margin-bottom: 5px;
+        }
+        .placeholder-creator {
+            font-size: 0.8em; text-align: center; margin-bottom: 25px;
+        }
+        */
+
         .initial-message-container h4 {
             color: var(--placeholder-heading);
             margin-top: 20px; 
             margin-bottom: 10px; 
             border-bottom: 1px solid var(--placeholder-border); 
             padding-bottom: 5px;
+            /* --- (新增 2) 加上圖示 --- */
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.2em;
         }
         .initial-message-container ul {
             padding-left: 20px; 
             line-height: 1.8;
+            /* --- (修改 2) 移除 ul 結尾的空白隙 --- */
+            margin-bottom: 0;
         }
+        /* --- (新增 2) 調整 li 樣式 --- */
+        .initial-message-container ul li {
+            list-style: none; /* 移除預設點 */
+            position: relative;
+            padding-left: 30px; /* 增加左側空間給圖示 */
+             /* --- (修改 1) 縮小垂直間距 --- */
+            margin-bottom: 8px; /* (原 10px) */
+        }
+        /* --- (新增) 移除最後一項的下邊距 --- */
+        .initial-message-container ul li:last-child {
+            margin-bottom: 0;
+        }
+        /* --- (新增 2) 新增 li 圖示 --- */
+        .initial-message-container ul li::before {
+            content: ''; /* 預設為空 */
+            position: absolute;
+            left: 0;
+            top: 2px; /* 微調垂直位置 */
+            font-size: 1.2em;
+        }
+        /* --- (新增 2) 指定圖示 --- */
+        .initial-message-container ul li:nth-child(1)::before { content: '⚠️'; }
+        .initial-message-container ul li:nth-child(2)::before { content: '🎨'; }
+        .initial-message-container ul li:nth-child(3)::before { content: '🔧'; }
+        .initial-message-container ul li:nth-child(4)::before { content: '📑'; }
+        .initial-message-container ul li:nth-child(5)::before { content: '🖱️'; }
+        
+        /* --- (新增 1) 標示關鍵字顏色 --- */
+        .keyword {
+            color: var(--system-blue);
+            font-weight: 600;
+        }
+
         .loading-message {
             color: var(--placeholder-heading);
             font-size: 1.5em; 
@@ -681,6 +833,56 @@
             padding: 12px;
             font-size: 1.05em;
         }
+        
+        /* --- (新增 1) 功能說明區塊 --- */
+        .feature-explanation-container {
+            max-width: 1200px;
+            margin: 30px auto 0 auto; /* 移到 container 外部，並與主視窗保持間距 */
+            padding: 25px;
+            background: var(--glass-bg);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .feature-explanation-container h2 {
+            text-align: center;
+            font-size: 1.6em;
+            font-weight: 600;
+            color: var(--system-blue);
+            margin-bottom: 25px;
+        }
+        .feature-grid {
+            display: grid;
+            /* --- (修改 1) 強制 4 欄 --- */
+            grid-template-columns: repeat(4, 1fr); /* (原 repeat(auto-fit, minmax(280px, 1fr))) */
+            gap: 20px;
+        }
+        .feature-card {
+            background: var(--control-panel-bg); /* 使用控制面板的背景色 */
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: background 0.3s ease;
+        }
+        .feature-card-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--system-text);
+        }
+        .feature-card-title .icon {
+            font-size: 1.5em;
+        }
+        .feature-card p {
+            font-size: 0.95em;
+            line-height: 1.7;
+            color: var(--system-text);
+        }
     </style>
 </head>
 <body>
@@ -697,7 +899,13 @@
                     </div>
                 </div>
                 
-                <h1>PDF 替換文字</h1>
+                <!-- --- (修改) H1 標題置中 --- -->
+                <div class="title-bar-center">
+                    <h1>PDF 替換文字</h1>
+                    <!-- --- (新增 3&4) 副標題和製作者 --- -->
+                    <div class="title-bar-subtitle">輸入欲取代的文字與新文字，一鍵全部取代後匯出 PDF</div>
+                    <div class="title-bar-creator">製作者：陳政德</div>
+                </div>
                 
                 <div class="title-bar-right">
                     <div class="theme-switch-wrapper">
@@ -717,10 +925,13 @@
                 <div id="controlsContainer">
                     <!-- 控制面板 -->
                     <div class="control-panel">
+                        <!-- --- (修改 4&5) 調整 Label 和 Input 順序 --- -->
                         <div class="input-group search-wrapper">
                             <label for="searchText">搜尋文字</label>
-                            <input type="text" id="searchText" placeholder="輸入要尋找的文字">
-                            <span id="searchCount">0</span>
+                            <div class="search-input-container">
+                                <input type="text" id="searchText" placeholder="輸入要尋找的文字">
+                                <span id="searchCount">0</span>
+                            </div>
                         </div>
                         <div class="input-group">
                             <label for="replaceText">取代文字</label>
@@ -761,6 +972,66 @@
             </div>
         </div>
     </div>
+    
+    <!-- --- (新增 1) 功能說明區塊 --- -->
+    <div class="feature-explanation-container">
+        <h2>主要功能說明</h2>
+        <div class="feature-grid">
+            <!-- 卡片 1: 匯入與清除 -->
+            <div class="feature-card">
+                <div class="feature-card-title">
+                    <span class="icon">📂</span>
+                    <span>匯入、清除、主題</span>
+                </div>
+                <p>
+                    <span class="keyword">「 📂 匯入PDF 檔案 」</span>: 點擊以選擇您電腦中的 PDF 檔案並載入。<br>
+                    <span class="keyword">「 🧹 清除 」</span>: 點擊以清除「搜尋文字」和「取代文字」兩個輸入框的內容。<br>
+                    <span class="keyword">「 🌓 (切換器) 」</span>: 切換淺色或深色（暗黑）操作模式。
+                </p>
+            </div>
+            
+            <!-- 卡片 2: 搜尋與取代 -->
+            <div class="feature-card">
+                <div class="feature-card-title">
+                    <span class="icon">🔍</span>
+                    <span>搜尋與取代</span>
+                </div>
+                <p>
+                    <span class="keyword">「 搜尋文字 」</span>: 輸入您想在 PDF 中尋找的文字。右側 <span class="keyword">[ 0 ]</span> 會即時顯示找到的數量。<br>
+                    <span class="keyword">「 取代文字 」</span>: 輸入您要替換成的新文字。<br>
+                    <span class="keyword">「 依序替換 」</span>: 替換目前（橘色框）反白的文字，並自動跳至下一個。<br>
+                    <span class="keyword">「 全部替換 」</span>: 一次將文件中所有找到的「搜尋文字」全部替換。
+                </p>
+            </div>
+            
+            <!-- 卡片 3: 頁面導覽 -->
+            <div class="feature-card">
+                <div class="feature-card-title">
+                    <span class="icon">🧭</span>
+                    <span>頁面導覽與縮放</span>
+                </div>
+                <p>
+                    <span class="keyword">「 ← 上一頁 」</span> / <span class="keyword">「 下一頁 → 」</span>: 切換 PDF 頁面。<br>
+                    <span class="keyword">「 第 [ 1 ] / X 頁 」</span>: 可直接輸入數字後按 Enter 跳至指定頁面。<br>
+                    <span class="keyword">「 － 」</span> / <span class="keyword">「 ＋ 」</span>: 縮小或放大 PDF 頁面的檢視比例。
+                </p>
+            </div>
+
+            <!-- 卡片 4: 儲存與匯出 -->
+            <div class="feature-card">
+                <div class="feature-card-title">
+                    <span class="icon">💾</span>
+                    <span>儲存與匯出</span>
+                </div>
+                <p>
+                    <span class="keyword">「 💾 儲存... 」</span>: 點擊此按鈕會彈出儲存選項。<br>
+                    <span class="keyword">「 💾 另存為 PDF 」</span>: 將您修改後的內容（包含替換的文字）儲存為一個新的 PDF 檔案。<br>
+                    <span class="keyword">「 🖼️ 另存為 PNG (ZIP) 」</span>: 將 PDF 的每一頁（包含修改內容）分別存為 PNG 圖片，並打包成一個 ZIP 檔案下載。
+                </p>
+            </div>
+        </div>
+    </div>
+
     
     <!-- 載入中遮罩 -->
     <div id="spinnerOverlay">
@@ -1135,7 +1406,7 @@
         }
         
         // 優化後的「依序替換」
-        async function replaceNext() {
+        function replaceNext() {
             const findText = searchText.value;
             if (!findText) { showStatus('請輸入要搜尋的文字', 'error'); return; }
             const replaceTextValue = replaceText.value;
@@ -1153,7 +1424,8 @@
             }
             
             if (currentSearchIndex >= searchResults.length) {
-                showStatus('已完成所有依序替換。再次點擊可重新開始。', 'info');
+                /* --- (修改 1) 移除完成提示 --- */
+                // showStatus('已完成所有依序替換。再次點擊可重新開始。', 'info');
                 currentSearchIndex = 0;
                 drawNextHighlight();
                 return;
@@ -1222,7 +1494,8 @@
                     /* --- 修改：移除「已跳至下一個」的提示 --- */
                     // showStatus('已跳至下一個', 'success'); 
                 } else {
-                    showStatus('已完成所有替換', 'success');
+                    /* --- (修改 1) 移除完成提示 --- */
+                    // showStatus('已完成所有替換', 'success');
                 }
                 
             }, 10); // 延遲 10ms 執行
@@ -1428,13 +1701,17 @@
                 pdfViewer.innerHTML = `
                 <div class="initial-message-container">
                     <p>請點擊「匯入PDF 檔案」按鈕以開始</p>
+                    
+                    <!-- --- (修改 3&4) 移除副標題和製作者 --- -->
+
                     <h4>⚠️ 注意事項</h4>
                     <ul>
-                        <li><b>字數對應：</b>使用「全部替換」功能時，建議「搜尋文字」與「取代文字」的字數相同（例如：兩個字換兩個字），以獲得最佳排版效果。</li>
-                        <li><b>字型限制：</b>替換後的文字將使用標準字型（如正黑體或 Arial），可能與 PDF 原始字型不同。</li>
-                        <li><b>替換原理：</b>本工具是將新文字以「白底黑字」的方式覆蓋到原始文字上，而非直接修改 PDF 結構。</li>
-                        <li><b>複雜文件：</b>對於圖層複雜或包含特殊字型的 PDF，替換效果可能不佳。</li>
-                        <li><b>編輯方式：</b>您也可以直接點擊頁面上的文字框進行單獨修改。</li>
+                        <!-- --- (修改 2) 調整文字並加上 class --- -->
+                        <li>使用 <span class="keyword">「全部替換」</span> 功能時，建議 <span class="keyword">「搜尋文字」</span> 與 <span class="keyword">「取代文字」</span> 的字數相同（例如：兩個字換兩個字），以獲得最佳排版效果。</li>
+                        <li>替換後的文字將使用 <span class="keyword">標準字型</span>（如正黑體或 Arial），可能與 PDF 原始字型不同。</li>
+                        <li>本工具是將新文字以 <span class="keyword">「白底黑字」</span> 的方式覆蓋到原始文字上，而非直接修改 PDF 結構。</li>
+                        <li>對於圖層複雜或包含特殊字型的 PDF，替換效果可能不佳。</li>
+                        <li>您也可以直接點擊頁面上的 <span class="keyword">文字框</span> 進行單獨修改。</li>
                     </ul>
                 </div>`;
             } else {
@@ -1504,4 +1781,4 @@
         });
     </script>
 </body>
-</html>
+</html></div></body></html>
