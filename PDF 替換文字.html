@@ -1,28 +1,19 @@
-<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>PDF 替換文字</title>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
-      <style>
-      html, body { margin: 0; padding: 24px; background: #FFFFFF; color: #1d1d1f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; font-size: 15px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-      h1, h2, h3, h4, h5, h6, b, strong { font-weight: 600; } h1 { font-weight: 700; }
-      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; } ul { list-style-type: disc; } ol { list-style-type: decimal; } li { display: list-item; }
-      .hljs-container { padding: 1.5rem; border-radius: .75rem; overflow-x: auto; background: #fcfcfd; border: 1px solid #d2d2d7; }
-      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
-      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
-    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 標題更新 -->
     <title>PDF 替換文字</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <!-- --- 引入 JSZip 函式庫 (用於 PNG ZIP) --- -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
-            /* macOS 系統顏色 */
+            /* --- Light Mode (Default) --- */
             --system-blue: #007aff;
             --system-gray-bg: #f5f5f7;
+            --system-gray-bg-tint: #f0f0f5; 
             --system-text: #1d1d1f;
             --system-red: #ff5f57;
             --system-yellow: #febc2e;
@@ -30,7 +21,40 @@
             --glass-bg: rgba(255, 255, 255, 0.7);
             --glass-border: rgba(255, 255, 255, 0.2);
             --highlight-bg: rgba(0, 122, 255, 0.2);
+            --control-panel-bg: rgba(240, 240, 245, 0.7);
+            --input-bg: rgba(255, 255, 255, 0.9);
+            --input-border: #ddd;
+            --secondary-btn-bg: #e6e6e6;
+            --secondary-btn-border: #dcdcdc;
+            --secondary-btn-hover: #dcdcdc;
+            --placeholder-text: #666;
+            --placeholder-heading: #333;
+            --placeholder-border: #ccc;
+            --modal-bg: #fff;
+            --spinner-color: #555;
         }
+
+        /* --- Dark Mode --- */
+        body.dark-mode {
+            --system-gray-bg: #1c1c1e; /* 深灰背景 */
+            --system-gray-bg-tint: #2a2a2c;
+            --system-text: #f5f5f7;     /* 亮白文字 */
+            --glass-bg: rgba(40, 40, 40, 0.7); /* 深色毛玻璃 */
+            --glass-border: rgba(60, 60, 60, 0.3);
+            --highlight-bg: rgba(0, 122, 255, 0.4);
+            --control-panel-bg: rgba(50, 50, 50, 0.7); /* 深色控制面板 */
+            --input-bg: rgba(60, 60, 60, 0.9);
+            --input-border: #555;
+            --secondary-btn-bg: #555;
+            --secondary-btn-border: #666;
+            --secondary-btn-hover: #666;
+            --placeholder-text: #bbb;
+            --placeholder-heading: #eee;
+            --placeholder-border: #555;
+            --modal-bg: #333;
+            --spinner-color: #eee;
+        }
+
 
         * {
             margin: 0;
@@ -46,11 +70,18 @@
             color: var(--system-text);
             min-height: 100vh;
             padding: 20px;
+            transition: background 0.3s ease, color 0.3s ease;
+            /* --- 1. 移除 body 捲動 --- */
+            overflow: hidden;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            /* 增加 3D 視角 */
+            perspective: 1500px;
+            /* --- 1. 設定 container 高度 --- */
+            height: calc(100vh - 40px); /* 100vh 減去 body 的 padding */
         }
 
         /* 主視窗容器 - 毛玻璃效果 */
@@ -62,24 +93,44 @@
             border: 1px solid var(--glass-border);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             overflow: hidden; /* 確保子元素圓角正確 */
+            /* --- 1. 移除 transform 和相關 transition --- */
+            transition: background 0.3s ease, border 0.3s ease, box-shadow 0.4s ease;
+            /* transform: scale(1.0); */ /* 移除 */
+            /* --- 1. 讓主視窗填滿 container 並使用 flex column --- */
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
+        
+        /* --- 修改：移除 main-window:hover 效果 --- */
+        /*
+        .main-window:hover {
+            transform: scale(1.01);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+        }
+        */
 
         /* 標題列 */
         .title-bar {
             display: flex;
             align-items: center;
+            justify-content: space-between; /* 調整為 space-between 以容納切換器 */
             padding: 12px 15px;
             border-bottom: 1px solid rgba(0, 0, 0, 0.08);
             position: relative;
+            /* --- 1. 標題列不壓縮 --- */
+            flex-shrink: 0;
         }
 
+        .title-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
         .traffic-lights {
             display: flex;
             gap: 8px;
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
         }
 
         .dot {
@@ -94,18 +145,79 @@
 
         .title-bar h1 {
             /* 標題置中 */
-            /* --- 修改：字體加大 --- */
-            font-size: 1.4em; 
+            font-size: 1.8em; 
             font-weight: 600;
             text-align: center;
-            flex-grow: 1;
             margin: 0;
             color: var(--system-text);
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+        }
+        
+        .title-bar-right {
+             /* 用於放置切換器 */
+        }
+
+        .theme-switch-wrapper {
+            display: flex;
+            align-items: center;
+        }
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px; /* 寬度 */
+            height: 24px; /* 高度 */
+        }
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px; /* 高度 */
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; /* 圓點高度 */
+            width: 18px; /* 圓點寬度 */
+            left: 3px; /* 邊距 */
+            bottom: 3px; /* 邊距 */
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--system-blue);
+        }
+        input:checked + .slider:before {
+            transform: translateX(20px); /* 44 - 18 - 3 - 3 = 20 */
         }
         
         /* 主要內容區域 */
         .main-section {
             padding: 25px;
+            /* --- 1. 讓 main-section 填滿並成為 flex column --- */
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            overflow: hidden; /* 確保 padding 不會導致
+            flex-grow 失效 */
+        }
+
+        /* --- 1. 控制區不壓縮 --- */
+        #controlsContainer {
+            flex-shrink: 0;
         }
 
         /* 控制面板 - 毛玻璃效果 */
@@ -115,12 +227,13 @@
             gap: 15px;
             margin-bottom: 20px;
             align-items: end;
-            background: rgba(240, 240, 245, 0.7); /* 輕微不同的毛玻璃 */
+            background: var(--control-panel-bg); /* 輕微不同的毛玻璃 */
             -webkit-backdrop-filter: blur(15px);
             backdrop-filter: blur(15px);
             padding: 20px;
             border-radius: 10px;
             border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: background 0.3s ease;
         }
 
         .input-group {
@@ -129,27 +242,37 @@
         }
 
         .input-group label {
-            font-weight: 500;
-            margin-bottom: 6px;
-            color: #333;
-            font-size: 0.9em;
+            font-weight: 600; /* bold */
+            font-size: 1em;   /*加大 */
+            margin-bottom: 8px; /* 增加間距 */
+            color: var(--system-blue); /* 蘋果藍 */
         }
 
         .input-group input {
             padding: 10px 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--input-border);
             border-radius: 8px;
-            font-size: 1em;
+            font-size: 1.1em; 
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
             transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.9);
+            background: var(--input-bg);
+            color: var(--system-blue); /* 蘋果藍 */
         }
+        .input-group input::placeholder {
+             color: var(--system-blue);
+             opacity: 0.5;
+        }
+
 
         .input-group input:focus {
             outline: none;
             border-color: var(--system-blue);
-            /* macOS 風格的 focus ring */
-            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+            /* 改為 inset 陰影 */
+            box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2), inset 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        body.dark-mode .input-group input:focus {
+             box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3), inset 0 1px 2px rgba(255,255,255,0.1);
         }
 
         .search-wrapper {
@@ -160,14 +283,22 @@
             position: absolute;
             right: 12px;
             top: 50%;
-            transform: translateY(calc(-50% + 10px)); /* 調整位置以對齊輸入框 */
-            background: #e9ecef;
-            color: #495057;
+            transform: translateY(calc(-50% + 12px)); /* 調整位置以對齊輸入框 (因應 label 調整) */
+            background: #ffc; /* 淺黃色 */
+            color: #000;     /* 黑色 */
+            border: 1px solid #e6db55; /* 增加邊框 */
             padding: 3px 8px;
             border-radius: 5px;
             font-size: 0.9em;
             font-weight: 600;
         }
+        
+        body.dark-mode #searchCount {
+            background: #ffc;
+            color: #000;
+            border: 1px solid #e6db55;
+        }
+
 
         /* 按鈕樣式 */
         .btn {
@@ -177,56 +308,96 @@
             font-size: 0.95em;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s ease;
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            
+            /* 3D 按鈕樣式 */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            transition: all 0.15s ease-out;
         }
 
         .btn:disabled {
             cursor: not-allowed;
             opacity: 0.5;
         }
+        
+        .btn:hover:not(:disabled) {
+            /* 懸浮 3D 效果 */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+        }
+        
+        .btn:active:not(:disabled) {
+             /* 點擊 3D 效果 */
+            transform: translateY(1px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition-duration: 0.1s;
+        }
 
-        /* 強調色按鈕 (系統藍) */
         .btn-primary {
             background: var(--system-blue);
             color: white;
         }
-
         .btn-primary:hover:not(:disabled) {
-            background: #0070e0; /* 略深的藍色 */
+            background: #0070e0;
         }
         
-        /* 次要按鈕 (灰色) */
         .btn-secondary {
-            background: #e6e6e6;
+            background: var(--secondary-btn-bg);
             color: var(--system-text);
-            border: 1px solid #dcdcdc;
+            border: 1px solid var(--secondary-btn-border);
         }
-
         .btn-secondary:hover:not(:disabled) {
-            background: #dcdcdc;
+            background: var(--secondary-btn-hover);
+        }
+        
+        .btn-import {
+            background-color: #f39c12; /* 橘色 */
+            color: white;
+        }
+        .btn-import:hover:not(:disabled) {
+            background-color: #e67e22;
         }
 
-        /* 警告/清除按鈕 */
+        .btn-nav {
+            background-color: #28a745; /* 綠色 */
+            color: white;
+        }
+        .btn-nav:hover:not(:disabled) {
+            background-color: #218838;
+        }
+        
+        .btn-zoom {
+            background-color: #8B4513; /* 棕色 */
+            color: white;
+        }
+        .btn-zoom:hover:not(:disabled) {
+            background-color: #65340f;
+        }
+
+
         .btn-warning {
             background: #fff;
             color: var(--system-text);
-            border: 1px solid #dcdcdc;
+            border: 1px solid var(--secondary-btn-border);
         }
-
+        body.dark-mode .btn-warning {
+            background: #444;
+        }
         .btn-warning:hover:not(:disabled) {
             background: #f7f7f7;
         }
+        body.dark-mode .btn-warning:hover:not(:disabled) {
+            background: #505050;
+        }
         
-        /* 匯出/成功按鈕 (系統藍) */
         .btn-success {
             background: var(--system-blue);
             color: white;
-            font-weight: 600; /* 強調 */
+            font-weight: 600;
         }
         .btn-success:hover:not(:disabled) {
             background: #0070e0;
@@ -236,16 +407,20 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
+            align-items: center;
         }
         
         .main-action-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(240, 240, 245, 0.7); /* 同控制面板 */
+            background: var(--control-panel-bg);
             padding: 12px 20px;
             border-radius: 10px;
             margin-bottom: 20px;
+            transition: background 0.3s ease;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .view-controls {
@@ -275,14 +450,51 @@
             background: var(--glass-bg);
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
-            max-height: 800px;
             min-height: 400px;
             overflow: auto;
             text-align: center;
             display: flex;
             align-items: flex-start;
             justify-content: center;
+            transition: background 0.3s ease, border 0.3s ease;
+            /* --- 1. 讓 PDF 預覽區填滿剩餘空間並獨立捲動 --- */
+            flex-grow: 1;
+            margin-top: 20px; /* 增加與上方控制區的間距 */
         }
+        
+        .initial-message-container {
+            color: var(--placeholder-text);
+            font-size: 1.1em; 
+            padding-top: 30px; 
+            text-align: left; 
+            max-width: 600px; 
+            margin: 0 auto;
+        }
+        .initial-message-container p {
+            font-size: 1.3em; 
+            text-align: center; 
+            font-weight: 600; 
+            margin-bottom: 25px;
+            color: var(--placeholder-heading);
+        }
+        .initial-message-container h4 {
+            color: var(--placeholder-heading);
+            margin-top: 20px; 
+            margin-bottom: 10px; 
+            border-bottom: 1px solid var(--placeholder-border); 
+            padding-bottom: 5px;
+        }
+        .initial-message-container ul {
+            padding-left: 20px; 
+            line-height: 1.8;
+        }
+        .loading-message {
+            color: var(--placeholder-heading);
+            font-size: 1.5em; 
+            padding-top: 50px; 
+            text-align: center;
+        }
+
 
         .pdf-page-container {
             position: relative;
@@ -292,7 +504,19 @@
             line-height: 0;
             border-radius: 6px;
             overflow: hidden;
+            
+            /* --- 修改：移除 transform 和相關 transition --- */
+            transition: box-shadow 0.3s ease;
+            /* transform: translateZ(0); */ /* 移除 */
         }
+        
+        /* --- 修改：移除 pdf-viewer:hover .pdf-page-container 效果 --- */
+        /*
+        .pdf-viewer:hover .pdf-page-container {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        */
 
         .interaction-layer {
             position: absolute;
@@ -312,7 +536,6 @@
             border-color: var(--system-blue);
         }
         
-        /* 搜尋高亮 */
         .highlight-box {
             position: absolute;
             background-color: var(--highlight-bg);
@@ -322,7 +545,16 @@
             border-radius: 3px;
         }
         
-        /* 編輯框 */
+        .highlight-box-next {
+            position: absolute;
+            background-color: rgba(255, 165, 0, 0.4); /* 橘色透明 */
+            border: 2px solid #e67e22; /* 實心橘色 */
+            z-index: 6;
+            pointer-events: none;
+            border-radius: 3px;
+            box-sizing: border-box; /* 確保邊框不會增加寬度 */
+        }
+        
         .text-editor {
             position: absolute;
             border: 2px solid var(--system-blue);
@@ -335,8 +567,13 @@
             z-index: 10;
             border-radius: 3px;
         }
+        body.dark-mode .text-editor {
+            background-color: #333;
+            color: #eee;
+        }
 
-        /* 狀態訊息 */
+
+        /* 狀態訊息 (用於頂部) */
         .status-message {
             padding: 12px 18px;
             border-radius: 8px;
@@ -344,23 +581,105 @@
             display: none;
             font-weight: 500;
         }
-
         .status-message.success {
-            background: #dff0d8;
-            color: #3c763d;
-            border: 1px solid #d6e9c6;
+            background: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6;
         }
-
         .status-message.error {
-            background: #f2dede;
-            color: #a94442;
-            border: 1px solid #ebccd1;
+            background: #f2dede; color: #a94442; border: 1px solid #ebccd1;
         }
-
         .status-message.info {
-            background: #d9edf7;
-            color: #31708f;
-            border: 1px solid #bce8f1;
+            background: #d9edf7; color: #31708f; border: 1px solid #bce8f1;
+        }
+        body.dark-mode .status-message.success {
+            background: #2a3a29; color: #a6d7a3; border-color: #3e563a;
+        }
+        body.dark-mode .status-message.error {
+            background: #3e2d2d; color: #f8b0b0; border-color: #5b4040;
+        }
+        body.dark-mode .status-message.info {
+            background: #2a3640; color: #a9d5e8; border-color: #3d505e;
+        }
+        
+        /* 載入中遮罩 */
+        #spinnerOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
+            display: none; /* 預設隱藏 */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 20px;
+        }
+        #spinnerStatus {
+            /* 狀態訊息 (如附圖) */
+            background: var(--d9edf7, #d9edf7);
+            color: var(--31708f, #31708f);
+            border: 1px solid var(--bce8f1, #bce8f1);
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: 600;
+            max-width: 80%;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        body.dark-mode #spinnerStatus {
+             background: #2a3640; color: #a9d5e8; border-color: #3d505e;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff; /* 主 spinner 顏色 */
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 匯出選項 Modal */
+        #exportModalOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
+            display: none; /* 預設隱藏 */
+            justify-content: center;
+            align-items: center;
+            z-index: 900;
+        }
+        #exportModal {
+            background: var(--modal-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 300px;
+        }
+        #exportModal h3 {
+            margin: 0 0 10px 0;
+            text-align: center;
+            color: var(--system-text);
+        }
+        #exportModal .btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.05em;
         }
     </style>
 </head>
@@ -370,13 +689,24 @@
         <div class="main-window">
             <!-- 標題列 -->
             <div class="title-bar">
-                <div class="traffic-lights">
-                    <div class="dot dot-red"></div>
-                    <div class="dot dot-yellow"></div>
-                    <div class="dot dot-green"></div>
+                <div class="title-bar-left">
+                    <div class="traffic-lights">
+                        <div class="dot dot-red"></div>
+                        <div class="dot dot-yellow"></div>
+                        <div class="dot dot-green"></div>
+                    </div>
                 </div>
-                <!-- --- 修改：主標題更名 --- -->
+                
                 <h1>PDF 替換文字</h1>
+                
+                <div class="title-bar-right">
+                    <div class="theme-switch-wrapper">
+                        <label class="theme-switch" for="themeToggle" title="切換明暗主題">
+                            <input type="checkbox" id="themeToggle" />
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <!-- 主要內容 -->
@@ -397,31 +727,30 @@
                             <input type="text" id="replaceText" placeholder="輸入新文字">
                         </div>
                         <div class="button-group">
-                            <button class="btn btn-warning" id="clearBtn">🧹 清除</button>
-                            <!-- 套用系統藍 -->
-                            <button class="btn btn-primary" id="replaceAllBtn">全部替換</button>
+                            <button class="btn btn-warning" id="clearBtn" title="清除搜尋框中的文字">🧹 清除</button>
+                            <button class="btn btn-primary" id="replaceNextBtn" title="依序替換下一個找到的「搜尋文字」">依序替換</button>
+                            <button class="btn btn-primary" id="replaceAllBtn" title="將所有找到的「搜尋文字」替換為「取代文字」">全部替換</button>
                         </div>
                     </div>
 
                     <!-- 主要操作欄 -->
                     <div class="main-action-bar">
-                        <!-- 套用系統藍 -->
-                        <button class="btn btn-primary" id="importFileBtn">📂 匯入PDF 檔案</button>
+                        <button class="btn btn-import" id="importFileBtn" title="從您的電腦選擇一個 PDF 檔案">📂 匯入PDF 檔案</button>
                         
                         <div id="viewControls" class="view-controls" style="display: none;">
                              <div class="button-group page-nav-group">
-                                <button class="btn btn-secondary" id="prevPageBtn">← 上一頁</button>
+                                <button class="btn btn-nav" id="prevPageBtn" title="移至上一頁">← 上一頁</button>
                                 <span>第 <input type="number" id="pageNumberInput" value="1" min="1"> / <span id="totalPages">1</span> 頁</span>
-                                <button class="btn btn-secondary" id="nextPageBtn">下一頁 →</button>
+                                <button class="btn btn-nav" id="nextPageBtn" title="移至下一頁">下一頁 →</button>
                             </div>
                             <div class="button-group zoom-group">
-                                <button class="btn btn-secondary" id="zoomOutBtn" title="縮小">－</button>
-                                <button class="btn btn-secondary" id="zoomInBtn" title="放大">＋</button>
+                                <button class="btn btn-zoom" id="zoomOutBtn" title="縮小頁面檢視">－</button>
+                                <button class="btn btn-zoom" id="zoomInBtn" title="放大頁面檢視">＋</button>
                             </div>
                         </div>
 
-                        <!-- 套用系統藍 -->
-                        <button class="btn btn-success" id="exportPdfBtn">💾 另存為 PDF</button>
+                        <!-- 合併儲存按鈕 -->
+                        <button class="btn btn-success" id="openExportModalBtn" title="儲存檔案" style="display: none;">💾 儲存...</button>
                     </div>
                 </div>
 
@@ -432,16 +761,36 @@
             </div>
         </div>
     </div>
+    
+    <!-- 載入中遮罩 -->
+    <div id="spinnerOverlay">
+        <div class="spinner"></div>
+        <div id="spinnerStatus">正在處理...</div>
+    </div>
+    
+    <!-- 匯出選項 Modal -->
+    <div id="exportModalOverlay">
+        <div id="exportModal">
+            <h3>儲存選項</h3>
+            <button class="btn btn-success" id="exportPdfBtn">💾 另存為 PDF</button>
+            <button class="btn btn-secondary" id="exportPngZipBtn">🖼️ 另存為 PNG (ZIP)</button>
+            <button class="btn btn-warning" id="closeExportModalBtn" style="background: #aaa; color: white;">取消</button>
+        </div>
+    </div>
+
 
     <script>
-        // --- JavaScript 邏輯 (保持不變) ---
+        // --- JavaScript 邏輯 ---
         
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         let pdfDoc = null;
         let pdfPageData = {};
         let currentPageNum = 1;
-        let currentScale = 2.0; // 保持較高的初始解析度
+        let currentScale = 1.0; 
+        
+        let searchResults = []; // { pageNum, itemIndex, startIndex, term }
+        let currentSearchIndex = 0; // Index into searchResults
 
         // --- DOM Element References ---
         const pdfViewer = document.getElementById('pdfViewer');
@@ -449,16 +798,38 @@
         const searchText = document.getElementById('searchText');
         const replaceText = document.getElementById('replaceText');
         const importFileBtn = document.getElementById('importFileBtn');
-        const exportPdfBtn = document.getElementById('exportPdfBtn');
         const fileInput = document.getElementById('fileInput');
         const clearBtn = document.getElementById('clearBtn');
         const replaceAllBtn = document.getElementById('replaceAllBtn');
+        const replaceNextBtn = document.getElementById('replaceNextBtn');
         const pageNumberInput = document.getElementById('pageNumberInput');
         const zoomInBtn = document.getElementById('zoomInBtn');
         const zoomOutBtn = document.getElementById('zoomOutBtn');
         const prevPageBtn = document.getElementById('prevPageBtn');
         const nextPageBtn = document.getElementById('nextPageBtn');
+        const themeToggle = document.getElementById('themeToggle');
+        
+        const spinnerOverlay = document.getElementById('spinnerOverlay');
+        const spinnerStatus = document.getElementById('spinnerStatus');
+        const exportModalOverlay = document.getElementById('exportModalOverlay');
+        const openExportModalBtn = document.getElementById('openExportModalBtn');
+        const closeExportModalBtn = document.getElementById('closeExportModalBtn');
+        const exportPdfBtn = document.getElementById('exportPdfBtn');
+        const exportPngZipBtn = document.getElementById('exportPngZipBtn');
 
+
+        // 顯示/隱藏 Spinner
+        function showSpinner(message) {
+            spinnerStatus.textContent = message || '正在處理...';
+            spinnerOverlay.style.display = 'flex';
+        }
+        function hideSpinner() {
+            spinnerOverlay.style.display = 'none';
+        }
+        // 更新 Spinner 上的文字
+        function updateSpinnerStatus(message) {
+            spinnerStatus.textContent = message;
+        }
 
         function showStatus(message, type, duration = 5000) {
             const statusEl = document.getElementById('statusMessage');
@@ -474,17 +845,33 @@
                 return;
             }
             resetTool(false); 
-            showStatus('載入 PDF 中...', 'info', 0); // 載入時不自動消失
+            showStatus('載入 PDF 中...', 'info', 0);
             const arrayBuffer = await file.arrayBuffer();
             try {
                 pdfDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
                 await processAllPages();
+
+                // 匯入時自動計算符合寬度的縮放
+                const page = pdfPageData[1].pageRef; // 以第一頁為基準
+                const originalViewport = page.getViewport({ scale: 1.0 });
+                // 計算容器寬度 (pdfViewer padding 左右各 20px)
+                const containerWidth = pdfViewer.clientWidth > 40 ? pdfViewer.clientWidth - 40 : pdfViewer.clientWidth; 
+                if (originalViewport.width > containerWidth) {
+                    currentScale = containerWidth / originalViewport.width;
+                } else {
+                    currentScale = 1.0; // 如果原始寬度就小於容器，則不需要縮小
+                }
+                
                 await renderPage(currentPageNum);
                 setEditingControlsState(true);
-                // 更新頁碼
                 document.getElementById('totalPages').textContent = pdfDoc.numPages;
                 pageNumberInput.max = pdfDoc.numPages;
-                showStatus('PDF 載入成功！請點擊頁面中的文字進行編輯。', 'success');
+                /* --- 修改：移除載入成功提示 --- */
+                /* showStatus('PDF 載入成功！請點擊頁面中的文字進行編輯。', 'success'); */
+                /* --- 載入成功後，直接清除「載入中」的提示 --- */
+                showStatus('', 'info', 0); // 傳入空字串並立即隱藏
+                document.getElementById('statusMessage').style.display = 'none';
+
             } catch (error) {
                 showStatus('PDF 載入失敗: ' + error.message, 'error');
                 resetTool(true); 
@@ -569,7 +956,9 @@
             pdfViewer.innerHTML = '';
             pdfViewer.appendChild(pageContainer);
             pageNumberInput.value = pageNum;
-            searchAndHighlight(); // 重新渲染高亮
+            
+            drawAllHighlights();
+            drawNextHighlight();
         }
 
         function createEditor(pageNum, itemIndex) {
@@ -593,6 +982,11 @@
                 if (interactionLayer && editor.parentNode === interactionLayer) {
                     interactionLayer.removeChild(editor);
                 }
+                // 手動編輯後，重新整理搜尋列表
+                findAndHighlightAll(); 
+                currentSearchIndex = 0;
+                drawAllHighlights();
+                drawNextHighlight();
             });
             editor.addEventListener('keydown', (e) => { 
                 if (e.key === 'Enter') editor.blur(); 
@@ -626,44 +1020,215 @@
             ctx.font = `${s.fontSize}px ${pageFont}`;
             ctx.textBaseline = 'alphabetic';
             ctx.fillText(newText, tx[4], tx[5]);
-            
-            searchAndHighlight(); // 更新高亮
         }
 
-        function searchAndHighlight() {
+        // 此函數現在只負責 "搜尋" 和 "更新列表"
+        function findAndHighlightAll() {
             const term = searchText.value;
-            const interactionLayer = document.querySelector('.interaction-layer');
-            document.querySelectorAll('.highlight-box').forEach(box => box.remove());
+            
+            searchResults = [];
+            document.querySelectorAll('.highlight-box, .highlight-box-next').forEach(box => box.remove());
             
             let totalCount = 0;
             if (!term) {
-                 document.getElementById('searchCount').textContent = 0; return;
+                 document.getElementById('searchCount').textContent = 0; 
+                 return;
             }
             
             for (const pageNum in pdfPageData) {
-                 pdfPageData[pageNum].textItems.forEach(item => {
-                    if (item.currentText.includes(term)) {
-                        totalCount++;
-                        if (parseInt(pageNum) === currentPageNum && interactionLayer && item.scaled) {
-                             const s = item.scaled;
-                             const highlight = document.createElement('div');
-                             highlight.className = 'highlight-box';
-                             highlight.style.left = s.tx[4] + 'px';
-                             highlight.style.top = (s.tx[5] - s.fontSize) + 'px';
-                             highlight.style.width = s.width + 'px';
-                             highlight.style.height = s.effectiveHeight + 'px';
-                             interactionLayer.appendChild(highlight);
+                 pdfPageData[pageNum].textItems.forEach((item, itemIndex) => {
+                    if (item.currentText && item.currentText.includes(term)) {
+                        let startIndex = 0;
+                        let index;
+                        while ((index = item.currentText.indexOf(term, startIndex)) > -1) {
+                            totalCount++;
+                            searchResults.push({
+                                pageNum: parseInt(pageNum),
+                                itemIndex: itemIndex,
+                                startIndex: index,
+                                term: term
+                            });
+                            startIndex = index + term.length;
                         }
                     }
                 });
             }
             document.getElementById('searchCount').textContent = totalCount;
         }
+        
+        // 繪製所有藍色高亮框
+        function drawAllHighlights() {
+            document.querySelectorAll('.highlight-box').forEach(box => box.remove());
+            const interactionLayer = document.querySelector('.interaction-layer');
+            if (!interactionLayer) return;
+
+            const term = searchText.value;
+            if (!term) return;
+
+            for (const result of searchResults) {
+                if (result.pageNum === currentPageNum) {
+                    const item = pdfPageData[result.pageNum].textItems[result.itemIndex];
+                    // 檢查 item.currentText 是否仍然包含 result.term
+                    if (item && item.scaled && item.currentText && item.currentText.includes(result.term)) { 
+                        const s = item.scaled;
+                        const charWidth = s.width / item.currentText.length;
+                        const termOffset = result.startIndex * charWidth;
+                        const termWidth = result.term.length * charWidth;
+                        
+                        const highlight = document.createElement('div');
+                        highlight.className = 'highlight-box';
+                        highlight.style.left = (s.tx[4] + termOffset) + 'px';
+                        highlight.style.top = (s.tx[5] - s.fontSize) + 'px';
+                        highlight.style.width = termWidth + 'px';
+                        highlight.style.height = s.effectiveHeight + 'px';
+                        interactionLayer.appendChild(highlight);
+                    }
+                }
+            }
+        }
+        
+        // 繪製下一個橘色高亮框 (並滾動)
+        function drawNextHighlight() {
+            document.querySelectorAll('.highlight-box-next').forEach(box => box.remove());
+            if (searchResults.length === 0 || currentSearchIndex >= searchResults.length) {
+                return;
+            }
+            
+            const nextItem = searchResults[currentSearchIndex];
+            
+            if (nextItem.pageNum === currentPageNum) {
+                const item = pdfPageData[nextItem.pageNum].textItems[nextItem.itemIndex];
+                const interactionLayer = document.querySelector('.interaction-layer');
+                
+                // 檢查 item.currentText 是否仍然包含 nextItem.term
+                if (interactionLayer && item && item.scaled && item.currentText && item.currentText.includes(nextItem.term)) {
+                    const s = item.scaled;
+                    const charWidth = s.width / item.currentText.length;
+                    const termOffset = nextItem.startIndex * charWidth;
+                    const termWidth = nextItem.term.length * charWidth;
+
+                    const highlight = document.createElement('div');
+                    highlight.className = 'highlight-box-next';
+                    highlight.style.left = (s.tx[4] + termOffset) + 'px';
+                    highlight.style.top = (s.tx[5] - s.fontSize) + 'px';
+                    highlight.style.width = termWidth + 'px';
+                    highlight.style.height = s.effectiveHeight + 'px';
+                    interactionLayer.appendChild(highlight);
+                    
+                    const viewer = document.getElementById('pdfViewer');
+                    const itemTop = (s.tx[5] - s.fontSize);
+                    
+                    // 總是滾動到頁面中間
+                    const desiredScrollTop = itemTop - (viewer.clientHeight / 2) + (s.effectiveHeight / 2);
+                    
+                    viewer.scrollTo({
+                        top: desiredScrollTop,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        }
 
         function clearSearch() {
             searchText.value = '';
-            searchAndHighlight();
+            findAndHighlightAll();
         }
+        
+        // 優化後的「依序替換」
+        async function replaceNext() {
+            const findText = searchText.value;
+            if (!findText) { showStatus('請輸入要搜尋的文字', 'error'); return; }
+            const replaceTextValue = replaceText.value;
+            
+            if (searchResults.length === 0) {
+                // 如果是空的，執行一次同步搜尋
+                findAndHighlightAll(); 
+                currentSearchIndex = 0;
+                drawAllHighlights();
+                drawNextHighlight();
+                if (searchResults.length === 0) {
+                    showStatus('找不到可替換的文字', 'info');
+                    return;
+                }
+            }
+            
+            if (currentSearchIndex >= searchResults.length) {
+                showStatus('已完成所有依序替換。再次點擊可重新開始。', 'info');
+                currentSearchIndex = 0;
+                drawNextHighlight();
+                return;
+            }
+            
+            const itemInfo = searchResults[currentSearchIndex];
+            
+            // 1. 如果不在當前頁面，跳轉 (此操作很快，不需 spinner)
+            if (itemInfo.pageNum !== currentPageNum) {
+                renderPage(itemInfo.pageNum);
+                // renderPage 會自動呼叫 drawNextHighlight 並滾動
+                return;
+            }
+            
+            // 2. 在當前頁面，執行替換 (此操作很慢，需要 spinner)
+            
+            // --- 修改：使用 Spinner 改善使用者體驗 ---
+            showSpinner('正在替換並尋找下一個...'); // 顯示 spinner
+            
+            // 延遲 10ms 讓 spinner 有時間渲染
+            setTimeout(() => {
+                const pageNum = itemInfo.pageNum;
+                const itemIndex = itemInfo.itemIndex;
+                const item = pdfPageData[pageNum].textItems[itemIndex];
+                
+                const pre = item.currentText.substring(0, itemInfo.startIndex);
+                const post = item.currentText.substring(itemInfo.startIndex + itemInfo.term.length);
+                const newText = pre + replaceTextValue + post;
+                
+                // 3. 更新畫布
+                updateTextAndCanvas(pageNum, itemIndex, newText);
+                
+                // 4. 重新掃描 (這是 "慢" 的部分)
+                findAndHighlightAll(); 
+                
+                // 5. 找出 *下一個* 項目
+                let newIndex = searchResults.findIndex(r => 
+                    r.pageNum > itemInfo.pageNum ||
+                    (r.pageNum === itemInfo.pageNum && r.itemIndex > itemInfo.itemIndex) ||
+                    (r.pageNum === itemInfo.pageNum && r.itemIndex === itemInfo.itemIndex && r.startIndex >= itemInfo.startIndex)
+                );
+                
+                if (newIndex === -1) { // 如果沒有"之後"的項目 (我們在結尾)
+                    if (searchResults.length > 0) {
+                        currentSearchIndex = 0; // 繞回開頭
+                    } else {
+                        currentSearchIndex = 0; // 列表空了
+                    }
+                } else {
+                    currentSearchIndex = newIndex;
+                }
+                
+                // 6. 重新繪製高亮
+                drawAllHighlights(); // 繪製所有藍色框
+                drawNextHighlight(); // 繪製新的橘色框 (並滾動)
+                
+                // 7. 檢查是否需要跳頁
+                const nextItemInfo = searchResults[currentSearchIndex];
+                if (nextItemInfo && nextItemInfo.pageNum !== currentPageNum) {
+                    renderPage(nextItemInfo.pageNum);
+                }
+                
+                // 8. 隱藏 spinner 並顯示狀態
+                hideSpinner();
+                if (searchResults.length > 0) {
+                    /* --- 修改：移除「已跳至下一個」的提示 --- */
+                    // showStatus('已跳至下一個', 'success'); 
+                } else {
+                    showStatus('已完成所有替換', 'success');
+                }
+                
+            }, 10); // 延遲 10ms 執行
+            // --- 結束修改 ---
+        }
+
 
         function replaceAll() {
             const findText = searchText.value;
@@ -684,23 +1249,27 @@
                 });
             }
             
-            renderPage(currentPageNum); // 重新渲染當前頁面以顯示替換
+            renderPage(currentPageNum);
+            findAndHighlightAll();
+            
             if (count > 0) showStatus(`已替換 ${count} 處文字`, 'success');
             else showStatus('沒有找到匹配的文字', 'info');
         }
         
         async function exportPDF() {
             if (!pdfDoc) { showStatus('沒有可匯出的 PDF', 'error'); return; }
-            showStatus('正在準備匯出...', 'info', 0);
+            showSpinner('正在準備匯出 PDF...');
             
             try {
                 const { PDFDocument } = PDFLib;
                 const pdfLibDoc = await PDFDocument.create();
-                const EXPORT_SCALE = 3.0; // 保持高品質
-                const pageFont = "Arial, 'Microsoft JhengHei', sans-serif"; // 確保使用相同字體
+                const EXPORT_SCALE = 5.0; // 提高品質
+                const pageFont = "Arial, 'Microsoft JhengHei', sans-serif";
                 
                 for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-                    showStatus(`正在處理第 ${pageNum} / ${pdfDoc.numPages} 頁...`, 'info', 0);
+                    updateSpinnerStatus(`正在處理 PDF 第 ${pageNum} / ${pdfDoc.numPages} 頁...`);
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                    
                     const page = pdfPageData[pageNum].pageRef;
                     const viewport = page.getViewport({ scale: EXPORT_SCALE });
                     
@@ -711,7 +1280,6 @@
                     
                     await page.render({ canvasContext: tempCtx, viewport: viewport }).promise;
                     
-                    // 在匯出的畫布上重繪已修改的文字
                     pdfPageData[pageNum].textItems.forEach(item => {
                         if (item.isModified) {
                             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
@@ -734,21 +1302,95 @@
                     pdfPage.drawImage(pngImageBytes, { x: 0, y: 0, width: tempCanvas.width, height: tempCanvas.height });
                 }
                 
-                showStatus('正在產生最終 PDF 檔案...', 'info', 0);
+                updateSpinnerStatus('正在產生最終 PDF 檔案...');
                 const pdfBytesModified = await pdfLibDoc.save();
                 const blob = new Blob([pdfBytesModified], { type: 'application/pdf' });
                 
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = 'edited_document_macos.pdf'; // 更新下載檔名
-                document.body.appendChild(a); // 確保在 DOM 中
+                a.download = 'edited_document.pdf';
+                document.body.appendChild(a);
                 a.click();
                 URL.revokeObjectURL(a.href);
                 a.remove();
                 
+                hideSpinner();
                 showStatus('PDF 匯出成功！', 'success');
             } catch (error) {
+                hideSpinner();
                 showStatus('PDF 匯出失敗: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+        
+        // 匯出 PNG (ZIP) 功能
+        async function exportPNGZip() {
+            if (!pdfDoc) {
+                showStatus('沒有可匯出的 PDF', 'error');
+                return;
+            }
+            
+            showSpinner('正在準備匯出 PNG (ZIP)...');
+            
+            try {
+                const zip = new JSZip();
+                const pageFont = "Arial, 'Microsoft JhengHei', sans-serif";
+                // 使用當前的縮放比例 (currentScale) 進行匯出
+                const EXPORT_SCALE = currentScale; 
+                
+                for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                    updateSpinnerStatus(`正在處理 PNG 第 ${pageNum} / ${pdfDoc.numPages} 頁...`);
+                    await new Promise(resolve => setTimeout(resolve, 10));
+
+                    const page = pdfPageData[pageNum].pageRef;
+                    const viewport = page.getViewport({ scale: EXPORT_SCALE });
+                    
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = viewport.width;
+                    tempCanvas.height = viewport.height;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    
+                    await page.render({ canvasContext: tempCtx, viewport: viewport }).promise;
+                    
+                    // 重繪已修改的文字
+                    pdfPageData[pageNum].textItems.forEach(item => {
+                        if (item.isModified) {
+                            const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+                            const fontSize = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
+                            const scaledWidth = item.width * EXPORT_SCALE;
+                            const effectiveHeight = fontSize * 1.2;
+                            const yTop = tx[5] - fontSize;
+                            
+                            tempCtx.fillStyle = 'white';
+                            tempCtx.fillRect(tx[4] - 1, yTop - 1, scaledWidth + 2, effectiveHeight + 2);
+                            tempCtx.fillStyle = 'black';
+                            tempCtx.font = `${fontSize}px ${pageFont}`;
+                            tempCtx.textBaseline = 'alphabetic';
+                            tempCtx.fillText(item.currentText, tx[4], tx[5]);
+                        }
+                    });
+                    
+                    // 將 Canvas 轉為 Blob
+                    const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+                    zip.file(`page_${pageNum}.png`, blob);
+                }
+                
+                updateSpinnerStatus('正在產生 ZIP 檔案...');
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(zipBlob);
+                a.download = 'edited_pages.zip';
+                document.body.appendChild(a);
+                a.click();
+                URL.revokeObjectURL(a.href);
+                a.remove();
+                
+                hideSpinner();
+                showStatus('PNG (ZIP) 匯出成功！', 'success');
+            } catch (error) {
+                hideSpinner();
+                showStatus('PNG (ZIP) 匯出失敗: ' + error.message, 'error');
                 console.error(error);
             }
         }
@@ -758,7 +1400,10 @@
             replaceText.disabled = !enabled;
             clearBtn.disabled = !enabled;
             replaceAllBtn.disabled = !enabled;
-            exportPdfBtn.disabled = !enabled;
+            replaceNextBtn.disabled = !enabled;
+            
+            openExportModalBtn.style.display = enabled ? 'inline-flex' : 'none';
+            openExportModalBtn.disabled = !enabled;
             
             document.querySelectorAll('#viewControls .btn, #viewControls input').forEach(el => el.disabled = !enabled);
             viewControls.style.display = enabled ? 'flex' : 'none';
@@ -768,18 +1413,32 @@
             pdfDoc = null;
             pdfPageData = {};
             currentPageNum = 1;
-            currentScale = 2.0; 
+            currentScale = 1.0; 
             searchText.value = '';
             replaceText.value = '';
+            
+            searchResults = [];
+            currentSearchIndex = 0;
             
             setEditingControlsState(false);
             importFileBtn.disabled = false; 
             fileInput.value = '';
             
             if (showInitialUI) {
-                pdfViewer.innerHTML = `<p style="color: #666; font-size: 1.2em; padding-top: 50px;">請點擊「匯入PDF 檔案」按鈕以開始</p>`;
+                pdfViewer.innerHTML = `
+                <div class="initial-message-container">
+                    <p>請點擊「匯入PDF 檔案」按鈕以開始</p>
+                    <h4>⚠️ 注意事項</h4>
+                    <ul>
+                        <li><b>字數對應：</b>使用「全部替換」功能時，建議「搜尋文字」與「取代文字」的字數相同（例如：兩個字換兩個字），以獲得最佳排版效果。</li>
+                        <li><b>字型限制：</b>替換後的文字將使用標準字型（如正黑體或 Arial），可能與 PDF 原始字型不同。</li>
+                        <li><b>替換原理：</b>本工具是將新文字以「白底黑字」的方式覆蓋到原始文字上，而非直接修改 PDF 結構。</li>
+                        <li><b>複雜文件：</b>對於圖層複雜或包含特殊字型的 PDF，替換效果可能不佳。</li>
+                        <li><b>編輯方式：</b>您也可以直接點擊頁面上的文字框進行單獨修改。</li>
+                    </ul>
+                </div>`;
             } else {
-                pdfViewer.innerHTML = `<p style="color: #333; font-size: 1.5em; padding-top: 50px;">載入中...</p>`;
+                pdfViewer.innerHTML = `<p class="loading-message">載入中...</p>`;
             }
             clearSearch();
         }
@@ -787,15 +1446,23 @@
         document.addEventListener('DOMContentLoaded', () => {
             // --- Permanent Event Listeners ---
             importFileBtn.addEventListener('click', () => fileInput.click());
-            exportPdfBtn.addEventListener('click', exportPDF);
             clearBtn.addEventListener('click', clearSearch);
-replaceAllBtn.addEventListener('click', replaceAll);
+            replaceAllBtn.addEventListener('click', replaceAll);
+            replaceNextBtn.addEventListener('click', replaceNext);
+            
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
                     handleFile(e.target.files[0]);
                 }
             });
-            searchText.addEventListener('input', searchAndHighlight);
+            
+            // 更新搜尋按鈕的事件
+            searchText.addEventListener('input', () => {
+                findAndHighlightAll(); // 執行搜尋
+                currentSearchIndex = 0; // 重設索引
+                drawAllHighlights();  // 繪製
+                drawNextHighlight();  // 繪製
+            });
             
             prevPageBtn.addEventListener('click', () => { if (!prevPageBtn.disabled && currentPageNum > 1) renderPage(currentPageNum - 1); });
             nextPageBtn.addEventListener('click', () => { if (!nextPageBtn.disabled && currentPageNum < pdfDoc.numPages) renderPage(currentPageNum + 1); });
@@ -804,11 +1471,37 @@ replaceAllBtn.addEventListener('click', replaceAll);
                 if (!pageNumberInput.disabled && newPage >= 1 && newPage <= pdfDoc.numPages) renderPage(newPage);
                 else pageNumberInput.value = currentPageNum;
             });
-            zoomInBtn.addEventListener('click', () => { if (!zoomInBtn.disabled) { currentScale = Math.min(3.0, currentScale + 0.2); renderPage(currentPageNum); } });
+            zoomInBtn.addEventListener('click', () => { if (!zoomInBtn.disabled) { currentScale = Math.min(5.0, currentScale + 0.2); renderPage(currentPageNum); } });
             zoomOutBtn.addEventListener('click', () => { if (!zoomOutBtn.disabled && currentScale > 0.5) { currentScale = Math.max(0.4, currentScale - 0.2); renderPage(currentPageNum); } });
+
+            themeToggle.addEventListener('change', () => {
+                document.body.classList.toggle('dark-mode');
+            });
+            
+            // 匯出 Modal 事件
+            openExportModalBtn.addEventListener('click', () => {
+                exportModalOverlay.style.display = 'flex';
+            });
+            closeExportModalBtn.addEventListener('click', () => {
+                exportModalOverlay.style.display = 'none';
+            });
+            exportModalOverlay.addEventListener('click', (e) => {
+                if (e.target === exportModalOverlay) { // 點擊背景遮罩
+                    exportModalOverlay.style.display = 'none';
+                }
+            });
+            exportPdfBtn.addEventListener('click', () => {
+                exportModalOverlay.style.display = 'none';
+                exportPDF(); // 呼叫 PDF 匯出
+            });
+            exportPngZipBtn.addEventListener('click', () => {
+                exportModalOverlay.style.display = 'none';
+                exportPNGZip(); // 呼叫 PNG (ZIP) 匯出
+            });
+
 
             resetTool(true);
         });
     </script>
 </body>
-</html></div></body></html>
+</html>
