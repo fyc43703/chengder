@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF替換文字</title>
+    <title>PDF替換文字與編輯</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-    <!-- --- 引入 JSZip 函式庫 (用於 PNG ZIP) --- -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- 載入 Google Fonts 以確保字型可用性 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@400;700&family=Zen+Hei:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             /* --- Light Mode (Default) --- */
@@ -71,13 +74,14 @@
             background: var(--system-gray-bg);
             color: var(--system-text);
             min-height: 100vh;
-            padding: 20px;
+            padding: 0; /* Remove body padding */
             transition: background 0.3s ease, color 0.3s ease;
             overflow-y: auto; 
         }
 
         .container {
-            max-width: 1200px;
+            width: 100%;
+            max-width: none;
             margin: 0 auto;
             perspective: 1500px;
         }
@@ -86,14 +90,14 @@
             background: var(--glass-bg);
             -webkit-backdrop-filter: blur(20px);
             backdrop-filter: blur(20px);
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
+            border-radius: 0; /* No radius for full width */
+            border: none;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             transition: background 0.3s ease, border 0.3s ease, box-shadow 0.4s ease;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 40px);
+            height: 100vh;
         }
         
         .title-bar {
@@ -102,6 +106,8 @@
             justify-content: space-between;
             padding-top: 8px;
             padding-bottom: 4px;
+            padding-left: 15px;
+            padding-right: 15px;
             flex-shrink: 0;
         }
 
@@ -109,7 +115,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding-left: 15px;
         }
         
         .traffic-lights {
@@ -131,6 +136,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            gap: 1px;
         }
 
         .title-bar h1 {
@@ -149,12 +155,9 @@
             font-weight: 600; 
             color: var(--system-text);
             text-align: center;
-        }
-        .title-bar-subtitle {
-             margin-top: 1px;
+            margin-top: 0;
         }
         .title-bar-creator {
-            margin-top: 2px;
             color: var(--placeholder-text);
         }
         body.dark-mode .title-bar-subtitle {
@@ -165,7 +168,6 @@
         }
         
         .title-bar-right {
-            padding-right: 15px;
         }
 
         .theme-switch-wrapper {
@@ -237,14 +239,19 @@
         }
         
         #searchReplacePanel {
-            grid-template-columns: auto minmax(0, 1fr) auto auto auto minmax(0, 1fr) auto auto auto auto auto;
-            gap: 6px;
-            padding: 8px 12px;
+            grid-template-columns: auto minmax(150px, 300px) auto auto auto auto minmax(150px, 300px) 1fr;
+            gap: 10px;
+            padding: 10px 15px;
+        }
+        .action-buttons-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
         }
 
         #searchReplacePanel label {
             font-weight: 600;
-            font-size: 0.85em;
+            font-size: 0.95em;
             color: var(--system-blue);
             padding-right: 4px;
             text-align: right;
@@ -252,8 +259,8 @@
         }
 
         #searchReplacePanel input[type="text"] {
-            padding: 7px 10px;
-            font-size: 0.85em; 
+            padding: 9px 12px;
+            font-size: 0.95em; 
             border: 1px solid var(--input-border);
             border-radius: 7px;
             background: var(--input-bg);
@@ -332,15 +339,26 @@
         }
 
         #searchReplacePanel .btn {
-            padding: 7px 10px;
-            font-size: 0.8em;
-            gap: 4px;
+            padding: 9px 12px;
+            font-size: 0.85em;
+            gap: 5px;
             border-radius: 7px;
         }
         #searchReplacePanel .btn svg {
             width: 0.9em;
             height: 0.9em;
         }
+        #searchReplacePanel .page-indicator {
+            padding: 7px 10px;
+            font-size: 0.8em;
+            height: auto;
+            border-radius: 7px;
+        }
+        #searchReplacePanel .btn-nav {
+            border-radius: 7px;
+            height: 100%;
+        }
+
 
         .btn-primary {
             background: var(--system-blue);
@@ -410,51 +428,66 @@
         }
 
         /* --- Action Bar Below Search --- */
+        .main-action-bar-wrapper {
+            margin-bottom: 15px;
+        }
         .main-action-bar {
             display: flex;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
             background: var(--control-panel-bg);
             padding: 8px 10px;
             border-radius: 10px;
-            margin-bottom: 15px;
             transition: background 0.3s ease;
             flex-wrap: nowrap;
-            gap: 8px;
+            gap: 10px;
             overflow-x: auto;
+            scrollbar-width: none; /* Firefox */
+        }
+        .main-action-bar::-webkit-scrollbar {
+            display: none; /* Chrome, Safari */
         }
         
         .main-action-bar .btn,
-        .main-action-bar .page-indicator,
         .main-action-bar select {
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 500;
             font-family: 'Microsoft JhengHei', '微軟正黑體', -apple-system, sans-serif;
+            flex-shrink: 0;
         }
         
-        .main-action-bar .btn, .main-action-bar .page-indicator {
-            padding: 6px 12px;
-            height: 32px;
+        .main-action-bar .btn {
+            padding: 8px 15px;
+            height: 38px;
         }
 
         .main-action-bar select,
-        .main-action-bar input[type="color"] {
-            height: 32px;
+        .main-action-bar input[type="number"] {
+            height: 38px;
             padding-top: 0;
             padding-bottom: 0;
-            font-size: 12px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--system-text);
         }
-        .main-action-bar .color-picker-btn {
-            height: 32px;
-            padding: 5px 7px;
+
+        .main-action-bar .zoom-group {
+            display: flex;
+            flex-shrink: 0;
         }
         .main-action-bar .zoom-group .btn {
             line-height: 1;
         }
+        .main-action-bar .zoom-group .btn svg {
+            width: 0.8em;
+            height: 0.8em;
+        }
 
         .main-action-bar #importFileBtn {
-            padding-left: 15px;
-            padding-right: 15px;
+            padding-left: 18px;
+            padding-right: 18px;
             font-weight: bold;
         }
         
@@ -480,18 +513,21 @@
             background-color: #8B4513; 
             border-radius: 8px;
             overflow: hidden;
-            height: 32px;
+            height: 38px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
             transition: all 0.15s ease-out;
+            gap: 5px;
+            padding-right: 5px;
+            flex-shrink: 0;
         }
         .main-action-bar .btn-like-group:hover {
              transform: translateY(-2px);
              box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
         }
         .main-action-bar .btn-like-group label {
-            padding: 0 8px;
+            padding: 0 10px;
             color: white;
-            font-size: 12px; 
+            font-size: 14px; 
             font-weight: 500;
             font-family: 'Microsoft JhengHei', '微軟正黑體', -apple-system, sans-serif;
             height: 100%;
@@ -499,7 +535,7 @@
             align-items: center;
         }
         .main-action-bar .btn-like-group select,
-        .main-action-bar .btn-like-group input[type="color"],
+        .main-action-bar .btn-like-group input[type="number"],
         .main-action-bar .btn-like-group .btn {
             border: none;
             border-radius: 0;
@@ -510,7 +546,7 @@
             border-left: 1px solid #65340f; 
         }
          body.dark-mode .main-action-bar .btn-like-group select,
-         body.dark-mode .main-action-bar .btn-like-group input[type="color"],
+         body.dark-mode .main-action-bar .btn-like-group input[type="number"],
          body.dark-mode .main-action-bar .btn-like-group .btn {
             background-color: var(--input-bg);
          }
@@ -527,322 +563,219 @@
              color: var(--system-text);
         }
         .main-action-bar .btn-like-group input[type="color"] {
-            min-width: 35px;
-            padding: 2px;
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            height: 28px; width: 28px; min-width: 28px;
+            padding: 2px; border: 1px solid #888; border-radius: 4px;
+            background-color: var(--input-bg); cursor: pointer;
         }
+        .main-action-bar .btn-like-group input[type="color"]::-webkit-color-swatch { border-radius: 3px; border: none; }
+        .main-action-bar .btn-like-group input[type="color"]::-moz-color-swatch { border-radius: 3px; border: none; }
+        .main-action-bar .btn-like-group .color-picker-btn {
+            height: 28px; width: 28px; padding: 2px; font-size: 1em; line-height: 1; border-radius: 4px;
+        }
+
+        .main-action-bar .btn-like-group input[type="number"] { width: 55px; padding: 0 5px; text-align: center; }
+        
+        /* Custom Scrollbar */
+        .custom-scrollbar-container {
+            padding: 0 10px;
+        }
+        .custom-scrollbar-track {
+            height: 8px;
+            background: var(--secondary-btn-bg);
+            border-radius: 4px;
+            position: relative;
+            border: 1px solid var(--secondary-btn-border);
+        }
+        .custom-scrollbar-thumb {
+            height: 100%;
+            width: 20%; /* Initial width */
+            background: #888;
+            border-radius: 4px;
+            position: absolute;
+            left: 0;
+            cursor: grab;
+        }
+        .custom-scrollbar-thumb:active {
+            cursor: grabbing;
+        }
+        body.dark-mode .custom-scrollbar-thumb {
+            background: #bbb;
+        }
+
+
+        .drawing-tools {
+            display: flex; gap: 5px; align-items: center; background: var(--secondary-btn-bg);
+            padding: 4px; border-radius: 8px; border: 1px solid var(--secondary-btn-border);
+            flex-shrink: 0;
+        }
+        .drawing-tools .tool-btn {
+            padding: 6px; line-height: 1; background: transparent; border: 1px solid transparent;
+            border-radius: 5px; cursor: pointer; color: var(--system-text);
+        }
+         .tool-btn svg {
+            width: 1.2em; height: 1.2em; fill: currentColor; stroke: currentColor; stroke-width: 0;
+        }
+        .tool-btn#tool-text { font-size: 1.2em; font-weight: bold; }
+        .tool-btn#tool-line svg { stroke-width: 1.5; fill: none; }
+
+        .drawing-tools .tool-btn:hover { background: var(--secondary-btn-hover); }
+        .drawing-tools .tool-btn.active {
+            background: var(--system-blue); color: white; border-color: var(--system-blue);
+        }
+        .drawing-tools input[type="color"],
+        .drawing-tools input[type="number"] { height: 28px; border-radius: 5px; }
+        .drawing-tools input[type="number"] { width: 50px; text-align: center; }
+        .drawing-tools label { font-size: 12px; margin: 0 3px 0 8px; font-weight: 500;}
         
         .pdf-viewer {
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 10px;
+            border-top: 1px solid var(--input-border);
             padding: 20px 20px 0 20px;
-            background: var(--glass-bg);
-            -webkit-backdrop-filter: blur(10px);
-            backdrop-filter: blur(10px);
-            overflow: auto;
-            text-align: center;
-            display: flex;
-            flex-direction: column; 
-            align-items: center;
-            justify-content: flex-start;
+            background: var(--system-gray-bg-tint);
+            overflow: auto; text-align: center; display: flex; flex-direction: column; 
+            align-items: center; justify-content: flex-start;
             transition: background 0.3s ease, border 0.3s ease;
-            flex-grow: 1;
-            min-height: 0;
-            min-width: 0;
+            flex-grow: 1; min-height: 0; min-width: 0; position: relative;
         }
         
-        .pdf-viewer.initial-state {
-            flex-grow: 0;
-            padding-bottom: 20px;
-        }
+        .pdf-viewer.initial-state { flex-grow: 0; padding-bottom: 20px; border-top: none; }
         
         .initial-message-container {
-            color: var(--placeholder-text);
-            font-size: 1.1em; 
-            padding-top: 0;
-            text-align: left; 
-            max-width: 850px;
-            margin: 0 auto;
+            color: var(--placeholder-text); font-size: 1.1em; padding-top: 0;
+            text-align: left; max-width: 850px; margin: 0 auto;
         }
-
         .initial-message-container h4 {
-            color: var(--system-red);
-            margin-top: 0;
-            margin-bottom: 8px;
-            border-bottom: 1px solid var(--placeholder-border);
-            padding-bottom: 5px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 1.2em;
+            color: var(--system-red); margin-top: 0; margin-bottom: 8px;
+            border-bottom: 1px solid var(--placeholder-border); padding-bottom: 5px;
+            display: flex; align-items: center; gap: 8px; font-size: 1.2em;
         }
-        .initial-message-container ul {
-            padding-left: 20px;
-            line-height: 1.7;
-            margin-bottom: 0;
-        }
+        .initial-message-container ul { padding-left: 20px; line-height: 1.7; margin-bottom: 0; }
         .initial-message-container ul li {
-            list-style: none;
-            position: relative;
-            padding-left: 25px;
-            margin-bottom: 6px;
+            list-style: none; position: relative; padding-left: 25px; margin-bottom: 6px;
         }
-        .initial-message-container ul li:last-child {
-            margin-bottom: 0;
-        }
-
+        .initial-message-container ul li:last-child { margin-bottom: 0; }
         .initial-message-container ul li::before {
-            content: '';
-            position: absolute;
-            left: 5px;
-            top: 8px;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
+            content: ''; position: absolute; left: 5px; top: 8px; width: 10px; height: 10px; border-radius: 50%;
             background: radial-gradient(circle at 3px 3px, #5CACEE, var(--system-blue));
             box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
         }
         
-        .keyword {
-            color: var(--system-blue);
-            font-weight: 600;
-        }
-
-        .loading-message {
-            color: var(--placeholder-heading);
-            font-size: 1.5em; 
-            padding-top: 50px; 
-            text-align: center;
-        }
+        .keyword { color: var(--system-blue); font-weight: 600; }
+        .loading-message { color: var(--placeholder-heading); font-size: 1.5em; padding-top: 50px; text-align: center; }
 
         .pdf-page-container {
-            position: relative;
-            margin: 0 auto 30px auto;
-            background: white;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            line-height: 0;
-            border-radius: 6px;
-            overflow: hidden;
-            transition: box-shadow 0.3s ease;
-            flex-shrink: 0;
+            position: relative; margin: 0 auto 30px auto; background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); line-height: 0;
+            border-radius: 6px; overflow: visible; /* Allow resize handle to overflow */ transition: box-shadow 0.3s ease; flex-shrink: 0;
         }
 
-        .interaction-layer {
+        .interaction-layer { position: absolute; top: 0; left: 0; }
+        
+        .text-input-area {
+            position: absolute; border: 1px dashed var(--system-blue); background-color: rgba(255, 255, 255, 0.8);
+            min-width: 50px; min-height: 20px; z-index: 15; outline: none; white-space: pre-wrap; word-break: break-all;
+        }
+        .resize-handle {
             position: absolute;
-            top: 0;
-            left: 0;
+            bottom: -5px;
+            right: -5px;
+            width: 10px;
+            height: 10px;
+            background: var(--system-blue);
+            border: 1px solid white;
+            border-radius: 50%;
+            cursor: nwse-resize;
+            z-index: 20;
         }
 
         .clickable-area {
-            position: absolute;
-            cursor: text;
-            border: 1px solid transparent;
-            transition: all 0.2s ease;
+            position: absolute; cursor: text; border: 1px solid transparent; transition: all 0.2s ease;
         }
-
-        .clickable-area:hover {
-            background-color: var(--highlight-bg);
-            border-color: var(--system-blue);
-        }
+        .clickable-area:hover { background-color: var(--highlight-bg); border-color: var(--system-blue); }
         
         .highlight-box {
-            position: absolute;
-            background-color: var(--highlight-bg);
-            border: 1px solid var(--system-blue);
-            z-index: 5;
-            pointer-events: none;
-            border-radius: 3px;
-        }
-        
-        .highlight-box-next {
-            position: absolute;
-            background-color: rgba(255, 165, 0, 0.4);
-            border: 2px solid #e67e22;
-            z-index: 6;
-            pointer-events: none;
-            border-radius: 3px;
-            box-sizing: border-box;
+            position: absolute; background-color: var(--highlight-bg); border: 1px solid var(--system-blue);
+            z-index: 5; pointer-events: none; border-radius: 3px;
         }
         
         .text-editor {
-            position: absolute;
-            border: 2px solid var(--system-blue);
-            outline: none;
-            margin: 0;
-            padding: 0 2px;
-            background-color: white;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.3);
-            z-index: 10;
-            border-radius: 3px;
+            position: absolute; border: 2px solid var(--system-blue); outline: none; margin: 0; padding: 0 2px;
+            background-color: white; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.3); z-index: 10; border-radius: 3px;
         }
-        body.dark-mode .text-editor {
-            background-color: #333;
-            color: #eee;
-        }
+        body.dark-mode .text-editor { background-color: #333; color: #eee; }
 
         .status-message {
-            padding: 12px 18px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
-            font-weight: 500;
+            padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; display: none; font-weight: 500;
         }
-        .status-message.success {
-            background: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6;
-        }
-        .status-message.error {
-            background: #f2dede; color: #a94442; border: 1px solid #ebccd1;
-        }
-        .status-message.info {
-            background: #d9edf7; color: #31708f; border: 1px solid #bce8f1;
-        }
-        body.dark-mode .status-message.success {
-            background: #2a3a29; color: #a6d7a3; border-color: #3e563a;
-        }
-        body.dark-mode .status-message.error {
-            background: #3e2d2d; color: #f8b0b0; border-color: #5b4040;
-        }
-        body.dark-mode .status-message.info {
-            background: #2a3640; color: #a9d5e8; border-color: #3d505e;
-        }
+        .status-message.success { background: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6; }
+        .status-message.error { background: #f2dede; color: #a94442; border: 1px solid #ebccd1; }
+        .status-message.info { background: #d9edf7; color: #31708f; border: 1px solid #bce8f1; }
+        body.dark-mode .status-message.success { background: #2a3a29; color: #a6d7a3; border-color: #3e563a; }
+        body.dark-mode .status-message.error { background: #3e2d2d; color: #f8b0b0; border-color: #5b4040; }
+        body.dark-mode .status-message.info { background: #2a3640; color: #a9d5e8; border-color: #3d505e; }
         
         #spinnerOverlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            -webkit-backdrop-filter: blur(5px);
-            backdrop-filter: blur(5px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            flex-direction: column;
-            gap: 20px;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+            display: none; justify-content: center; align-items: center;
+            z-index: 1000; flex-direction: column; gap: 20px;
         }
         #spinnerStatus {
-            background: var(--d9edf7, #d9edf7);
-            color: var(--31708f, #31708f);
-            border: 1px solid var(--bce8f1, #bce8f1);
-            padding: 15px 25px;
-            border-radius: 10px;
-            font-size: 1.2em;
-            font-weight: 600;
-            max-width: 80%;
-            text-align: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            background: var(--d9edf7, #d9edf7); color: var(--31708f, #31708f); border: 1px solid var(--bce8f1, #bce8f1);
+            padding: 15px 25px; border-radius: 10px; font-size: 1.2em; font-weight: 600;
+            max-width: 80%; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
-        body.dark-mode #spinnerStatus {
-             background: #2a3640; color: #a9d5e8; border-color: #3d505e;
-        }
+        body.dark-mode #spinnerStatus { background: #2a3640; color: #a9d5e8; border-color: #3d505e; }
         
         .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
+            width: 50px; height: 50px; border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         
         #exportModalOverlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            -webkit-backdrop-filter: blur(5px);
-            backdrop-filter: blur(5px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 900;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+            display: none; justify-content: center; align-items: center; z-index: 900;
         }
         #exportModal {
-            background: var(--modal-bg);
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            width: 300px;
+            background: var(--modal-bg); padding: 25px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+            gap: 15px; width: 300px;
         }
-        #exportModal h3 {
-            margin: 0 0 10px 0;
-            text-align: center;
-            color: var(--system-text);
-        }
-        #exportModal .btn {
-            width: 100%;
-            padding: 12px;
-            font-size: 1.05em;
-        }
+        #exportModal h3 { margin: 0 0 10px 0; text-align: center; color: var(--system-text); }
+        #exportModal .btn { width: 100%; padding: 12px; font-size: 1.05em; }
         
         .page-indicator {
-            font-size: 0.95em;
-            font-weight: 500;
-            color: var(--system-text);
-            background: var(--secondary-btn-bg);
-            border: 1px solid var(--secondary-btn-border);
-            padding: 9px 15px;
-            border-radius: 8px;
-            white-space: nowrap;
+            font-size: 0.95em; font-weight: 500; color: var(--system-text);
+            background: var(--secondary-btn-bg); border: 1px solid var(--secondary-btn-border);
+            padding: 9px 15px; border-radius: 8px; white-space: nowrap;
         }
         
         .feature-explanation-container {
-            max-width: 1200px;
-            margin: 30px auto 0 auto;
-            padding: 25px;
-            background: var(--glass-bg);
-            -webkit-backdrop-filter: blur(20px);
-            backdrop-filter: blur(20px);
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: none;
+            margin: 0; 
+            padding: 30px;
+            background: var(--glass-bg); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+            border-radius: 0; border: none; box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.05);
         }
         .feature-explanation-container h2 {
-            text-align: center;
-            font-size: 1.6em;
-            font-weight: 600;
-            color: var(--system-blue);
-            margin-bottom: 25px;
+            text-align: center; font-size: 1.6em; font-weight: 600;
+            color: var(--system-blue); margin-bottom: 25px;
         }
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-        }
+        .feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 1200px; margin: 0 auto; }
         .feature-card {
-            background: var(--control-panel-bg);
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            transition: background 0.3s ease;
+            background: var(--control-panel-bg); border-radius: 10px; padding: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.05); transition: background 0.3s ease;
         }
         .feature-card-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.2em;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: var(--system-text);
+            display: flex; align-items: center; gap: 12px; font-size: 1.2em;
+            font-weight: 600; margin-bottom: 12px; color: var(--system-text);
         }
-        .feature-card-title .icon {
-            font-size: 1.5em;
-        }
-        .feature-card p {
-            font-size: 0.95em;
-            line-height: 1.7;
-            color: var(--system-text);
-        }
+        .feature-card-title .icon { font-size: 1.5em; }
+        .feature-card p { font-size: 0.95em; line-height: 1.7; color: var(--system-text); }
     </style>
 </head>
 <body>
@@ -858,8 +791,8 @@
                 </div>
                 
                 <div class="title-bar-center">
-                    <h1>PDF 替換文字</h1>
-                    <div class="title-bar-subtitle">匯入 PDF 檔案，輸入欲取代文字與新文字後，一鍵全部替換，並匯出 PDF 或 PNG</div>
+                    <h1>PDF 替換文字與編輯</h1>
+                    <div class="title-bar-subtitle">匯入 PDF，取代文字、新增圖形或文字，並匯出 PDF 或 PNG</div>
                     <div class="title-bar-creator">製作者：陳政德</div>
                 </div>
                 
@@ -875,6 +808,7 @@
 
             <div class="main-section">
                 <input type="file" id="fileInput" accept=".pdf" style="display: none;">
+                <input type="file" id="imageInput" accept="image/*" style="display: none;">
                 <div class="status-message" id="statusMessage"></div>
 
                 <div id="controlsContainer">
@@ -883,6 +817,9 @@
                         <div class="search-input-container">
                             <input type="text" id="searchText" placeholder="輸入要尋找的文字">
                             <span id="searchCount">0</span>
+                        </div>
+                        <div id="pageIndicator" class="page-indicator" style="display: none;">
+                            第 <span id="currentPageIndicator">1</span> / <span id="totalPagesIndicator">1</span> 頁
                         </div>
                         <button class="btn btn-nav" id="prevResultBtn" title="上一個">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -894,79 +831,87 @@
                         <label for="replaceText">取代文字</label>
                         <input type="text" id="replaceText" placeholder="輸入新文字">
                         
-                        <button class="btn btn-secondary" id="undoBtn" title="還原上一步">
-                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v6h6"></path><path d="M21 12A9 9 0 0 0 6.47 6.5L3 10"></path></svg>
-                            上一步
-                        </button>
-                        <button class="btn btn-warning" id="clearBtn" title="清除搜尋與取代輸入框">🧹 清除</button>
-                        <button class="btn btn-primary" id="replaceNextBtn" title="依序替換下一個找到的「搜尋文字」">依序替換</button>
-                        <button class="btn btn-navy" id="replaceAllBtn" title="將所有找到的「搜尋文字」替換為「取代文字」">全部替換</button>
-                        <button class="btn btn-success" id="openExportModalBtn" title="儲存檔案" style="display: none;">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                            儲存...
-                        </button>
+                        <div class="action-buttons-group">
+                            <button class="btn btn-secondary" id="undoBtn" title="還原上一步">
+                               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v6h6"></path><path d="M21 12A9 9 0 0 0 6.47 6.5L3 10"></path></svg>
+                                上一步
+                            </button>
+                            <button class="btn btn-warning" id="clearBtn" title="清除搜尋與取代輸入框">🧹 清除</button>
+                            <button class="btn btn-primary" id="replaceNextBtn" title="依序替換下一個找到的「搜尋文字」">依序替換</button>
+                            <button class="btn btn-navy" id="replaceAllBtn" title="將所有找到的「搜尋文字」替換為「取代文字」">全部替換</button>
+                            <button class="btn btn-success" id="openExportModalBtn" title="儲存檔案" style="display: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                儲存...
+                            </button>
+                        </div>
                     </div>
                     
-                    <div class="main-action-bar">
-                        <button class="btn btn-import" id="importFileBtn" title="從您的電腦選擇一個 PDF 檔案">📂 匯入PDF 檔案</button>
-                        
-                        <div id="documentControls" style="display: none; gap: 8px; align-items: center; flex-wrap: nowrap; justify-content: center;">
-                             <div class="control-group zoom-group">
-                                <button class="btn btn-zoom" id="zoomOutBtn" title="縮小頁面檢視">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                                    縮小
-                                </button>
-                                <button class="btn btn-zoom" id="fitPageBtn" title="最適頁寬">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-                                    整頁
-                                </button>
-                                <button class="btn btn-zoom" id="zoomInBtn" title="放大頁面檢視">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                                    放大
-                                </button>
+                    <div class="main-action-bar-wrapper">
+                        <div class="main-action-bar">
+                            <button class="btn btn-import" id="importFileBtn" title="從您的電腦選擇一個 PDF 檔案">📂 匯入PDF 檔案</button>
+                            
+                            <div id="documentControls" style="display: none; gap: 10px; align-items: center; flex-wrap: nowrap; justify-content: flex-start; width: 100%;">
+                                 <div class="control-group zoom-group">
+                                    <button class="btn btn-zoom" id="zoomOutBtn" title="縮小頁面檢視">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                                        縮小
+                                    </button>
+                                    <button class="btn btn-zoom" id="fitPageBtn" title="最適頁寬">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                                        整頁
+                                    </button>
+                                    <button class="btn btn-zoom" id="zoomInBtn" title="放大頁面檢視">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                                        放大
+                                    </button>
+                                </div>
+                                <!-- 繪圖與文字工具 -->
+                                <div class="drawing-tools">
+                                    <button class="tool-btn" id="tool-select" title="選取/移動"><svg viewBox="0 0 24 24"><path d="M13.7,6.3C13.5,6.1,13.3,6,13,6s-0.5,0.1-0.7,0.3L3,15.6V21h5.4l9.3-9.3L13.7,6.3z M6.1,19H5v-1.1l7.8-7.8l1.1,1.1 L6.1,19z M20,6.1l-1.1-1.1c-0.4-0.4-1-0.4-1.4,0l-1.2,1.2l2.5,2.5l1.2-1.2C20.4,7.1,20.4,6.5,20,6.1z"></path></svg></button>
+                                    <button class="tool-btn" id="tool-text" title="文字工具">T</button>
+                                    <button class="tool-btn" id="tool-image" title="插入圖片"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"></path></svg></button>
+                                    <button class="tool-btn" id="tool-line" title="直線"><svg viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4"></line></svg></button>
+                                    <button class="tool-btn" id="tool-rect" title="矩形"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z"></path></svg></button>
+                                    <button class="tool-btn" id="tool-ellipse" title="圓形"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle></svg></button>
+                                    <button class="tool-btn" id="tool-arrow" title="箭頭"><svg viewBox="0 0 24 24"><path d="M12 2 L12 18 M12 22 L6 16 M12 22 L18 16" stroke-width="2.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+                                    <label for="strokeColor">顏色:</label>
+                                    <input type="color" id="strokeColor" value="#ff0000">
+                                    <label for="strokeWidth">粗細:</label>
+                                    <input type="number" id="strokeWidth" value="3" min="1" max="50">
+                                </div>
+
+                                <div class="btn-like-group">
+                                    <label for="fontSelect">字型</label>
+                                    <select id="fontSelect">
+                                        <option value="-apple-system, 'Microsoft JhengHei', sans-serif">系統預設</option>
+                                        <option value="'PingFang TC', '蘋方-繁', sans-serif">蘋方-繁體</option>
+                                        <option value="'Microsoft JhengHei', '微軟正黑體', sans-serif">微軟正黑體</option>
+                                        <option value="'Noto Sans TC', 'Source Han Sans TC', '思源黑體', sans-serif">思源黑體</option>
+                                        <option value="'Noto Serif TC', 'Source Han Serif TC', '思源宋體', serif">思源宋體</option>
+                                        <option value="'Zen Hei', 'WenQuanYi Zen Hei', '文泉驛正黑', sans-serif">文泉驛正黑</option>
+                                        <option value="BiauKai, '標楷體', KaiTi, serif">標楷體</option>
+                                        <option value="MingLiU, '新細明體', PMingLiU, serif">新細明體</option>
+                                    </select>
+                                </div>
+                                <div class="btn-like-group">
+                                    <label for="fontSizeSelect">字級</label>
+                                    <select id="fontSizeSelect"></select>
+                                </div>
+                                <div class="btn-like-group">
+                                    <label for="fontColor">文字</label>
+                                    <input type="color" id="fontColor" value="#000000">
+                                    <button class="btn btn-secondary color-picker-btn" id="fontColorPickerBtn" title="從畫布上選取文字顏色">💧</button>
+                                </div>
+                                <div class="btn-like-group">
+                                    <label for="backgroundColor">背景</label>
+                                    <input type="color" id="backgroundColor" value="#FFFFFF">
+                                    <button class="btn btn-secondary color-picker-btn" id="bgColorPickerBtn" title="從畫布上選取背景顏色">💧</button>
+                                </div>
                             </div>
-                            <div id="pageIndicator" class="page-indicator">
-                                第 <span id="currentPageIndicator">1</span> / <span id="totalPagesIndicator">1</span> 頁
-                            </div>
-                            <div class="btn-like-group">
-                                <label for="fontSelect">字型</label>
-                                <select id="fontSelect">
-                                    <option value="-apple-system, 'Microsoft JhengHei', sans-serif">系統預設</option>
-                                    <option value="'PingFang TC', '蘋方-繁', sans-serif">蘋方-繁體</option>
-                                    <option value="'Microsoft JhengHei', '微軟正黑體', sans-serif">微軟正黑體</option>
-                                    <option value="'Noto Sans TC', 'Source Han Sans TC', '思源黑體', sans-serif">思源黑體</option>
-                                    <option value="'Noto Serif TC', 'Source Han Serif TC', '思源宋體', serif">思源宋體</option>
-                                    <option value="'WenQuanYi Zen Hei', '文泉驛正黑', sans-serif">文泉驛正黑</option>
-                                    <option value="BiauKai, '標楷體', KaiTi, serif">標楷體</option>
-                                    <option value="MingLiU, '新細明體', PMingLiU, serif">新細明體</option>
-                                </select>
-                            </div>
-                            <div class="btn-like-group">
-                                <label for="fontSizeSelect">字級</label>
-                                <select id="fontSizeSelect">
-                                    <option value="8">8</option>
-                                    <option value="9">9</option>
-                                    <option value="10">10</option>
-                                    <option value="11">11</option>
-                                    <option value="12">12</option>
-                                    <option value="14" selected>14</option>
-                                    <option value="16">16</option>
-                                    <option value="18">18</option>
-                                    <option value="20">20</option>
-                                    <option value="24">24</option>
-                                    <option value="36">36</option>
-                                    <option value="48">48</option>
-                                </select>
-                            </div>
-                            <div class="btn-like-group">
-                                <label for="fontColor">文字</label>
-                                <input type="color" id="fontColor" value="#000000">
-                                <button class="btn btn-secondary color-picker-btn" id="fontColorPickerBtn" title="從畫布上選取文字顏色">💧</button>
-                            </div>
-                            <div class="btn-like-group">
-                                <label for="backgroundColor">背景</label>
-                                <input type="color" id="backgroundColor" value="#FFFFFF">
-                                <button class="btn btn-secondary color-picker-btn" id="bgColorPickerBtn" title="從畫布上選取背景顏色">💧</button>
+                        </div>
+                        <div class="custom-scrollbar-container" id="customScrollbarContainer" style="display: none;">
+                            <div class="custom-scrollbar-track">
+                                <div class="custom-scrollbar-thumb"></div>
                             </div>
                         </div>
                     </div>
@@ -984,37 +929,36 @@
         <div class="feature-grid">
             <div class="feature-card">
                 <div class="feature-card-title">
-                    <span class="icon">📂</span>
-                    <span>匯入、清除、主題</span>
+                    <span class="icon">📝</span>
+                    <span>文字取代與編輯</span>
                 </div>
                 <p>
-                    <span class="keyword">「 📂 匯入PDF 檔案 」</span>: 點擊以選擇您電腦中的 PDF 檔案並載入。<br>
-                    <span class="keyword">「 🧹 清除 」</span>: 點擊以清除「搜尋文字」和「取代文字」兩個輸入框的內容。<br>
-                    <span class="keyword">「 🌓 (切換器) 」</span>: 切換淺色或深色（暗黑）操作模式。
+                    <span class="keyword">「 搜尋/取代 」</span>: 輸入文字後，可使用「依序替換」或「全部替換」。<br>
+                    <span class="keyword">「 單字編輯 」</span>: 直接點擊 PDF 頁面上的任何一個字，即可單獨修改。<br>
+                    <span class="keyword">「 🧹 清除 」</span>: 清除「搜尋」和「取代」輸入框的內容。
                 </p>
             </div>
             
             <div class="feature-card">
                 <div class="feature-card-title">
                     <span class="icon">🎨</span>
-                    <span>顏色與字型</span>
+                    <span>樣式與顏色</span>
                 </div>
                 <p>
-                    <span class="keyword">「 字型/字級 」</span>: 選擇取代文字時要使用的字型與大小。<br>
+                    <span class="keyword">「 字型/字級 」</span>: 選擇取代或新增文字時要使用的字型與大小。<br>
                     <span class="keyword">「 顏色 」</span>: 設定取代文字的文字與背景顏色。<br>
-                    <span class="keyword">「 💧 (滴管) 」</span>: 點擊顏色方塊旁的滴管按鈕，即可從 PDF 畫面上直接抓取顏色並套用。
+                    <span class="keyword">「 💧 (滴管) 」</span>: 點擊顏色方塊旁的滴管，可從 PDF 畫面上抓取顏色。
                 </p>
             </div>
             
-            <div class="feature-card">
+             <div class="feature-card">
                 <div class="feature-card-title">
-                    <span class="icon">🧭</span>
-                    <span>頁面導覽與縮放</span>
+                    <span class="icon">✏️</span>
+                    <span>繪圖與新增文字</span>
                 </div>
                 <p>
-                    <span class="keyword">搜尋導覽</span>：使用搜尋框旁的 <span class="keyword">←</span> 和 <span class="keyword">→</span> 按鈕，在搜尋結果間快速跳轉。<br>
-                    <span class="keyword">頁面滾動</span>：直接在預覽區塊中上下滾動，即可瀏覽所有頁面。<br>
-                    <span class="keyword">縮放功能</span>：使用「<span class="keyword">縮小</span>」、「<span class="keyword">放大</span>」按鈕調整比例，或點擊「<span class="keyword">整頁</span>」讓頁面自動縮放至最適寬度。
+                    <span class="keyword">繪圖/圖片</span>：點擊工具列圖示啟用，可在頁面上繪製圖形、新增文字或插入圖片。<br>
+                    <span class="keyword">移動物件</span>：使用 <svg viewBox="0 0 24 24" style="width:1em; height:1em; vertical-align:-0.15em; fill:currentColor;"><path d="M13.7,6.3C13.5,6.1,13.3,6,13,6s-0.5,0.1-0.7,0.3L3,15.6V21h5.4l9.3-9.3L13.7,6.3z M6.1,19H5v-1.1l7.8-7.8l1.1,1.1 L6.1,19z M20,6.1l-1.1-1.1c-0.4-0.4-1-0.4-1.4,0l-1.2,1.2l2.5,2.5l1.2-1.2C20.4,7.1,20.4,6.5,20,6.1z"></path></svg> 工具可拖曳已新增的物件。
                 </p>
             </div>
 
@@ -1025,8 +969,8 @@
                 </div>
                 <p>
                     <span class="keyword">「 💾 儲存... 」</span>: 點擊此按鈕會彈出儲存選項。<br>
-                    <span class="keyword">「 💾 另存為 PDF 」</span>: 將您修改後的內容（包含替換的文字）儲存為一個新的 PDF 檔案。<br>
-                    <span class="keyword">「 🖼️ 另存為 PNG (ZIP) 」</span>: 將 PDF 的每一頁（包含修改內容）分別存為 PNG 圖片，並打包成一個 ZIP 檔案下載。
+                    <span class="keyword">「 💾 另存為 PDF 」</span>: 將您修改後的內容（包含文字和繪圖）儲存為新的 PDF。<br>
+                    <span class="keyword">「 🖼️ 另存為 PNG (ZIP) 」</span>: 將每一頁存為 PNG 圖片，並打包成 ZIP 下載。
                 </p>
             </div>
         </div>
@@ -1062,12 +1006,26 @@
         
         let initialTotalResults = 0;
 
+        // --- Editing & Drawing State ---
+        let currentDrawingTool = 'select';
+        let isDrawing = false;
+        let isDragging = false;
+        let isResizing = false;
+        let draggingObject = null;
+        let dragStartX, dragStartY;
+        let tempCanvas, tempCtx;
+        let pendingImage = null;
+
+
         const pdfViewer = document.getElementById('pdfViewer');
         const documentControls = document.getElementById('documentControls');
+        const customScrollbarContainer = document.getElementById('customScrollbarContainer');
+        const mainActionBar = document.querySelector('.main-action-bar');
         const searchText = document.getElementById('searchText');
         const replaceText = document.getElementById('replaceText');
         const importFileBtn = document.getElementById('importFileBtn');
         const fileInput = document.getElementById('fileInput');
+        const imageInput = document.getElementById('imageInput');
         const clearBtn = document.getElementById('clearBtn');
         const undoBtn = document.getElementById('undoBtn');
         const replaceAllBtn = document.getElementById('replaceAllBtn');
@@ -1087,6 +1045,10 @@
         
         const fontColorPickerBtn = document.getElementById('fontColorPickerBtn');
         const bgColorPickerBtn = document.getElementById('bgColorPickerBtn');
+
+        const drawingTools = document.querySelectorAll('.drawing-tools .tool-btn');
+        const strokeColorInput = document.getElementById('strokeColor');
+        const strokeWidthInput = document.getElementById('strokeWidth');
 
         const pageIndicator = document.getElementById('pageIndicator');
         const currentPageIndicator = document.getElementById('currentPageIndicator');
@@ -1138,10 +1100,12 @@
                 findAndHighlightAll();
 
                 setEditingControlsState(true);
+                toggleDrawingTool('select', true);
 
                 totalPagesIndicator.textContent = pdfDoc.numPages;
-                pageIndicator.style.display = 'block';
-                updateCurrentPage();
+                pageIndicator.style.display = 'inline-block';
+                updateCustomScrollbar();
+
 
                 showStatus('', 'info', 0);
                 document.getElementById('statusMessage').style.display = 'none';
@@ -1165,7 +1129,7 @@
             for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
                 const page = await pdfDoc.getPage(pageNum);
                 const textContent = await page.getTextContent();
-                pdfPageData[pageNum] = { textItems: [], pageRef: page };
+                pdfPageData[pageNum] = { textItems: [], pageRef: page, drawings: [] };
 
                 textContent.items.forEach((item) => {
                     if (!item.str || item.str.trim() === '') return;
@@ -1208,11 +1172,54 @@
             ctx.textBaseline = 'alphabetic';
             ctx.fillText(item.currentText, tx[4], tx[5]);
         }
+
+        function drawSavedItem(ctx, item, scale) {
+            ctx.save();
+            ctx.strokeStyle = item.color;
+            ctx.lineWidth = item.width * scale;
+            ctx.fillStyle = item.color;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            switch(item.type) {
+                case 'line':
+                    ctx.beginPath();
+                    ctx.moveTo(item.x1 * scale, item.y1 * scale);
+                    ctx.lineTo(item.x2 * scale, item.y2 * scale);
+                    ctx.stroke();
+                    break;
+                case 'rect':
+                    ctx.beginPath();
+                    ctx.rect(item.x * scale, item.y * scale, item.w * scale, item.h * scale);
+                    ctx.stroke();
+                    break;
+                case 'ellipse':
+                    ctx.beginPath();
+                    ctx.ellipse(item.x * scale, item.y * scale, item.rx * scale, item.ry * scale, 0, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    break;
+                case 'arrow':
+                    drawArrow(ctx, item.x1 * scale, item.y1 * scale, item.x2 * scale, item.y2 * scale);
+                    break;
+                case 'text':
+                    ctx.font = `${item.size * scale}px ${item.font}`;
+                    ctx.textBaseline = 'top';
+                    ctx.fillText(item.text, item.x * scale, item.y * scale);
+                    break;
+                case 'image':
+                    if (item.imageObject && item.imageObject.complete) {
+                        ctx.drawImage(item.imageObject, item.x * scale, item.y * scale, item.w * scale, item.h * scale);
+                    }
+                    break;
+            }
+            ctx.restore();
+        }
         
         async function renderAllPages() {
             if (!pdfDoc) return;
             showSpinner('正在渲染所有頁面...');
             pdfViewer.innerHTML = '';
+            createTempCanvas();
 
             for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
                 updateSpinnerStatus(`正在渲染第 ${pageNum} / ${pdfDoc.numPages} 頁...`);
@@ -1226,6 +1233,7 @@
                 pageContainer.style.height = viewport.height + 'px';
                 
                 const canvas = document.createElement('canvas');
+                canvas.id = `canvas-${pageNum}`;
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
                 const ctx = canvas.getContext('2d');
@@ -1235,6 +1243,10 @@
                     if (item.isModified) {
                         drawModifiedTextOnCanvas(ctx, item, currentScale, viewport);
                     }
+                });
+
+                pdfPageData[pageNum].drawings.forEach(item => {
+                    drawSavedItem(ctx, item, currentScale);
                 });
                 
                 pdfPageData[pageNum].canvas = canvas;
@@ -1270,8 +1282,31 @@
             hideSpinner();
         }
 
+        async function redrawPageCanvas(pageNum) {
+            const pageData = pdfPageData[pageNum];
+            const canvas = pageData.canvas;
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const page = pageData.pageRef;
+            const viewport = page.getViewport({ scale: currentScale });
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+            pageData.textItems.forEach(item => {
+                if (item.isModified) {
+                    drawModifiedTextOnCanvas(ctx, item, currentScale, viewport);
+                }
+            });
+
+            pageData.drawings.forEach(item => {
+                drawSavedItem(ctx, item, currentScale);
+            });
+        }
+
         function createEditor(pageNum, itemIndex) {
-            if (colorPickerTarget) return;
+            if (colorPickerTarget || currentDrawingTool !== 'select') return;
             document.querySelector('.text-editor')?.blur();
             const item = pdfPageData[pageNum].textItems[itemIndex];
             const interactionLayer = document.getElementById(`interaction-layer-${pageNum}`);
@@ -1467,7 +1502,6 @@
         
         function replaceNext() {
             if (searchResults.length === 0) {
-                showStatus('找不到可替換的文字', 'info');
                 return;
             }
 
@@ -1558,39 +1592,38 @@
             
             showSpinner('正在還原...');
 
-            for (const change of lastAction.changes) {
-                const { pageNum, itemIndex, oldText } = change;
-                const item = pdfPageData[pageNum].textItems[itemIndex];
-                item.currentText = oldText;
-                item.isModified = item.currentText !== item.originalText;
+            if (lastAction.actionType === 'addDrawing') {
+                const { pageNum } = lastAction;
+                pdfPageData[pageNum].drawings.pop();
                 pagesToUpdate.add(pageNum);
+            } else if (lastAction.actionType === 'moveDrawing' || lastAction.actionType === 'resizeImage') {
+                 const { pageNum, index, oldState } = lastAction;
+                 Object.assign(pdfPageData[pageNum].drawings[index], oldState);
+                 pagesToUpdate.add(pageNum);
+            } else { // Handle text edits
+                for (const change of lastAction.changes) {
+                    const { pageNum, itemIndex, oldText } = change;
+                    const item = pdfPageData[pageNum].textItems[itemIndex];
+                    item.currentText = oldText;
+                    item.isModified = item.currentText !== item.originalText;
+                    pagesToUpdate.add(pageNum);
+                }
             }
 
             for (const pageNum of pagesToUpdate) {
-                updateSpinnerStatus(`正在還原第 ${pageNum} 頁...`);
-                const page = pdfPageData[pageNum].pageRef;
-                const canvas = pdfPageData[pageNum].canvas;
-                const ctx = canvas.getContext('2d');
-                const viewport = page.getViewport({ scale: currentScale });
-
-                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-                pdfPageData[pageNum].textItems.forEach(item => {
-                    if (item.isModified) {
-                        drawModifiedTextOnCanvas(ctx, item, currentScale, viewport);
-                    }
-                });
+                 await redrawPageCanvas(pageNum);
             }
 
             updateUndoButtonState();
             findAndHighlightAll();
             hideSpinner();
-            showStatus('已還原上一步操作', 'info', 2000);
         }
         
         function toggleColorPickerMode(target) {
             if (colorPickerTarget === target) {
                 colorPickerTarget = null;
             } else {
+                if (currentDrawingTool !== 'select') toggleDrawingTool('select', true);
                 colorPickerTarget = target;
             }
             
@@ -1599,16 +1632,19 @@
 
             if (colorPickerTarget) {
                 pdfViewer.style.cursor = 'crosshair';
-                pdfViewer.addEventListener('click', pickColor, { once: true });
+                pdfViewer.addEventListener('mousedown', pickColor, { once: true });
             } else {
                 pdfViewer.style.cursor = 'default';
-                pdfViewer.removeEventListener('click', pickColor);
+                pdfViewer.removeEventListener('mousedown', pickColor);
             }
         }
 
         function pickColor(event) {
             event.stopPropagation();
-
+            if (event.target.tagName !== 'CANVAS') {
+                 toggleColorPickerMode(colorPickerTarget);
+                 return;
+            }
             const canvas = event.target.closest('.pdf-page-container')?.querySelector('canvas');
 
             if (canvas) {
@@ -1631,11 +1667,7 @@
                     backgroundColor.value = hexColor;
                 }
             }
-            
-            colorPickerTarget = null;
-            fontColorPickerBtn.classList.remove('active');
-            bgColorPickerBtn.classList.remove('active');
-            pdfViewer.style.cursor = 'default';
+            toggleColorPickerMode(colorPickerTarget);
         }
         
         async function exportPDF() {
@@ -1665,6 +1697,10 @@
                         if (item.isModified) {
                             drawModifiedTextOnCanvas(tempCtx, item, EXPORT_SCALE, viewport);
                         }
+                    });
+
+                    pdfPageData[pageNum].drawings.forEach(item => {
+                        drawSavedItem(tempCtx, item, EXPORT_SCALE);
                     });
                     
                     const pngImageBytes = await pdfLibDoc.embedPng(tempCanvas.toDataURL('image/png'));
@@ -1721,6 +1757,10 @@
                             drawModifiedTextOnCanvas(tempCtx, item, EXPORT_SCALE, viewport);
                         }
                     });
+
+                     pdfPageData[pageNum].drawings.forEach(item => {
+                        drawSavedItem(tempCtx, item, EXPORT_SCALE);
+                    });
                     
                     const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
                     zip.file(`page_${pageNum}.png`, blob);
@@ -1760,7 +1800,8 @@
             openExportModalBtn.disabled = !enabled;
             
             documentControls.style.display = enabled ? 'flex' : 'none';
-            documentControls.querySelectorAll('.btn, select, input, .btn-like-group').forEach(el => {
+            customScrollbarContainer.style.display = enabled ? 'block' : 'none';
+            documentControls.querySelectorAll('.btn, select, input, .btn-like-group, .drawing-tools').forEach(el => {
                 if(el.tagName === 'DIV'){
                     el.querySelectorAll('select, input, button').forEach(child => child.disabled = !enabled);
                 } else {
@@ -1789,9 +1830,14 @@
             setEditingControlsState(false);
             importFileBtn.disabled = false; 
             fileInput.value = '';
+            imageInput.value = '';
+            pendingImage = null;
             
             if (colorPickerTarget) {
                 toggleColorPickerMode(colorPickerTarget);
+            }
+            if (currentDrawingTool !== 'select') {
+                toggleDrawingTool('select', true);
             }
 
             if (showInitialUI) {
@@ -1800,12 +1846,12 @@
                 <div class="initial-message-container">
                     <h4>⚠️ 注意事項</h4>
                     <ul>
-                        <li><span class="keyword">搜尋文字</span>與<span class="keyword">取代文字</span>的字數長度必須相同才能進行替換 (例如：3 個字換 3 個字)。</li>
+                        <li><span class="keyword">搜尋文字</span>與<span class="keyword">取代文字</span>的字數長度必須相同才能進行替換。</li>
                         <li>本工具原理是將新文字<span class="keyword">覆蓋</span>在原始文件上，而非直接編輯 PDF 檔案結構。</li>
                         <li>替換後的文字將使用您選擇的 <span class="keyword">字型、字級與顏色</span>，可能與 PDF 原始樣式不同。</li>
                         <li>使用顏色方塊旁的 <span class="keyword">💧 滴管</span> 按鈕，可以從文件上直接抓取顏色套用。</li>
                         <li>您可以直接點擊頁面上的<span class="keyword">任何一個字</span>進行單獨修改。</li>
-                        <li>對於圖層複雜或包含特殊字型的 PDF，替換效果可能不佳。</li>
+                        <li>使用<span class="keyword">繪圖工具</span>可在文件上新增線條、圖形與文字。</li>
                         <li>所有編輯皆於瀏覽器中進行，請務必點擊<span class="keyword">「 💾 儲存... 」</span>按鈕匯出檔案。</li>
                         <li>處理頁數過多或檔案過大的 PDF 時，瀏覽器可能會反應較慢，請耐心等候處理完成。</li>
                     </ul>
@@ -1844,9 +1890,456 @@
                 }
             }
             currentPageIndicator.textContent = currentPage;
+            return currentPage;
         }
 
+        function updateCustomScrollbar() {
+            const scrollableWidth = mainActionBar.scrollWidth - mainActionBar.clientWidth;
+            const thumb = document.querySelector('.custom-scrollbar-thumb');
+            const track = document.querySelector('.custom-scrollbar-track');
+            
+            if (scrollableWidth <= 0) {
+                customScrollbarContainer.style.display = 'none';
+                return;
+            }
+            customScrollbarContainer.style.display = 'block';
+
+            const thumbWidthPercentage = mainActionBar.clientWidth / mainActionBar.scrollWidth;
+            const thumbWidth = Math.max(20, thumbWidthPercentage * track.clientWidth);
+            thumb.style.width = thumbWidth + 'px';
+            
+            const scrollPercentage = mainActionBar.scrollLeft / scrollableWidth;
+            const thumbMaxLeft = track.clientWidth - thumbWidth;
+            thumb.style.left = (scrollPercentage * thumbMaxLeft) + 'px';
+        }
+
+        // --- Start of Drawing, Selection and Text Functions ---
+        function getPageAndCoordsFromEvent(e) {
+            const pageContainers = pdfViewer.querySelectorAll('.pdf-page-container');
+            for (let i = 0; i < pageContainers.length; i++) {
+                const rect = pageContainers[i].getBoundingClientRect();
+                if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                    return {
+                        pageNum: i + 1,
+                        x: e.clientX - rect.left,
+                        y: e.clientY - rect.top
+                    };
+                }
+            }
+            return { pageNum: null, x: null, y: null };
+        }
+
+        function createTempCanvas() {
+            if (tempCanvas) tempCanvas.remove();
+            tempCanvas = document.createElement('canvas');
+            tempCanvas.style.position = 'absolute';
+            tempCanvas.style.top = '0';
+            tempCanvas.style.left = '0';
+            tempCanvas.style.pointerEvents = 'none';
+            tempCanvas.style.zIndex = '100';
+            tempCanvas.width = pdfViewer.scrollWidth;
+            tempCanvas.height = pdfViewer.scrollHeight;
+            pdfViewer.appendChild(tempCanvas);
+            tempCtx = tempCanvas.getContext('2d');
+        }
+
+        function toggleDrawingTool(tool, force = false) {
+            if (colorPickerTarget) toggleColorPickerMode(colorPickerTarget);
+
+            if (tool === 'image') {
+                imageInput.click();
+                return;
+            }
+
+            if (!force && currentDrawingTool === tool) {
+                currentDrawingTool = 'select';
+            } else {
+                currentDrawingTool = tool;
+            }
+            
+            drawingTools.forEach(btn => {
+                btn.classList.toggle('active', btn.id.endsWith(currentDrawingTool));
+            });
+            
+            pdfViewer.removeEventListener('mousedown', handleMouseDown);
+            pdfViewer.removeEventListener('mousemove', handleMouseMove);
+            
+            pdfViewer.addEventListener('mousedown', handleMouseDown);
+            pdfViewer.addEventListener('mousemove', handleMouseMove);
+            
+            pdfViewer.style.cursor = (currentDrawingTool === 'select') ? 'default' : 'crosshair';
+        }
+        
+        function handleMouseDown(e) {
+            if (colorPickerTarget) return;
+            if (e.target.classList.contains('clickable-area') || e.target.classList.contains('text-input-area') || e.target.classList.contains('resize-handle')) return;
+
+            if (currentDrawingTool === 'select') {
+                handleSelectionMouseDown(e);
+            } else {
+                handleDrawingMouseDown(e);
+            }
+        }
+        
+        function handleMouseMove(e) {
+            if (isResizing) {
+                handleImageResize(e);
+            } else if (isDragging) {
+                handleSelectionMouseMove(e);
+            } else if (isDrawing) {
+                 handleDrawingMouseMove(e);
+            } else if (currentDrawingTool === 'select') {
+                const { pageNum, x, y } = getPageAndCoordsFromEvent(e);
+                if (pageNum) {
+                    const hitObject = hitTest(x, y, pageNum);
+                    if (hitObject?.handle) {
+                         pdfViewer.style.cursor = 'nwse-resize';
+                    } else if (hitObject) {
+                        pdfViewer.style.cursor = 'move';
+                    } else {
+                        pdfViewer.style.cursor = 'default';
+                    }
+                }
+            }
+        }
+
+        function handleDrawingMouseDown(e) {
+            const { pageNum, x, y } = getPageAndCoordsFromEvent(e);
+            if (!pageNum) return;
+
+            if (currentDrawingTool === 'text') {
+                 createTextbox(x, y, pageNum);
+                 return;
+            }
+            if (currentDrawingTool === 'image-placement' && pendingImage) {
+                placeImage(x, y, pageNum);
+                return;
+            }
+            isDrawing = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            
+            window.addEventListener('mousemove', handleDrawingMouseMove);
+            window.addEventListener('mouseup', handleDrawingMouseUp);
+        }
+
+        function handleDrawingMouseMove(e) {
+            if (!isDrawing) return;
+            tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            const viewerRect = pdfViewer.getBoundingClientRect();
+            const startCanvasX = dragStartX - viewerRect.left + pdfViewer.scrollLeft;
+            const startCanvasY = dragStartY - viewerRect.top + pdfViewer.scrollTop;
+            const currentCanvasX = e.clientX - viewerRect.left + pdfViewer.scrollLeft;
+            const currentCanvasY = e.clientY - viewerRect.top + pdfViewer.scrollTop;
+
+            drawShape(tempCtx, currentDrawingTool, startCanvasX, startCanvasY, currentCanvasX, currentCanvasY);
+        }
+
+        function handleDrawingMouseUp(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            window.removeEventListener('mousemove', handleDrawingMouseMove);
+            window.removeEventListener('mouseup', handleDrawingMouseUp);
+            tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            const { pageNum, x, y } = getPageAndCoordsFromEvent(e);
+            if (!pageNum) return; 
+
+            const startCoords = getPageAndCoordsFromEvent({clientX: dragStartX, clientY: dragStartY});
+            if (!startCoords || !startCoords.pageNum) return;
+
+            const unscaledStartX = startCoords.x / currentScale;
+            const unscaledStartY = startCoords.y / currentScale;
+            const unscaledEndX = x / currentScale;
+            const unscaledEndY = y / currentScale;
+
+            const drawingData = {
+                type: currentDrawingTool,
+                color: strokeColorInput.value,
+                width: parseFloat(strokeWidthInput.value),
+            };
+
+            if (currentDrawingTool === 'rect') {
+                drawingData.x = Math.min(unscaledStartX, unscaledEndX);
+                drawingData.y = Math.min(unscaledStartY, unscaledEndY);
+                drawingData.w = Math.abs(unscaledEndX - unscaledStartX);
+                drawingData.h = Math.abs(unscaledEndY - unscaledStartY);
+            } else if (currentDrawingTool === 'ellipse') {
+                drawingData.x = (unscaledStartX + unscaledEndX) / 2;
+                drawingData.y = (unscaledStartY + unscaledEndY) / 2;
+                drawingData.rx = Math.abs(unscaledEndX - unscaledStartX) / 2;
+                drawingData.ry = Math.abs(unscaledEndY - unscaledStartY) / 2;
+            } else { 
+                drawingData.x1 = unscaledStartX;
+                drawingData.y1 = unscaledStartY;
+                drawingData.x2 = unscaledEndX;
+                drawingData.y2 = unscaledEndY;
+            }
+            
+            pdfPageData[pageNum].drawings.push(drawingData);
+            historyStack.push({ actionType: 'addDrawing', pageNum });
+            updateUndoButtonState();
+            
+            redrawPageCanvas(pageNum);
+            toggleDrawingTool(currentDrawingTool);
+        }
+        
+        function handleSelectionMouseDown(e) {
+            const { pageNum, x, y } = getPageAndCoordsFromEvent(e);
+            if (!pageNum) return;
+            
+            const hitObject = hitTest(x, y, pageNum);
+
+            if (hitObject) {
+                 dragStartX = e.clientX;
+                 dragStartY = e.clientY;
+                 draggingObject = hitObject;
+
+                if (hitObject.handle) {
+                    isResizing = true;
+                    historyStack.push({ actionType: 'resizeImage', pageNum, index: draggingObject.index, oldState: { w: draggingObject.obj.w, h: draggingObject.obj.h } });
+                    window.addEventListener('mouseup', handleSelectionMouseUp);
+                } else {
+                    isDragging = true;
+                    const oldState = {};
+                    if(draggingObject.obj.type === 'rect' || draggingObject.obj.type === 'text' || draggingObject.obj.type === 'ellipse' || draggingObject.obj.type === 'image') {
+                        oldState.x = draggingObject.obj.x; oldState.y = draggingObject.obj.y;
+                    } else {
+                        oldState.x1 = draggingObject.obj.x1; oldState.y1 = draggingObject.obj.y1;
+                        oldState.x2 = draggingObject.obj.x2; oldState.y2 = draggingObject.obj.y2;
+                    }
+                    historyStack.push({ actionType: 'moveDrawing', pageNum, index: draggingObject.index, oldState });
+                    window.addEventListener('mouseup', handleSelectionMouseUp);
+                }
+                updateUndoButtonState();
+            }
+        }
+        
+        function handleSelectionMouseMove(e) {
+            if (!isDragging) return;
+            
+            const dx = (e.clientX - dragStartX) / currentScale;
+            const dy = (e.clientY - dragStartY) / currentScale;
+            
+            const obj = draggingObject.obj;
+            if (obj.type === 'rect' || obj.type === 'text' || obj.type === 'ellipse' || obj.type === 'image') {
+                 obj.x += dx; obj.y += dy;
+            } else {
+                obj.x1 += dx; obj.y1 += dy;
+                obj.x2 += dx; obj.y2 += dy;
+            }
+            redrawPageCanvas(draggingObject.pageNum);
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+        }
+        
+        function handleSelectionMouseUp(e) {
+            isDragging = false;
+            isResizing = false;
+            draggingObject = null;
+            window.removeEventListener('mouseup', handleSelectionMouseUp);
+        }
+        
+        function handleImageResize(e) {
+            if (!isResizing) return;
+            const obj = draggingObject.obj;
+            const dx = (e.clientX - dragStartX) / currentScale;
+            const dy = (e.clientY - dragStartY) / currentScale;
+            
+            obj.w += dx;
+            obj.h += dy;
+
+            // Prevent negative size
+            if (obj.w < 10) obj.w = 10;
+            if (obj.h < 10) obj.h = 10;
+
+            redrawPageCanvas(draggingObject.pageNum);
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+        }
+
+
+        function drawShape(ctx, tool, x1, y1, x2, y2) {
+             ctx.strokeStyle = strokeColorInput.value;
+             ctx.lineWidth = parseFloat(strokeWidthInput.value);
+             ctx.fillStyle = strokeColorInput.value;
+             ctx.lineCap = "round";
+             ctx.lineJoin = "round";
+             
+             switch(tool) {
+                case 'line': ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); break;
+                case 'rect': ctx.beginPath(); ctx.rect(x1, y1, x2 - x1, y2 - y1); ctx.stroke(); break;
+                case 'ellipse': ctx.beginPath(); ctx.ellipse((x1 + x2) / 2, (y1 + y2) / 2, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2, 0, 0, 2 * Math.PI); ctx.stroke(); break;
+                case 'arrow': drawArrow(ctx, x1, y1, x2, y2); break;
+             }
+        }
+        
+        function drawArrow(ctx, fromx, fromy, tox, toy) {
+            const headlen = Math.max(12, ctx.lineWidth * 2.5);
+            const dx = tox - fromx;
+            const dy = toy - fromy;
+            const angle = Math.atan2(dy, dx);
+            const length = Math.sqrt(dx * dx + dy * dy);
+            
+            const lineEndX = tox - (headlen * 0.9) * Math.cos(angle);
+            const lineEndY = toy - (headlen * 0.9) * Math.sin(angle);
+
+            if (length > headlen) {
+                ctx.beginPath();
+                ctx.moveTo(fromx, fromy);
+                ctx.lineTo(lineEndX, lineEndY);
+                ctx.stroke();
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(tox, toy);
+            ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 7), toy - headlen * Math.sin(angle - Math.PI / 7));
+            ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 7), toy - headlen * Math.sin(angle + Math.PI / 7));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function createTextbox(x, y, pageNum) {
+            const interactionLayer = document.getElementById(`interaction-layer-${pageNum}`);
+            if (!interactionLayer) return;
+
+            const inputArea = document.createElement('div');
+            inputArea.contentEditable = true;
+            inputArea.className = 'text-input-area';
+            inputArea.style.left = x + 'px';
+            inputArea.style.top = y + 'px';
+            inputArea.style.fontFamily = fontSelect.value;
+            inputArea.style.fontSize = fontSizeSelect.value + 'px';
+            inputArea.style.color = fontColor.value;
+
+            interactionLayer.appendChild(inputArea);
+            
+            setTimeout(() => inputArea.focus(), 0);
+
+            inputArea.addEventListener('blur', () => {
+                const text = inputArea.innerText;
+                if (text.trim()) {
+                    const textData = {
+                        type: 'text', text,
+                        x: x / currentScale, y: y / currentScale,
+                        font: fontSelect.value, size: parseFloat(fontSizeSelect.value),
+                        color: fontColor.value,
+                    };
+                    pdfPageData[pageNum].drawings.push(textData);
+                    historyStack.push({ actionType: 'addDrawing', pageNum });
+                    updateUndoButtonState();
+                    redrawPageCanvas(pageNum);
+                }
+                toggleDrawingTool('text');
+                inputArea.remove();
+            });
+        }
+        
+        function handleImageFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    pendingImage = img;
+                    toggleDrawingTool('image-placement', true);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+            imageInput.value = '';
+        }
+
+        function placeImage(x, y, pageNum) {
+            const defaultWidth = 150 / currentScale;
+            const aspectRatio = pendingImage.height / pendingImage.width;
+            
+            const imageData = {
+                type: 'image',
+                imageObject: pendingImage,
+                x: x / currentScale, y: y / currentScale,
+                w: defaultWidth,
+                h: defaultWidth * aspectRatio,
+            };
+
+            pdfPageData[pageNum].drawings.push(imageData);
+            historyStack.push({ actionType: 'addDrawing', pageNum });
+            updateUndoButtonState();
+            redrawPageCanvas(pageNum);
+            
+            pendingImage = null;
+            toggleDrawingTool('image-placement');
+        }
+        
+        function hitTest(x, y, pageNum) {
+            const drawings = pdfPageData[pageNum].drawings;
+            const scaledX = x / currentScale;
+            const scaledY = y / currentScale;
+            
+            for (let i = drawings.length - 1; i >= 0; i--) {
+                const obj = drawings[i];
+                const buffer = 5;
+
+                if (obj.type === 'image') {
+                    const handleSize = 10 / currentScale;
+                    const handleX = obj.x + obj.w - handleSize / 2;
+                    const handleY = obj.y + obj.h - handleSize / 2;
+                    if (scaledX >= handleX && scaledX <= handleX + handleSize && scaledY >= handleY && scaledY <= handleY + handleSize) {
+                        return {obj, index: i, pageNum, handle: 'resize'};
+                    }
+                }
+
+                switch(obj.type) {
+                    case 'rect':
+                    case 'image':
+                        if (scaledX >= obj.x && scaledX <= obj.x + obj.w && scaledY >= obj.y && scaledY <= obj.y + obj.h) return {obj, index: i, pageNum};
+                        break;
+                    case 'ellipse':
+                        const p = Math.pow((scaledX - obj.x), 2) / Math.pow(obj.rx, 2) + Math.pow((scaledY - obj.y), 2) / Math.pow(obj.ry, 2);
+                        if (p <= 1) return {obj, index: i, pageNum};
+                        break;
+                    case 'line':
+                    case 'arrow':
+                        const distSq = (px, py, x1, y1, x2, y2) => {
+                            let l2 = Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
+                            if (l2 === 0) return Math.pow(px - x1, 2) + Math.pow(py - y1, 2);
+                            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+                            t = Math.max(0, Math.min(1, t));
+                            return Math.pow(px - (x1 + t * (x2 - x1)), 2) + Math.pow(py - (y1 + t * (y2 - y1)), 2);
+                        };
+                        if (distSq(scaledX, scaledY, obj.x1, obj.y1, obj.x2, obj.y2) < Math.pow(buffer / currentScale, 2)) return {obj, index: i, pageNum};
+                        break;
+                    case 'text':
+                         const tempCtxForText = document.createElement('canvas').getContext('2d');
+                         tempCtxForText.font = `${obj.size}px ${obj.font}`;
+                         const textMetrics = tempCtxForText.measureText(obj.text);
+                         const textWidth = textMetrics.width;
+                         const textHeight = obj.size * 1.2;
+                         if (scaledX >= obj.x && scaledX <= obj.x + textWidth && scaledY >= obj.y && scaledY <= obj.y + textHeight) return {obj, index: i, pageNum};
+                        break;
+                }
+            }
+            return null;
+        }
+
+        // --- End of Editing & Drawing Functions ---
+
         document.addEventListener('DOMContentLoaded', () => {
+            const fontSizeFragment = document.createDocumentFragment();
+            for (let i = 2; i <= 30; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                if (i === 14) option.selected = true;
+                fontSizeFragment.appendChild(option);
+            }
+            fontSizeSelect.appendChild(fontSizeFragment);
+
+
             importFileBtn.addEventListener('click', () => fileInput.click());
             clearBtn.addEventListener('click', clearSearch);
             undoBtn.addEventListener('click', undoLastAction);
@@ -1854,24 +2347,56 @@
             replaceNextBtn.addEventListener('click', replaceNext);
             prevResultBtn.addEventListener('click', navigateToPrevResult);
             nextResultBtn.addEventListener('click', navigateToNextResult);
-
             
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) handleFile(e.target.files[0]);
             });
+            imageInput.addEventListener('change', handleImageFile);
             
             searchText.addEventListener('input', findAndHighlightAll);
             
             pdfViewer.addEventListener('scroll', onScrollViewerScroll);
+            mainActionBar.addEventListener('scroll', updateCustomScrollbar);
+            window.addEventListener('resize', updateCustomScrollbar);
 
-            zoomInBtn.addEventListener('click', async () => { if (!zoomInBtn.disabled) { currentScale = Math.min(5.0, currentScale + 0.2); await renderAllPages(); findAndHighlightAll();} });
-            zoomOutBtn.addEventListener('click', async () => { if (!zoomOutBtn.disabled && currentScale > 0.4) { currentScale = Math.max(0.4, currentScale - 0.2); await renderAllPages(); findAndHighlightAll(); } });
+            const thumb = document.querySelector('.custom-scrollbar-thumb');
+            let isDraggingThumb = false;
+            let startThumbX = 0;
+            let startScrollLeft = 0;
+
+            thumb.addEventListener('mousedown', (e) => {
+                isDraggingThumb = true;
+                startThumbX = e.clientX;
+                startScrollLeft = mainActionBar.scrollLeft;
+                thumb.style.cursor = 'grabbing';
+                document.body.style.cursor = 'grabbing';
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDraggingThumb) return;
+                e.preventDefault();
+                const dx = e.clientX - startThumbX;
+                const trackWidth = thumb.parentElement.clientWidth;
+                const thumbWidth = thumb.clientWidth;
+                const scrollableWidth = mainActionBar.scrollWidth - mainActionBar.clientWidth;
+                
+                mainActionBar.scrollLeft = startScrollLeft + (dx * (scrollableWidth / (trackWidth - thumbWidth)));
+            });
+             window.addEventListener('mouseup', () => {
+                isDraggingThumb = false;
+                thumb.style.cursor = 'grab';
+                document.body.style.cursor = 'default';
+            });
+
+
+            zoomInBtn.addEventListener('click', async () => { if (!zoomInBtn.disabled) { currentScale = Math.min(5.0, currentScale + 0.2); await renderAllPages(); findAndHighlightAll(); updateCustomScrollbar();}});
+            zoomOutBtn.addEventListener('click', async () => { if (!zoomOutBtn.disabled && currentScale > 0.4) { currentScale = Math.max(0.4, currentScale - 0.2); await renderAllPages(); findAndHighlightAll(); updateCustomScrollbar(); } });
             
             fitPageBtn.addEventListener('click', async () => {
                 if (!fitPageBtn.disabled) {
                     setFitToWidthScale();
                     await renderAllPages();
                     findAndHighlightAll();
+                    updateCustomScrollbar();
                 }
             });
 
@@ -1899,6 +2424,13 @@
             
             fontColorPickerBtn.addEventListener('click', () => toggleColorPickerMode('font'));
             bgColorPickerBtn.addEventListener('click', () => toggleColorPickerMode('bg'));
+
+            drawingTools.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tool = btn.id.replace('tool-', '');
+                    toggleDrawingTool(tool);
+                });
+            });
 
             resetTool(true);
         });
