@@ -1630,13 +1630,7 @@
             fontColorPickerBtn.classList.toggle('active', colorPickerTarget === 'font');
             bgColorPickerBtn.classList.toggle('active', colorPickerTarget === 'bg');
 
-            if (colorPickerTarget) {
-                pdfViewer.style.cursor = 'crosshair';
-                pdfViewer.addEventListener('mousedown', pickColor, { once: true });
-            } else {
-                pdfViewer.style.cursor = 'default';
-                pdfViewer.removeEventListener('mousedown', pickColor);
-            }
+            pdfViewer.style.cursor = colorPickerTarget ? 'crosshair' : 'default';
         }
 
         function pickColor(event) {
@@ -1721,7 +1715,6 @@
                 a.remove();
                 
                 hideSpinner();
-                // showStatus('PDF 匯出成功！', 'success');
             } catch (error) {
                 hideSpinner();
                 showStatus('PDF 匯出失敗: ' + error.message, 'error');
@@ -1778,7 +1771,6 @@
                 a.remove();
                 
                 hideSpinner();
-                // showStatus('PNG (ZIP) 匯出成功！', 'success');
             } catch (error) {
                 hideSpinner();
                 showStatus('PNG (ZIP) 匯出失敗: ' + error.message, 'error');
@@ -1961,17 +1953,14 @@
                 btn.classList.toggle('active', btn.id.endsWith(currentDrawingTool));
             });
             
-            pdfViewer.removeEventListener('mousedown', handleMouseDown);
-            pdfViewer.removeEventListener('mousemove', handleMouseMove);
-            
-            pdfViewer.addEventListener('mousedown', handleMouseDown);
-            pdfViewer.addEventListener('mousemove', handleMouseMove);
-            
             pdfViewer.style.cursor = (currentDrawingTool === 'select') ? 'default' : 'crosshair';
         }
         
         function handleMouseDown(e) {
-            if (colorPickerTarget) return;
+            if (colorPickerTarget) {
+                pickColor(e);
+                return;
+            }
             if (e.target.classList.contains('clickable-area') || e.target.classList.contains('text-input-area') || e.target.classList.contains('resize-handle')) return;
 
             if (currentDrawingTool === 'select') {
