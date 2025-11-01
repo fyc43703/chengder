@@ -876,6 +876,19 @@
         #closePreviewModalBtn:hover:not(:disabled) {
             background-color: #ff7973; border-color: var(--system-red);
         }
+        
+        #previewZoomOutBtn, #previewZoomInBtn {
+            font-size: 28px;
+            font-weight: bold;
+            padding: 2px 16px;
+            background-color: #2c3e50;
+            color: white;
+            border-color: #1a2531;
+        }
+        #previewZoomOutBtn:hover:not(:disabled), #previewZoomInBtn:hover:not(:disabled) {
+            background-color: #34495e;
+            border-color: #2c3e50;
+        }
 
         #previewImageContainer {
             flex-grow: 1; overflow: auto; text-align: center; background: var(--system-gray-bg-tint);
@@ -2900,7 +2913,7 @@
 
 
             zoomInBtn.addEventListener('click', async () => { if (!zoomInBtn.disabled) { currentScale = Math.min(5.0, currentScale + 0.2); await renderAllPages(); findAndHighlightAll(); updateCustomScrollbar();}});
-            zoomOutBtn.addEventListener('click', async () => { if (!zoomOutBtn.disabled && currentScale > 0.4) { currentScale = Math.max(0.4, currentScale - 0.2); await renderAllPages(); findAndHighlightAll(); updateCustomScrollbar(); } });
+            zoomOutBtn.addEventListener('click', async () => { if (!zoomInBtn.disabled && currentScale > 0.4) { currentScale = Math.max(0.4, currentScale - 0.2); await renderAllPages(); findAndHighlightAll(); updateCustomScrollbar(); } });
 
             fitPageBtn.addEventListener('click', async () => {
                 if (!fitPageBtn.disabled) {
@@ -2985,32 +2998,26 @@
                     scrollToPreviewPage(currentPreviewPage);
                 }
             });
+
+            let isPreviewScrolling = false;
+            let previewScrollTimeout;
             previewImageContainer.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                const zoomFactor = 0.1;
-                const oldZoom = previewZoom;
+                
+                if (isPreviewScrolling) return;
 
-                if (e.deltaY < 0) { // Zoom in
-                    previewZoom = Math.min(3.0, previewZoom * (1 + zoomFactor));
-                } else { // Zoom out
-                    previewZoom = Math.max(0.1, previewZoom / (1 + zoomFactor));
+                if (e.deltaY > 0) {
+                    previewNextPageBtn.click();
+                } else if (e.deltaY < 0) {
+                    previewPrevPageBtn.click();
                 }
-                
-                const rect = previewImageContainer.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
 
-                const scrollLeft = previewImageContainer.scrollLeft;
-                const scrollTop = previewImageContainer.scrollTop;
-
-                const newScrollLeft = (scrollLeft + mouseX) * (previewZoom / oldZoom) - mouseX;
-                const newScrollTop = (scrollTop + mouseY) * (previewZoom / oldZoom) - mouseY;
+                isPreviewScrolling = true;
+                clearTimeout(previewScrollTimeout);
+                previewScrollTimeout = setTimeout(() => {
+                    isPreviewScrolling = false;
+                }, 300); // 300ms debounce
                 
-                applyPreviewZoom();
-                
-                previewImageContainer.scrollLeft = newScrollLeft;
-                previewImageContainer.scrollTop = newScrollTop;
-
             }, { passive: false });
 
 
