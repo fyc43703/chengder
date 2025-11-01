@@ -890,6 +890,7 @@
             gap: 20px;
             transition: transform 0.1s ease-out;
             width: fit-content; margin: 0 auto;
+            transform-origin: center center;
         }
         .preview-page-image {
             max-width: 100%;
@@ -2950,13 +2951,13 @@
             // --- Preview Modal Listeners ---
             previewBtn.addEventListener('click', showPreview);
             closePreviewModalBtn.addEventListener('click', () => previewModalOverlay.style.display = 'none');
-            
+
             previewZoomInBtn.addEventListener('click', () => {
                 previewZoom = Math.min(3.0, previewZoom + 0.1);
                 applyPreviewZoom();
             });
             previewZoomOutBtn.addEventListener('click', () => {
-                previewZoom = Math.max(0.2, previewZoom - 0.1);
+                previewZoom = Math.max(0.1, previewZoom - 0.1);
                 applyPreviewZoom();
             });
             previewFitPageBtn.addEventListener('click', () => {
@@ -2967,7 +2968,6 @@
                 const imageHeight = firstImage.naturalHeight;
                 if(imageHeight <= 0) return;
                 previewZoom = containerHeight / imageHeight;
-                previewContentWrapper.style.transformOrigin = 'center top';
                 applyPreviewZoom();
                 scrollToPreviewPage(currentPreviewPage, 'auto');
             });
@@ -2985,31 +2985,34 @@
                     scrollToPreviewPage(currentPreviewPage);
                 }
             });
-             previewImageContainer.addEventListener('wheel', (e) => {
+            previewImageContainer.addEventListener('wheel', (e) => {
                 e.preventDefault();
+                const zoomFactor = 0.1;
+                const oldZoom = previewZoom;
+
+                if (e.deltaY < 0) { // Zoom in
+                    previewZoom = Math.min(3.0, previewZoom * (1 + zoomFactor));
+                } else { // Zoom out
+                    previewZoom = Math.max(0.1, previewZoom / (1 + zoomFactor));
+                }
+                
                 const rect = previewImageContainer.getBoundingClientRect();
                 const mouseX = e.clientX - rect.left;
                 const mouseY = e.clientY - rect.top;
-                const contentX = mouseX + previewImageContainer.scrollLeft;
-                const contentY = mouseY + previewImageContainer.scrollTop;
-                const oldZoom = previewZoom;
-                const zoomFactor = 0.1;
 
-                if (e.deltaY < 0) {
-                    previewZoom = Math.min(3.0, previewZoom * (1 + zoomFactor));
-                } else {
-                    previewZoom = Math.max(0.1, previewZoom / (1 + zoomFactor));
-                }
+                const scrollLeft = previewImageContainer.scrollLeft;
+                const scrollTop = previewImageContainer.scrollTop;
 
-                previewContentWrapper.style.transformOrigin = '0 0';
+                const newScrollLeft = (scrollLeft + mouseX) * (previewZoom / oldZoom) - mouseX;
+                const newScrollTop = (scrollTop + mouseY) * (previewZoom / oldZoom) - mouseY;
+                
                 applyPreviewZoom();
                 
-                const newContentX = contentX * (previewZoom / oldZoom);
-                const newContentY = contentY * (previewZoom / oldZoom);
+                previewImageContainer.scrollLeft = newScrollLeft;
+                previewImageContainer.scrollTop = newScrollTop;
 
-                previewImageContainer.scrollLeft = newContentX - mouseX;
-                previewImageContainer.scrollTop = newContentY - mouseY;
             }, { passive: false });
+
 
             // --- Panning Logic for Preview ---
             const handlePanMove = (e) => {
