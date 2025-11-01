@@ -664,9 +664,9 @@
         .drawing-tools input[type="color"],
         .drawing-tools input[type="number"] { height: 28px; border-radius: 5px; }
         .drawing-tools input[type="number"] { width: 50px; text-align: center; }
-        .drawing-tools label { 
-            font-size: 14px; 
-            margin: 0 3px 0 8px; 
+        .drawing-tools label {
+            font-size: 14px;
+            margin: 0 3px 0 8px;
             font-weight: 700;
             font-family: 'Microsoft JhengHei', '微軟正黑體', sans-serif;
         }
@@ -782,18 +782,43 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        #exportModalOverlay {
+        #exportModalOverlay, #previewModalOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.5); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+            background: rgba(0, 0, 0, 0.5); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
             display: none; justify-content: center; align-items: center; z-index: 900;
         }
         #exportModal {
             background: var(--modal-bg); padding: 25px; border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column;
-            gap: 15px; width: 300px;
+            gap: 20px; width: 100%; max-width: 400px;
         }
-        #exportModal h3 { margin: 0 0 10px 0; text-align: center; color: var(--system-text); }
+        #exportModal h3, #previewModal h3 { margin: 0 0 10px 0; text-align: center; color: var(--system-text); }
         #exportModal .btn { width: 100%; padding: 12px; font-size: 1.05em; }
+        
+        .export-option-group {
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .export-option-group > label {
+            font-weight: 600; font-size: 1em; color: var(--system-blue);
+            border-bottom: 1px solid var(--input-border); padding-bottom: 5px; margin-bottom: 5px;
+        }
+        .export-option-group div { display: flex; align-items: center; gap: 8px; }
+        .export-option-group input[type="number"] { width: 70px; padding: 5px; text-align: center; }
+        .export-option-group select { width: 100%; padding: 8px; border-radius: 6px; }
+
+        #previewModal {
+            background: var(--modal-bg); padding: 20px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+            gap: 15px; width: 90vw; height: 90vh; max-width: 1200px;
+        }
+        #previewImageContainer {
+            flex-grow: 1; overflow: auto; text-align: center; background: var(--system-gray-bg-tint);
+             border-radius: 8px; padding: 10px; border: 1px solid var(--input-border);
+        }
+        #previewImage {
+            max-width: 100%; max-height: 100%; object-fit: contain;
+        }
+
 
         .page-indicator {
             font-size: 0.95em; font-weight: 500; color: var(--system-text);
@@ -813,7 +838,7 @@
             text-align: center; font-size: 1.6em; font-weight: 600;
             color: var(--system-blue); margin-bottom: 25px;
         }
-        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .feature-card {
             background: var(--control-panel-bg); border-radius: 10px; padding: 20px;
             border: 1px solid rgba(0, 0, 0, 0.05); transition: background 0.3s ease;
@@ -915,6 +940,10 @@
                                         放大
                                     </button>
                                 </div>
+                                 <button class="btn btn-secondary" id="previewBtn" title="預覽目前頁面">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    預覽
+                                </button>
                                 <!-- 繪圖與文字工具 -->
                                 <div class="drawing-tools">
                                     <button class="tool-btn" id="tool-select" title="選取/移動"><svg viewBox="0 0 24 24"><path d="M13.7,6.3C13.5,6.1,13.3,6,13,6s-0.5,0.1-0.7,0.3L3,15.6V21h5.4l9.3-9.3L13.7,6.3z M6.1,19H5v-1.1l7.8-7.8l1.1,1.1 L6.1,19z M20,6.1l-1.1-1.1c-0.4-0.4-1-0.4-1.4,0l-1.2,1.2l2.5,2.5l1.2-1.2C20.4,7.1,20.4,6.5,20,6.1z"></path></svg></button>
@@ -983,9 +1012,10 @@
                     <span>文字取代與編輯</span>
                 </div>
                 <p>
-                    <span class="keyword">「 搜尋/取代 」</span>: 輸入文字後，可使用「依序替換」或「全部替換」。<br>
-                    <span class="keyword">「 單字編輯 」</span>: 直接點擊 PDF 頁面上的任何一個字，即可單獨修改。<br>
-                    <span class="keyword">「 🧹 清除 」</span>: 清除「搜尋」和「取代」輸入框的內容。
+                    <b>「 搜尋/取代 」</b>: 輸入文字即可即時預覽所有符合的結果。點擊「依序替換」或「全部替換」執行操作。<b style="color: var(--system-red);">注意：為維持版面，搜尋與取代的字元數必須相同。</b><br>
+                    <b>「 單字編輯 」</b>: 不需搜尋，直接用滑鼠點擊 PDF 頁面上的任何一個字元，即可彈出編輯框進行單獨修改。<br>
+                    <b>「 上一步 (Undo) 」</b>: 點擊可復原上一個操作，包含文字編輯、取代、新增或移動圖形等。<br>
+                    <b>「 🧹 清除 」</b>: 一鍵清除「搜尋」和「取代」輸入框的內容，方便重新輸入。
                 </p>
             </div>
 
@@ -995,20 +1025,20 @@
                     <span>樣式與顏色</span>
                 </div>
                 <p>
-                    <span class="keyword">「 字型/字級 」</span>: 選擇取代或新增文字時要使用的字型與大小。<br>
-                    <span class="keyword">「 顏色 」</span>: 設定取代文字的文字與背景顏色。<br>
-                    <span class="keyword">「 💧 (滴管) 」</span>: 點擊顏色方塊旁的滴管，可從 PDF 畫面上抓取顏色。
+                    <b>「 字型/字級 」</b>: 在執行「取代」或新增文字前，可預先選擇希望套用的字體和大小。樣式會即時應用於取代後的文字上。<br>
+                    <b>「 文字/背景顏色 」</b>: 可分別設定取代文字的字體顏色與背景色塊顏色，以符合文件風格或突顯特定內容。<br>
+                    <b>「 💧 (滴管) 」</b>: 點擊顏色方塊旁的滴管圖示，滑鼠會變為滴管，此時點擊 PDF 畫面上任何位置，即可精確抓取該處的顏色，用於文字或背景設定，完美匹配原始文件色調。
                 </p>
             </div>
 
              <div class="feature-card">
                 <div class="feature-card-title">
                     <span class="icon">✏️</span>
-                    <span>繪圖與新增文字</span>
+                    <span>繪圖與新增</span>
                 </div>
                 <p>
-                    <span class="keyword">繪圖/圖片</span>：點擊工具列圖示啟用，可在頁面上繪製圖形、新增文字或插入圖片。<br>
-                    <span class="keyword">移動物件</span>：使用 <svg viewBox="0 0 24 24" style="width:1em; height:1em; vertical-align:-0.15em; fill:currentColor;"><path d="M13.7,6.3C13.5,6.1,13.3,6,13,6s-0.5,0.1-0.7,0.3L3,15.6V21h5.4l9.3-9.3L13.7,6.3z M6.1,19H5v-1.1l7.8-7.8l1.1,1.1 L6.1,19z M20,6.1l-1.1-1.1c-0.4-0.4-1-0.4-1.4,0l-1.2,1.2l2.5,2.5l1.2-1.2C20.4,7.1,20.4,6.5,20,6.1z"></path></svg> 工具可拖曳已新增的物件。
+                    <b>「 繪圖工具列 」</b>: 提供<b style="color: var(--system-blue);">文字、圖片、直線、矩形、橢圓、箭頭</b>等多種工具。點擊啟用後，即可在 PDF 頁面上自由繪製或新增內容。<br>
+                    <b>「 新增與編輯 」</b>: 使用 <svg viewBox="0 0 24 24" style="width:1em; height:1em; vertical-align:-0.15em; fill:currentColor;"><path d="M13.7,6.3C13.5,6.1,13.3,6,13,6s-0.5,0.1-0.7,0.3L3,15.6V21h5.4l9.3-9.3L13.7,6.3z M6.1,19H5v-1.1l7.8-7.8l1.1,1.1 L6.1,19z M20,6.1l-1.1-1.1c-0.4-0.4-1-0.4-1.4,0l-1.2,1.2l2.5,2.5l1.2-1.2C20.4,7.1,20.4,6.5,20,6.1z"></path></svg> 工具可拖曳、移動所有您新增的物件。對於插入的圖片，選取後右下角會出現控點，可拖曳以縮放大小。選取任何物件後，按下鍵盤的 `Delete` 或 `Backspace` 鍵即可刪除。
                 </p>
             </div>
 
@@ -1018,9 +1048,10 @@
                     <span>儲存與匯出</span>
                 </div>
                 <p>
-                    <span class="keyword">「 💾 儲存... 」</span>: 點擊此按鈕會彈出儲存選項。<br>
-                    <span class="keyword">「 💾 另存為 PDF 」</span>: 將您修改後的內容（包含文字和繪圖）儲存為新的 PDF。<br>
-                    <span class="keyword">「 🖼️ 另存為 PNG (ZIP) 」</span>: 將每一頁存為 PNG 圖片，並打包成 ZIP 下載。
+                    <b>「 💾 儲存... 」</b>: 點擊此按鈕，會彈出儲存選項視窗，您可以在此決定匯出的格式、頁數與解析度。<br>
+                    <b>「 頁數範圍 」</b>: 您可以選擇匯出<b style="color: var(--system-blue);">全部頁數</b>，或<b style="color: var(--system-blue);">自訂特定頁數範圍</b>（例如：第 2 至第 5 頁）。<br>
+                    <b>「 解析度 」</b>: 提供標準、高、極高等解析度選項，越高的解析度檔案越大，但圖片和文字會更清晰。<br>
+                    <b>「 格式 」</b>: 可選擇將修改後的內容儲存為<b style="color: var(--system-blue);">單一 PDF 檔案</b>，或是將每一頁存為<b style="color: var(--system-blue);">獨立的 PNG 圖片</b>並打包成一個 ZIP 壓縮檔下載。
                 </p>
             </div>
         </div>
@@ -1035,9 +1066,41 @@
     <div id="exportModalOverlay">
         <div id="exportModal">
             <h3>儲存選項</h3>
+            <div class="export-option-group">
+                <label>頁數範圍 (共 <span id="totalPagesInModal">N</span> 頁)</label>
+                <div>
+                    <input type="radio" id="rangeAll" name="pageRange" value="all" checked>
+                    <label for="rangeAll">全部頁數</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="radio" id="rangeCustom" name="pageRange" value="custom">
+                    <label for="rangeCustom" style="white-space: nowrap;">自訂範圍:</label>
+                    <input type="number" id="pageRangeStart" min="1" disabled style="width: 70px; text-align: center;">
+                    <span> - </span>
+                    <input type="number" id="pageRangeEnd" min="1" disabled style="width: 70px; text-align: center;">
+                </div>
+            </div>
+            <div class="export-option-group">
+                <label for="exportResolution">解析度</label>
+                <select id="exportResolution" style="width: 100%; padding: 8px; border-radius: 6px;">
+                    <option value="2.0">標準 (150 DPI)</option>
+                    <option value="4.0" selected>高 (300 DPI)</option>
+                    <option value="8.0">極高 (600 DPI)</option>
+                </select>
+            </div>
             <button class="btn btn-success" id="exportPdfBtn">💾 另存為 PDF</button>
             <button class="btn btn-secondary" id="exportPngZipBtn">🖼️ 另存為 PNG (ZIP)</button>
             <button class="btn btn-warning" id="closeExportModalBtn" style="background: #aaa; color: white;">取消</button>
+        </div>
+    </div>
+
+    <div id="previewModalOverlay">
+        <div id="previewModal">
+            <h3>頁面預覽</h3>
+            <div id="previewImageContainer">
+                <img id="previewImage" src="" alt="Page Preview">
+            </div>
+            <button class="btn btn-warning" id="closePreviewModalBtn" style="margin-top: 10px; align-self: center;">關閉</button>
         </div>
     </div>
 
@@ -1114,11 +1177,26 @@
 
         const spinnerOverlay = document.getElementById('spinnerOverlay');
         const spinnerStatus = document.getElementById('spinnerStatus');
+        
+        // Export Modal Elements
         const exportModalOverlay = document.getElementById('exportModalOverlay');
         const openExportModalBtn = document.getElementById('openExportModalBtn');
         const closeExportModalBtn = document.getElementById('closeExportModalBtn');
         const exportPdfBtn = document.getElementById('exportPdfBtn');
         const exportPngZipBtn = document.getElementById('exportPngZipBtn');
+        const totalPagesInModal = document.getElementById('totalPagesInModal');
+        const rangeAll = document.getElementById('rangeAll');
+        const rangeCustom = document.getElementById('rangeCustom');
+        const pageRangeStart = document.getElementById('pageRangeStart');
+        const pageRangeEnd = document.getElementById('pageRangeEnd');
+        const exportResolution = document.getElementById('exportResolution');
+
+        // Preview Modal Elements
+        const previewBtn = document.getElementById('previewBtn');
+        const previewModalOverlay = document.getElementById('previewModalOverlay');
+        const previewImage = document.getElementById('previewImage');
+        const closePreviewModalBtn = document.getElementById('closePreviewModalBtn');
+
 
         function showSpinner(message) {
             spinnerStatus.textContent = message || '正在處理...';
@@ -1756,22 +1834,48 @@
             }
             toggleColorPickerMode(colorPickerTarget);
         }
+        
+        function getExportSettings() {
+            const scale = parseFloat(exportResolution.value);
+            let startPage, endPage;
+
+            if (rangeAll.checked) {
+                startPage = 1;
+                endPage = pdfDoc.numPages;
+            } else {
+                startPage = parseInt(pageRangeStart.value);
+                endPage = parseInt(pageRangeEnd.value);
+
+                if (isNaN(startPage) || isNaN(endPage) || startPage < 1 || endPage > pdfDoc.numPages || startPage > endPage) {
+                    return { isValid: false, errorMessage: '無效的頁數範圍。請檢查您的輸入。' };
+                }
+            }
+            return { isValid: true, startPage, endPage, scale };
+        }
 
         async function exportPDF() {
             if (!pdfDoc) { showStatus('沒有可匯出的 PDF', 'error'); return; }
+            
+            const settings = getExportSettings();
+            if (!settings.isValid) {
+                showStatus(settings.errorMessage, 'error');
+                return;
+            }
+
             showSpinner('正在準備匯出 PDF...');
 
             try {
                 const { PDFDocument } = PDFLib;
                 const pdfLibDoc = await PDFDocument.create();
-                const EXPORT_SCALE = 5.0;
 
-                for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-                    updateSpinnerStatus(`正在處理 PDF 第 ${pageNum} / ${pdfDoc.numPages} 頁...`);
+                for (let pageNum = settings.startPage; pageNum <= settings.endPage; pageNum++) {
+                    const progress = pageNum - settings.startPage + 1;
+                    const total = settings.endPage - settings.startPage + 1;
+                    updateSpinnerStatus(`正在處理 PDF 第 ${progress} / ${total} 頁...`);
                     await new Promise(resolve => setTimeout(resolve, 10));
 
                     const page = pdfPageData[pageNum].pageRef;
-                    const viewport = page.getViewport({ scale: EXPORT_SCALE });
+                    const viewport = page.getViewport({ scale: settings.scale });
 
                     const tempCanvas = document.createElement('canvas');
                     tempCanvas.width = viewport.width;
@@ -1782,12 +1886,12 @@
 
                     pdfPageData[pageNum].textItems.forEach(item => {
                         if (item.isModified) {
-                            drawModifiedTextOnCanvas(tempCtx, item, EXPORT_SCALE, viewport);
+                            drawModifiedTextOnCanvas(tempCtx, item, settings.scale, viewport);
                         }
                     });
 
                     pdfPageData[pageNum].drawings.forEach(item => {
-                        drawSavedItem(tempCtx, item, EXPORT_SCALE);
+                        drawSavedItem(tempCtx, item, settings.scale);
                     });
 
                     const pngImageBytes = await pdfLibDoc.embedPng(tempCanvas.toDataURL('image/png'));
@@ -1817,19 +1921,26 @@
 
         async function exportPNGZip() {
             if (!pdfDoc) { showStatus('沒有可匯出的 PDF', 'error'); return; }
+            
+            const settings = getExportSettings();
+            if (!settings.isValid) {
+                showStatus(settings.errorMessage, 'error');
+                return;
+            }
 
             showSpinner('正在準備匯出 PNG (ZIP)...');
 
             try {
                 const zip = new JSZip();
-                const EXPORT_SCALE = 5.0;
 
-                for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-                    updateSpinnerStatus(`正在處理 PNG 第 ${pageNum} / ${pdfDoc.numPages} 頁...`);
+                for (let pageNum = settings.startPage; pageNum <= settings.endPage; pageNum++) {
+                    const progress = pageNum - settings.startPage + 1;
+                    const total = settings.endPage - settings.startPage + 1;
+                    updateSpinnerStatus(`正在處理 PNG 第 ${progress} / ${total} 頁...`);
                     await new Promise(resolve => setTimeout(resolve, 10));
 
                     const page = pdfPageData[pageNum].pageRef;
-                    const viewport = page.getViewport({ scale: EXPORT_SCALE });
+                    const viewport = page.getViewport({ scale: settings.scale });
 
                     const tempCanvas = document.createElement('canvas');
                     tempCanvas.width = viewport.width;
@@ -1840,12 +1951,12 @@
 
                     pdfPageData[pageNum].textItems.forEach(item => {
                         if (item.isModified) {
-                            drawModifiedTextOnCanvas(tempCtx, item, EXPORT_SCALE, viewport);
+                            drawModifiedTextOnCanvas(tempCtx, item, settings.scale, viewport);
                         }
                     });
 
                      pdfPageData[pageNum].drawings.forEach(item => {
-                        drawSavedItem(tempCtx, item, EXPORT_SCALE);
+                        drawSavedItem(tempCtx, item, settings.scale);
                     });
 
                     const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
@@ -1969,14 +2080,32 @@
 
             for(let i = 0; i < pageContainers.length; i++) {
                 const pageRect = pageContainers[i].getBoundingClientRect();
-                if (referenceY >= pageRect.top) {
-                    currentPage = i + 1;
-                } else {
+                if (referenceY >= pageRect.top && referenceY <= pageRect.bottom) {
+                     currentPage = i + 1;
+                     break;
+                }
+                 if (referenceY < pageRect.top) {
+                    currentPage = i > 0 ? i : 1;
                     break;
+                }
+                 if (referenceY > pageRect.bottom) {
+                    currentPage = i + 1;
                 }
             }
             currentPageIndicator.textContent = currentPage;
             return currentPage;
+        }
+        
+        function showPreview() {
+            if (!pdfDoc) return;
+            const currentPage = updateCurrentPage();
+            const canvas = pdfPageData[currentPage]?.canvas;
+            if (!canvas) {
+                showStatus('無法產生預覽', 'error');
+                return;
+            }
+            previewImage.src = canvas.toDataURL('image/png');
+            previewModalOverlay.style.display = 'flex';
         }
 
         function updateCustomScrollbar() {
@@ -2076,8 +2205,6 @@
         }
 
         function handleMouseMove(e) {
-            // MODIFIED: Removed the 'isDrawing' check from here.
-            // It is now handled EXCLUSIVELY by the window event listener added in handleDrawingMouseDown.
             if (isResizing) {
                 handleImageResize(e);
             } else if (isDragging) {
@@ -2113,8 +2240,6 @@
             dragStartX = e.clientX;
             dragStartY = e.clientY;
 
-            // MODIFIED: These listeners on the window are crucial for capturing the drag
-            // even if the mouse leaves the viewer area. This is the correct implementation.
             window.addEventListener('mousemove', handleDrawingMouseMove);
             window.addEventListener('mouseup', handleDrawingMouseUp);
         }
@@ -2136,7 +2261,6 @@
             if (!isDrawing) return;
             isDrawing = false;
 
-            // MODIFIED: Always remove the temporary window listeners.
             window.removeEventListener('mousemove', handleDrawingMouseMove);
             window.removeEventListener('mouseup', handleDrawingMouseUp);
 
@@ -2639,6 +2763,12 @@
             });
 
             openExportModalBtn.addEventListener('click', () => {
+                if (!pdfDoc) return;
+                totalPagesInModal.textContent = pdfDoc.numPages;
+                pageRangeStart.max = pdfDoc.numPages;
+                pageRangeEnd.max = pdfDoc.numPages;
+                pageRangeStart.value = 1;
+                pageRangeEnd.value = pdfDoc.numPages;
                 exportModalOverlay.style.display = 'flex';
             });
             closeExportModalBtn.addEventListener('click', () => {
@@ -2654,6 +2784,21 @@
             exportPngZipBtn.addEventListener('click', () => {
                 exportModalOverlay.style.display = 'none';
                 exportPNGZip();
+            });
+            
+            rangeAll.addEventListener('change', () => {
+                pageRangeStart.disabled = true;
+                pageRangeEnd.disabled = true;
+            });
+            rangeCustom.addEventListener('change', () => {
+                pageRangeStart.disabled = false;
+                pageRangeEnd.disabled = false;
+            });
+            
+            previewBtn.addEventListener('click', showPreview);
+            closePreviewModalBtn.addEventListener('click', () => previewModalOverlay.style.display = 'none');
+            previewModalOverlay.addEventListener('click', (e) => {
+                 if (e.target === previewModalOverlay) previewModalOverlay.style.display = 'none';
             });
 
             fontColorPickerBtn.addEventListener('click', () => toggleColorPickerMode('font'));
