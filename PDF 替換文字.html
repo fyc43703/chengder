@@ -9,7 +9,7 @@
       .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
       .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
       .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
-    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+    </style></head><body><div style="margin:0 auto"><!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -28,7 +28,7 @@
     </style>
 </head>
 <body>
-<div style="max-width:1200px;margin:0 auto">
+<div>
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -191,6 +191,7 @@
         }
         .title-bar-creator {
             color: var(--placeholder-text);
+            font-family: 'Microsoft JhengHei', '微軟正黑體', sans-serif;
         }
         body.dark-mode .title-bar-subtitle {
              color: var(--system-text);
@@ -663,7 +664,12 @@
         .drawing-tools input[type="color"],
         .drawing-tools input[type="number"] { height: 28px; border-radius: 5px; }
         .drawing-tools input[type="number"] { width: 50px; text-align: center; }
-        .drawing-tools label { font-size: 12px; margin: 0 3px 0 8px; font-weight: 500;}
+        .drawing-tools label { 
+            font-size: 14px; 
+            margin: 0 3px 0 8px; 
+            font-weight: 700;
+            font-family: 'Microsoft JhengHei', '微軟正黑體', sans-serif;
+        }
 
         .pdf-viewer {
             border-top: 1px solid var(--input-border);
@@ -807,7 +813,7 @@
             text-align: center; font-size: 1.6em; font-weight: 600;
             color: var(--system-blue); margin-bottom: 25px;
         }
-        .feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .feature-card {
             background: var(--control-panel-bg); border-radius: 10px; padding: 20px;
             border: 1px solid rgba(0, 0, 0, 0.05); transition: background 0.3s ease;
@@ -857,7 +863,8 @@
                     <div class="control-panel" id="searchReplacePanel">
                         <label for="searchText">搜尋文字</label>
                         <div class="search-input-container">
-                            <input type="text" id="searchText" placeholder="輸入要尋找的文字">
+                            <input type="text" id="searchText" placeholder="輸入要尋找的文字" list="searchHistoryList">
+                            <datalist id="searchHistoryList"></datalist>
                             <span id="searchCount">0</span>
                         </div>
                         <div id="pageIndicator" class="page-indicator" style="display: none;">
@@ -871,7 +878,8 @@
                         </button>
 
                         <label for="replaceText">取代文字</label>
-                        <input type="text" id="replaceText" placeholder="輸入新文字">
+                        <input type="text" id="replaceText" placeholder="輸入新文字" list="replaceHistoryList">
+                        <datalist id="replaceHistoryList"></datalist>
 
                         <div class="action-buttons-group">
                             <button class="btn btn-secondary" id="undoBtn" title="還原上一步">
@@ -1045,6 +1053,10 @@
         let currentSearchIndex = 0;
         let colorPickerTarget = null;
         let historyStack = [];
+        
+        // --- History for search/replace ---
+        let searchHistory = [];
+        let replaceHistory = [];
 
         let initialTotalResults = 0;
 
@@ -1075,6 +1087,9 @@
         const replaceNextBtn = document.getElementById('replaceNextBtn');
         const prevResultBtn = document.getElementById('prevResultBtn');
         const nextResultBtn = document.getElementById('nextResultBtn');
+
+        const searchHistoryList = document.getElementById('searchHistoryList');
+        const replaceHistoryList = document.getElementById('replaceHistoryList');
 
         const zoomInBtn = document.getElementById('zoomInBtn');
         const zoomOutBtn = document.getElementById('zoomOutBtn');
@@ -1543,10 +1558,41 @@
             findAndHighlightAll();
         }
 
+        function addToHistory(historyArray, value, storageKey) {
+            if (!value) return; // Don't add empty strings
+            const index = historyArray.indexOf(value);
+            if (index > -1) {
+                historyArray.splice(index, 1);
+            }
+            historyArray.unshift(value);
+            if (historyArray.length > 6) {
+                historyArray.pop();
+            }
+            localStorage.setItem(storageKey, JSON.stringify(historyArray));
+        }
+
+        function updateDatalist(datalistElement, historyArray) {
+            datalistElement.innerHTML = '';
+            historyArray.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item;
+                datalistElement.appendChild(option);
+            });
+        }
+
+        function updateHistoryAndDatalists() {
+            addToHistory(searchHistory, searchText.value, 'pdfSearchHistory');
+            addToHistory(replaceHistory, replaceText.value, 'pdfReplaceHistory');
+            updateDatalist(searchHistoryList, searchHistory);
+            updateDatalist(replaceHistoryList, replaceHistory);
+        }
+
         function replaceNext() {
             if (searchResults.length === 0) {
                 return;
             }
+
+            updateHistoryAndDatalists();
 
             const searchTextValue = searchText.value;
             const replaceTextValue = replaceText.value;
@@ -1591,6 +1637,8 @@
 
         async function replaceAll() {
             if (searchResults.length === 0) { return; }
+
+            updateHistoryAndDatalists();
 
             const searchTextValue = searchText.value;
             const replaceTextValue = replaceText.value;
@@ -1932,9 +1980,12 @@
         }
 
         function updateCustomScrollbar() {
+            if (!customScrollbarContainer) return;
             const scrollableWidth = mainActionBar.scrollWidth - mainActionBar.clientWidth;
             const thumb = document.querySelector('.custom-scrollbar-thumb');
             const track = document.querySelector('.custom-scrollbar-track');
+            
+            if (!thumb || !track) return;
 
             if (scrollableWidth <= 0) {
                 customScrollbarContainer.style.display = 'none';
@@ -2501,6 +2552,18 @@
                 fontSizeFragment.appendChild(option);
             }
             fontSizeSelect.appendChild(fontSizeFragment);
+            
+            // --- Load History from localStorage ---
+            const savedSearchHistory = localStorage.getItem('pdfSearchHistory');
+            const savedReplaceHistory = localStorage.getItem('pdfReplaceHistory');
+            if (savedSearchHistory) {
+                searchHistory = JSON.parse(savedSearchHistory);
+                updateDatalist(searchHistoryList, searchHistory);
+            }
+            if (savedReplaceHistory) {
+                replaceHistory = JSON.parse(savedReplaceHistory);
+                updateDatalist(replaceHistoryList, replaceHistory);
+            }
 
 
             importFileBtn.addEventListener('click', () => fileInput.click());
@@ -2530,13 +2593,16 @@
             let startThumbX = 0;
             let startScrollLeft = 0;
 
-            thumb.addEventListener('mousedown', (e) => {
-                isDraggingThumb = true;
-                startThumbX = e.clientX;
-                startScrollLeft = mainActionBar.scrollLeft;
-                thumb.style.cursor = 'grabbing';
-                document.body.style.cursor = 'grabbing';
-            });
+            if (thumb) {
+                thumb.addEventListener('mousedown', (e) => {
+                    isDraggingThumb = true;
+                    startThumbX = e.clientX;
+                    startScrollLeft = mainActionBar.scrollLeft;
+                    thumb.style.cursor = 'grabbing';
+                    document.body.style.cursor = 'grabbing';
+                });
+            }
+            
             window.addEventListener('mousemove', (e) => {
                 if (!isDraggingThumb) return;
                 e.preventDefault();
@@ -2548,9 +2614,11 @@
                 mainActionBar.scrollLeft = startScrollLeft + (dx * (scrollableWidth / (trackWidth - thumbWidth)));
             });
              window.addEventListener('mouseup', () => {
-                isDraggingThumb = false;
-                thumb.style.cursor = 'grab';
-                document.body.style.cursor = 'default';
+                 if (isDraggingThumb) {
+                    isDraggingThumb = false;
+                    if (thumb) thumb.style.cursor = 'grab';
+                    document.body.style.cursor = 'default';
+                 }
             });
 
 
