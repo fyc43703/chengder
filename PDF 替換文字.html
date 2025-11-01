@@ -519,11 +519,9 @@
         }
 
         .main-action-bar #importFileBtn {
-            padding-left: 18px;
-            padding-right: 18px;
             font-weight: bold;
+            color: white;
         }
-
         .btn-zoom {
             background-color: #2c3e50;
             color: white;
@@ -541,11 +539,15 @@
         }
         
         /* --- CUSTOM STYLES FOR SPECIFIC BUTTONS --- */
-        #zoomOutBtn, #fitPageBtn, #zoomInBtn, #previewBtn {
+        #zoomOutBtn, #fitPageBtn, #zoomInBtn, #previewBtn, #importFileBtn {
             height: 32px;
             padding: 5px 12px;
             font-size: 13px;
             gap: 5px;
+        }
+        #importFileBtn {
+            padding-left: 15px;
+            padding-right: 15px;
         }
 
         #zoomOutBtn svg, #fitPageBtn svg, #zoomInBtn svg, #previewBtn svg {
@@ -1218,6 +1220,9 @@
         // --- Preview State ---
         let previewZoom = 1.0;
         let currentPreviewPage = 1;
+        let isPanning = false;
+        let panStartX, panStartY, panStartScrollLeft, panStartScrollTop;
+
 
         // --- Editing & Drawing State ---
         let currentDrawingTool = 'select';
@@ -2945,9 +2950,7 @@
             // --- Preview Modal Listeners ---
             previewBtn.addEventListener('click', showPreview);
             closePreviewModalBtn.addEventListener('click', () => previewModalOverlay.style.display = 'none');
-            previewModalOverlay.addEventListener('click', (e) => {
-                 if (e.target === previewModalOverlay) previewModalOverlay.style.display = 'none';
-            });
+            
             previewZoomInBtn.addEventListener('click', () => {
                 previewZoom = Math.min(3.0, previewZoom + 0.1);
                 applyPreviewZoom();
@@ -2982,20 +2985,60 @@
                     scrollToPreviewPage(currentPreviewPage);
                 }
             });
-            previewImageContainer.addEventListener('wheel', (e) => {
+             previewImageContainer.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                const zoomFactor = 0.1;
-                const { deltaY, clientX, clientY } = e;
                 const rect = previewImageContainer.getBoundingClientRect();
-                const x = clientX - rect.left - (previewContentWrapper.getBoundingClientRect().left - rect.left);
-                const y = clientY - rect.top - (previewContentWrapper.getBoundingClientRect().top - rect.top);
-                previewContentWrapper.style.transformOrigin = `${x}px ${y}px`;
-                if (deltaY < 0) {
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                const contentX = mouseX + previewImageContainer.scrollLeft;
+                const contentY = mouseY + previewImageContainer.scrollTop;
+                const oldZoom = previewZoom;
+                const zoomFactor = 0.1;
+
+                if (e.deltaY < 0) {
                     previewZoom = Math.min(3.0, previewZoom * (1 + zoomFactor));
                 } else {
                     previewZoom = Math.max(0.1, previewZoom / (1 + zoomFactor));
                 }
+
+                previewContentWrapper.style.transformOrigin = '0 0';
                 applyPreviewZoom();
+                
+                const newContentX = contentX * (previewZoom / oldZoom);
+                const newContentY = contentY * (previewZoom / oldZoom);
+
+                previewImageContainer.scrollLeft = newContentX - mouseX;
+                previewImageContainer.scrollTop = newContentY - mouseY;
+            }, { passive: false });
+
+            // --- Panning Logic for Preview ---
+            const handlePanMove = (e) => {
+                if (!isPanning) return;
+                e.preventDefault();
+                const dx = e.pageX - panStartX;
+                const dy = e.pageY - panStartY;
+                previewImageContainer.scrollLeft = panStartScrollLeft - dx;
+                previewImageContainer.scrollTop = panStartScrollTop - dy;
+            };
+
+            const handlePanUp = () => {
+                if (!isPanning) return;
+                isPanning = false;
+                previewImageContainer.style.cursor = 'grab';
+                window.removeEventListener('mousemove', handlePanMove);
+                window.removeEventListener('mouseup', handlePanUp);
+            };
+
+            previewImageContainer.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return;
+                isPanning = true;
+                panStartX = e.pageX;
+                panStartY = e.pageY;
+                panStartScrollLeft = previewImageContainer.scrollLeft;
+                panStartScrollTop = previewImageContainer.scrollTop;
+                previewImageContainer.style.cursor = 'grabbing';
+                window.addEventListener('mousemove', handlePanMove);
+                window.addEventListener('mouseup', handlePanUp);
             });
 
 
