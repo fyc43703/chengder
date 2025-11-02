@@ -9,7 +9,7 @@
       .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
       .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
       .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
-    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+    </style></head><body><div<!-- style="max-width:1200px;margin:0 auto" --> > <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -109,7 +109,20 @@
             transition: background 0.3s ease, border 0.3s ease, box-shadow 0.4s ease;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
+            height: 100vh;
+        }
+        
+        .fixed-content {
+            flex-shrink: 0;
+            z-index: 10;
+            background: var(--glass-bg);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+        }
+        
+        .scrollable-content {
+            flex-grow: 1;
+            overflow-y: auto;
         }
 
         .title-bar {
@@ -225,10 +238,10 @@
 
         .main-section {
             padding: 8px 25px 25px;
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-            min-height: 0;
+        }
+        
+        .main-section-top-controls {
+            padding: 8px 25px 0;
         }
 
         #initial-import-section {
@@ -628,6 +641,7 @@
         .main-action-bar .btn-like-group input[type="number"] { width: 55px; padding: 0 5px; text-align: center; }
 
         .custom-scrollbar-container {
+            display: none !important;
             padding: 0 10px;
         }
         .custom-scrollbar-track {
@@ -934,205 +948,207 @@
 <body>
     <div class="container">
         <div class="main-window">
-            <div class="title-bar">
-                <div class="title-bar-left">
-                    <div class="traffic-lights">
-                        <div class="dot dot-red"></div>
-                        <div class="dot dot-yellow"></div>
-                        <div class="dot dot-green"></div>
+            <div class="fixed-content">
+                <div class="title-bar">
+                    <div class="title-bar-left">
+                        <div class="traffic-lights">
+                            <div class="dot dot-red"></div>
+                            <div class="dot dot-yellow"></div>
+                            <div class="dot dot-green"></div>
+                        </div>
+                    </div>
+
+                    <div class="title-bar-center">
+                        <h1>PDF 替換文字與編輯</h1>
+                        <div class="title-bar-subtitle">匯入 PDF 輸入搜尋及取代文字、可編輯內容、繪圖功能，並匯出為 PDF 或 PNG 檔</div>
+                        <div class="title-bar-creator">製作者：陳政德</div>
+                    </div>
+
+                    <div class="title-bar-right">
+                        <div class="theme-switch-wrapper">
+                            <label class="theme-switch" for="themeToggle" title="切換明暗主題">
+                                <input type="checkbox" id="themeToggle" />
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
-                <div class="title-bar-center">
-                    <h1>PDF 替換文字與編輯</h1>
-                    <div class="title-bar-subtitle">匯入 PDF 輸入搜尋及取代文字、可編輯內容、繪圖功能，並匯出為 PDF 或 PNG 檔</div>
-                    <div class="title-bar-creator">製作者：陳政德</div>
-                </div>
+                <div class="main-section-top-controls">
+                    <input type="file" id="fileInput" accept=".pdf" style="display: none;">
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                    <div class="status-message" id="statusMessage"></div>
+                    
+                    <div id="initial-import-section">
+                        <button class="btn btn-import" id="importFileBtn" title="從您的電腦選擇一個 PDF 檔案">📂 匯入PDF 檔案</button>
+                    </div>
 
-                <div class="title-bar-right">
-                    <div class="theme-switch-wrapper">
-                        <label class="theme-switch" for="themeToggle" title="切換明暗主題">
-                            <input type="checkbox" id="themeToggle" />
-                            <span class="slider round"></span>
-                        </label>
+                    <div id="controlsContainer" style="display:none;">
+                        <div class="control-panel" id="searchReplacePanel">
+                            <button class="btn btn-secondary" id="importFileBtnInPanel" title="匯入新的 PDF 檔案">📂 匯入</button>
+                            <label for="searchText">搜尋文字</label>
+                            <div class="search-input-container">
+                                <input type="text" id="searchText" placeholder="輸入要尋找的文字" list="searchHistoryList">
+                                <datalist id="searchHistoryList"></datalist>
+                                <span id="searchCount">0 / 0</span>
+                            </div>
+                            <div id="pageIndicator" class="page-indicator" style="display: none;">
+                                第 <span id="currentPageIndicator">1</span> / <span id="totalPagesIndicator">1</span> 頁
+                            </div>
+                            <button class="btn btn-nav" id="prevResultBtn" title="上一個">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                            </button>
+                            <button class="btn btn-nav" id="nextResultBtn" title="下一個">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+                            </button>
+                            <button class="btn btn-primary" id="replaceNextBtn" title="依序替換下一個找到的「搜尋文字」">依序替換</button>
+
+                            <label for="replaceText">取代文字</label>
+                            <input type="text" id="replaceText" placeholder="輸入新文字" list="replaceHistoryList">
+                            <datalist id="replaceHistoryList"></datalist>
+
+                            <div class="action-buttons-group">
+                                <button class="btn btn-secondary" id="undoBtn" title="還原上一步">
+                                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v6h6"></path><path d="M21 12A9 9 0 0 0 6.47 6.5L3 10"></path></svg>
+                                    上一步
+                                </button>
+                                <button class="btn btn-warning" id="clearBtn" title="清除搜尋與取代輸入框">🧹 清除</button>
+                                <button class="btn btn-navy" id="replaceAllBtn" title="將所有找到的「搜尋文字」替換為「取代文字」">全部替換</button>
+                                <button class="btn btn-success" id="openExportModalBtn" title="儲存檔案" style="display: none;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                    儲存...
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="main-action-bar-wrapper">
+                            <div class="main-action-bar">
+                                 <div class="control-group zoom-group">
+                                    <button class="btn btn-zoom" id="zoomOutBtn" title="縮小頁面檢視">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                                        縮小
+                                    </button>
+                                    <button class="btn btn-zoom" id="fitPageBtn" title="最適頁寬">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                                        整頁
+                                    </button>
+                                    <button class="btn btn-zoom" id="zoomInBtn" title="放大頁面檢視">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                                        放大
+                                    </button>
+                                </div>
+                                 <button class="btn" id="previewBtn" title="預覽目前頁面">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    預覽
+                                </button>
+                                <!-- 繪圖與文字工具 -->
+                                <div class="drawing-tools">
+                                    <button class="tool-btn" id="tool-select" title="選取/移動"><svg viewBox="0 0 24 24"><path d="M13.7,6.3C13.5,6.1,13.3,6,13,6s-0.5,0.1-0.7,0.3L3,15.6V21h5.4l9.3-9.3L13.7,6.3z M6.1,19H5v-1.1l7.8-7.8l1.1,1.1 L6.1,19z M20,6.1l-1.1-1.1c-0.4-0.4-1-0.4-1.4,0l-1.2,1.2l2.5,2.5l1.2-1.2C20.4,7.1,20.4,6.5,20,6.1z"></path></svg></button>
+                                    <button class="tool-btn" id="tool-text" title="文字工具">T</button>
+                                    <button class="tool-btn" id="tool-image" title="插入圖片"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"></path></svg></button>
+                                    <button class="tool-btn" id="tool-line" title="直線"><svg viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4"></line></svg></button>
+                                    <button class="tool-btn" id="tool-rect" title="矩形"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z"></path></svg></button>
+                                    <button class="tool-btn" id="tool-ellipse" title="圓形"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle></svg></button>
+                                    <button class="tool-btn" id="tool-arrow" title="箭頭"><svg viewBox="0 0 24 24"><path d="M12 2 L12 18 M12 22 L6 16 M12 22 L18 16" stroke-width="2.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+                                    <label for="strokeColor">顏色:</label>
+                                    <input type="color" id="strokeColor" value="#ff0000">
+                                    <label for="strokeWidth">粗細:</label>
+                                    <input type="number" id="strokeWidth" value="3" min="1" max="50">
+                                </div>
+
+                                <div class="btn-like-group">
+                                    <label for="fontSelect">字型</label>
+                                    <select id="fontSelect">
+                                        <option value="-apple-system, 'Microsoft JhengHei', sans-serif">系統預設</option>
+                                        <option value="'PingFang TC', '蘋方-繁', sans-serif">蘋方-繁體</option>
+                                        <option value="'Microsoft JhengHei', '微軟正黑體', sans-serif">微軟正黑體</option>
+                                        <option value="'Noto Sans TC', 'Source Han Sans TC', '思源黑體', sans-serif">思源黑體</option>
+                                        <option value="'Noto Serif TC', 'Source Han Serif TC', '思源宋體', serif">思源宋體</option>
+                                        <option value="'Zen Hei', 'WenQuanYi Zen Hei', '文泉驛正黑', sans-serif">文泉驛正黑</option>
+                                        <option value="BiauKai, '標楷體', KaiTi, serif">標楷體</option>
+                                        <option value="MingLiU, '新細明體', PMingLiU, serif">新細明體</option>
+                                    </select>
+                                </div>
+                                <div class="btn-like-group">
+                                    <label for="fontSizeSelect">字級</label>
+                                    <select id="fontSizeSelect"></select>
+                                </div>
+                                <div class="btn-like-group">
+                                    <label for="fontColor">文字</label>
+                                    <input type="color" id="fontColor" value="#000000">
+                                    <button class="btn btn-secondary color-picker-btn" id="fontColorPickerBtn" title="從畫布上選取文字顏色">💧</button>
+                                </div>
+                                <div class="btn-like-group">
+                                    <label for="backgroundColor">背景</label>
+                                    <input type="color" id="backgroundColor" value="#FFFFFF">
+                                    <button class="btn btn-secondary color-picker-btn" id="bgColorPickerBtn" title="從畫布上選取背景顏色">💧</button>
+                                </div>
+                            </div>
+                            <div class="custom-scrollbar-container" id="customScrollbarContainer" style="display: none;">
+                                <div class="custom-scrollbar-track">
+                                    <div class="custom-scrollbar-thumb"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <div class="main-section">
-                <input type="file" id="fileInput" accept=".pdf" style="display: none;">
-                <input type="file" id="imageInput" accept="image/*" style="display: none;">
-                <div class="status-message" id="statusMessage"></div>
-                
-                <div id="initial-import-section">
-                    <button class="btn btn-import" id="importFileBtn" title="從您的電腦選擇一個 PDF 檔案">📂 匯入PDF 檔案</button>
-                </div>
-
-                <div id="controlsContainer" style="display:none;">
-                    <div class="control-panel" id="searchReplacePanel">
-                        <button class="btn btn-secondary" id="importFileBtnInPanel" title="匯入新的 PDF 檔案">📂 匯入</button>
-                        <label for="searchText">搜尋文字</label>
-                        <div class="search-input-container">
-                            <input type="text" id="searchText" placeholder="輸入要尋找的文字" list="searchHistoryList">
-                            <datalist id="searchHistoryList"></datalist>
-                            <span id="searchCount">0 / 0</span>
-                        </div>
-                        <div id="pageIndicator" class="page-indicator" style="display: none;">
-                            第 <span id="currentPageIndicator">1</span> / <span id="totalPagesIndicator">1</span> 頁
-                        </div>
-                        <button class="btn btn-nav" id="prevResultBtn" title="上一個">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                        </button>
-                        <button class="btn btn-nav" id="nextResultBtn" title="下一個">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
-                        </button>
-                        <button class="btn btn-primary" id="replaceNextBtn" title="依序替換下一個找到的「搜尋文字」">依序替換</button>
-
-                        <label for="replaceText">取代文字</label>
-                        <input type="text" id="replaceText" placeholder="輸入新文字" list="replaceHistoryList">
-                        <datalist id="replaceHistoryList"></datalist>
-
-                        <div class="action-buttons-group">
-                            <button class="btn btn-secondary" id="undoBtn" title="還原上一步">
-                               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v6h6"></path><path d="M21 12A9 9 0 0 0 6.47 6.5L3 10"></path></svg>
-                                上一步
-                            </button>
-                            <button class="btn btn-warning" id="clearBtn" title="清除搜尋與取代輸入框">🧹 清除</button>
-                            <button class="btn btn-navy" id="replaceAllBtn" title="將所有找到的「搜尋文字」替換為「取代文字」">全部替換</button>
-                            <button class="btn btn-success" id="openExportModalBtn" title="儲存檔案" style="display: none;">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                                儲存...
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="main-action-bar-wrapper">
-                        <div class="main-action-bar">
-                             <div class="control-group zoom-group">
-                                <button class="btn btn-zoom" id="zoomOutBtn" title="縮小頁面檢視">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                                    縮小
-                                </button>
-                                <button class="btn btn-zoom" id="fitPageBtn" title="最適頁寬">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-                                    整頁
-                                </button>
-                                <button class="btn btn-zoom" id="zoomInBtn" title="放大頁面檢視">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                                    放大
-                                </button>
-                            </div>
-                             <button class="btn" id="previewBtn" title="預覽目前頁面">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                預覽
-                            </button>
-                            <!-- 繪圖與文字工具 -->
-                            <div class="drawing-tools">
-                                <button class="tool-btn" id="tool-select" title="選取/移動"><svg viewBox="0 0 24 24"><path d="M13.7,6.3C13.5,6.1,13.3,6,13,6s-0.5,0.1-0.7,0.3L3,15.6V21h5.4l9.3-9.3L13.7,6.3z M6.1,19H5v-1.1l7.8-7.8l1.1,1.1 L6.1,19z M20,6.1l-1.1-1.1c-0.4-0.4-1-0.4-1.4,0l-1.2,1.2l2.5,2.5l1.2-1.2C20.4,7.1,20.4,6.5,20,6.1z"></path></svg></button>
-                                <button class="tool-btn" id="tool-text" title="文字工具">T</button>
-                                <button class="tool-btn" id="tool-image" title="插入圖片"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"></path></svg></button>
-                                <button class="tool-btn" id="tool-line" title="直線"><svg viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4"></line></svg></button>
-                                <button class="tool-btn" id="tool-rect" title="矩形"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z"></path></svg></button>
-                                <button class="tool-btn" id="tool-ellipse" title="圓形"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle></svg></button>
-                                <button class="tool-btn" id="tool-arrow" title="箭頭"><svg viewBox="0 0 24 24"><path d="M12 2 L12 18 M12 22 L6 16 M12 22 L18 16" stroke-width="2.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
-                                <label for="strokeColor">顏色:</label>
-                                <input type="color" id="strokeColor" value="#ff0000">
-                                <label for="strokeWidth">粗細:</label>
-                                <input type="number" id="strokeWidth" value="3" min="1" max="50">
-                            </div>
-
-                            <div class="btn-like-group">
-                                <label for="fontSelect">字型</label>
-                                <select id="fontSelect">
-                                    <option value="-apple-system, 'Microsoft JhengHei', sans-serif">系統預設</option>
-                                    <option value="'PingFang TC', '蘋方-繁', sans-serif">蘋方-繁體</option>
-                                    <option value="'Microsoft JhengHei', '微軟正黑體', sans-serif">微軟正黑體</option>
-                                    <option value="'Noto Sans TC', 'Source Han Sans TC', '思源黑體', sans-serif">思源黑體</option>
-                                    <option value="'Noto Serif TC', 'Source Han Serif TC', '思源宋體', serif">思源宋體</option>
-                                    <option value="'Zen Hei', 'WenQuanYi Zen Hei', '文泉驛正黑', sans-serif">文泉驛正黑</option>
-                                    <option value="BiauKai, '標楷體', KaiTi, serif">標楷體</option>
-                                    <option value="MingLiU, '新細明體', PMingLiU, serif">新細明體</option>
-                                </select>
-                            </div>
-                            <div class="btn-like-group">
-                                <label for="fontSizeSelect">字級</label>
-                                <select id="fontSizeSelect"></select>
-                            </div>
-                            <div class="btn-like-group">
-                                <label for="fontColor">文字</label>
-                                <input type="color" id="fontColor" value="#000000">
-                                <button class="btn btn-secondary color-picker-btn" id="fontColorPickerBtn" title="從畫布上選取文字顏色">💧</button>
-                            </div>
-                            <div class="btn-like-group">
-                                <label for="backgroundColor">背景</label>
-                                <input type="color" id="backgroundColor" value="#FFFFFF">
-                                <button class="btn btn-secondary color-picker-btn" id="bgColorPickerBtn" title="從畫布上選取背景顏色">💧</button>
-                            </div>
-                        </div>
-                        <div class="custom-scrollbar-container" id="customScrollbarContainer" style="display: none;">
-                            <div class="custom-scrollbar-track">
-                                <div class="custom-scrollbar-thumb"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            <div class="scrollable-content">
                 <div class="pdf-viewer" id="pdfViewer">
                     <!-- Initial UI is injected here by JavaScript -->
                 </div>
-            </div>
-        </div>
-    </div>
+                <div class="feature-explanation-container">
+                    <h2>主要功能說明</h2>
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <div class="feature-card-title">
+                                <span class="icon">📝</span>
+                                <span>文字取代與編輯</span>
+                            </div>
+                            <p>
+                                <b class="keyword">「 搜尋/取代 」</b>: 輸入文字即時預覽結果。計數器分母為總數，分子為目前導覽的項目，<b style="color: var(--system-red);">替換後總數不變</b>。注意：搜尋與取代的字元數必須相同。<br>
+                                <b class="keyword">「 單字編輯 」</b>: 直接用滑鼠點擊 PDF 頁面上的任何一個字元，即可彈出編輯框進行單獨修改。<br>
+                                <b class="keyword">「 上一步 (Undo) 」</b>: 點擊可復原上一個操作，包含文字編輯、取代、新增或移動圖形等。<br>
+                            </p>
+                        </div>
 
-    <div class="feature-explanation-container">
-        <h2>主要功能說明</h2>
-        <div class="feature-grid">
-            <div class="feature-card">
-                <div class="feature-card-title">
-                    <span class="icon">📝</span>
-                    <span>文字取代與編輯</span>
-                </div>
-                <p>
-                    <b class="keyword">「 搜尋/取代 」</b>: 輸入文字即時預覽結果。計數器分母為總數，分子為目前導覽的項目，<b style="color: var(--system-red);">替換後總數不變</b>。注意：搜尋與取代的字元數必須相同。<br>
-                    <b class="keyword">「 單字編輯 」</b>: 直接用滑鼠點擊 PDF 頁面上的任何一個字元，即可彈出編輯框進行單獨修改。<br>
-                    <b class="keyword">「 上一步 (Undo) 」</b>: 點擊可復原上一個操作，包含文字編輯、取代、新增或移動圖形等。<br>
-                </p>
-            </div>
+                        <div class="feature-card">
+                            <div class="feature-card-title">
+                                <span class="icon">🎨</span>
+                                <span>樣式與顏色</span>
+                            </div>
+                            <p>
+                                <b class="keyword">「 字型/字級 」</b>: 在執行「取代」或新增文字前，可預先選擇希望套用的字體和大小。<br>
+                                <b class="keyword">「 文字/背景顏色 」</b>: 可分別設定取代文字的字體顏色與背景色塊顏色。<br>
+                                <b class="keyword">「 💧 (滴管) 」</b>: 點擊顏色方塊旁的滴管圖示，滑鼠會變為滴管，此時點擊 PDF 畫面上任何位置，即可精確抓取該處的顏色，完美匹配原始文件色調。
+                            </p>
+                        </div>
 
-            <div class="feature-card">
-                <div class="feature-card-title">
-                    <span class="icon">🎨</span>
-                    <span>樣式與顏色</span>
-                </div>
-                <p>
-                    <b class="keyword">「 字型/字級 」</b>: 在執行「取代」或新增文字前，可預先選擇希望套用的字體和大小。<br>
-                    <b class="keyword">「 文字/背景顏色 」</b>: 可分別設定取代文字的字體顏色與背景色塊顏色。<br>
-                    <b class="keyword">「 💧 (滴管) 」</b>: 點擊顏色方塊旁的滴管圖示，滑鼠會變為滴管，此時點擊 PDF 畫面上任何位置，即可精確抓取該處的顏色，完美匹配原始文件色調。
-                </p>
-            </div>
+                         <div class="feature-card">
+                            <div class="feature-card-title">
+                                <span class="icon">✏️</span>
+                                <span>繪圖與新增</span>
+                            </div>
+                            <p>
+                                <b class="keyword">「 繪圖工具列 」</b>: 提供文字、圖片、直線、矩形、橢圓、箭頭等多種工具。點擊啟用後即可在頁面上繪製。<br>
+                                <b class="keyword">「 物件編輯 」</b>: 使用<svg viewBox="0 0 24 24" style="width:1em; height:1em; vertical-align:-0.15em; fill:currentColor;"><path d="M13.7,6.3C13.5,6.1,13.3,6,13,6s-0.5,0.1-0.7,0.3L3,15.6V21h5.4l9.3-9.3L13.7,6.3z M6.1,19H5v-1.1l7.8-7.8l1.1,1.1 L6.1,19z M20,6.1l-1.1-1.1c-0.4-0.4-1-0.4-1.4,0l-1.2,1.2l2.5,2.5l1.2-1.2C20.4,7.1,20.4,6.5,20,6.1z"></path></svg>工具可拖曳移動。選取圖片後，右下角會出現控點以縮放大小。選取任何物件後，按 `Delete` 鍵即可刪除。
+                            </p>
+                        </div>
 
-             <div class="feature-card">
-                <div class="feature-card-title">
-                    <span class="icon">✏️</span>
-                    <span>繪圖與新增</span>
+                        <div class="feature-card">
+                            <div class="feature-card-title">
+                                <span class="icon">💾</span>
+                                <span>儲存與匯出</span>
+                            </div>
+                            <p>
+                                <b class="keyword">「 💾 儲存... 」</b>: 點擊此按鈕，會彈出儲存選項視窗，您可以在此決定匯出的格式、頁數與解析度。<br>
+                                <b class="keyword">「 頁數範圍 」</b>: 您可以選擇匯出<b class="keyword">全部頁數</b>，或<b class="keyword">自訂特定頁數範圍</b>。<br>
+                                <b class="keyword">「 解析度 」</b>: 提供標準、高、極高等解析度選項，越高的解析度檔案越大，但品質越清晰。<br>
+                                <b class="keyword">「 格式 」</b>: 可選擇儲存為<b class="keyword">單一 PDF</b>，或將每頁存為<b class="keyword">獨立 PNG</b>並打包成 ZIP 檔。
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <p>
-                    <b class="keyword">「 繪圖工具列 」</b>: 提供文字、圖片、直線、矩形、橢圓、箭頭等多種工具。點擊啟用後即可在頁面上繪製。<br>
-                    <b class="keyword">「 物件編輯 」</b>: 使用<svg viewBox="0 0 24 24" style="width:1em; height:1em; vertical-align:-0.15em; fill:currentColor;"><path d="M13.7,6.3C13.5,6.1,13.3,6,13,6s-0.5,0.1-0.7,0.3L3,15.6V21h5.4l9.3-9.3L13.7,6.3z M6.1,19H5v-1.1l7.8-7.8l1.1,1.1 L6.1,19z M20,6.1l-1.1-1.1c-0.4-0.4-1-0.4-1.4,0l-1.2,1.2l2.5,2.5l1.2-1.2C20.4,7.1,20.4,6.5,20,6.1z"></path></svg>工具可拖曳移動。選取圖片後，右下角會出現控點以縮放大小。選取任何物件後，按 `Delete` 鍵即可刪除。
-                </p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-card-title">
-                    <span class="icon">💾</span>
-                    <span>儲存與匯出</span>
-                </div>
-                <p>
-                    <b class="keyword">「 💾 儲存... 」</b>: 點擊此按鈕，會彈出儲存選項視窗，您可以在此決定匯出的格式、頁數與解析度。<br>
-                    <b class="keyword">「 頁數範圍 」</b>: 您可以選擇匯出<b class="keyword">全部頁數</b>，或<b class="keyword">自訂特定頁數範圍</b>。<br>
-                    <b class="keyword">「 解析度 」</b>: 提供標準、高、極高等解析度選項，越高的解析度檔案越大，但品質越清晰。<br>
-                    <b class="keyword">「 格式 」</b>: 可選擇儲存為<b class="keyword">單一 PDF</b>，或將每頁存為<b class="keyword">獨立 PNG</b>並打包成 ZIP 檔。
-                </p>
             </div>
         </div>
     </div>
@@ -1235,10 +1251,13 @@
                 const elementToScroll = document.querySelector('.highlight-box-next');
                 
                 if (elementToScroll) {
-                    elementToScroll.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
+                    const scrollableParent = document.querySelector('.scrollable-content');
+                     if (scrollableParent) {
+                        elementToScroll.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                    }
                 }
             }, 50); // A 50ms delay is imperceptible but robustly ensures rendering is complete.
         }
@@ -1285,6 +1304,7 @@
 
         const initialImportSection = document.getElementById('initial-import-section');
         const pdfViewer = document.getElementById('pdfViewer');
+        const scrollableContent = document.querySelector('.scrollable-content');
         const controlsContainer = document.getElementById('controlsContainer');
         const mainActionBar = document.querySelector('.main-action-bar');
         const searchText = document.getElementById('searchText');
@@ -1422,16 +1442,23 @@
 
         function setFitToWidthScale() {
             if (!pdfDoc || pdfViewer.children.length === 0) return;
-            const firstPageContainer = pdfViewer.querySelector('.pdf-page-container') || pdfViewer.children[0];
-            if (!firstPageContainer) return;
             
-            const pageWidth = parseFloat(firstPageContainer.style.width);
-            const containerWidth = pdfViewer.clientWidth > 40 ? pdfViewer.clientWidth - 40 : pdfViewer.clientWidth;
+            const firstPageContainer = pdfViewer.querySelector('.pdf-page-container');
+            if (!firstPageContainer) {
+                 // Fallback if rendered pages aren't there yet
+                const tempFirstPage = pdfViewer.children[0];
+                if (!tempFirstPage) return;
 
-            if (pageWidth > 0 && containerWidth > 0) {
-                 currentScale = containerWidth / pageWidth;
+                const pageWidth = parseFloat(tempFirstPage.style.width);
+                const containerWidth = scrollableContent.clientWidth > 40 ? scrollableContent.clientWidth - 40 : scrollableContent.clientWidth;
+                if (pageWidth > 0 && containerWidth > 0) currentScale = containerWidth / pageWidth;
+                else currentScale = 1.0;
+
             } else {
-                 currentScale = 1.0;
+                const pageWidth = parseFloat(firstPageContainer.style.width);
+                const containerWidth = scrollableContent.clientWidth > 40 ? scrollableContent.clientWidth - 40 : scrollableContent.clientWidth;
+                if (pageWidth > 0 && containerWidth > 0) currentScale = containerWidth / pageWidth;
+                else currentScale = 1.0;
             }
         }
 
@@ -1787,11 +1814,6 @@
             }
             updateSearchCountDisplay();
             
-            // =================================================================
-            // GUARANTEED FIX FOR SCROLLING ISSUE
-            // This logic uses scrollIntoView after a short delay to ensure
-            // the highlight box is painted before the scroll command is issued.
-            // =================================================================
             setTimeout(() => {
                 const elementToScroll = document.querySelector('.highlight-box-next');
                 
@@ -2270,7 +2292,7 @@
 
         function updateCurrentPage() {
             if (!pdfDoc) return;
-            const viewerRect = pdfViewer.getBoundingClientRect();
+            const viewerRect = scrollableContent.getBoundingClientRect();
             const referenceY = viewerRect.top + 50;
 
             let currentPage = 1;
@@ -2368,28 +2390,7 @@
 
 
         function updateCustomScrollbar() {
-            const customScrollbarContainer = document.getElementById('customScrollbarContainer');
-            if (!customScrollbarContainer) return;
-
-            const scrollableWidth = mainActionBar.scrollWidth - mainActionBar.clientWidth;
-            const thumb = document.querySelector('.custom-scrollbar-thumb');
-            const track = document.querySelector('.custom-scrollbar-track');
-            
-            if (!thumb || !track) return;
-
-            if (scrollableWidth <= 0) {
-                customScrollbarContainer.style.display = 'none';
-                return;
-            }
-            customScrollbarContainer.style.display = 'block';
-
-            const thumbWidthPercentage = mainActionBar.clientWidth / mainActionBar.scrollWidth;
-            const thumbWidth = Math.max(20, thumbWidthPercentage * track.clientWidth);
-            thumb.style.width = thumbWidth + 'px';
-
-            const scrollPercentage = mainActionBar.scrollLeft / scrollableWidth;
-            const thumbMaxLeft = track.clientWidth - thumbWidth;
-            thumb.style.left = (scrollPercentage * thumbMaxLeft) + 'px';
+            // This function is no longer needed as the scrollbar is hidden.
         }
 
         function getPageAndCoordsFromEvent(e) {
@@ -2415,9 +2416,9 @@
             tempCanvas.style.left = '0';
             tempCanvas.style.pointerEvents = 'none';
             tempCanvas.style.zIndex = '100';
-            tempCanvas.width = pdfViewer.scrollWidth;
-            tempCanvas.height = pdfViewer.scrollHeight;
-            pdfViewer.appendChild(tempCanvas);
+            tempCanvas.width = scrollableContent.scrollWidth;
+            tempCanvas.height = scrollableContent.scrollHeight;
+            scrollableContent.appendChild(tempCanvas);
             tempCtx = tempCanvas.getContext('2d');
         }
 
@@ -2508,11 +2509,11 @@
             if (!isDrawing) return;
             tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-            const viewerRect = pdfViewer.getBoundingClientRect();
-            const startCanvasX = dragStartX - viewerRect.left + pdfViewer.scrollLeft;
-            const startCanvasY = dragStartY - viewerRect.top + pdfViewer.scrollTop;
-            const currentCanvasX = e.clientX - viewerRect.left + pdfViewer.scrollLeft;
-            const currentCanvasY = e.clientY - viewerRect.top + pdfViewer.scrollTop;
+            const viewerRect = scrollableContent.getBoundingClientRect();
+            const startCanvasX = dragStartX - viewerRect.left + scrollableContent.scrollLeft;
+            const startCanvasY = dragStartY - viewerRect.top + scrollableContent.scrollTop;
+            const currentCanvasX = e.clientX - viewerRect.left + scrollableContent.scrollLeft;
+            const currentCanvasY = e.clientY - viewerRect.top + scrollableContent.scrollTop;
 
             drawShape(tempCtx, currentDrawingTool, startCanvasX, startCanvasY, currentCanvasX, currentCanvasY);
         }
@@ -2967,7 +2968,7 @@
             pdfViewer.addEventListener('mousedown', handleMouseDown);
             pdfViewer.addEventListener('mousemove', handleMouseMove);
 
-            pdfViewer.addEventListener('scroll', onScrollViewerScroll);
+            scrollableContent.addEventListener('scroll', onScrollViewerScroll);
             mainActionBar.addEventListener('scroll', updateCustomScrollbar);
             window.addEventListener('resize', updateCustomScrollbar);
 
