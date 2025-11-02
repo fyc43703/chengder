@@ -924,7 +924,8 @@
         #previewImageContainer:active { cursor: grabbing; }
 
         #previewMainImage {
-            max-width: none;
+            max-width: none; /* Let JS handle sizing */
+            transition: transform 0.1s ease-out;
             transform-origin: center center;
             display: block;
             background: white;
@@ -947,13 +948,13 @@
             width: 100%;
             max-width: none;
             margin: 0;
-            padding: 25px 30px;
+            padding: 30px;
             background: var(--glass-bg); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
             border-radius: 0; border: none; box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.05);
         }
         .feature-explanation-container h2 {
             text-align: center; font-size: 1.6em; font-weight: 600;
-            color: var(--system-blue); margin-bottom: 20px;
+            color: var(--system-blue); margin-bottom: 25px;
         }
         .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .feature-card {
@@ -2996,34 +2997,19 @@
                 setActivePreviewPage(currentPreviewPage + 1);
             });
 
-            previewImageContainer.addEventListener('wheel', (e) => {
+             previewImageContainer.addEventListener('wheel', (e) => {
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
-
+                    const zoomFactor = 0.1;
+                    const oldZoom = previewZoom;
+                    previewZoom = e.deltaY < 0 ? Math.min(3.0, oldZoom * (1 + zoomFactor)) : Math.max(minPreviewZoom, oldZoom / (1 + zoomFactor));
+                    
                     const rect = previewImageContainer.getBoundingClientRect();
                     const mouseX = e.clientX - rect.left;
                     const mouseY = e.clientY - rect.top;
 
-                    const contentX = previewImageContainer.scrollLeft + mouseX;
-                    const contentY = previewImageContainer.scrollTop + mouseY;
-
-                    const imageX = contentX / previewZoom;
-                    const imageY = contentY / previewZoom;
-
-                    const zoomFactor = 0.1;
-                    if (e.deltaY < 0) {
-                        previewZoom = Math.min(3.0, previewZoom * (1 + zoomFactor));
-                    } else {
-                        previewZoom = Math.max(minPreviewZoom, previewZoom / (1 + zoomFactor));
-                    }
-
+                    previewMainImage.style.transformOrigin = `${mouseX}px ${mouseY}px`;
                     applyPreviewZoom();
-
-                    const newContentX = imageX * previewZoom;
-                    const newContentY = imageY * previewZoom;
-
-                    previewImageContainer.scrollLeft = newContentX - mouseX;
-                    previewImageContainer.scrollTop = newContentY - mouseY;
                 }
             }, { passive: false });
 
