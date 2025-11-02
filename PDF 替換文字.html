@@ -114,7 +114,7 @@
         .scrollable-content {
             flex-grow: 1;
             overflow: auto;
-            background: var(--system-gray-bg-tint); /* MODIFIED: Moved background here */
+            background: var(--system-gray-bg-tint);
             transition: background 0.3s ease;
         }
 
@@ -668,15 +668,16 @@
         .pdf-viewer {
             border-top: 1px solid var(--input-border);
             padding: 20px 20px 0 20px;
-            text-align: center; 
-            display: flex; 
+            text-align: center;
+            display: flex;
             flex-direction: column;
-            align-items: center; 
+            align-items: center;
             justify-content: flex-start;
-            /* MODIFIED: Removed background and min-height */
         }
 
-        .pdf-viewer.initial-state { border-top: none; }
+        .pdf-viewer.initial-state {
+            border-top: none;
+        }
 
         .initial-message-container {
             color: var(--placeholder-text); font-size: 1.1em; padding-top: 0;
@@ -898,11 +899,11 @@
         }
         
         #previewImageContainer {
-            flex-grow: 1; overflow: auto; text-align: center; background: var(--system-gray-bg-tint);
-            border-radius: 8px; border: 1px solid var(--input-border); cursor: grab;
+            flex-grow: 1; overflow: auto; background: var(--system-gray-bg-tint);
+            border-radius: 8px; border: 1px solid var(--input-border);
             display: flex; align-items: center; justify-content: center; position: relative;
         }
-        #previewImageContainer:active { cursor: grabbing; }
+        #previewImageContainer:active { cursor: default; }
 
         #previewMainImage {
             max-width: none;
@@ -2273,7 +2274,6 @@
             mainImage.style.visibility = 'hidden';
             statusDiv.textContent = '正在載入頁面...';
             
-            // MODIFIED: Set onload handler BEFORE setting src
             mainImage.onload = () => {
                 mainImage.style.visibility = 'visible';
                 statusDiv.textContent = '';
@@ -2287,7 +2287,6 @@
             if (previewImageCache[pageNum]) {
                 mainImage.src = previewImageCache[pageNum];
             } else {
-                // MODIFIED: Wrapped rendering in a try-catch block
                 try {
                     const page = pdfPageData[pageNum].pageRef;
                     const desiredWidth = 1500;
@@ -2314,7 +2313,7 @@
                     mainImage.src = dataUrl;
                 } catch (error) {
                     console.error(`Error rendering preview for page ${pageNum}:`, error);
-                    mainImage.onerror(); // Trigger the error handler
+                    mainImage.onerror();
                 }
             }
             
@@ -2363,10 +2362,29 @@
         }
 
         function applyPreviewZoom() {
-            if (previewMainImage) {
-                previewMainImage.style.transform = `scale(${previewZoom})`;
-                previewZoomLevel.textContent = `${Math.round(previewZoom * 100)}%`;
+            if (!previewMainImage || !previewMainImage.naturalWidth) return;
+
+            const container = previewImageContainer;
+            const image = previewMainImage;
+
+            const scaledWidth = image.naturalWidth * previewZoom;
+            const scaledHeight = image.naturalHeight * previewZoom;
+            
+            // MODIFIED: Conditional styling for centering vs scrolling
+            if (scaledWidth <= container.clientWidth && scaledHeight <= container.clientHeight) {
+                // If image is smaller than container, center it
+                container.style.justifyContent = 'center';
+                container.style.alignItems = 'center';
+                image.style.transformOrigin = 'center center';
+            } else {
+                // If image is larger, align top-left for scrolling
+                container.style.justifyContent = 'flex-start';
+                container.style.alignItems = 'flex-start';
+                image.style.transformOrigin = '0 0';
             }
+
+            image.style.transform = `scale(${previewZoom})`;
+            previewZoomLevel.textContent = `${Math.round(previewZoom * 100)}%`;
         }
 
         function updatePreviewPageIndicator() {
@@ -3019,37 +3037,8 @@
                 }
             }, { passive: false });
 
-
-            const handlePanMove = (e) => {
-                if (!isPanning) return;
-                e.preventDefault();
-                const dx = e.pageX - panStartX;
-                const dy = e.pageY - panStartY;
-                previewImageContainer.scrollLeft = panStartScrollLeft - dx;
-                previewImageContainer.scrollTop = panStartScrollTop - dy;
-            };
-
-            const handlePanUp = () => {
-                if (!isPanning) return;
-                isPanning = false;
-                previewImageContainer.style.cursor = 'grab';
-                window.removeEventListener('mousemove', handlePanMove);
-                window.removeEventListener('mouseup', handlePanUp);
-            };
-
-            previewImageContainer.addEventListener('mousedown', (e) => {
-                if (e.button !== 0) return;
-                isPanning = true;
-                panStartX = e.pageX;
-                panStartY = e.pageY;
-                panStartScrollLeft = previewImageContainer.scrollLeft;
-                panStartScrollTop = previewImageContainer.scrollTop;
-                previewImageContainer.style.cursor = 'grabbing';
-                window.addEventListener('mousemove', handlePanMove);
-                window.addEventListener('mouseup', handlePanUp);
-            });
-
-
+            // MODIFIED: Panning functionality is removed.
+            
             fontColorPickerBtn.addEventListener('click', () => toggleColorPickerMode('font'));
             bgColorPickerBtn.addEventListener('click', () => toggleColorPickerMode('bg'));
 
