@@ -1,6 +1,17 @@
 <!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>PDF替換文字與編輯</title>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
       <style>
+      html, body { margin: 0; padding: 24px; background: #FFFFFF; color: #1d1d1f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; font-size: 15px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+      h1, h2, h3, h4, h5, h6, b, strong { font-weight: 600; } h1 { font-weight: 700; }
+      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; } ul { list-style-type: disc; } ol { list-style-type: decimal; } li { display: list-item; }
+      .hljs-container { padding: 1.5rem; border-radius: .75rem; overflow-x: auto; background: #fcfcfd; border: 1px solid #d2d2d7; }
+      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
+      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
+    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>PDF替換文字與編輯</title>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
+      <style>
       html, body { margin: 0; padding: 0; background: #FFFFFF; color: #1d1d1f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; font-size: 15px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
       h1, h2, h3, h4, h5, h6, b, strong { font-weight: 600; } h1 { font-weight: 700; }
       ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; } ul { list-style-type: disc; } ol { list-style-type: decimal; } li { display: list-item; }
@@ -688,7 +699,7 @@
 
         .initial-message-container {
             color: var(--placeholder-text); font-size: 1.1em; padding-top: 0;
-            text-align: left; max-width: 850px; margin: 20px auto;
+            text-align: left; max-width: 850px; margin: 10px auto; /* 調整上下邊距 */
         }
         .initial-message-container h4 {
             color: var(--system-red); margin-top: 0; margin-bottom: 8px;
@@ -906,15 +917,9 @@
         }
         
         #previewImageContainer {
-            flex-grow: 1;
-            overflow: auto;
-            background: var(--system-gray-bg-tint);
-            border-radius: 8px;
-            border: 1px solid var(--input-border);
-            cursor: grab;
-            display: grid;
-            place-items: center;
-            position: relative;
+            flex-grow: 1; overflow: auto; text-align: center; background: var(--system-gray-bg-tint);
+            border-radius: 8px; border: 1px solid var(--input-border); cursor: grab;
+            display: flex; align-items: center; justify-content: center; position: relative;
         }
         #previewImageContainer:active { cursor: grabbing; }
 
@@ -942,13 +947,13 @@
             width: 100%;
             max-width: none;
             margin: 0;
-            padding: 20px 30px 15px;
+            padding: 25px 30px;
             background: var(--glass-bg); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
             border-radius: 0; border: none; box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.05);
         }
         .feature-explanation-container h2 {
             text-align: center; font-size: 1.6em; font-weight: 600;
-            color: var(--system-blue); margin-bottom: 15px;
+            color: var(--system-blue); margin-bottom: 20px;
         }
         .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .feature-card {
@@ -2366,9 +2371,30 @@
         }
 
         function applyPreviewZoom() {
-            if (previewMainImage) {
-                previewMainImage.style.transform = `scale(${previewZoom})`;
+            const container = previewImageContainer; // 取得容器
+            const image = previewMainImage; // 取得圖片
+
+            if (image && container) {
+                image.style.transform = `scale(${previewZoom})`;
                 previewZoomLevel.textContent = `${Math.round(previewZoom * 100)}%`;
+
+                // --- 修正滾動問題 ---
+                // 檢查縮放後的圖片是否大於容器
+                const scaledWidth = (image.naturalWidth || 0) * previewZoom;
+                const scaledHeight = (image.naturalHeight || 0) * previewZoom;
+                const containerWidth = container.clientWidth;
+                const containerHeight = container.clientHeight;
+
+                if (scaledWidth > containerWidth || scaledHeight > containerHeight) {
+                    // 圖片大於容器，移除置中，改為從左上角開始，以便正常滾動
+                    container.style.alignItems = 'flex-start';
+                    container.style.justifyContent = 'flex-start';
+                } else {
+                    // 圖片小於容器，置中顯示
+                    container.style.alignItems = 'center';
+                    container.style.justifyContent = 'center';
+                }
+                // --- 修正結束 ---
             }
         }
 
@@ -2991,10 +3017,10 @@
                 setActivePreviewPage(currentPreviewPage + 1);
             });
 
-             previewImageContainer.addEventListener('wheel', (e) => {
+            previewImageContainer.addEventListener('wheel', (e) => {
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
-                    
+
                     const rect = previewImageContainer.getBoundingClientRect();
                     const mouseX = e.clientX - rect.left;
                     const mouseY = e.clientY - rect.top;
@@ -3006,15 +3032,11 @@
                     const imageY = contentY / previewZoom;
 
                     const zoomFactor = 0.1;
-                    const oldZoom = previewZoom;
-                    
                     if (e.deltaY < 0) {
                         previewZoom = Math.min(3.0, previewZoom * (1 + zoomFactor));
                     } else {
                         previewZoom = Math.max(minPreviewZoom, previewZoom / (1 + zoomFactor));
                     }
-                    
-                    if(oldZoom === previewZoom) return;
 
                     applyPreviewZoom();
 
@@ -3073,4 +3095,4 @@
         });
     </script>
 </body>
-</html></div></body></html>
+</html></div></body></html></div></body></html>
