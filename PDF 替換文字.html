@@ -1222,6 +1222,7 @@
         let currentScale = 1.0;
 
         let searchResults = [];
+        let originalSearchResults = [];
         let currentSearchIndex = 0;
         let colorPickerTarget = null;
         let historyStack = [];
@@ -1633,13 +1634,28 @@
 
         function updateSearchCountDisplay() {
             const searchCountEl = document.getElementById('searchCount');
-            if (initialTotalResults > 0) {
-                const itemsReplaced = initialTotalResults - searchResults.length;
-                const currentIndexForDisplay = searchResults.length > 0 ? itemsReplaced + currentSearchIndex + 1 : itemsReplaced;
-                searchCountEl.textContent = `${currentIndexForDisplay} / ${initialTotalResults}`;
-            } else {
-                searchCountEl.textContent = '0';
+            if (initialTotalResults === 0 || searchResults.length === 0) {
+                const denominator = initialTotalResults > 0 ? initialTotalResults : 0;
+                searchCountEl.textContent = `0 / ${denominator}`;
+                return;
             }
+
+            if (currentSearchIndex >= searchResults.length) {
+                 searchCountEl.textContent = `${initialTotalResults} / ${initialTotalResults}`;
+                 return;
+            }
+
+            const currentResult = searchResults[currentSearchIndex];
+
+            const originalIndex = originalSearchResults.findIndex(res => 
+                res.pageNum === currentResult.pageNum && 
+                res.startItemIndex === currentResult.startItemIndex &&
+                res.term === currentResult.term
+            );
+
+            const displayNumerator = (originalIndex > -1) ? originalIndex + 1 : currentSearchIndex + 1;
+
+            searchCountEl.textContent = `${displayNumerator} / ${initialTotalResults}`;
         }
 
         function findAndHighlightAll() {
@@ -1668,7 +1684,8 @@
                     }
                 }
             }
-
+            
+            originalSearchResults = [...searchResults];
             initialTotalResults = searchResults.length;
             currentSearchIndex = 0;
 
@@ -1679,9 +1696,9 @@
             if (searchResults.length > 0) {
                 drawAllHighlights();
                 drawNextHighlight();
+            } else {
+                updateSearchCountDisplay();
             }
-
-            updateSearchCountDisplay();
         }
 
         function drawHighlightForRange(result, className) {
@@ -1721,10 +1738,14 @@
 
         function drawNextHighlight() {
             document.querySelectorAll('.highlight-box-next').forEach(box => box.remove());
-            if (searchResults.length === 0 || currentSearchIndex >= searchResults.length) return;
+            if (searchResults.length === 0 || currentSearchIndex >= searchResults.length) {
+                updateSearchCountDisplay();
+                return;
+            }
 
             const nextResult = searchResults[currentSearchIndex];
             const highlightEl = drawHighlightForRange(nextResult, 'highlight-box-next');
+            updateSearchCountDisplay();
 
             if(highlightEl) {
                 const viewer = document.getElementById('pdfViewer');
@@ -1745,14 +1766,12 @@
             if (searchResults.length === 0) return;
             currentSearchIndex = (currentSearchIndex + 1) % searchResults.length;
             drawNextHighlight();
-            updateSearchCountDisplay();
         }
 
         function navigateToPrevResult() {
             if (searchResults.length === 0) return;
             currentSearchIndex = (currentSearchIndex - 1 + searchResults.length) % searchResults.length;
             drawNextHighlight();
-            updateSearchCountDisplay();
         }
 
         function clearSearch() {
@@ -1820,7 +1839,7 @@
                 historyStack.push({ actionType: 'replaceNext', changes: changesToRecord });
                 updateUndoButtonState();
             }
-
+            
             searchResults.splice(currentSearchIndex, 1);
 
             if (currentSearchIndex >= searchResults.length && searchResults.length > 0) {
@@ -1829,7 +1848,6 @@
 
             drawAllHighlights();
             drawNextHighlight();
-            updateSearchCountDisplay();
 
             if (searchResults.length === 0) {
                 replaceNextBtn.disabled = true;
@@ -2227,42 +2245,49 @@
             previewContentWrapper.innerHTML = '';
             await new Promise(resolve => setTimeout(resolve, 10));
 
+            const imageLoadPromises = [];
             for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
                 const canvas = pdfPageData[pageNum]?.canvas;
                 if (canvas) {
                     const img = document.createElement('img');
-                    img.src = canvas.toDataURL('image/png');
                     img.className = 'preview-page-image';
                     img.dataset.width = canvas.width;
                     img.dataset.height = canvas.height;
                     previewContentWrapper.appendChild(img);
+                    
+                    const promise = new Promise(resolve => {
+                        img.onload = resolve;
+                        img.src = canvas.toDataURL('image/png');
+                    });
+                    imageLoadPromises.push(promise);
                 }
             }
             
+            await Promise.all(imageLoadPromises);
+
             currentPreviewPage = updateCurrentPage();
             updatePreviewPageIndicator();
             hideSpinner();
             previewModalOverlay.style.display = 'flex';
             
-            setTimeout(() => {
-                const container = previewImageContainer;
-                const totalContentHeight = previewContentWrapper.scrollHeight;
-                const totalContentWidth = previewContentWrapper.scrollWidth;
-                
-                if(totalContentHeight > 0 && totalContentWidth > 0) {
-                    const containerHeight = container.clientHeight - 40;
-                    const containerWidth = container.clientWidth - 40;
-                    const zoomH = containerHeight / totalContentHeight;
-                    const zoomW = containerWidth / totalContentWidth;
-                    minPreviewZoom = Math.min(zoomH, zoomW);
-                } else {
-                    minPreviewZoom = 0.1;
-                }
-                
-                previewZoom = 1.0;
-                applyPreviewZoom();
-                scrollToPreviewPage(currentPreviewPage, 'auto');
-            }, 100);
+            // Calculate min zoom after modal is visible and all images are loaded
+            const container = previewImageContainer;
+            const totalContentHeight = previewContentWrapper.scrollHeight;
+            const totalContentWidth = previewContentWrapper.scrollWidth;
+
+            if(totalContentHeight > 0 && totalContentWidth > 0) {
+                const containerHeight = container.clientHeight - 40;
+                const containerWidth = container.clientWidth - 40;
+                const zoomH = containerHeight / totalContentHeight;
+                const zoomW = containerWidth / totalContentWidth;
+                minPreviewZoom = Math.min(1.0, zoomH, zoomW); // Cannot be greater than 1
+            } else {
+                minPreviewZoom = 0.1;
+            }
+            
+            previewZoom = minPreviewZoom; 
+            applyPreviewZoom();
+            scrollToPreviewPage(currentPreviewPage, 'auto');
         }
 
         function applyPreviewZoom() {
@@ -2979,20 +3004,23 @@
                 const currentPageImage = previewContentWrapper.querySelector(`img:nth-child(${currentPreviewPage})`);
                 if (!currentPageImage || !container) return;
                 
-                const containerHeight = container.clientHeight - 40;
-                const containerWidth = container.clientWidth - 40;
-                const imageWidth = parseFloat(currentPageImage.dataset.width);
-                const imageHeight = parseFloat(currentPageImage.dataset.height);
-                
-                if (imageHeight <= 0 || imageWidth <= 0) return;
+                // Use a slight delay to ensure image dimensions are available
+                setTimeout(() => {
+                    const containerHeight = container.clientHeight - 40; // Subtract vertical padding
+                    const containerWidth = container.clientWidth - 40; // Subtract horizontal padding
+                    const imageWidth = currentPageImage.naturalWidth;
+                    const imageHeight = currentPageImage.naturalHeight;
+                    
+                    if (imageHeight <= 0 || imageWidth <= 0) return;
 
-                const zoomRatioHeight = containerHeight / imageHeight;
-                const zoomRatioWidth = containerWidth / imageWidth;
+                    const zoomRatioHeight = containerHeight / imageHeight;
+                    const zoomRatioWidth = containerWidth / imageWidth;
 
-                previewZoom = Math.min(zoomRatioHeight, zoomRatioWidth);
+                    previewZoom = Math.min(zoomRatioHeight, zoomRatioWidth);
 
-                applyPreviewZoom();
-                scrollToPreviewPage(currentPreviewPage, 'auto');
+                    applyPreviewZoom();
+                    scrollToPreviewPage(currentPreviewPage, 'auto');
+                }, 0);
             });
             previewPrevPageBtn.addEventListener('click', () => {
                 if (currentPreviewPage > 1) {
