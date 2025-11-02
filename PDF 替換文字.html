@@ -2224,7 +2224,6 @@
         async function showPreview() {
             if (!pdfDoc) return;
             showSpinner('正在產生預覽...');
-            previewZoom = 1.0;
             previewContentWrapper.innerHTML = '';
             await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -2234,30 +2233,33 @@
                     const img = document.createElement('img');
                     img.src = canvas.toDataURL('image/png');
                     img.className = 'preview-page-image';
+                    img.dataset.width = canvas.width;
+                    img.dataset.height = canvas.height;
                     previewContentWrapper.appendChild(img);
                 }
             }
             
             currentPreviewPage = updateCurrentPage();
-            
             updatePreviewPageIndicator();
             hideSpinner();
             previewModalOverlay.style.display = 'flex';
             
-            // Calculate min zoom after modal is visible and content is rendered
             setTimeout(() => {
                 const container = previewImageContainer;
-                if(previewContentWrapper.scrollWidth > 0 && previewContentWrapper.scrollHeight > 0) {
+                const totalContentHeight = previewContentWrapper.scrollHeight;
+                const totalContentWidth = previewContentWrapper.scrollWidth;
+                
+                if(totalContentHeight > 0 && totalContentWidth > 0) {
                     const containerHeight = container.clientHeight - 40;
                     const containerWidth = container.clientWidth - 40;
-                    const zoomToFitHeight = containerHeight / previewContentWrapper.scrollHeight;
-                    const zoomToFitWidth = containerWidth / previewContentWrapper.scrollWidth;
-                    minPreviewZoom = Math.min(zoomToFitHeight, zoomToFitWidth);
+                    const zoomH = containerHeight / totalContentHeight;
+                    const zoomW = containerWidth / totalContentWidth;
+                    minPreviewZoom = Math.min(zoomH, zoomW);
                 } else {
                     minPreviewZoom = 0.1;
                 }
                 
-                previewZoom = 1; // Start at 100%
+                previewZoom = 1.0;
                 applyPreviewZoom();
                 scrollToPreviewPage(currentPreviewPage, 'auto');
             }, 100);
@@ -2977,10 +2979,10 @@
                 const currentPageImage = previewContentWrapper.querySelector(`img:nth-child(${currentPreviewPage})`);
                 if (!currentPageImage || !container) return;
                 
-                const containerHeight = container.clientHeight - 40; // Subtract vertical padding
-                const containerWidth = container.clientWidth - 40; // Subtract horizontal padding
-                const imageHeight = currentPageImage.naturalHeight;
-                const imageWidth = currentPageImage.naturalWidth;
+                const containerHeight = container.clientHeight - 40;
+                const containerWidth = container.clientWidth - 40;
+                const imageWidth = parseFloat(currentPageImage.dataset.width);
+                const imageHeight = parseFloat(currentPageImage.dataset.height);
                 
                 if (imageHeight <= 0 || imageWidth <= 0) return;
 
@@ -3007,7 +3009,6 @@
                 }
             });
             previewImageContainer.addEventListener('wheel', (e) => {
-                // This will now just scroll, as the default is not prevented unless Ctrl/Meta is pressed
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
                     const zoomFactor = 0.1;
