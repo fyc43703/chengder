@@ -866,6 +866,7 @@
         }
          #previewFitPageBtn {
              background-color: var(--system-green); color: white; border-color: #218838;
+             padding: 10px 20px; font-size: 28px;
         }
         #previewFitPageBtn:hover:not(:disabled) {
              background-color: #26a83d; border-color: var(--system-green);
@@ -878,9 +879,9 @@
         }
         
         #previewZoomOutBtn, #previewZoomInBtn {
-            font-size: 28px;
-            font-weight: bold;
-            padding: 2px 16px;
+            font-size: 28px !important;
+            font-weight: bold !important;
+            padding: 4px 20px !important;
             background-color: #2c3e50;
             color: white;
             border-color: #1a2531;
@@ -1236,6 +1237,7 @@
         let currentPreviewPage = 1;
         let isPanning = false;
         let panStartX, panStartY, panStartScrollLeft, panStartScrollTop;
+        let minPreviewZoom = 0.1;
 
 
         // --- Editing & Drawing State ---
@@ -2237,12 +2239,26 @@
             }
             
             currentPreviewPage = updateCurrentPage();
-            applyPreviewZoom();
+            
             updatePreviewPageIndicator();
             hideSpinner();
             previewModalOverlay.style.display = 'flex';
             
+            // Calculate min zoom after modal is visible and content is rendered
             setTimeout(() => {
+                const container = previewImageContainer;
+                if(previewContentWrapper.scrollWidth > 0 && previewContentWrapper.scrollHeight > 0) {
+                    const containerHeight = container.clientHeight - 40;
+                    const containerWidth = container.clientWidth - 40;
+                    const zoomToFitHeight = containerHeight / previewContentWrapper.scrollHeight;
+                    const zoomToFitWidth = containerWidth / previewContentWrapper.scrollWidth;
+                    minPreviewZoom = Math.min(zoomToFitHeight, zoomToFitWidth);
+                } else {
+                    minPreviewZoom = 0.1;
+                }
+                
+                previewZoom = 1; // Start at 100%
+                applyPreviewZoom();
                 scrollToPreviewPage(currentPreviewPage, 'auto');
             }, 100);
         }
@@ -2260,15 +2276,9 @@
         function scrollToPreviewPage(pageNum, behavior = 'smooth') {
             const imageToShow = previewContentWrapper.querySelector(`img:nth-child(${pageNum})`);
             if (imageToShow) {
-                const container = previewImageContainer;
-                const imgRect = imageToShow.getBoundingClientRect();
-                const containerRect = container.getBoundingClientRect();
-                
-                const desiredScrollTop = container.scrollTop + imgRect.top - containerRect.top - (containerRect.height / 2) + (imgRect.height / 2);
-
-                container.scrollTo({
-                    top: desiredScrollTop,
-                    behavior: behavior
+                imageToShow.scrollIntoView({
+                    behavior: behavior,
+                    block: 'center'
                 });
             }
         }
@@ -2913,7 +2923,7 @@
 
 
             zoomInBtn.addEventListener('click', async () => { if (!zoomInBtn.disabled) { currentScale = Math.min(5.0, currentScale + 0.2); await renderAllPages(); findAndHighlightAll(); updateCustomScrollbar();}});
-            zoomOutBtn.addEventListener('click', async () => { if (!zoomInBtn.disabled && currentScale > 0.4) { currentScale = Math.max(0.4, currentScale - 0.2); await renderAllPages(); findAndHighlightAll(); updateCustomScrollbar(); } });
+            zoomOutBtn.addEventListener('click', async () => { if (!zoomOutBtn.disabled && currentScale > 0.4) { currentScale = Math.max(0.4, currentScale - 0.2); await renderAllPages(); findAndHighlightAll(); updateCustomScrollbar(); } });
 
             fitPageBtn.addEventListener('click', async () => {
                 if (!fitPageBtn.disabled) {
@@ -2940,17 +2950,6 @@
             closeExportModalBtn.addEventListener('click', () => {
                 exportModalOverlay.style.display = 'none';
             });
-            exportModalOverlay.addEventListener('click', (e) => {
-                if (e.target === exportModalOverlay) exportModalOverlay.style.display = 'none';
-            });
-            exportPdfBtn.addEventListener('click', () => {
-                exportModalOverlay.style.display = 'none';
-                exportPDF();
-            });
-            exportPngZipBtn.addEventListener('click', () => {
-                exportModalOverlay.style.display = 'none';
-                exportPNGZip();
-            });
             
             rangeAll.addEventListener('change', () => {
                 pageRangeStart.disabled = true;
@@ -2970,17 +2969,26 @@
                 applyPreviewZoom();
             });
             previewZoomOutBtn.addEventListener('click', () => {
-                previewZoom = Math.max(0.1, previewZoom - 0.1);
+                previewZoom = Math.max(minPreviewZoom, previewZoom - 0.1);
                 applyPreviewZoom();
             });
             previewFitPageBtn.addEventListener('click', () => {
                 const container = previewImageContainer;
-                const firstImage = previewContentWrapper.querySelector('img');
-                if (!firstImage || !container) return;
-                const containerHeight = container.clientHeight - 40; // Subtract padding
-                const imageHeight = firstImage.naturalHeight;
-                if(imageHeight <= 0) return;
-                previewZoom = containerHeight / imageHeight;
+                const currentPageImage = previewContentWrapper.querySelector(`img:nth-child(${currentPreviewPage})`);
+                if (!currentPageImage || !container) return;
+                
+                const containerHeight = container.clientHeight - 40; // Subtract vertical padding
+                const containerWidth = container.clientWidth - 40; // Subtract horizontal padding
+                const imageHeight = currentPageImage.naturalHeight;
+                const imageWidth = currentPageImage.naturalWidth;
+                
+                if (imageHeight <= 0 || imageWidth <= 0) return;
+
+                const zoomRatioHeight = containerHeight / imageHeight;
+                const zoomRatioWidth = containerWidth / imageWidth;
+
+                previewZoom = Math.min(zoomRatioHeight, zoomRatioWidth);
+
                 applyPreviewZoom();
                 scrollToPreviewPage(currentPreviewPage, 'auto');
             });
@@ -2998,26 +3006,34 @@
                     scrollToPreviewPage(currentPreviewPage);
                 }
             });
-
-            let isPreviewScrolling = false;
-            let previewScrollTimeout;
             previewImageContainer.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                
-                if (isPreviewScrolling) return;
+                // This will now just scroll, as the default is not prevented unless Ctrl/Meta is pressed
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    const zoomFactor = 0.1;
+                    const oldZoom = previewZoom;
 
-                if (e.deltaY > 0) {
-                    previewNextPageBtn.click();
-                } else if (e.deltaY < 0) {
-                    previewPrevPageBtn.click();
+                    if (e.deltaY < 0) {
+                        previewZoom = Math.min(3.0, previewZoom * (1 + zoomFactor));
+                    } else {
+                        previewZoom = Math.max(minPreviewZoom, previewZoom / (1 + zoomFactor));
+                    }
+                    
+                    const rect = previewImageContainer.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+
+                    const scrollLeft = previewImageContainer.scrollLeft;
+                    const scrollTop = previewImageContainer.scrollTop;
+
+                    const newScrollLeft = (scrollLeft + mouseX) * (previewZoom / oldZoom) - mouseX;
+                    const newScrollTop = (scrollTop + mouseY) * (previewZoom / oldZoom) - mouseY;
+                    
+                    applyPreviewZoom();
+                    
+                    previewImageContainer.scrollLeft = newScrollLeft;
+                    previewImageContainer.scrollTop = newScrollTop;
                 }
-
-                isPreviewScrolling = true;
-                clearTimeout(previewScrollTimeout);
-                previewScrollTimeout = setTimeout(() => {
-                    isPreviewScrolling = false;
-                }, 300); // 300ms debounce
-                
             }, { passive: false });
 
 
