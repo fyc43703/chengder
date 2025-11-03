@@ -873,11 +873,20 @@
         }
 
         .page-indicator {
-            font-size: 0.9em; font-weight: 500; color: var(--system-text);
-            background: var(--secondary-btn-bg); border: 1px solid var(--secondary-btn-border);
-            padding: 0 12px; border-radius: 6px; white-space: nowrap;
-            display: inline-flex; align-items: center;
+            font-size: 0.9em;
+            font-weight: 500;
+            color: var(--system-text);
+            background: var(--secondary-btn-bg);
+            border: 1px solid var(--secondary-btn-border);
+            padding: 0 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             height: 36px;
+            min-width: 90px;
+            width: auto;
         }
 
         .feature-explanation-container {
@@ -940,7 +949,7 @@
                     <div class="status-message" id="statusMessage"></div>
                     
                     <div id="initial-import-section">
-                        <button class="btn btn-import" id="importFileBtn" title="從您的電腦選擇一個 PDF 檔案">📂 匯入PDF 檔案</button>
+                        <button class="btn btn-import" id="importFileBtn" title="從您的電腦選擇一個 PDF 檔案">📂 匯入 PDF</button>
                     </div>
 
                     <div id="controlsContainer" style="display:none;">
@@ -948,7 +957,7 @@
                             <div class="search-replace-group">
                                 <button class="btn btn-secondary" id="importFileBtnInPanel" title="匯入新的 PDF 檔案">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #f39c12;"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"></path></svg>
-                                    匯入
+                                    匯入 PDF
                                 </button>
                                 <label for="searchText">搜尋文字</label>
                                 <div class="search-input-container">
@@ -1327,8 +1336,7 @@
                 pdfDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
                 await processAllPages();
                 
-                await renderPage(1); // Render first page to calculate scale
-                setFitToWidthScale();
+                await setPageScale('width');
                 
                 await renderAllPages();
                 findAndHighlightAll();
@@ -1347,33 +1355,38 @@
                 resetTool(true);
             }
         }
-        
-        async function renderPage(pageNum) {
-             const page = await pdfDoc.getPage(pageNum);
-             const viewport = page.getViewport({ scale: 1.0 });
-             const tempContainer = document.createElement('div');
-             tempContainer.style.width = viewport.width + 'px';
-             tempContainer.style.height = viewport.height + 'px';
-             pdfViewer.appendChild(tempContainer);
-             return page;
-        }
 
+        async function setPageScale(fitType = 'page') {
+            if (!pdfDoc) return;
+            try {
+                const page = await pdfDoc.getPage(1);
+                const viewport = page.getViewport({ scale: 1.0 });
+                const pageWidth = viewport.width;
+                const pageHeight = viewport.height;
 
-        function setFitToWidthScale() {
-            if (!pdfDoc || pdfViewer.children.length === 0) return;
-            
-            const tempFirstPage = pdfViewer.children[0];
-            if (!tempFirstPage) return;
-            
-            const pageWidth = parseFloat(tempFirstPage.style.width);
-            const containerWidth = scrollableContent.clientWidth > 40 ? scrollableContent.clientWidth - 40 : scrollableContent.clientWidth;
+                const padding = 40;
+                const containerWidth = scrollableContent.clientWidth > padding ? scrollableContent.clientWidth - padding : scrollableContent.clientWidth;
+                const containerHeight = scrollableContent.clientHeight > padding ? scrollableContent.clientHeight - padding : scrollableContent.clientHeight;
 
-            if (pageWidth > 0 && containerWidth > 0) {
-                 currentScale = containerWidth / pageWidth;
-            } else {
-                 currentScale = 1.0;
+                if (pageWidth <= 0 || pageHeight <= 0) {
+                    currentScale = 1.0;
+                    return;
+                }
+
+                const widthScale = containerWidth / pageWidth;
+
+                if (fitType === 'page') {
+                    const heightScale = containerHeight / pageHeight;
+                    currentScale = Math.min(widthScale, heightScale);
+                } else { // default to 'width'
+                    currentScale = widthScale;
+                }
+            } catch (error) {
+                console.error("Failed to set page scale:", error);
+                currentScale = 1.0; // Fallback
             }
         }
+
 
         async function processAllPages() {
             pdfPageData = {};
@@ -2964,7 +2977,7 @@
             zoomOutBtn.addEventListener('click', async () => { if (!zoomInBtn.disabled && currentScale > 0.4) { currentScale = Math.max(0.4, currentScale - 0.2); await renderAllPages(); findAndHighlightAll(); } });
             fitPageBtn.addEventListener('click', async () => {
                 if (!fitPageBtn.disabled) {
-                    setFitToWidthScale();
+                    await setPageScale('page');
                     await renderAllPages();
                     findAndHighlightAll();
                 }
