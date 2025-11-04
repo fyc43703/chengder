@@ -1474,21 +1474,32 @@
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
             const fontSizeInPixels = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
             
-            // MODIFICATION: Use a blurred shadow as a soft-edged "eraser"
+            // MODIFICATION: Enhanced two-stage "erase" logic
             ctx.save();
-            ctx.shadowColor = item.originalBgColor || 'white';
-            ctx.shadowBlur = 2; // This creates a soft edge to cover anti-aliasing
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 0;
-            
-            ctx.fillStyle = item.originalBgColor || 'white';
             ctx.textBaseline = 'alphabetic';
             const originalFont = pdfFontToCss(item.fontName);
             ctx.font = `${originalFont.fontWeight} ${fontSizeInPixels}px ${originalFont.fontFamily}`;
-            ctx.fillText(item.originalText, tx[4], tx[5]);
+
+            // --- Stage 1: Soft, multi-pass core erase ---
+            ctx.shadowColor = item.originalBgColor || 'white';
+            ctx.shadowBlur = 2;
+            ctx.fillStyle = item.originalBgColor || 'white';
+            // Draw multiple times to build up opacity of the shadow eraser
+            for (let i = 0; i < 4; i++) {
+                ctx.fillText(item.originalText, tx[4], tx[5]);
+            }
+
+            // --- Stage 2: Hard-edge cleanup ---
+            ctx.shadowColor = 'transparent'; // Turn off shadow
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = item.originalBgColor || 'white';
+            ctx.lineWidth = 2; // Use a slightly thicker line to catch edges
+            ctx.strokeText(item.originalText, tx[4], tx[5]);
+
             ctx.restore();
 
-            // Step 2: Draw the new character on top.
+
+            // --- Final Step: Draw the new character on top ---
             const selectedFontFamily = fontSelect.value;
             const isBold = fontBoldBtn.classList.contains('active');
             const selectedFontWeight = isBold ? 'bold' : 'normal';
