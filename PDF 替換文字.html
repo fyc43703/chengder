@@ -539,6 +539,21 @@
         body.dark-mode .main-action-bar .btn-like-group .color-picker-btn {
             background: #2a2a2c;
         }
+        
+        /* Style for the new Bold button */
+        #fontBoldBtn {
+            width: 40px;
+            padding: 0;
+            border-left: 1px solid var(--input-border);
+        }
+        body.dark-mode #fontBoldBtn {
+            border-left-color: var(--glass-border);
+        }
+        #fontBoldBtn.active {
+            background-color: var(--system-blue);
+            color: white;
+        }
+
 
         .drawing-tools {
             display: flex; gap: 1px; align-items: center; background: var(--secondary-btn-bg);
@@ -1058,6 +1073,7 @@
                                 <div class="btn-like-group">
                                     <label for="fontSizeSelect">字級</label>
                                     <select id="fontSizeSelect"></select>
+                                    <button class="btn" id="fontBoldBtn" title="粗體"><b>B</b></button>
                                 </div>
                                 <div class="btn-like-group">
                                     <label for="fontColor">文字</label>
@@ -1264,6 +1280,7 @@
         const fontSizeSelect = document.getElementById('fontSizeSelect');
         const fontColor = document.getElementById('fontColor');
         const backgroundColor = document.getElementById('backgroundColor');
+        const fontBoldBtn = document.getElementById('fontBoldBtn');
 
         const fontColorPickerBtn = document.getElementById('fontColorPickerBtn');
         const bgColorPickerBtn = document.getElementById('bgColorPickerBtn');
@@ -1427,17 +1444,21 @@
 
         function drawModifiedTextOnCanvas(ctx, item, scale, viewport) {
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
-            const selectedFontSize = parseFloat(fontSizeSelect.value);
-            const fontSizeInPixels = selectedFontSize * scale;
-            const originalFontSize = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
-            const originalEffectiveHeight = originalFontSize * 1.2;
-            const boxTop = tx[5] - originalFontSize;
+            
+            // MODIFICATION: Automatically determine font size from the original text's properties.
+            const fontSizeInPixels = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
+            const effectiveHeight = fontSizeInPixels * 1.2;
+            const boxTop = tx[5] - fontSizeInPixels;
             const scaledWidth = item.width * scale;
 
             ctx.fillStyle = backgroundColor.value;
-            ctx.fillRect(tx[4], boxTop, scaledWidth, originalEffectiveHeight);
+            ctx.fillRect(tx[4], boxTop, scaledWidth, effectiveHeight);
+            
+            // MODIFICATION: Check if the bold button is active.
+            const isBold = fontBoldBtn.classList.contains('active');
+            const fontWeight = isBold ? 'bold ' : '';
 
-            ctx.font = `${fontSizeInPixels}px ${fontSelect.value}`;
+            ctx.font = `${fontWeight}${fontSizeInPixels}px ${fontSelect.value}`;
             ctx.fillStyle = fontColor.value;
             ctx.textBaseline = 'alphabetic';
             ctx.fillText(item.currentText, tx[4], tx[5]);
@@ -1472,7 +1493,9 @@
                     drawArrow(ctx, item.x1 * scale, item.y1 * scale, item.x2 * scale, item.y2 * scale);
                     break;
                 case 'text':
-                    ctx.font = `${item.size * scale}px ${item.font}`;
+                    // MODIFICATION: Apply bold style if saved.
+                    const fontWeight = item.fontWeight || 'normal';
+                    ctx.font = `${fontWeight} ${item.size * scale}px ${item.font}`;
                     ctx.textBaseline = 'top';
                     ctx.fillText(item.text, item.x * scale, item.y * scale);
                     break;
@@ -2772,6 +2795,10 @@
             inputArea.style.fontFamily = fontSelect.value;
             inputArea.style.fontSize = fontSizeSelect.value + 'px';
             inputArea.style.color = fontColor.value;
+            
+            // MODIFICATION: Apply bold style when creating new textbox.
+            const isBold = fontBoldBtn.classList.contains('active');
+            inputArea.style.fontWeight = isBold ? 'bold' : 'normal';
 
             interactionLayer.appendChild(inputArea);
 
@@ -2780,11 +2807,14 @@
             inputArea.addEventListener('blur', () => {
                 const text = inputArea.innerText;
                 if (text.trim()) {
+                    // MODIFICATION: Save bold style state.
+                    const textIsBold = inputArea.style.fontWeight === 'bold' || inputArea.style.fontWeight === '700';
                     const textData = {
                         type: 'text', text,
                         x: x / currentScale, y: y / currentScale,
                         font: fontSelect.value, size: parseFloat(fontSizeSelect.value),
                         color: fontColor.value,
+                        fontWeight: textIsBold ? 'bold' : 'normal'
                     };
                     pdfPageData[pageNum].drawings.push(textData);
                     historyStack.push({ actionType: 'addDrawing', pageNum });
@@ -2965,6 +2995,11 @@
             replaceNextBtn.addEventListener('click', replaceNext);
             prevResultBtn.addEventListener('click', navigateToPrevResult);
             nextResultBtn.addEventListener('click', navigateToNextResult);
+            
+            // MODIFICATION: Add event listener for the new bold button.
+            fontBoldBtn.addEventListener('click', () => {
+                fontBoldBtn.classList.toggle('active');
+            });
 
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) handleFile(e.target.files[0]);
