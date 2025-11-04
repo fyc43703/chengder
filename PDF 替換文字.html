@@ -1115,8 +1115,8 @@
                                 <span>樣式與顏色</span>
                             </div>
                             <p>
-                                <b class="keyword">「 智慧樣式繼承 」</b>: 使用「取代」功能時，<b style="color: var(--system-blue);">會自動繼承原始文字的大小、字型與顏色</b>，忽略上方工具列設定。<br>
-                                <b class="keyword">「 新增樣式 」</b>: 上方工具列的字型、顏色、粗體等選項，現在<b class="keyword">專門用於「新增」的文字</b>與圖形。<br>
+                                <b class="keyword">「 智慧樣式繼承 」</b>: 使用「取代」功能時，會自動繼承原始文字的<b style="color: var(--system-blue);">大小、顏色與背景</b>。而<b class="keyword">字型與粗體</b>則由上方工具列決定。<br>
+                                <b class="keyword">「 新增樣式 」</b>: 上方工具列的字型、字級、顏色、粗體等選項，<b class="keyword">專門用於使用「T」(文字工具) 新增的文字</b>與圖形樣式。<br>
                                 <b class="keyword">「 💧 (滴管) 」</b>: 可用於設定新增文字的顏色，點擊後可從畫面上吸取顏色。
                             </p>
                         </div>
@@ -1360,7 +1360,6 @@
                 await setPageScale('width');
                 await renderAllPages();
                 
-                // NEW: Capture original styles after rendering
                 await captureOriginalStyles();
                 
                 findAndHighlightAll();
@@ -1370,7 +1369,9 @@
                 totalPagesIndicator.textContent = pdfDoc.numPages;
                 pageIndicator.style.display = 'inline-flex';
                 
-                showStatus('PDF 載入成功，已自動採樣原始文字樣式。', 'success', 4000);
+                // MODIFICATION: Removed the success message.
+                document.getElementById('statusMessage').style.display = 'none';
+
             } catch (error) {
                 console.error('PDF 載入失敗:', error);
                 showStatus('PDF 載入失敗: ' + error.message, 'error');
@@ -1430,7 +1431,6 @@
                         const newTransform = [...item.transform];
                         newTransform[4] += i * charWidth;
                         
-                        // MODIFICATION: Store fontName and add fields for original styles
                         pdfPageData[pageNum].textItems.push({
                             id: `p${pageNum}-i${globalItemId++}`,
                             originalText: char,
@@ -1448,32 +1448,6 @@
             }
         }
         
-        // NEW FUNCTION: Tries to map a PDF.js font name to a CSS font family and weight
-        function pdfFontToCss(pdfFontName) {
-            const fontName = pdfFontName.toLowerCase();
-            let fontFamily = 'sans-serif'; // Default
-            let fontWeight = 'normal';
-
-            if (fontName.includes('bold')) {
-                fontWeight = 'bold';
-            }
-            if (fontName.includes('kai') || fontName.includes('kaiu')) { // 標楷體
-                fontFamily = "BiauKai, '標楷體', KaiTi, serif";
-            } else if (fontName.includes('song') || fontName.includes('ming')) { // 宋體/明體
-                 fontFamily = "'Noto Serif TC', 'Source Han Serif TC', '思源宋體', MingLiU, serif";
-            } else if (fontName.includes('hei')) { // 黑體
-                fontFamily = "'Noto Sans TC', 'Microsoft JhengHei', 'Source Han Sans TC', '思源黑體', sans-serif";
-            }
-            // Fallback for other common types
-            else if (fontName.includes('serif')) {
-                fontFamily = 'serif';
-            } else if (fontName.includes('mono')) {
-                fontFamily = 'monospace';
-            }
-
-            return { fontFamily, fontWeight };
-        }
-
         function drawModifiedTextOnCanvas(ctx, item, scale, viewport) {
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
             const fontSizeInPixels = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
@@ -1481,14 +1455,16 @@
             const boxTop = tx[5] - fontSizeInPixels;
             const scaledWidth = item.width * scale;
 
-            // MODIFICATION: Use the captured original background color.
-            ctx.fillStyle = item.originalBgColor || 'white'; // Fallback to white
+            ctx.fillStyle = item.originalBgColor || 'white'; // Use original background color
             ctx.fillRect(tx[4], boxTop, scaledWidth, effectiveHeight);
             
-            // MODIFICATION: Use captured original font and color.
-            const { fontFamily, fontWeight } = pdfFontToCss(item.fontName);
-            ctx.font = `${fontWeight} ${fontSizeInPixels}px ${fontFamily}`;
-            ctx.fillStyle = item.originalFontColor || 'black'; // Fallback to black
+            // MODIFICATION: Get font family and weight from the toolbar, but use original size and color.
+            const selectedFontFamily = fontSelect.value;
+            const isBold = fontBoldBtn.classList.contains('active');
+            const selectedFontWeight = isBold ? 'bold' : 'normal';
+
+            ctx.font = `${selectedFontWeight} ${fontSizeInPixels}px ${selectedFontFamily}`;
+            ctx.fillStyle = item.originalFontColor || 'black'; // Use original font color
             
             ctx.textBaseline = 'alphabetic';
             ctx.fillText(item.currentText, tx[4], tx[5]);
@@ -1602,14 +1578,13 @@
             hideSpinner();
         }
         
-        // NEW FUNCTION: Capture original styles by sampling pixels from the canvas
         async function captureOriginalStyles() {
             showSpinner('正在採樣原始樣式...');
             const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
 
             for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
                 updateSpinnerStatus(`正在分析第 ${pageNum} / ${pdfDoc.numPages} 頁樣式...`);
-                await new Promise(resolve => setTimeout(resolve, 10)); // Prevent freezing UI
+                await new Promise(resolve => setTimeout(resolve, 10));
                 
                 const pageData = pdfPageData[pageNum];
                 const canvas = pageData.canvas;
@@ -1620,13 +1595,11 @@
                     if (!item.scaled) continue;
                     
                     const s = item.scaled;
-                    // Sample background color from top-left of character box
                     const bgX = Math.floor(s.tx[4] + 1);
                     const bgY = Math.floor(s.tx[5] - s.fontSize + 1);
                     const bgPixel = ctx.getImageData(bgX, bgY, 1, 1).data;
                     item.originalBgColor = rgbToHex(bgPixel[0], bgPixel[1], bgPixel[2]);
 
-                    // Sample font color from center of character box
                     const textX = Math.floor(s.tx[4] + s.width / 2);
                     const textY = Math.floor(s.tx[5] - s.fontSize / 2);
                     const textPixel = ctx.getImageData(textX, textY, 1, 1).data;
@@ -1678,7 +1651,6 @@
             editor.style.width = (s.width + 4) + 'px';
             editor.style.height = (s.effectiveHeight + 4) + 'px';
             
-            // Editor uses its own style for clarity, final render will use original style
             editor.style.fontSize = Math.max(12, s.fontSize) + 'px';
             editor.style.fontFamily = fontSelect.value; 
 
