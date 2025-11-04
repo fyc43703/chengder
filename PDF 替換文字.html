@@ -1446,7 +1446,6 @@
             }
         }
         
-        // MODIFICATION: Re-added this helper function to get original font for the "erase" step
         function pdfFontToCss(pdfFontName) {
             const fontName = pdfFontName.toLowerCase();
             let fontFamily = 'sans-serif'; // Default
@@ -1475,12 +1474,15 @@
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
             const fontSizeInPixels = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
             
-            // MODIFICATION: New "erase" logic
-            // Step 1: "Erase" the old character by drawing it again using the sampled background color.
+            // MODIFICATION: Use a blurred shadow as a soft-edged "eraser"
             ctx.save();
+            ctx.shadowColor = item.originalBgColor || 'white';
+            ctx.shadowBlur = 2; // This creates a soft edge to cover anti-aliasing
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
             ctx.fillStyle = item.originalBgColor || 'white';
             ctx.textBaseline = 'alphabetic';
-            // Use the original font info to make the "erase" shape as accurate as possible
             const originalFont = pdfFontToCss(item.fontName);
             ctx.font = `${originalFont.fontWeight} ${fontSizeInPixels}px ${originalFont.fontFamily}`;
             ctx.fillText(item.originalText, tx[4], tx[5]);
