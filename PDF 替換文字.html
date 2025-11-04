@@ -1446,66 +1446,23 @@
             }
         }
         
-        function pdfFontToCss(pdfFontName) {
-            const fontName = pdfFontName.toLowerCase();
-            let fontFamily = 'sans-serif'; // Default
-            let fontWeight = 'normal';
-
-            if (fontName.includes('bold')) {
-                fontWeight = 'bold';
-            }
-            if (fontName.includes('kai') || fontName.includes('kaiu')) { // 標楷體
-                fontFamily = "BiauKai, '標楷體', KaiTi, serif";
-            } else if (fontName.includes('song') || fontName.includes('ming')) { // 宋體/明體
-                 fontFamily = "'Noto Serif TC', 'Source Han Serif TC', '思源宋體', MingLiU, serif";
-            } else if (fontName.includes('hei')) { // 黑體
-                fontFamily = "'Noto Sans TC', 'Microsoft JhengHei', 'Source Han Sans TC', '思源黑體', sans-serif";
-            }
-            else if (fontName.includes('serif')) {
-                fontFamily = 'serif';
-            } else if (fontName.includes('mono')) {
-                fontFamily = 'monospace';
-            }
-
-            return { fontFamily, fontWeight };
-        }
-
         function drawModifiedTextOnCanvas(ctx, item, scale, viewport) {
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
             const fontSizeInPixels = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
+            const effectiveHeight = fontSizeInPixels * 1.2;
+            const boxTop = tx[5] - fontSizeInPixels;
+            const scaledWidth = item.width * scale;
+
+            ctx.fillStyle = item.originalBgColor || 'white'; // Use original background color
+            ctx.fillRect(tx[4], boxTop, scaledWidth, effectiveHeight);
             
-            // MODIFICATION: Enhanced two-stage "erase" logic
-            ctx.save();
-            ctx.textBaseline = 'alphabetic';
-            const originalFont = pdfFontToCss(item.fontName);
-            ctx.font = `${originalFont.fontWeight} ${fontSizeInPixels}px ${originalFont.fontFamily}`;
-
-            // --- Stage 1: Soft, multi-pass core erase ---
-            ctx.shadowColor = item.originalBgColor || 'white';
-            ctx.shadowBlur = 2;
-            ctx.fillStyle = item.originalBgColor || 'white';
-            // Draw multiple times to build up opacity of the shadow eraser
-            for (let i = 0; i < 4; i++) {
-                ctx.fillText(item.originalText, tx[4], tx[5]);
-            }
-
-            // --- Stage 2: Hard-edge cleanup ---
-            ctx.shadowColor = 'transparent'; // Turn off shadow
-            ctx.shadowBlur = 0;
-            ctx.strokeStyle = item.originalBgColor || 'white';
-            ctx.lineWidth = 2; // Use a slightly thicker line to catch edges
-            ctx.strokeText(item.originalText, tx[4], tx[5]);
-
-            ctx.restore();
-
-
-            // --- Final Step: Draw the new character on top ---
             const selectedFontFamily = fontSelect.value;
             const isBold = fontBoldBtn.classList.contains('active');
             const selectedFontWeight = isBold ? 'bold' : 'normal';
 
             ctx.font = `${selectedFontWeight} ${fontSizeInPixels}px ${selectedFontFamily}`;
-            ctx.fillStyle = item.originalFontColor || 'black';
+            ctx.fillStyle = item.originalFontColor || 'black'; // Use original font color
+            
             ctx.textBaseline = 'alphabetic';
             ctx.fillText(item.currentText, tx[4], tx[5]);
         }
