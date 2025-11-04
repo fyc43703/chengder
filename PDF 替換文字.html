@@ -1115,9 +1115,9 @@
                                 <span>樣式與顏色</span>
                             </div>
                             <p>
-                                <b class="keyword">「 智慧樣式繼承 」</b>: 使用「取代」功能時，會自動繼承原始文字的<b style="color: var(--system-blue);">大小、顏色與背景</b>。而<b class="keyword">字型與粗體</b>則由上方工具列決定。<br>
-                                <b class="keyword">「 新增樣式 」</b>: 上方工具列的字型、字級、顏色、粗體等選項，<b class="keyword">專門用於使用「T」(文字工具) 新增的文字</b>與圖形樣式。<br>
-                                <b class="keyword">「 💧 (滴管) 」</b>: 可用於設定新增文字的顏色，點擊後可從畫面上吸取顏色。
+                                <b class="keyword">「 字型/字級 」</b>: 在執行「取代」或新增文字前，可預先選擇希望套用的字體和大小。<br>
+                                <b class="keyword">「 文字/背景顏色 」</b>: 可分別設定取代文字的字體顏色與背景色塊顏色。<br>
+                                <b class="keyword">「 💧 (滴管) 」</b>: 點擊顏色方塊旁的滴管圖示，滑鼠會變為滴管，此時點擊 PDF 畫面上任何位置，即可精確抓取該處的顏色，完美匹配原始文件色調。
                             </p>
                         </div>
 
@@ -1357,21 +1357,20 @@
             try {
                 pdfDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
                 await processAllPages();
+                
                 await setPageScale('width');
+                
                 await renderAllPages();
-                
-                await captureOriginalStyles();
-                
                 findAndHighlightAll();
+
                 setEditingControlsState(true);
                 toggleDrawingTool('select', true);
 
                 totalPagesIndicator.textContent = pdfDoc.numPages;
                 pageIndicator.style.display = 'inline-flex';
                 
-                // MODIFICATION: Removed the success message.
+                showStatus('', 'info', 0); // Clear status
                 document.getElementById('statusMessage').style.display = 'none';
-
             } catch (error) {
                 console.error('PDF 載入失敗:', error);
                 showStatus('PDF 載入失敗: ' + error.message, 'error');
@@ -1414,10 +1413,8 @@
         async function processAllPages() {
             pdfPageData = {};
             let globalItemId = 0;
-            const doc = await pdfjsLib.getDocument(await pdfDoc.getData()).promise;
-
-            for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
-                const page = await doc.getPage(pageNum);
+            for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                const page = await pdfDoc.getPage(pageNum);
                 const textContent = await page.getTextContent();
                 pdfPageData[pageNum] = { textItems: [], pageRef: page, drawings: [] };
 
@@ -1430,7 +1427,7 @@
                         const char = item.str[i];
                         const newTransform = [...item.transform];
                         newTransform[4] += i * charWidth;
-                        
+
                         pdfPageData[pageNum].textItems.push({
                             id: `p${pageNum}-i${globalItemId++}`,
                             originalText: char,
@@ -1439,33 +1436,30 @@
                             transform: newTransform,
                             width: charWidth,
                             height: item.height,
-                            fontName: item.fontName,
-                            originalFontColor: null,
-                            originalBgColor: null,
                         });
                     }
                 });
             }
         }
-        
+
         function drawModifiedTextOnCanvas(ctx, item, scale, viewport) {
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+            
+            // MODIFICATION: Automatically determine font size from the original text's properties.
             const fontSizeInPixels = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
             const effectiveHeight = fontSizeInPixels * 1.2;
             const boxTop = tx[5] - fontSizeInPixels;
             const scaledWidth = item.width * scale;
 
-            ctx.fillStyle = item.originalBgColor || 'white'; // Use original background color
+            ctx.fillStyle = backgroundColor.value;
             ctx.fillRect(tx[4], boxTop, scaledWidth, effectiveHeight);
             
-            // MODIFICATION: Get font family and weight from the toolbar, but use original size and color.
-            const selectedFontFamily = fontSelect.value;
+            // MODIFICATION: Check if the bold button is active.
             const isBold = fontBoldBtn.classList.contains('active');
-            const selectedFontWeight = isBold ? 'bold' : 'normal';
+            const fontWeight = isBold ? 'bold ' : '';
 
-            ctx.font = `${selectedFontWeight} ${fontSizeInPixels}px ${selectedFontFamily}`;
-            ctx.fillStyle = item.originalFontColor || 'black'; // Use original font color
-            
+            ctx.font = `${fontWeight}${fontSizeInPixels}px ${fontSelect.value}`;
+            ctx.fillStyle = fontColor.value;
             ctx.textBaseline = 'alphabetic';
             ctx.fillText(item.currentText, tx[4], tx[5]);
         }
@@ -1499,6 +1493,7 @@
                     drawArrow(ctx, item.x1 * scale, item.y1 * scale, item.x2 * scale, item.y2 * scale);
                     break;
                 case 'text':
+                    // MODIFICATION: Apply bold style if saved.
                     const fontWeight = item.fontWeight || 'normal';
                     ctx.font = `${fontWeight} ${item.size * scale}px ${item.font}`;
                     ctx.textBaseline = 'top';
@@ -1577,38 +1572,6 @@
             }
             hideSpinner();
         }
-        
-        async function captureOriginalStyles() {
-            showSpinner('正在採樣原始樣式...');
-            const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
-
-            for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-                updateSpinnerStatus(`正在分析第 ${pageNum} / ${pdfDoc.numPages} 頁樣式...`);
-                await new Promise(resolve => setTimeout(resolve, 10));
-                
-                const pageData = pdfPageData[pageNum];
-                const canvas = pageData.canvas;
-                if (!canvas) continue;
-                const ctx = canvas.getContext('2d');
-
-                for (const item of pageData.textItems) {
-                    if (!item.scaled) continue;
-                    
-                    const s = item.scaled;
-                    const bgX = Math.floor(s.tx[4] + 1);
-                    const bgY = Math.floor(s.tx[5] - s.fontSize + 1);
-                    const bgPixel = ctx.getImageData(bgX, bgY, 1, 1).data;
-                    item.originalBgColor = rgbToHex(bgPixel[0], bgPixel[1], bgPixel[2]);
-
-                    const textX = Math.floor(s.tx[4] + s.width / 2);
-                    const textY = Math.floor(s.tx[5] - s.fontSize / 2);
-                    const textPixel = ctx.getImageData(textX, textY, 1, 1).data;
-                    item.originalFontColor = rgbToHex(textPixel[0], textPixel[1], textPixel[2]);
-                }
-            }
-            hideSpinner();
-        }
-
 
         async function redrawPageCanvas(pageNum) {
             const pageData = pdfPageData[pageNum];
@@ -1650,9 +1613,10 @@
             editor.style.top = (s.tx[5] - s.fontSize - 2) + 'px';
             editor.style.width = (s.width + 4) + 'px';
             editor.style.height = (s.effectiveHeight + 4) + 'px';
-            
-            editor.style.fontSize = Math.max(12, s.fontSize) + 'px';
-            editor.style.fontFamily = fontSelect.value; 
+
+            const selectedFontSize = parseFloat(fontSizeSelect.value);
+            editor.style.fontSize = selectedFontSize + 'px';
+            editor.style.fontFamily = fontSelect.value;
 
             editor.addEventListener('blur', () => {
                 const newValue = editor.value || ' ';
@@ -2277,17 +2241,17 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0-1.4l-1.4-1.4a1 1 0 0 0-1.4 0L2 14.3V18h3.7l9-9zM12 11L13 10m-2 2l-3-3"/></svg>
                             </div>
                             <div class="guide-content">
-                                <h5>智慧樣式</h5>
-                                <p>替換文字時，會自動繼承<span class="keyword">原始字型、大小與顏色</span>，以保持文件風格一致。</p>
+                                <h5>樣式套用</h5>
+                                <p>替換後的文字將使用您選擇的 <span class="keyword">字型、字級與顏色</span>，可能與原始樣式不同。</p>
                             </div>
                         </div>
                         <div class="guide-item">
                             <div class="guide-icon">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.13 6.69l-3.32-3.32a2 2 0 0 0-2.82 0L2.82 14.53a2 2 0 0 0 0 2.82l3.32 3.32a2 2 0 0 0 2.82 0l9.17-9.17a2 2 0 0 0 0-2.82zM12 12l-2-2"/></svg>
                             </div>
-                             <div class="guide-content">
-                                <h5>新增樣式</h5>
-                                <p>工具列的樣式設定，專門用於<span class="keyword">新增的文字 (T)</span> 與圖形。</p>
+                            <div class="guide-content">
+                                <h5>滴管取色</h5>
+                                <p>使用 <span class="keyword">💧 滴管</span> 按鈕，可以從文件上直接抓取顏色套用。</p>
                             </div>
                         </div>
                         <div class="guide-item">
@@ -2478,11 +2442,14 @@
             const scaledWidth = image.naturalWidth * previewZoom;
             const scaledHeight = image.naturalHeight * previewZoom;
             
+            // MODIFIED: Conditional styling for centering vs scrolling
             if (scaledWidth <= container.clientWidth && scaledHeight <= container.clientHeight) {
+                // If image is smaller than container, center it
                 container.style.justifyContent = 'center';
                 container.style.alignItems = 'center';
                 image.style.transformOrigin = 'center center';
             } else {
+                // If image is larger, align top-left for scrolling
                 container.style.justifyContent = 'flex-start';
                 container.style.alignItems = 'flex-start';
                 image.style.transformOrigin = '0 0';
@@ -2829,6 +2796,7 @@
             inputArea.style.fontSize = fontSizeSelect.value + 'px';
             inputArea.style.color = fontColor.value;
             
+            // MODIFICATION: Apply bold style when creating new textbox.
             const isBold = fontBoldBtn.classList.contains('active');
             inputArea.style.fontWeight = isBold ? 'bold' : 'normal';
 
@@ -2839,6 +2807,7 @@
             inputArea.addEventListener('blur', () => {
                 const text = inputArea.innerText;
                 if (text.trim()) {
+                    // MODIFICATION: Save bold style state.
                     const textIsBold = inputArea.style.fontWeight === 'bold' || inputArea.style.fontWeight === '700';
                     const textData = {
                         type: 'text', text,
@@ -3027,6 +2996,7 @@
             prevResultBtn.addEventListener('click', navigateToPrevResult);
             nextResultBtn.addEventListener('click', navigateToNextResult);
             
+            // MODIFICATION: Add event listener for the new bold button.
             fontBoldBtn.addEventListener('click', () => {
                 fontBoldBtn.classList.toggle('active');
             });
@@ -3110,7 +3080,7 @@
                 if (imageHeight <= 0 || imageWidth <= 0) return;
 
                 const zoomRatio = Math.min(containerWidth / imageWidth, containerHeight / imageHeight);
-                previewZoom = Math.min(1.0, zoomRatio);
+                previewZoom = Math.min(1.0, zoomRatio); // Don't zoom larger than 100% on fit
                 applyPreviewZoom();
             });
             previewPrevPageBtn.addEventListener('click', () => {
@@ -3150,6 +3120,8 @@
                     previewImageContainer.scrollTop = newContentY - mouseY;
                 }
             }, { passive: false });
+
+            // MODIFIED: Panning functionality is removed.
             
             fontColorPickerBtn.addEventListener('click', () => toggleColorPickerMode('font'));
             bgColorPickerBtn.addEventListener('click', () => toggleColorPickerMode('bg'));
