@@ -1446,23 +1446,53 @@
             }
         }
         
+        // MODIFICATION: Re-added this helper function to get original font for the "erase" step
+        function pdfFontToCss(pdfFontName) {
+            const fontName = pdfFontName.toLowerCase();
+            let fontFamily = 'sans-serif'; // Default
+            let fontWeight = 'normal';
+
+            if (fontName.includes('bold')) {
+                fontWeight = 'bold';
+            }
+            if (fontName.includes('kai') || fontName.includes('kaiu')) { // 標楷體
+                fontFamily = "BiauKai, '標楷體', KaiTi, serif";
+            } else if (fontName.includes('song') || fontName.includes('ming')) { // 宋體/明體
+                 fontFamily = "'Noto Serif TC', 'Source Han Serif TC', '思源宋體', MingLiU, serif";
+            } else if (fontName.includes('hei')) { // 黑體
+                fontFamily = "'Noto Sans TC', 'Microsoft JhengHei', 'Source Han Sans TC', '思源黑體', sans-serif";
+            }
+            else if (fontName.includes('serif')) {
+                fontFamily = 'serif';
+            } else if (fontName.includes('mono')) {
+                fontFamily = 'monospace';
+            }
+
+            return { fontFamily, fontWeight };
+        }
+
         function drawModifiedTextOnCanvas(ctx, item, scale, viewport) {
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
             const fontSizeInPixels = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
-            const effectiveHeight = fontSizeInPixels * 1.2;
-            const boxTop = tx[5] - fontSizeInPixels;
-            const scaledWidth = item.width * scale;
-
-            ctx.fillStyle = item.originalBgColor || 'white'; // Use original background color
-            ctx.fillRect(tx[4], boxTop, scaledWidth, effectiveHeight);
             
+            // MODIFICATION: New "erase" logic
+            // Step 1: "Erase" the old character by drawing it again using the sampled background color.
+            ctx.save();
+            ctx.fillStyle = item.originalBgColor || 'white';
+            ctx.textBaseline = 'alphabetic';
+            // Use the original font info to make the "erase" shape as accurate as possible
+            const originalFont = pdfFontToCss(item.fontName);
+            ctx.font = `${originalFont.fontWeight} ${fontSizeInPixels}px ${originalFont.fontFamily}`;
+            ctx.fillText(item.originalText, tx[4], tx[5]);
+            ctx.restore();
+
+            // Step 2: Draw the new character on top.
             const selectedFontFamily = fontSelect.value;
             const isBold = fontBoldBtn.classList.contains('active');
             const selectedFontWeight = isBold ? 'bold' : 'normal';
 
             ctx.font = `${selectedFontWeight} ${fontSizeInPixels}px ${selectedFontFamily}`;
-            ctx.fillStyle = item.originalFontColor || 'black'; // Use original font color
-            
+            ctx.fillStyle = item.originalFontColor || 'black';
             ctx.textBaseline = 'alphabetic';
             ctx.fillText(item.currentText, tx[4], tx[5]);
         }
