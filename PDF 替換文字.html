@@ -279,7 +279,6 @@
             white-space: nowrap;
         }
         
-        /* Style for Auto Color Detect Checkbox */
         .auto-detect-group {
             display: flex;
             align-items: center;
@@ -540,6 +539,13 @@
            color: #f5f5f7;
         }
         
+        /* MODIFICATION: Style for the disabled color picker group */
+        .main-action-bar .btn-like-group.disabled-group {
+            opacity: 0.5;
+            pointer-events: none;
+            background-color: #a0a0a0;
+        }
+
         .main-action-bar .btn-like-group select {
             font-size: 13px;
             padding: 0 5px 0 8px;
@@ -558,7 +564,6 @@
             background: #2a2a2c;
         }
         
-        /* Style for the new Bold button */
         #fontBoldBtn {
             width: 40px;
             padding: 0;
@@ -1041,7 +1046,6 @@
                                 <label for="replaceText">取代文字</label>
                                 <input type="text" id="replaceText" placeholder="輸入新文字" list="replaceHistoryList" style="flex-grow:1;">
                                 <datalist id="replaceHistoryList"></datalist>
-                                <!-- MODIFICATION: Added auto color detect checkbox -->
                                 <div class="auto-detect-group">
                                     <input type="checkbox" id="autoColorDetect" checked title="自動偵測並套用原始文字顏色">
                                     <label for="autoColorDetect">自動偵測顏色</label>
@@ -1118,7 +1122,8 @@
                                     <select id="fontSizeSelect"></select>
                                     <button class="btn" id="fontBoldBtn" title="粗體"><b>B</b></button>
                                 </div>
-                                <div class="btn-like-group">
+                                <!-- MODIFICATION: Added ID to this group -->
+                                <div class="btn-like-group" id="fontColorGroup">
                                     <label for="fontColor">文字</label>
                                     <input type="color" id="fontColor" value="#000000">
                                     <button class="btn btn-secondary color-picker-btn" id="fontColorPickerBtn" title="從畫布上選取文字顏色">💧</button>
@@ -1331,6 +1336,7 @@
 
         const fontColorPickerBtn = document.getElementById('fontColorPickerBtn');
         const bgColorPickerBtn = document.getElementById('bgColorPickerBtn');
+        const fontColorGroup = document.getElementById('fontColorGroup'); // MODIFICATION: Get the group element
 
         const drawingTools = document.querySelectorAll('.drawing-tools .tool-btn');
         const strokeColorInput = document.getElementById('strokeColor');
@@ -1483,7 +1489,7 @@
                             transform: newTransform,
                             width: charWidth,
                             height: item.height,
-                            styles: null // Property to hold custom styles
+                            styles: null
                         });
                     }
                 });
@@ -1498,7 +1504,6 @@
             const boxTop = tx[5] - fontSizeInPixels;
             const scaledWidth = item.width * scale;
 
-            // MODIFICATION: Use styles from the item object, with fallbacks to global controls.
             const styles = item.styles || {};
             const bgColor = styles.backgroundColor || backgroundColor.value;
             const fgColor = styles.foregroundColor || fontColor.value;
@@ -1691,7 +1696,6 @@
             if (item.currentText === newText) return;
 
             if (recordHistory) {
-                // MODIFICATION: Store the full state of the item for undo.
                 const oldState = {
                     currentText: item.currentText,
                     isModified: item.isModified,
@@ -1704,7 +1708,6 @@
                 updateUndoButtonState();
             }
 
-            // MODIFICATION: Apply current global styles to the item.
             item.styles = item.styles || {};
             item.styles.foregroundColor = fontColor.value;
             item.styles.backgroundColor = backgroundColor.value;
@@ -1713,11 +1716,7 @@
 
             item.currentText = newText;
             item.isModified = item.currentText !== item.originalText;
-            if (!item.isModified && item.styles.foregroundColor === '#000000' && item.styles.backgroundColor === '#FFFFFF' && item.styles.fontWeight === 'normal') {
-                // If it's back to original text and default styles, we can consider it not modified.
-                // This is a simplification; a more robust check would compare against original detected styles if available.
-            }
-
+           
             redrawPageCanvas(pageNum);
         }
 
@@ -1897,13 +1896,11 @@
             if (!startItem || !startItem.scaled) return null;
 
             const s = startItem.scaled;
-            // Sample color from a point inside the first character
             const sampleX = Math.floor(s.tx[4] + s.width / 2);
             const sampleY = Math.floor(s.tx[5] - s.fontSize / 2);
             
             try {
                 const pixel = canvas.getContext('2d').getImageData(sampleX, sampleY, 1, 1).data;
-                // Don't detect pure white/transparent as it's likely background
                 if (pixel[0] > 250 && pixel[1] > 250 && pixel[2] > 250) return null;
 
                 const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => {
@@ -1947,18 +1944,15 @@
                 const result = searchResults[dynamicIndex];
                 const changesToRecord = [];
                 
-                // MODIFICATION: Detect color before replacing
                 const detectedColor = autoColorDetect.checked ? getDetectedColor(result) : null;
 
                 for (let i = 0; i < result.term.length; i++) {
                     const itemIndex = result.startItemIndex + i;
                     const item = pdfPageData[result.pageNum].textItems[itemIndex];
                     
-                    // Save old state for undo
                     const oldState = { currentText: item.currentText, isModified: item.isModified, styles: item.styles ? { ...item.styles } : null };
                     changesToRecord.push({ pageNum: result.pageNum, itemIndex, oldState });
 
-                    // Apply styles and update text
                     applyStylesToItem(item, detectedColor);
                     const newChar = i < replaceTextValue.length ? replaceTextValue[i] : ' ';
                     item.currentText = newChar;
@@ -2007,7 +2001,6 @@
                 const textItems = pdfPageData[result.pageNum].textItems;
                 pagesToUpdate.add(result.pageNum);
                 
-                // MODIFICATION: Detect color for each match
                 const detectedColor = autoColorDetect.checked ? getDetectedColor(result) : null;
 
                 for(let j = 0; j < result.term.length; j++) {
@@ -2064,7 +2057,6 @@
                 pdfPageData[pageNum].drawings.splice(index, 0, deletedObject);
                 pagesToUpdate.add(pageNum);
             } else {
-                 // MODIFICATION: Handle undo for items with style properties
                 for (const change of lastAction.changes) {
                     const { pageNum, itemIndex, oldState } = change;
                     const item = pdfPageData[pageNum].textItems[itemIndex];
@@ -2618,7 +2610,7 @@
                 btn.classList.toggle('active', btn.id.endsWith(currentDrawingTool));
             });
 
-            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE4SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
+            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE8SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
 
             if (currentDrawingTool === 'image-placement') {
                 pdfViewer.style.cursor = imageCursor;
@@ -3083,6 +3075,14 @@
             }
         }
         
+        // MODIFICATION: Function to toggle font color controls based on checkbox
+        function toggleFontColorControls() {
+            const isDisabled = autoColorDetect.checked;
+            fontColor.disabled = isDisabled;
+            fontColorPickerBtn.disabled = isDisabled;
+            fontColorGroup.classList.toggle('disabled-group', isDisabled);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const fontSizeFragment = document.createDocumentFragment();
             for (let i = 2; i <= 30; i++) {
@@ -3118,6 +3118,9 @@
             fontBoldBtn.addEventListener('click', () => {
                 fontBoldBtn.classList.toggle('active');
             });
+            
+            // MODIFICATION: Add event listener for the checkbox
+            autoColorDetect.addEventListener('change', toggleFontColorControls);
 
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) handleFile(e.target.files[0]);
@@ -3198,7 +3201,7 @@
                 if (imageHeight <= 0 || imageWidth <= 0) return;
 
                 const zoomRatio = Math.min(containerWidth / imageWidth, containerHeight / imageHeight);
-                previewZoom = Math.min(1.0, zoomRatio); // Don't zoom larger than 100% on fit
+                previewZoom = Math.min(1.0, zoomRatio);
                 applyPreviewZoom();
             });
             previewPrevPageBtn.addEventListener('click', () => {
@@ -3251,6 +3254,8 @@
 
             window.addEventListener('keydown', handleGlobalKeyDown);
 
+            // MODIFICATION: Set initial state of the color controls
+            toggleFontColorControls();
             resetTool(true);
         });
     </script>
