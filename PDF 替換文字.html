@@ -1234,6 +1234,9 @@
 
         let initialTotalResults = 0;
         
+        // --- 新增狀態變數 ---
+        let autoColorAppliedForThisSearch = false;
+        
         let previewZoom = 1.0;
         let currentPreviewPage = 1;
         let isPanning = false;
@@ -1322,6 +1325,51 @@
         const previewPageIndicator = document.getElementById('previewPageIndicator');
         let previewImageCache = {};
 
+        // --- 新增函式：從 Canvas 取得顏色 ---
+        function getColorsAtPosition(pageNum, x, y) {
+            const canvas = pdfPageData[pageNum]?.canvas;
+            if (!canvas) return null;
+
+            const ctx = canvas.getContext('2d');
+            const clamp = (val, max) => Math.max(0, Math.min(Math.floor(val), max - 1));
+
+            // Helper to get color at a point and convert to hex
+            const getColor = (px, py) => {
+                const clampedX = clamp(px, canvas.width);
+                const clampedY = clamp(py, canvas.height);
+                const pixel = ctx.getImageData(clampedX, clampedY, 1, 1).data;
+                return `#${[pixel[0], pixel[1], pixel[2]].map(c => c.toString(16).padStart(2, '0')).join('')}`;
+            };
+            
+            // 偵測文字顏色 (在字元中心點)
+            const textColor = getColor(x, y);
+
+            // 偵測背景顏色 (在字元左上方，假設為背景)
+            // 增加一點偏移量以避免取到相鄰的字元
+            const backgroundColor = getColor(x - 2, y - 2);
+
+            return { textColor, backgroundColor };
+        }
+
+        // --- 新增函式：執行自動顏色偵測與設定 ---
+        function applyAutoColors(resultItem) {
+             if (!resultItem) return;
+            const startItem = pdfPageData[resultItem.pageNum].textItems[resultItem.startItemIndex];
+            
+            if (startItem && startItem.scaled) {
+                const { tx, fontSize } = startItem.scaled;
+                // 取樣點設在字元垂直中心，以提高準確率
+                const sampleY = tx[5] - (fontSize / 2);
+                const colors = getColorsAtPosition(resultItem.pageNum, tx[4], sampleY);
+                
+                if (colors) {
+                    fontColor.value = colors.textColor;
+                    backgroundColor.value = colors.backgroundColor;
+                    console.log(`自動偵測顏色：文字=${colors.textColor}, 背景=${colors.backgroundColor}`);
+                }
+            }
+            autoColorAppliedForThisSearch = true; // 標記已執行
+        }
 
         function showSpinner(message) {
             spinnerStatus.textContent = message || '正在處理...';
@@ -1445,21 +1493,19 @@
         function drawModifiedTextOnCanvas(ctx, item, scale, viewport) {
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
             
-            // MODIFICATION: Automatically determine font size from the original text's properties.
             const fontSizeInPixels = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
             const effectiveHeight = fontSizeInPixels * 1.2;
             const boxTop = tx[5] - fontSizeInPixels;
             const scaledWidth = item.width * scale;
-
-            ctx.fillStyle = backgroundColor.value;
+            
+            // 使用 item 上儲存的顏色，如果沒有，則使用全域選擇器
+            ctx.fillStyle = item.bgColor || backgroundColor.value;
             ctx.fillRect(tx[4], boxTop, scaledWidth, effectiveHeight);
             
-            // MODIFICATION: Check if the bold button is active.
-            const isBold = fontBoldBtn.classList.contains('active');
-            const fontWeight = isBold ? 'bold ' : '';
+            const fontWeight = item.isBold ? 'bold ' : '';
 
             ctx.font = `${fontWeight}${fontSizeInPixels}px ${fontSelect.value}`;
-            ctx.fillStyle = fontColor.value;
+            ctx.fillStyle = item.fontColor || fontColor.value;
             ctx.textBaseline = 'alphabetic';
             ctx.fillText(item.currentText, tx[4], tx[5]);
         }
@@ -1493,7 +1539,6 @@
                     drawArrow(ctx, item.x1 * scale, item.y1 * scale, item.x2 * scale, item.y2 * scale);
                     break;
                 case 'text':
-                    // MODIFICATION: Apply bold style if saved.
                     const fontWeight = item.fontWeight || 'normal';
                     ctx.font = `${fontWeight} ${item.size * scale}px ${item.font}`;
                     ctx.textBaseline = 'top';
@@ -1644,13 +1689,18 @@
             if (recordHistory) {
                 historyStack.push({
                     actionType: 'singleEdit',
-                    changes: [{ pageNum, itemIndex, oldText: item.currentText }]
+                    changes: [{ pageNum, itemIndex, oldText: item.currentText, oldIsModified: item.isModified, oldColors: { fontColor: item.fontColor, bgColor: item.bgColor, isBold: item.isBold } }]
                 });
                 updateUndoButtonState();
             }
 
             item.currentText = newText;
-            item.isModified = item.currentText !== item.originalText;
+            item.isModified = true; // Any manual edit is a modification
+            
+            // 將當前 UI 上的樣式設定儲存到 item
+            item.fontColor = fontColor.value;
+            item.bgColor = backgroundColor.value;
+            item.isBold = fontBoldBtn.classList.contains('active');
 
             redrawPageCanvas(pageNum);
         }
@@ -1668,6 +1718,10 @@
 
         function findAndHighlightAll() {
             const term = searchText.value;
+            
+            // --- 修改：重置自動顏色偵測狀態 ---
+            autoColorAppliedForThisSearch = false;
+
             searchResults = [];
             originalSearchResults = [];
             document.querySelectorAll('.highlight-box, .highlight-box-next').forEach(box => box.remove());
@@ -1836,6 +1890,12 @@
             }
             
             const itemToReplace = originalSearchResults[currentSearchIndex];
+            
+            // --- 修改：在第一次替換時自動偵測顏色 ---
+            if (!autoColorAppliedForThisSearch) {
+                applyAutoColors(itemToReplace);
+            }
+            
             const dynamicIndex = searchResults.findIndex(res => 
                 res.pageNum === itemToReplace.pageNum && 
                 res.startItemIndex === itemToReplace.startItemIndex
@@ -1847,12 +1907,25 @@
 
                 for (let i = 0; i < result.term.length; i++) {
                     const itemIndex = result.startItemIndex + i;
-                    const oldText = pdfPageData[result.pageNum].textItems[itemIndex].currentText;
-                    changesToRecord.push({ pageNum: result.pageNum, itemIndex, oldText });
+                    const item = pdfPageData[result.pageNum].textItems[itemIndex];
+                    
+                    changesToRecord.push({ 
+                        pageNum: result.pageNum, itemIndex, 
+                        oldText: item.currentText, oldIsModified: item.isModified,
+                        oldColors: { fontColor: item.fontColor, bgColor: item.bgColor, isBold: item.isBold }
+                    });
 
                     const newChar = i < replaceTextValue.length ? replaceTextValue[i] : ' ';
-                    updateTextAndCanvas(result.pageNum, itemIndex, newChar, false);
+                    
+                    //直接修改 item 屬性，而不是呼叫 updateTextAndCanvas
+                    item.currentText = newChar;
+                    item.isModified = true;
+                    item.fontColor = fontColor.value;
+                    item.bgColor = backgroundColor.value;
+                    item.isBold = fontBoldBtn.classList.contains('active');
                 }
+                
+                redrawPageCanvas(result.pageNum);
 
                 if(changesToRecord.length > 0) {
                     historyStack.push({ actionType: 'replaceNext', changes: changesToRecord });
@@ -1883,11 +1956,19 @@
                 showStatus('錯誤：搜尋與取代文字的字數長度必須相同！', 'error');
                 return;
             }
+            
+            // --- 修改：在全部替換前自動偵測顏色 ---
+            if (!autoColorAppliedForThisSearch && searchResults.length > 0) {
+                applyAutoColors(searchResults[0]);
+            }
 
             showSpinner('正在全部替換...');
             const changesToRecord = [];
-            
             const pagesToUpdate = new Set();
+            
+            const currentFontColor = fontColor.value;
+            const currentBgColor = backgroundColor.value;
+            const currentIsBold = fontBoldBtn.classList.contains('active');
 
             for(const result of searchResults) {
                 const textItems = pdfPageData[result.pageNum].textItems;
@@ -1896,11 +1977,18 @@
                     const itemIndex = result.startItemIndex + j;
                     if (itemIndex < textItems.length) {
                         const item = textItems[itemIndex];
-                        changesToRecord.push({ pageNum: result.pageNum, itemIndex, oldText: item.currentText });
+                        changesToRecord.push({ 
+                            pageNum: result.pageNum, itemIndex, 
+                            oldText: item.currentText, oldIsModified: item.isModified,
+                            oldColors: { fontColor: item.fontColor, bgColor: item.bgColor, isBold: item.isBold }
+                        });
 
                         const newChar = j < replaceTextValue.length ? replaceTextValue[j] : ' ';
                         item.currentText = newChar;
-                        item.isModified = item.currentText !== item.originalText;
+                        item.isModified = true;
+                        item.fontColor = currentFontColor;
+                        item.bgColor = currentBgColor;
+                        item.isBold = currentIsBold;
                     }
                 }
             }
@@ -1946,10 +2034,19 @@
                 pagesToUpdate.add(pageNum);
             } else {
                 for (const change of lastAction.changes) {
-                    const { pageNum, itemIndex, oldText } = change;
+                    const { pageNum, itemIndex, oldText, oldIsModified, oldColors } = change;
                     const item = pdfPageData[pageNum].textItems[itemIndex];
                     item.currentText = oldText;
-                    item.isModified = item.currentText !== item.originalText;
+                    item.isModified = oldIsModified;
+                    if (oldColors) {
+                        item.fontColor = oldColors.fontColor;
+                        item.bgColor = oldColors.bgColor;
+                        item.isBold = oldColors.isBold;
+                    } else {
+                        delete item.fontColor;
+                        delete item.bgColor;
+                        delete item.isBold;
+                    }
                     pagesToUpdate.add(pageNum);
                 }
             }
@@ -2186,6 +2283,9 @@
             initialTotalResults = 0;
             historyStack = [];
             selectedObject = null;
+            
+            // --- 修改：重置自動顏色偵測狀態 ---
+            autoColorAppliedForThisSearch = false;
 
             setEditingControlsState(false);
             importFileBtn.disabled = false;
@@ -2442,14 +2542,11 @@
             const scaledWidth = image.naturalWidth * previewZoom;
             const scaledHeight = image.naturalHeight * previewZoom;
             
-            // MODIFIED: Conditional styling for centering vs scrolling
             if (scaledWidth <= container.clientWidth && scaledHeight <= container.clientHeight) {
-                // If image is smaller than container, center it
                 container.style.justifyContent = 'center';
                 container.style.alignItems = 'center';
                 image.style.transformOrigin = 'center center';
             } else {
-                // If image is larger, align top-left for scrolling
                 container.style.justifyContent = 'flex-start';
                 container.style.alignItems = 'flex-start';
                 image.style.transformOrigin = '0 0';
@@ -2796,7 +2893,6 @@
             inputArea.style.fontSize = fontSizeSelect.value + 'px';
             inputArea.style.color = fontColor.value;
             
-            // MODIFICATION: Apply bold style when creating new textbox.
             const isBold = fontBoldBtn.classList.contains('active');
             inputArea.style.fontWeight = isBold ? 'bold' : 'normal';
 
@@ -2807,7 +2903,6 @@
             inputArea.addEventListener('blur', () => {
                 const text = inputArea.innerText;
                 if (text.trim()) {
-                    // MODIFICATION: Save bold style state.
                     const textIsBold = inputArea.style.fontWeight === 'bold' || inputArea.style.fontWeight === '700';
                     const textData = {
                         type: 'text', text,
@@ -2996,7 +3091,6 @@
             prevResultBtn.addEventListener('click', navigateToPrevResult);
             nextResultBtn.addEventListener('click', navigateToNextResult);
             
-            // MODIFICATION: Add event listener for the new bold button.
             fontBoldBtn.addEventListener('click', () => {
                 fontBoldBtn.classList.toggle('active');
             });
@@ -3120,8 +3214,6 @@
                     previewImageContainer.scrollTop = newContentY - mouseY;
                 }
             }, { passive: false });
-
-            // MODIFIED: Panning functionality is removed.
             
             fontColorPickerBtn.addEventListener('click', () => toggleColorPickerMode('font'));
             bgColorPickerBtn.addEventListener('click', () => toggleColorPickerMode('bg'));
