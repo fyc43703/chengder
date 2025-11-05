@@ -278,6 +278,24 @@
             text-align: right;
             white-space: nowrap;
         }
+        
+        /* Style for Auto Color Detect Checkbox */
+        .auto-detect-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin: 0 4px;
+        }
+        .auto-detect-group label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--system-text);
+            cursor: pointer;
+        }
+        .auto-detect-group input[type="checkbox"] {
+            cursor: pointer;
+        }
+
 
         #searchReplacePanel input[type="text"] {
             padding: 8px 10px;
@@ -1023,6 +1041,11 @@
                                 <label for="replaceText">取代文字</label>
                                 <input type="text" id="replaceText" placeholder="輸入新文字" list="replaceHistoryList" style="flex-grow:1;">
                                 <datalist id="replaceHistoryList"></datalist>
+                                <!-- MODIFICATION: Added auto color detect checkbox -->
+                                <div class="auto-detect-group">
+                                    <input type="checkbox" id="autoColorDetect" checked title="自動偵測並套用原始文字顏色">
+                                    <label for="autoColorDetect">自動偵測顏色</label>
+                                </div>
                              </div>
 
                             <div class="action-buttons-group">
@@ -1136,6 +1159,7 @@
                                 <span>樣式與顏色</span>
                             </div>
                             <p>
+                                <b class="keyword">「 自動偵測顏色 」</b>: 執行取代時，預設會<b class="keyword">自動偵測並套用</b>原始文字的顏色。您也可取消勾選此項，改用下方的顏色選擇器手動指定顏色。<br>
                                 <b class="keyword">「 字型/字級/粗體 」</b>: 在執行「取代」或新增文字前，可預先選擇希望套用的字體、大小與粗細樣式。<br>
                                 <b class="keyword">「 文字/背景顏色 」</b>: 可分別設定取代文字的字體顏色與背景色塊顏色。<br>
                                 <b class="keyword">「 💧 (滴管) 」</b>: 點擊顏色方塊旁的滴管圖示，即可在 PDF 畫面上精確抓取顏色，完美匹配原始文件色調。
@@ -1288,6 +1312,8 @@
         const replaceNextBtn = document.getElementById('replaceNextBtn');
         const prevResultBtn = document.getElementById('prevResultBtn');
         const nextResultBtn = document.getElementById('nextResultBtn');
+        
+        const autoColorDetect = document.getElementById('autoColorDetect');
 
         const searchHistoryList = document.getElementById('searchHistoryList');
         const replaceHistoryList = document.getElementById('replaceHistoryList');
@@ -1457,6 +1483,7 @@
                             transform: newTransform,
                             width: charWidth,
                             height: item.height,
+                            styles: null // Property to hold custom styles
                         });
                     }
                 });
@@ -1466,21 +1493,23 @@
         function drawModifiedTextOnCanvas(ctx, item, scale, viewport) {
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
             
-            // MODIFICATION: Automatically determine font size from the original text's properties.
             const fontSizeInPixels = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
             const effectiveHeight = fontSizeInPixels * 1.2;
             const boxTop = tx[5] - fontSizeInPixels;
             const scaledWidth = item.width * scale;
 
-            ctx.fillStyle = backgroundColor.value;
+            // MODIFICATION: Use styles from the item object, with fallbacks to global controls.
+            const styles = item.styles || {};
+            const bgColor = styles.backgroundColor || backgroundColor.value;
+            const fgColor = styles.foregroundColor || fontColor.value;
+            const fontWeight = styles.fontWeight || 'normal';
+            const fontFamily = styles.fontFamily || fontSelect.value;
+            
+            ctx.fillStyle = bgColor;
             ctx.fillRect(tx[4], boxTop, scaledWidth, effectiveHeight);
             
-            // MODIFICATION: Check if the bold button is active.
-            const isBold = fontBoldBtn.classList.contains('active');
-            const fontWeight = isBold ? 'bold ' : '';
-
-            ctx.font = `${fontWeight}${fontSizeInPixels}px ${fontSelect.value}`;
-            ctx.fillStyle = fontColor.value;
+            ctx.font = `${fontWeight} ${fontSizeInPixels}px ${fontFamily}`;
+            ctx.fillStyle = fgColor;
             ctx.textBaseline = 'alphabetic';
             ctx.fillText(item.currentText, tx[4], tx[5]);
         }
@@ -1514,7 +1543,6 @@
                     drawArrow(ctx, item.x1 * scale, item.y1 * scale, item.x2 * scale, item.y2 * scale);
                     break;
                 case 'text':
-                    // MODIFICATION: Apply bold style if saved.
                     const fontWeight = item.fontWeight || 'normal';
                     ctx.font = `${fontWeight} ${item.size * scale}px ${item.font}`;
                     ctx.textBaseline = 'top';
@@ -1663,15 +1691,32 @@
             if (item.currentText === newText) return;
 
             if (recordHistory) {
+                // MODIFICATION: Store the full state of the item for undo.
+                const oldState = {
+                    currentText: item.currentText,
+                    isModified: item.isModified,
+                    styles: item.styles ? { ...item.styles } : null
+                };
                 historyStack.push({
                     actionType: 'singleEdit',
-                    changes: [{ pageNum, itemIndex, oldText: item.currentText }]
+                    changes: [{ pageNum, itemIndex, oldState }]
                 });
                 updateUndoButtonState();
             }
 
+            // MODIFICATION: Apply current global styles to the item.
+            item.styles = item.styles || {};
+            item.styles.foregroundColor = fontColor.value;
+            item.styles.backgroundColor = backgroundColor.value;
+            item.styles.fontFamily = fontSelect.value;
+            item.styles.fontWeight = fontBoldBtn.classList.contains('active') ? 'bold' : 'normal';
+
             item.currentText = newText;
             item.isModified = item.currentText !== item.originalText;
+            if (!item.isModified && item.styles.foregroundColor === '#000000' && item.styles.backgroundColor === '#FFFFFF' && item.styles.fontWeight === 'normal') {
+                // If it's back to original text and default styles, we can consider it not modified.
+                // This is a simplification; a more robust check would compare against original detected styles if available.
+            }
 
             redrawPageCanvas(pageNum);
         }
@@ -1844,6 +1889,42 @@
             updateDatalist(replaceHistoryList, replaceHistory);
         }
 
+        function getDetectedColor(result) {
+            const canvas = pdfPageData[result.pageNum].canvas;
+            if (!canvas) return null;
+
+            const startItem = pdfPageData[result.pageNum].textItems[result.startItemIndex];
+            if (!startItem || !startItem.scaled) return null;
+
+            const s = startItem.scaled;
+            // Sample color from a point inside the first character
+            const sampleX = Math.floor(s.tx[4] + s.width / 2);
+            const sampleY = Math.floor(s.tx[5] - s.fontSize / 2);
+            
+            try {
+                const pixel = canvas.getContext('2d').getImageData(sampleX, sampleY, 1, 1).data;
+                // Don't detect pure white/transparent as it's likely background
+                if (pixel[0] > 250 && pixel[1] > 250 && pixel[2] > 250) return null;
+
+                const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => {
+                    const hex = c.toString(16);
+                    return hex.length === 1 ? '0' + hex : hex;
+                }).join('');
+                return rgbToHex(pixel[0], pixel[1], pixel[2]);
+            } catch (e) {
+                console.error("Color detection failed:", e);
+                return null;
+            }
+        }
+        
+        function applyStylesToItem(item, detectedColor) {
+            item.styles = item.styles || {};
+            item.styles.foregroundColor = autoColorDetect.checked ? (detectedColor || fontColor.value) : fontColor.value;
+            item.styles.backgroundColor = backgroundColor.value;
+            item.styles.fontFamily = fontSelect.value;
+            item.styles.fontWeight = fontBoldBtn.classList.contains('active') ? 'bold' : 'normal';
+        }
+
         function replaceNext() {
             if (originalSearchResults.length === 0) return;
 
@@ -1865,14 +1946,23 @@
             if (dynamicIndex > -1) {
                 const result = searchResults[dynamicIndex];
                 const changesToRecord = [];
+                
+                // MODIFICATION: Detect color before replacing
+                const detectedColor = autoColorDetect.checked ? getDetectedColor(result) : null;
 
                 for (let i = 0; i < result.term.length; i++) {
                     const itemIndex = result.startItemIndex + i;
-                    const oldText = pdfPageData[result.pageNum].textItems[itemIndex].currentText;
-                    changesToRecord.push({ pageNum: result.pageNum, itemIndex, oldText });
+                    const item = pdfPageData[result.pageNum].textItems[itemIndex];
+                    
+                    // Save old state for undo
+                    const oldState = { currentText: item.currentText, isModified: item.isModified, styles: item.styles ? { ...item.styles } : null };
+                    changesToRecord.push({ pageNum: result.pageNum, itemIndex, oldState });
 
+                    // Apply styles and update text
+                    applyStylesToItem(item, detectedColor);
                     const newChar = i < replaceTextValue.length ? replaceTextValue[i] : ' ';
-                    updateTextAndCanvas(result.pageNum, itemIndex, newChar, false);
+                    item.currentText = newChar;
+                    item.isModified = true;
                 }
 
                 if(changesToRecord.length > 0) {
@@ -1880,6 +1970,7 @@
                     updateUndoButtonState();
                 }
                 
+                redrawPageCanvas(result.pageNum);
                 searchResults.splice(dynamicIndex, 1);
                 
                 drawAllHighlights();
@@ -1907,21 +1998,30 @@
 
             showSpinner('正在全部替換...');
             const changesToRecord = [];
-            
             const pagesToUpdate = new Set();
+            
+            const currentSearchResults = [...searchResults];
+            searchResults = [];
 
-            for(const result of searchResults) {
+            for(const result of currentSearchResults) {
                 const textItems = pdfPageData[result.pageNum].textItems;
-                 pagesToUpdate.add(result.pageNum);
+                pagesToUpdate.add(result.pageNum);
+                
+                // MODIFICATION: Detect color for each match
+                const detectedColor = autoColorDetect.checked ? getDetectedColor(result) : null;
+
                 for(let j = 0; j < result.term.length; j++) {
                     const itemIndex = result.startItemIndex + j;
                     if (itemIndex < textItems.length) {
                         const item = textItems[itemIndex];
-                        changesToRecord.push({ pageNum: result.pageNum, itemIndex, oldText: item.currentText });
+                        
+                        const oldState = { currentText: item.currentText, isModified: item.isModified, styles: item.styles ? { ...item.styles } : null };
+                        changesToRecord.push({ pageNum: result.pageNum, itemIndex, oldState });
 
+                        applyStylesToItem(item, detectedColor);
                         const newChar = j < replaceTextValue.length ? replaceTextValue[j] : ' ';
                         item.currentText = newChar;
-                        item.isModified = item.currentText !== item.originalText;
+                        item.isModified = true;
                     }
                 }
             }
@@ -1930,8 +2030,6 @@
                 historyStack.push({ actionType: 'replaceAll', changes: changesToRecord });
                 updateUndoButtonState();
             }
-            
-            searchResults = [];
             
             for(const pageNum of pagesToUpdate) {
                 await redrawPageCanvas(pageNum);
@@ -1966,11 +2064,15 @@
                 pdfPageData[pageNum].drawings.splice(index, 0, deletedObject);
                 pagesToUpdate.add(pageNum);
             } else {
+                 // MODIFICATION: Handle undo for items with style properties
                 for (const change of lastAction.changes) {
-                    const { pageNum, itemIndex, oldText } = change;
+                    const { pageNum, itemIndex, oldState } = change;
                     const item = pdfPageData[pageNum].textItems[itemIndex];
-                    item.currentText = oldText;
-                    item.isModified = item.currentText !== item.originalText;
+                    
+                    item.currentText = oldState.currentText;
+                    item.isModified = oldState.isModified;
+                    item.styles = oldState.styles ? { ...oldState.styles } : null;
+
                     pagesToUpdate.add(pageNum);
                 }
             }
@@ -2184,6 +2286,7 @@
             prevResultBtn.disabled = true;
             nextResultBtn.disabled = true;
             importFileBtnInPanel.disabled = !enabled;
+            autoColorDetect.disabled = !enabled;
 
             openExportModalBtn.style.display = enabled ? 'inline-flex' : 'none';
             openExportModalBtn.disabled = !enabled;
@@ -2271,8 +2374,8 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.13 6.69l-3.32-3.32a2 2 0 0 0-2.82 0L2.82 14.53a2 2 0 0 0 0 2.82l3.32 3.32a2 2 0 0 0 2.82 0l9.17-9.17a2 2 0 0 0 0-2.82zM12 12l-2-2"/></svg>
                             </div>
                             <div class="guide-content">
-                                <h5>滴管取色</h5>
-                                <p>點擊 <span class="keyword">💧 滴管</span> 按鈕，即可直接從文件中擷取顏色並套用至文字或物件。</p>
+                                <h5>顏色偵測與滴管</h5>
+                                <p>預設<span class="keyword">自動偵測</span>原始顏色，也可取消勾選，或用 <span class="keyword">💧 滴管</span> 從文件中擷取顏色。</p>
                             </div>
                         </div>
                         <div class="guide-item">
@@ -2463,14 +2566,11 @@
             const scaledWidth = image.naturalWidth * previewZoom;
             const scaledHeight = image.naturalHeight * previewZoom;
             
-            // MODIFIED: Conditional styling for centering vs scrolling
             if (scaledWidth <= container.clientWidth && scaledHeight <= container.clientHeight) {
-                // If image is smaller than container, center it
                 container.style.justifyContent = 'center';
                 container.style.alignItems = 'center';
                 image.style.transformOrigin = 'center center';
             } else {
-                // If image is larger, align top-left for scrolling
                 container.style.justifyContent = 'flex-start';
                 container.style.alignItems = 'flex-start';
                 image.style.transformOrigin = '0 0';
@@ -2817,7 +2917,6 @@
             inputArea.style.fontSize = fontSizeSelect.value + 'px';
             inputArea.style.color = fontColor.value;
             
-            // MODIFICATION: Apply bold style when creating new textbox.
             const isBold = fontBoldBtn.classList.contains('active');
             inputArea.style.fontWeight = isBold ? 'bold' : 'normal';
 
@@ -2828,7 +2927,6 @@
             inputArea.addEventListener('blur', () => {
                 const text = inputArea.innerText;
                 if (text.trim()) {
-                    // MODIFICATION: Save bold style state.
                     const textIsBold = inputArea.style.fontWeight === 'bold' || inputArea.style.fontWeight === '700';
                     const textData = {
                         type: 'text', text,
@@ -2925,7 +3023,7 @@
                         break;
                     case 'text':
                          const tempCtxForText = document.createElement('canvas').getContext('2d');
-                         tempCtxForText.font = `${obj.size}px ${obj.font}`;
+                         tempCtxForText.font = `${obj.fontWeight || 'normal'} ${obj.size}px ${obj.font}`;
                          const textMetrics = tempCtxForText.measureText(obj.text);
                          const textWidth = textMetrics.width;
                          const textHeight = obj.size * 1.2;
@@ -3017,7 +3115,6 @@
             prevResultBtn.addEventListener('click', navigateToPrevResult);
             nextResultBtn.addEventListener('click', navigateToNextResult);
             
-            // MODIFICATION: Add event listener for the new bold button.
             fontBoldBtn.addEventListener('click', () => {
                 fontBoldBtn.classList.toggle('active');
             });
@@ -3141,8 +3238,6 @@
                     previewImageContainer.scrollTop = newContentY - mouseY;
                 }
             }, { passive: false });
-
-            // MODIFIED: Panning functionality is removed.
             
             fontColorPickerBtn.addEventListener('click', () => toggleColorPickerMode('font'));
             bgColorPickerBtn.addEventListener('click', () => toggleColorPickerMode('bg'));
