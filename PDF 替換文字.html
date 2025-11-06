@@ -539,7 +539,6 @@
            color: #f5f5f7;
         }
         
-        /* MODIFICATION: Style for the disabled color picker group */
         .main-action-bar .btn-like-group.disabled-group {
             opacity: 0.5;
             pointer-events: none;
@@ -1122,7 +1121,6 @@
                                     <select id="fontSizeSelect"></select>
                                     <button class="btn" id="fontBoldBtn" title="粗體"><b>B</b></button>
                                 </div>
-                                <!-- MODIFICATION: Added ID to this group -->
                                 <div class="btn-like-group" id="fontColorGroup">
                                     <label for="fontColor">文字</label>
                                     <input type="color" id="fontColor" value="#000000">
@@ -1336,7 +1334,7 @@
 
         const fontColorPickerBtn = document.getElementById('fontColorPickerBtn');
         const bgColorPickerBtn = document.getElementById('bgColorPickerBtn');
-        const fontColorGroup = document.getElementById('fontColorGroup'); // MODIFICATION: Get the group element
+        const fontColorGroup = document.getElementById('fontColorGroup');
 
         const drawingTools = document.querySelectorAll('.drawing-tools .tool-btn');
         const strokeColorInput = document.getElementById('strokeColor');
@@ -1715,7 +1713,7 @@
             item.styles.fontWeight = fontBoldBtn.classList.contains('active') ? 'bold' : 'normal';
 
             item.currentText = newText;
-            item.isModified = item.currentText !== item.originalText;
+            item.isModified = true;
            
             redrawPageCanvas(pageNum);
         }
@@ -1896,18 +1894,46 @@
             if (!startItem || !startItem.scaled) return null;
 
             const s = startItem.scaled;
-            const sampleX = Math.floor(s.tx[4] + s.width / 2);
-            const sampleY = Math.floor(s.tx[5] - s.fontSize / 2);
-            
-            try {
-                const pixel = canvas.getContext('2d').getImageData(sampleX, sampleY, 1, 1).data;
-                if (pixel[0] > 250 && pixel[1] > 250 && pixel[2] > 250) return null;
+            const ctx = canvas.getContext('2d');
+            const colorCounts = {};
 
-                const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => {
-                    const hex = c.toString(16);
-                    return hex.length === 1 ? '0' + hex : hex;
-                }).join('');
-                return rgbToHex(pixel[0], pixel[1], pixel[2]);
+            const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+
+            // MODIFICATION: Sample a 3x3 grid of points instead of just the center
+            const samplePoints = [
+                { x: 0.25, y: 0.25 }, { x: 0.5, y: 0.25 }, { x: 0.75, y: 0.25 },
+                { x: 0.25, y: 0.5 },  { x: 0.5, y: 0.5 },  { x: 0.75, y: 0.5 },
+                { x: 0.25, y: 0.75 }, { x: 0.5, y: 0.75 }, { x: 0.75, y: 0.75 }
+            ];
+
+            try {
+                for (const point of samplePoints) {
+                    const sampleX = Math.floor(s.tx[4] + (s.width * point.x));
+                    const sampleY = Math.floor(s.tx[5] - s.fontSize + (s.effectiveHeight * point.y));
+                    
+                    const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+                    const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+
+                    colorCounts[hex] = (colorCounts[hex] || 0) + 1;
+                }
+
+                const sortedColors = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]);
+
+                if (sortedColors.length === 0) return null;
+                if (sortedColors.length === 1) {
+                     // If only one color is found, it's the text color, unless it's pure white
+                    return (sortedColors[0][0] === '#ffffff') ? null : sortedColors[0][0];
+                }
+
+                // The most frequent color is likely the background.
+                // If the most frequent color is pure white, the second most frequent is the text color.
+                if (sortedColors[0][0] === '#ffffff') {
+                    return sortedColors[1][0];
+                }
+
+                // Otherwise, the second most frequent color is the text color.
+                return sortedColors[1][0];
+
             } catch (e) {
                 console.error("Color detection failed:", e);
                 return null;
@@ -2105,10 +2131,7 @@
 
                 const ctx = canvas.getContext('2d');
                 const pixel = ctx.getImageData(x, y, 1, 1).data;
-                const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => {
-                    const hex = c.toString(16);
-                    return hex.length === 1 ? '0' + hex : hex;
-                }).join('');
+                const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
 
                 const hexColor = rgbToHex(pixel[0], pixel[1], pixel[2]);
 
@@ -2610,7 +2633,7 @@
                 btn.classList.toggle('active', btn.id.endsWith(currentDrawingTool));
             });
 
-            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE8SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
+            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE4SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
 
             if (currentDrawingTool === 'image-placement') {
                 pdfViewer.style.cursor = imageCursor;
@@ -3075,7 +3098,6 @@
             }
         }
         
-        // MODIFICATION: Function to toggle font color controls based on checkbox
         function toggleFontColorControls() {
             const isDisabled = autoColorDetect.checked;
             fontColor.disabled = isDisabled;
@@ -3119,7 +3141,6 @@
                 fontBoldBtn.classList.toggle('active');
             });
             
-            // MODIFICATION: Add event listener for the checkbox
             autoColorDetect.addEventListener('change', toggleFontColorControls);
 
             fileInput.addEventListener('change', (e) => {
@@ -3254,7 +3275,6 @@
 
             window.addEventListener('keydown', handleGlobalKeyDown);
 
-            // MODIFICATION: Set initial state of the color controls
             toggleFontColorControls();
             resetTool(true);
         });
