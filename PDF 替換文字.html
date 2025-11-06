@@ -1460,55 +1460,6 @@
             }
         }
         
-        // MODIFICATION: New function to analyze PDF drawing operators for styles
-        async function analyzePageStyles(pageNum, page) {
-            const textContent = await page.getTextContent();
-            const operatorList = await page.getOperatorList();
-            
-            const OPS = pdfjsLib.OPS;
-            let currentFillColor = "#000000";
-
-            const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => Math.round(c * 255).toString(16).padStart(2, '0')).join('');
-
-            // Find all text drawing commands and their preceding color commands
-            for (let i = 0; i < operatorList.fnArray.length; i++) {
-                const op = operatorList.fnArray[i];
-                const args = operatorList.argsArray[i];
-
-                if (op === OPS.setFillRGBColor) {
-                    currentFillColor = rgbToHex(args[0], args[1], args[2]);
-                } else if (op === OPS.setFillGray) {
-                    currentFillColor = rgbToHex(args[0], args[0], args[0]);
-                } else if (op === OPS.showText) {
-                    // This is a simplification. A full implementation would need to handle text matrices (Tm)
-                    // and correctly map operator text to textContent items. This is very complex.
-                    // For now, we'll associate the color with any nearby text item. This is still a heuristic.
-                }
-            }
-            
-            // A more robust approach: Map textContent items to their most likely color
-            for (const item of textContent.items) {
-                 if (!item.str || item.str.trim() === '') continue;
-                 
-                 const charWidth = item.width / item.str.length;
-                 for (let i = 0; i < item.str.length; i++) {
-                    const targetTransform = [...item.transform];
-                    targetTransform[4] += i * charWidth;
-                    
-                    // Find the closest text item in our pre-processed list
-                    const foundItem = pdfPageData[pageNum].textItems.find(ourItem => 
-                        Math.abs(ourItem.transform[4] - targetTransform[4]) < 0.1 &&
-                        Math.abs(ourItem.transform[5] - targetTransform[5]) < 0.1
-                    );
-                    
-                    if (foundItem && !foundItem.originalColor) {
-                        foundItem.originalColor = currentFillColor; // This is still an approximation
-                    }
-                 }
-            }
-        }
-
-
         async function processAllPages() {
             pdfPageData = {};
             let globalItemId = 0;
@@ -1537,14 +1488,12 @@
                             width: charWidth,
                             height: item.height,
                             styles: null,
-                            originalColor: null // MODIFICATION: Add property for pre-analyzed color
+                            originalColor: null 
                         });
                     }
                 }
-                 // MODIFICATION: Run style analysis after populating textItems
-                await analyzePageStyles(pageNum, page);
             }
-             hideSpinner();
+            hideSpinner();
         }
 
         function drawModifiedTextOnCanvas(ctx, item, scale, viewport) {
@@ -1636,15 +1585,6 @@
                 const ctx = canvas.getContext('2d');
                 await page.render({ canvasContext: ctx, viewport: viewport }).promise;
 
-                // MODIFICATION: After rendering, now we can accurately get original colors
-                if (pdfPageData[pageNum].textItems.some(item => !item.originalColor)) {
-                    for (const item of pdfPageData[pageNum].textItems) {
-                        if (!item.originalColor) { // Only fetch if not already determined by operator list
-                             item.originalColor = getPreciseOriginalColor(pageNum, item);
-                        }
-                    }
-                }
-
                 pdfPageData[pageNum].textItems.forEach(item => {
                     if (item.isModified) {
                         drawModifiedTextOnCanvas(ctx, item, currentScale, viewport);
@@ -1710,51 +1650,81 @@
             });
         }
         
-        // MODIFICATION: Renamed and repurposed getDetectedColor
+        // MODIFICATION: Final, robust color detection logic
         function getDetectedColor(result) {
-            // This function now just reads the pre-analyzed color
-            const startItem = pdfPageData[result.pageNum].textItems[result.startItemIndex];
-            return startItem ? startItem.originalColor : null;
-        }
+            const item = pdfPageData[result.pageNum].textItems[result.startItemIndex];
+            if (!item) return null;
 
-        // MODIFICATION: New precise color detection using multi-point sampling, as a fallback
-        function getPreciseOriginalColor(pageNum, item) {
-             const canvas = pdfPageData[pageNum].canvas;
+            // Use cached color if available
+            if (item.originalColor) return item.originalColor;
+
+            const canvas = pdfPageData[result.pageNum].canvas;
             if (!canvas || !item.scaled) return null;
 
             const s = item.scaled;
             const ctx = canvas.getContext('2d');
-            const colorCounts = {};
-            const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+            
+            const rect = {
+                x: Math.floor(s.tx[4]),
+                y: Math.floor(s.tx[5] - s.fontSize),
+                w: Math.ceil(s.width),
+                h: Math.ceil(s.effectiveHeight)
+            };
 
-            const samplePoints = [
-                { x: 0.25, y: 0.25 }, { x: 0.5, y: 0.25 }, { x: 0.75, y: 0.25 },
-                { x: 0.25, y: 0.5 },  { x: 0.5, y: 0.5 },  { x: 0.75, y: 0.5 },
-                { x: 0.25, y: 0.75 }, { x: 0.5, y: 0.75 }, { x: 0.75, y: 0.75 }
-            ];
+            if (rect.w < 1 || rect.h < 1) return null;
+            if (rect.x < 0 || rect.y < 0 || rect.x + rect.w > canvas.width || rect.y + rect.h > canvas.height) return null;
 
             try {
-                for (const point of samplePoints) {
-                    const sampleX = Math.floor(s.tx[4] + (s.width * point.x));
-                    const sampleY = Math.floor(s.tx[5] - s.fontSize + (s.effectiveHeight * point.y));
-                    
-                    if (sampleX < 0 || sampleX >= canvas.width || sampleY < 0 || sampleY >= canvas.height) continue;
-                    
-                    const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
-                    const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+                const imageData = ctx.getImageData(rect.x, rect.y, rect.w, rect.h);
+                const data = imageData.data;
+                const colorCounts = {};
+
+                for (let i = 0; i < data.length; i += 4) {
+                    if (data[i + 3] < 255) continue; 
+                    const hex = '#' + data[i].toString(16).padStart(2, '0') +
+                                data[i + 1].toString(16).padStart(2, '0') +
+                                data[i + 2].toString(16).padStart(2, '0');
                     colorCounts[hex] = (colorCounts[hex] || 0) + 1;
                 }
 
                 const sortedColors = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]);
 
-                if (sortedColors.length === 0) return '#000000'; // Default black
-                if (sortedColors.length === 1) return sortedColors[0][0];
+                if (sortedColors.length < 2) {
+                    if (sortedColors.length === 1 && sortedColors[0][0] !== '#ffffff') {
+                         item.originalColor = sortedColors[0][0]; // Cache result
+                         return item.originalColor;
+                    }
+                    return null;
+                }
                 
-                // Usually, the most frequent color is the background. The second one is the text.
-                return sortedColors[1][0];
+                const mostFrequentColor = sortedColors[0][0];
+                const secondMostFrequentColor = sortedColors[1][0];
+
+                // Heuristic: If the most frequent color is near-white, it's the background. Text is the second color.
+                const r1 = parseInt(mostFrequentColor.slice(1, 3), 16);
+                const g1 = parseInt(mostFrequentColor.slice(3, 5), 16);
+                const b1 = parseInt(mostFrequentColor.slice(5, 7), 16);
+                if (r1 > 240 && g1 > 240 && b1 > 240) {
+                     item.originalColor = secondMostFrequentColor;
+                     return item.originalColor;
+                }
+                
+                // Heuristic: If the second most frequent color is near-white, it's the background (e.g. white text on color bg).
+                const r2 = parseInt(secondMostFrequentColor.slice(1, 3), 16);
+                const g2 = parseInt(secondMostFrequentColor.slice(3, 5), 16);
+                const b2 = parseInt(secondMostFrequentColor.slice(5, 7), 16);
+                if (r2 > 240 && g2 > 240 && b2 > 240) {
+                     item.originalColor = mostFrequentColor;
+                     return item.originalColor;
+                }
+                
+                // Default fallback: assume second most frequent is text.
+                item.originalColor = secondMostFrequentColor;
+                return item.originalColor;
+
             } catch (e) {
-                console.error("Precise color detection failed:", e);
-                return '#000000';
+                console.error("Color detection using getImageData failed:", e);
+                return null;
             }
         }
 
@@ -2552,7 +2522,7 @@
             };
 
             if (previewImageCache[pageNum]) {
-                mainImage.src = previewImageCache[pageNum];
+                mainImage.src = dataUrl;
             } else {
                 try {
                     const page = pdfPageData[pageNum].pageRef;
