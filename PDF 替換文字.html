@@ -539,7 +539,6 @@
            color: #f5f5f7;
         }
         
-        /* MODIFICATION: Style for the disabled color picker group */
         .main-action-bar .btn-like-group.disabled-group {
             opacity: 0.5;
             pointer-events: none;
@@ -1122,7 +1121,6 @@
                                     <select id="fontSizeSelect"></select>
                                     <button class="btn" id="fontBoldBtn" title="粗體"><b>B</b></button>
                                 </div>
-                                <!-- MODIFICATION: Added ID to this group -->
                                 <div class="btn-like-group" id="fontColorGroup">
                                     <label for="fontColor">文字</label>
                                     <input type="color" id="fontColor" value="#000000">
@@ -1336,7 +1334,7 @@
 
         const fontColorPickerBtn = document.getElementById('fontColorPickerBtn');
         const bgColorPickerBtn = document.getElementById('bgColorPickerBtn');
-        const fontColorGroup = document.getElementById('fontColorGroup'); // MODIFICATION: Get the group element
+        const fontColorGroup = document.getElementById('fontColorGroup');
 
         const drawingTools = document.querySelectorAll('.drawing-tools .tool-btn');
         const strokeColorInput = document.getElementById('strokeColor');
@@ -1422,7 +1420,7 @@
                 totalPagesIndicator.textContent = pdfDoc.numPages;
                 pageIndicator.style.display = 'inline-flex';
                 
-                showStatus('', 'info', 0); // Clear status
+                showStatus('', 'info', 0);
                 document.getElementById('statusMessage').style.display = 'none';
             } catch (error) {
                 console.error('PDF 載入失敗:', error);
@@ -1453,12 +1451,60 @@
                 if (fitType === 'page') {
                     const heightScale = containerHeight / pageHeight;
                     currentScale = Math.min(widthScale, heightScale);
-                } else { // default to 'width'
+                } else {
                     currentScale = widthScale;
                 }
             } catch (error) {
                 console.error("Failed to set page scale:", error);
-                currentScale = 1.0; // Fallback
+                currentScale = 1.0;
+            }
+        }
+        
+        // MODIFICATION: New function to analyze PDF drawing operators for styles
+        async function analyzePageStyles(pageNum, page) {
+            const textContent = await page.getTextContent();
+            const operatorList = await page.getOperatorList();
+            
+            const OPS = pdfjsLib.OPS;
+            let currentFillColor = "#000000";
+
+            const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => Math.round(c * 255).toString(16).padStart(2, '0')).join('');
+
+            // Find all text drawing commands and their preceding color commands
+            for (let i = 0; i < operatorList.fnArray.length; i++) {
+                const op = operatorList.fnArray[i];
+                const args = operatorList.argsArray[i];
+
+                if (op === OPS.setFillRGBColor) {
+                    currentFillColor = rgbToHex(args[0], args[1], args[2]);
+                } else if (op === OPS.setFillGray) {
+                    currentFillColor = rgbToHex(args[0], args[0], args[0]);
+                } else if (op === OPS.showText) {
+                    // This is a simplification. A full implementation would need to handle text matrices (Tm)
+                    // and correctly map operator text to textContent items. This is very complex.
+                    // For now, we'll associate the color with any nearby text item. This is still a heuristic.
+                }
+            }
+            
+            // A more robust approach: Map textContent items to their most likely color
+            for (const item of textContent.items) {
+                 if (!item.str || item.str.trim() === '') continue;
+                 
+                 const charWidth = item.width / item.str.length;
+                 for (let i = 0; i < item.str.length; i++) {
+                    const targetTransform = [...item.transform];
+                    targetTransform[4] += i * charWidth;
+                    
+                    // Find the closest text item in our pre-processed list
+                    const foundItem = pdfPageData[pageNum].textItems.find(ourItem => 
+                        Math.abs(ourItem.transform[4] - targetTransform[4]) < 0.1 &&
+                        Math.abs(ourItem.transform[5] - targetTransform[5]) < 0.1
+                    );
+                    
+                    if (foundItem && !foundItem.originalColor) {
+                        foundItem.originalColor = currentFillColor; // This is still an approximation
+                    }
+                 }
             }
         }
 
@@ -1466,14 +1512,15 @@
         async function processAllPages() {
             pdfPageData = {};
             let globalItemId = 0;
+            showSpinner('正在分析 PDF 結構...');
             for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                updateSpinnerStatus(`正在分析第 ${pageNum} / ${pdfDoc.numPages} 頁...`);
                 const page = await pdfDoc.getPage(pageNum);
                 const textContent = await page.getTextContent();
                 pdfPageData[pageNum] = { textItems: [], pageRef: page, drawings: [] };
 
-                textContent.items.forEach((item) => {
-                    if (!item.str || item.str.trim() === '') return;
-
+                for (const item of textContent.items) {
+                    if (!item.str || item.str.trim() === '') continue;
                     const charWidth = item.width / item.str.length;
 
                     for (let i = 0; i < item.str.length; i++) {
@@ -1489,11 +1536,15 @@
                             transform: newTransform,
                             width: charWidth,
                             height: item.height,
-                            styles: null
+                            styles: null,
+                            originalColor: null // MODIFICATION: Add property for pre-analyzed color
                         });
                     }
-                });
+                }
+                 // MODIFICATION: Run style analysis after populating textItems
+                await analyzePageStyles(pageNum, page);
             }
+             hideSpinner();
         }
 
         function drawModifiedTextOnCanvas(ctx, item, scale, viewport) {
@@ -1506,7 +1557,7 @@
 
             const styles = item.styles || {};
             const bgColor = styles.backgroundColor || backgroundColor.value;
-            const fgColor = styles.foregroundColor || fontColor.value;
+            const fgColor = styles.foregroundColor || item.originalColor || fontColor.value;
             const fontWeight = styles.fontWeight || 'normal';
             const fontFamily = styles.fontFamily || fontSelect.value;
             
@@ -1585,6 +1636,15 @@
                 const ctx = canvas.getContext('2d');
                 await page.render({ canvasContext: ctx, viewport: viewport }).promise;
 
+                // MODIFICATION: After rendering, now we can accurately get original colors
+                if (pdfPageData[pageNum].textItems.some(item => !item.originalColor)) {
+                    for (const item of pdfPageData[pageNum].textItems) {
+                        if (!item.originalColor) { // Only fetch if not already determined by operator list
+                             item.originalColor = getPreciseOriginalColor(pageNum, item);
+                        }
+                    }
+                }
+
                 pdfPageData[pageNum].textItems.forEach(item => {
                     if (item.isModified) {
                         drawModifiedTextOnCanvas(ctx, item, currentScale, viewport);
@@ -1648,6 +1708,54 @@
             pageData.drawings.forEach(item => {
                 drawSavedItem(ctx, item, currentScale);
             });
+        }
+        
+        // MODIFICATION: Renamed and repurposed getDetectedColor
+        function getDetectedColor(result) {
+            // This function now just reads the pre-analyzed color
+            const startItem = pdfPageData[result.pageNum].textItems[result.startItemIndex];
+            return startItem ? startItem.originalColor : null;
+        }
+
+        // MODIFICATION: New precise color detection using multi-point sampling, as a fallback
+        function getPreciseOriginalColor(pageNum, item) {
+             const canvas = pdfPageData[pageNum].canvas;
+            if (!canvas || !item.scaled) return null;
+
+            const s = item.scaled;
+            const ctx = canvas.getContext('2d');
+            const colorCounts = {};
+            const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+
+            const samplePoints = [
+                { x: 0.25, y: 0.25 }, { x: 0.5, y: 0.25 }, { x: 0.75, y: 0.25 },
+                { x: 0.25, y: 0.5 },  { x: 0.5, y: 0.5 },  { x: 0.75, y: 0.5 },
+                { x: 0.25, y: 0.75 }, { x: 0.5, y: 0.75 }, { x: 0.75, y: 0.75 }
+            ];
+
+            try {
+                for (const point of samplePoints) {
+                    const sampleX = Math.floor(s.tx[4] + (s.width * point.x));
+                    const sampleY = Math.floor(s.tx[5] - s.fontSize + (s.effectiveHeight * point.y));
+                    
+                    if (sampleX < 0 || sampleX >= canvas.width || sampleY < 0 || sampleY >= canvas.height) continue;
+                    
+                    const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+                    const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+                    colorCounts[hex] = (colorCounts[hex] || 0) + 1;
+                }
+
+                const sortedColors = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]);
+
+                if (sortedColors.length === 0) return '#000000'; // Default black
+                if (sortedColors.length === 1) return sortedColors[0][0];
+                
+                // Usually, the most frequent color is the background. The second one is the text.
+                return sortedColors[1][0];
+            } catch (e) {
+                console.error("Precise color detection failed:", e);
+                return '#000000';
+            }
         }
 
         function createEditor(pageNum, itemIndex) {
@@ -1715,7 +1823,7 @@
             item.styles.fontWeight = fontBoldBtn.classList.contains('active') ? 'bold' : 'normal';
 
             item.currentText = newText;
-            item.isModified = item.currentText !== item.originalText;
+            item.isModified = true;
            
             redrawPageCanvas(pageNum);
         }
@@ -1887,32 +1995,6 @@
             updateDatalist(searchHistoryList, searchHistory);
             updateDatalist(replaceHistoryList, replaceHistory);
         }
-
-        function getDetectedColor(result) {
-            const canvas = pdfPageData[result.pageNum].canvas;
-            if (!canvas) return null;
-
-            const startItem = pdfPageData[result.pageNum].textItems[result.startItemIndex];
-            if (!startItem || !startItem.scaled) return null;
-
-            const s = startItem.scaled;
-            const sampleX = Math.floor(s.tx[4] + s.width / 2);
-            const sampleY = Math.floor(s.tx[5] - s.fontSize / 2);
-            
-            try {
-                const pixel = canvas.getContext('2d').getImageData(sampleX, sampleY, 1, 1).data;
-                if (pixel[0] > 250 && pixel[1] > 250 && pixel[2] > 250) return null;
-
-                const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => {
-                    const hex = c.toString(16);
-                    return hex.length === 1 ? '0' + hex : hex;
-                }).join('');
-                return rgbToHex(pixel[0], pixel[1], pixel[2]);
-            } catch (e) {
-                console.error("Color detection failed:", e);
-                return null;
-            }
-        }
         
         function applyStylesToItem(item, detectedColor) {
             item.styles = item.styles || {};
@@ -1944,7 +2026,7 @@
                 const result = searchResults[dynamicIndex];
                 const changesToRecord = [];
                 
-                const detectedColor = autoColorDetect.checked ? getDetectedColor(result) : null;
+                const detectedColor = getDetectedColor(result);
 
                 for (let i = 0; i < result.term.length; i++) {
                     const itemIndex = result.startItemIndex + i;
@@ -2001,7 +2083,7 @@
                 const textItems = pdfPageData[result.pageNum].textItems;
                 pagesToUpdate.add(result.pageNum);
                 
-                const detectedColor = autoColorDetect.checked ? getDetectedColor(result) : null;
+                const detectedColor = getDetectedColor(result);
 
                 for(let j = 0; j < result.term.length; j++) {
                     const itemIndex = result.startItemIndex + j;
@@ -2105,10 +2187,7 @@
 
                 const ctx = canvas.getContext('2d');
                 const pixel = ctx.getImageData(x, y, 1, 1).data;
-                const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => {
-                    const hex = c.toString(16);
-                    return hex.length === 1 ? '0' + hex : hex;
-                }).join('');
+                const rgbToHex = (r, g, b) => '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
 
                 const hexColor = rgbToHex(pixel[0], pixel[1], pixel[2]);
 
@@ -2610,7 +2689,7 @@
                 btn.classList.toggle('active', btn.id.endsWith(currentDrawingTool));
             });
 
-            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE8SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
+            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE4SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
 
             if (currentDrawingTool === 'image-placement') {
                 pdfViewer.style.cursor = imageCursor;
@@ -3075,7 +3154,6 @@
             }
         }
         
-        // MODIFICATION: Function to toggle font color controls based on checkbox
         function toggleFontColorControls() {
             const isDisabled = autoColorDetect.checked;
             fontColor.disabled = isDisabled;
@@ -3119,7 +3197,6 @@
                 fontBoldBtn.classList.toggle('active');
             });
             
-            // MODIFICATION: Add event listener for the checkbox
             autoColorDetect.addEventListener('change', toggleFontColorControls);
 
             fileInput.addEventListener('change', (e) => {
@@ -3254,7 +3331,6 @@
 
             window.addEventListener('keydown', handleGlobalKeyDown);
 
-            // MODIFICATION: Set initial state of the color controls
             toggleFontColorControls();
             resetTool(true);
         });
