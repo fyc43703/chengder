@@ -1033,15 +1033,15 @@
                                 第 <span id="currentPageIndicator">1</span> / <span id="totalPagesIndicator">1</span> 頁
                             </div>
 
-                            <button class="btn btn-nav" id="prevResultBtn" title="上一個">
+                            <button class="btn btn-nav" id="prevResultBtn" title="上一個 (Shift+F3)">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="15 18 9 12 15 6"></polyline></svg>
                             </button>
-                            <button class="btn btn-nav" id="nextResultBtn" title="下一個">
+                            <button class="btn btn-nav" id="nextResultBtn" title="下一個 (F3)">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </button>
                             
                              <div class="search-replace-group">
-                                <button class="btn btn-primary" id="replaceNextBtn" title="依序替換下一個找到的「搜尋文字」">依序替換</button>
+                                <button class="btn btn-primary" id="replaceNextBtn" title="依序替換下一個找到的「搜尋文字」 (Alt+R)">依序替換</button>
                                 <label for="replaceText">取代文字</label>
                                 <input type="text" id="replaceText" placeholder="輸入新文字" list="replaceHistoryList" style="flex-grow:1;">
                                 <datalist id="replaceHistoryList"></datalist>
@@ -1150,8 +1150,8 @@
                             </div>
                             <p>
                                 <b class="keyword">「 搜尋/取代 」</b>: 輸入文字即時預覽結果。計數器分母為總目標數，分子為當前導覽項目。注意：<b style="color: var(--system-red);">替換後總數不變</b>，以利追蹤原始位置。搜尋與取代的字元數必須相同。<br>
+                                <b class="keyword">「 快速鍵 」</b>: 您可以使用 <b class="keyword">F3</b> (下一個)、<b class="keyword">Shift+F3</b> (上一個) 來導覽搜尋結果，並用 <b class="keyword">Alt+R</b> 執行依序替換。<br>
                                 <b class="keyword">「 單字編輯 」</b>: 直接用滑鼠點擊 PDF 頁面上的任何一個字元，即可彈出編輯框進行單獨修改。<br>
-                                <b class="keyword">「 粗體樣式 」</b>: 在「字級」選擇器旁，可點擊 <b>B</b> 按鈕為取代文字或新增文字切換粗體。<br>
                                 <b class="keyword">「 上一步 (Undo) 」</b>: 點擊可復原上一個操作，包含文字編輯、取代、新增或移動圖形等。
                             </p>
                         </div>
@@ -1176,7 +1176,8 @@
                             </div>
                             <p>
                                 <b class="keyword">「 繪圖工具列 」</b>: 提供文字、圖片、直線、矩形、橢圓、箭頭等多種工具。點擊啟用後即可在頁面上繪製。<br>
-                                <b class="keyword">「 物件編輯 」</b>: 使用選取工具<svg viewBox="0 0 24 24" style="width:1em; height:1em; vertical-align:-0.15em; fill:currentColor; margin: 0 2px;"><path d="M7.64 18.36L2.28 9.39 9.39 2.28 18.36 7.64 14.12 11.88 18.36 16.12 16.12 18.36 11.88 14.12 7.64 18.36Z"/></svg>可拖曳移動。選取<b class="keyword">圖片</b>後，右下角會出現控點以縮放大小。選取任何物件後，按 <b class="keyword">Delete 鍵</b>可刪除，或用<b class="keyword">方向鍵</b>微調位置。
+                                <b class="keyword">「 物件編輯 」</b>: 使用選取工具<svg viewBox="0 0 24 24" style="width:1em; height:1em; vertical-align:-0.15em; fill:currentColor; margin: 0 2px;"><path d="M7.64 18.36L2.28 9.39 9.39 2.28 18.36 7.64 14.12 11.88 18.36 16.12 16.12 18.36 11.88 14.12 7.64 18.36Z"/></svg>可拖曳移動物件。選取<b class="keyword">圖片</b>後，右下角會出現控點以縮放大小。按 <b class="keyword">Delete 鍵</b>可刪除物件。<br>
+                                <b class="keyword">「 文字再編輯 」</b>: 使用選取工具，在您新增的文字上<b class="keyword">雙擊滑鼠</b>，即可重新進行編輯。
                             </p>
                         </div>
 
@@ -1651,7 +1652,7 @@
             });
         }
         
-        // MODIFICATION: Final, robust color detection logic
+        // MODIFICATION: Final, robust color detection logic with boundary analysis
         function getDetectedColor(result) {
             const item = pdfPageData[result.pageNum].textItems[result.startItemIndex];
             if (!item) return null;
@@ -1681,8 +1682,7 @@
                 const colorCounts = new Map();
 
                 for (let i = 0; i < data.length; i += 4) {
-                    if (data[i + 3] < 128) continue; 
-                    
+                    if (data[i + 3] < 128) continue;
                     const colorKey = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
                     colorCounts.set(colorKey, (colorCounts.get(colorKey) || 0) + 1);
                 }
@@ -1691,19 +1691,38 @@
                 const numberToHex = (num) => '#' + num.toString(16).padStart(6, '0');
 
                 if (sortedColors.length === 0) return null;
-                
                 if (sortedColors.length === 1) {
-                    const color = numberToHex(sortedColors[0][0]);
-                    // Assume white background if only one color is found
-                    item.originalColors = { foreground: color, background: '#ffffff' };
+                    item.originalColors = { foreground: numberToHex(sortedColors[0][0]), background: '#ffffff' };
                     return item.originalColors;
                 }
                 
-                // NEW LOGIC: Most frequent is background, second most is foreground. This is now the definitive logic.
-                const backgroundColor = numberToHex(sortedColors[0][0]);
-                const foregroundColor = numberToHex(sortedColors[1][0]);
+                // NEW LOGIC: Boundary analysis
+                const colorA = sortedColors[0][0];
+                const colorB = sortedColors[1][0];
+                let borderA = 0;
+                let borderB = 0;
 
-                const colors = { foreground: foregroundColor, background: backgroundColor };
+                for (let i = 0; i < rect.w; i++) {
+                    let pixelTop = (i * 4);
+                    let pixelBottom = ((rect.h - 1) * rect.w * 4) + (i * 4);
+                    let keyTop = (data[pixelTop] << 16) | (data[pixelTop+1] << 8) | data[pixelTop+2];
+                    let keyBottom = (data[pixelBottom] << 16) | (data[pixelBottom+1] << 8) | data[pixelBottom+2];
+                    if (keyTop === colorA) borderA++; else if (keyTop === colorB) borderB++;
+                    if (keyBottom === colorA) borderA++; else if (keyBottom === colorB) borderB++;
+                }
+                for (let j = 1; j < rect.h - 1; j++) {
+                    let pixelLeft = (j * rect.w * 4);
+                    let pixelRight = (j * rect.w * 4) + ((rect.w - 1) * 4);
+                    let keyLeft = (data[pixelLeft] << 16) | (data[pixelLeft+1] << 8) | data[pixelLeft+2];
+                    let keyRight = (data[pixelRight] << 16) | (data[pixelRight+1] << 8) | data[pixelRight+2];
+                    if (keyLeft === colorA) borderA++; else if (keyLeft === colorB) borderB++;
+                    if (keyRight === colorA) borderA++; else if (keyRight === colorB) borderB++;
+                }
+
+                const colors = (borderA >= borderB) 
+                    ? { background: numberToHex(colorA), foreground: numberToHex(colorB) } 
+                    : { background: numberToHex(colorB), foreground: numberToHex(colorA) };
+                
                 item.originalColors = colors;
                 return colors;
 
@@ -1748,6 +1767,43 @@
             interactionLayer.appendChild(editor);
             editor.focus();
             editor.select();
+        }
+        
+        function editTextbox(pageNum, index) {
+            const interactionLayer = document.getElementById(`interaction-layer-${pageNum}`);
+            if (!interactionLayer) return;
+
+            const objectToEdit = pdfPageData[pageNum].drawings[index];
+            if (!objectToEdit) return;
+
+            // Set global controls to match the object's properties
+            fontSelect.value = objectToEdit.font;
+            fontSizeSelect.value = objectToEdit.size;
+            fontColor.value = objectToEdit.color;
+            fontBoldBtn.classList.toggle('active', objectToEdit.fontWeight === 'bold');
+            
+            // Temporarily remove the object
+            pdfPageData[pageNum].drawings.splice(index, 1);
+            historyStack.push({ actionType: 'deleteDrawing', pageNum, index, deletedObject: objectToEdit });
+            updateUndoButtonState();
+
+            redrawPageCanvas(pageNum);
+
+            // Create a new textbox at the same position with the same text
+            createTextbox(objectToEdit.x * currentScale, objectToEdit.y * currentScale, pageNum, objectToEdit.text);
+        }
+        
+        function handleDoubleClick(e) {
+            if (currentDrawingTool !== 'select') return;
+            const { pageNum, x, y } = getPageAndCoordsFromEvent(e);
+            if (!pageNum) return;
+
+            const hitObject = hitTest(x, y, pageNum);
+            if (hitObject && hitObject.obj.type === 'text') {
+                e.preventDefault();
+                e.stopPropagation();
+                editTextbox(pageNum, hitObject.index);
+            }
         }
 
         function updateUndoButtonState() {
@@ -1968,7 +2024,7 @@
         }
 
         function replaceNext() {
-            if (originalSearchResults.length === 0) return;
+            if (originalSearchResults.length === 0 || replaceNextBtn.disabled) return;
 
             updateHistoryAndDatalists();
 
@@ -2024,7 +2080,7 @@
 
 
         async function replaceAll() {
-            if (searchResults.length === 0) { return; }
+            if (searchResults.length === 0 || replaceAllBtn.disabled) return;
 
             updateHistoryAndDatalists();
 
@@ -2136,7 +2192,7 @@
             fontColorPickerBtn.classList.toggle('active', colorPickerTarget === 'font');
             bgColorPickerBtn.classList.toggle('active', colorPickerTarget === 'bg');
 
-            const dropperCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSJyZ2JhKDAsMCwwLDAuOCkiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIgZD0iTTMuNTI1IDE2LjU1MWMtMy4zMjgtMy4zMjgtMy4zMjgtOC43MjMgMC0xMi4wNTFzOC43MjMtMy4zMjggMTIuMDUxIDBsMy43ODQgMy43ODRjLjM5MS4zOTEuMzkxIDEuMDI0IDAgMS40MTRzLTEuMDI0LjM5MS0xLjQxNCAwbC0zLjU1MS0zLjU1MWMtMi41ODMtMi41ODMtNi43NjYtMi41ODMtOS4zNDkgMHMtMi41ODMgNi43NjYgMCA5LjM0OWwyLjgyOCAyLjgyOC0yLjEyMSAyLjEyMS0yLjIyOC0yLjIyOHoiLz48cGF0aCBmaWxsPSJyZ2JhKDAsMCwwLDAuOCkiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIgZD0iTTUuNTg5IDE5LjM3OWwtMi4xMjEgMi4xMjFjLS4zOTEuMzkxLS4zOTEgMS4wMjQgMCAxLjQxNC4xOTUuMTk1LjQ1MS4yOTMuNzA3LjI5M3MuNTEyLS4wOTguNzA3LS4yOTNsMi4xMjEtMi4xMjEtMS40MTQtMS40MTR6Ii8+PC9zdmc+') 4 28, auto";
+            const dropperCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZHRoPSIzMiIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSJyZ2JhKDAsMCwwLDAuOCkiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIgZD0iTTMuNTI1IDE2LjU1MWMtMy4zMjgtMy4zMjgtMy4zMjgtOC43MjMgMC0xMi4wNTFzOC43MjMtMy4zMjggMTIuMDUxIDBsMy43ODQgMy43ODRjLjM5MS4zOTEuMzkxIDEuMDI0IDAgMS40MTRzLTEuMDI0LjM5MS0xLjQxNCAwbC0zLjU1MS0zLjU1MWMtMi41ODMtMi41ODMtNi43NjYtMi41ODMtOS4zNDkgMHMtMi41ODMgNi43NjYgMCA5LjM0OWwyLjgyOCAyLjgyOC0yLjEyMSAyLjEyMS0yLjIyOC0yLjIyOHoiLz48cGF0aCBmaWxsPSJyZ2JhKDAsMCwwLDAuOCkiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIgZD0iTTUuNTg5IDE5LjM3OWwtMi4xMjEgMi4xMjFjLS4zOTEuMzkxLS4zOTEgMS4wMjQgMCAxLjQxNC4xOTUuMTk1LjQ1MS4yOTMuNzA3LjI5M3MuNTEyLS4wOTguNzA3LS4yOTNsMi4xMjEtMi4xMjEtMS40MTQtMS40MTR6Ii8+PC9zdmc+') 4 28, auto";
             pdfViewer.style.cursor = colorPickerTarget ? dropperCursor : 'default';
         }
 
@@ -2654,7 +2710,7 @@
                 btn.classList.toggle('active', btn.id.endsWith(currentDrawingTool));
             });
 
-            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE4SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
+            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZHRoPSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE4SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
 
             if (currentDrawingTool === 'image-placement') {
                 pdfViewer.style.cursor = imageCursor;
@@ -2940,13 +2996,14 @@
             ctx.fill();
         }
 
-        function createTextbox(x, y, pageNum) {
+        function createTextbox(x, y, pageNum, initialText = '') {
             const interactionLayer = document.getElementById(`interaction-layer-${pageNum}`);
             if (!interactionLayer) return;
 
             const inputArea = document.createElement('div');
             inputArea.contentEditable = true;
             inputArea.className = 'text-input-area';
+            inputArea.innerText = initialText;
             inputArea.style.left = x + 'px';
             inputArea.style.top = y + 'px';
             inputArea.style.fontFamily = fontSelect.value;
@@ -2958,7 +3015,15 @@
 
             interactionLayer.appendChild(inputArea);
 
-            setTimeout(() => inputArea.focus(), 0);
+            setTimeout(() => {
+                inputArea.focus();
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(inputArea);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }, 0);
 
             inputArea.addEventListener('blur', () => {
                 const text = inputArea.innerText;
@@ -2966,9 +3031,11 @@
                     const textIsBold = inputArea.style.fontWeight === 'bold' || inputArea.style.fontWeight === '700';
                     const textData = {
                         type: 'text', text,
-                        x: x / currentScale, y: y / currentScale,
-                        font: fontSelect.value, size: parseFloat(fontSizeSelect.value),
-                        color: fontColor.value,
+                        x: parseFloat(inputArea.style.left) / currentScale, 
+                        y: parseFloat(inputArea.style.top) / currentScale,
+                        font: inputArea.style.fontFamily, 
+                        size: parseFloat(inputArea.style.fontSize),
+                        color: inputArea.style.color,
                         fontWeight: textIsBold ? 'bold' : 'normal'
                     };
                     pdfPageData[pageNum].drawings.push(textData);
@@ -2976,7 +3043,9 @@
                     updateUndoButtonState();
                     redrawPageCanvas(pageNum);
                 }
-                toggleDrawingTool('text');
+                if(currentDrawingTool === 'text') {
+                    toggleDrawingTool('text'); // Go back to select tool
+                }
                 inputArea.remove();
             });
         }
@@ -3072,9 +3141,27 @@
 
         function handleGlobalKeyDown(e) {
             const activeEl = document.activeElement;
-            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.contentEditable === 'true')) {
+            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.isContentEditable)) {
                 return;
             }
+
+            // Shortcuts for search navigation and replace
+            if (e.key === 'F3' && !e.shiftKey) {
+                e.preventDefault();
+                if (!nextResultBtn.disabled) navigateToNextResult();
+                return;
+            }
+            if (e.shiftKey && e.key === 'F3') {
+                e.preventDefault();
+                if (!prevResultBtn.disabled) navigateToPrevResult();
+                return;
+            }
+            if (e.altKey && e.key.toLowerCase() === 'r') {
+                e.preventDefault();
+                if (!replaceNextBtn.disabled) replaceNext();
+                return;
+            }
+
 
             if (!selectedObject) return;
 
@@ -3173,6 +3260,7 @@
 
             pdfViewer.addEventListener('mousedown', handleMouseDown);
             pdfViewer.addEventListener('mousemove', handleMouseMove);
+            pdfViewer.addEventListener('dblclick', handleDoubleClick);
 
             scrollableContent.addEventListener('scroll', onScrollViewerScroll);
             
