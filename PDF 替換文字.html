@@ -1506,7 +1506,7 @@
 
             const styles = item.styles || {};
             
-            const bgColor = styles.backgroundColor || backgroundColor.value;
+            const bgColor = styles.backgroundColor || (item.originalColors ? item.originalColors.background : backgroundColor.value);
             const fgColor = styles.foregroundColor || (item.originalColors ? item.originalColors.foreground : fontColor.value);
             const fontWeight = styles.fontWeight || 'normal';
             const fontFamily = styles.fontFamily || fontSelect.value;
@@ -1680,28 +1680,28 @@
                 const colorCounts = new Map();
 
                 for (let i = 0; i < data.length; i += 4) {
-                    if (data[i + 3] < 128) continue;
+                    if (data[i + 3] < 128) continue; 
                     
                     const colorKey = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
                     colorCounts.set(colorKey, (colorCounts.get(colorKey) || 0) + 1);
                 }
 
                 const sortedColors = Array.from(colorCounts.entries()).sort((a, b) => b[1] - a[1]);
-                
                 const numberToHex = (num) => '#' + num.toString(16).padStart(6, '0');
 
-                if (sortedColors.length < 2) {
-                    return sortedColors.length === 1 ? { 
-                        foreground: numberToHex(sortedColors[0][0]),
-                        background: '#ffffff'
-                    } : null;
+                if (sortedColors.length === 0) return null;
+
+                if (sortedColors.length === 1) {
+                    item.originalColors = { foreground: numberToHex(sortedColors[0][0]), background: '#ffffff' };
+                    return item.originalColors;
                 }
                 
+                // NEW LOGIC: Most frequent is background, second most is foreground.
                 const backgroundColor = numberToHex(sortedColors[0][0]);
                 const foregroundColor = numberToHex(sortedColors[1][0]);
 
                 const colors = { foreground: foregroundColor, background: backgroundColor };
-                item.originalColors = colors; // Cache the result
+                item.originalColors = colors;
                 return colors;
 
             } catch (e) {
@@ -2651,7 +2651,7 @@
                 btn.classList.toggle('active', btn.id.endsWith(currentDrawingTool));
             });
 
-            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE4SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
+            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZHRoPSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE4SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
 
             if (currentDrawingTool === 'image-placement') {
                 pdfViewer.style.cursor = imageCursor;
