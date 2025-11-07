@@ -1652,7 +1652,6 @@
             });
         }
         
-        // MODIFICATION: Final, robust color detection logic with boundary analysis
         function getDetectedColor(result) {
             const item = pdfPageData[result.pageNum].textItems[result.startItemIndex];
             if (!item) return null;
@@ -1683,7 +1682,6 @@
 
                 for (let i = 0; i < data.length; i += 4) {
                     if (data[i + 3] < 128) continue; 
-                    
                     const colorKey = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
                     colorCounts.set(colorKey, (colorCounts.get(colorKey) || 0) + 1);
                 }
@@ -1702,22 +1700,24 @@
                 const colorB = sortedColors[1][0];
                 let borderA = 0;
                 let borderB = 0;
+                const width = rect.w;
+                const height = rect.h;
 
-                for (let i = 0; i < rect.w; i++) {
-                    let pixelTop = (i * 4);
-                    let pixelBottom = ((rect.h - 1) * rect.w * 4) + (i * 4);
-                    let keyTop = (data[pixelTop] << 16) | (data[pixelTop+1] << 8) | data[pixelTop+2];
-                    let keyBottom = (data[pixelBottom] << 16) | (data[pixelBottom+1] << 8) | data[pixelBottom+2];
-                    if (keyTop === colorA) borderA++; else if (keyTop === colorB) borderB++;
-                    if (keyBottom === colorA) borderA++; else if (keyBottom === colorB) borderB++;
+                const checkPixel = (x, y) => {
+                    const index = (y * width + x) * 4;
+                    if (data[index + 3] < 128) return; 
+                    const key = (data[index] << 16) | (data[index + 1] << 8) | data[index + 2];
+                    if (key === colorA) borderA++;
+                    else if (key === colorB) borderB++;
+                };
+
+                for (let i = 0; i < width; i++) {
+                    checkPixel(i, 0); 
+                    if (height > 1) checkPixel(i, height - 1);
                 }
-                for (let j = 1; j < rect.h - 1; j++) {
-                    let pixelLeft = (j * rect.w * 4);
-                    let pixelRight = (j * rect.w * 4) + ((rect.w - 1) * 4);
-                    let keyLeft = (data[pixelLeft] << 16) | (data[pixelLeft+1] << 8) | data[pixelLeft+2];
-                    let keyRight = (data[pixelRight] << 16) | (data[pixelRight+1] << 8) | data[pixelRight+2];
-                    if (keyLeft === colorA) borderA++; else if (keyLeft === colorB) borderB++;
-                    if (keyRight === colorA) borderA++; else if (keyRight === colorB) borderB++;
+                for (let j = 1; j < height - 1; j++) {
+                    checkPixel(0, j); 
+                    if (width > 1) checkPixel(width - 1, j);
                 }
 
                 const colors = (borderA >= borderB) 
