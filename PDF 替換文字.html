@@ -1651,6 +1651,7 @@
             });
         }
         
+        // MODIFICATION: Final, robust color detection logic
         function getDetectedColor(result) {
             const item = pdfPageData[result.pageNum].textItems[result.startItemIndex];
             if (!item) return null;
@@ -1690,13 +1691,15 @@
                 const numberToHex = (num) => '#' + num.toString(16).padStart(6, '0');
 
                 if (sortedColors.length === 0) return null;
-
+                
                 if (sortedColors.length === 1) {
-                    item.originalColors = { foreground: numberToHex(sortedColors[0][0]), background: '#ffffff' };
+                    const color = numberToHex(sortedColors[0][0]);
+                    // Assume white background if only one color is found
+                    item.originalColors = { foreground: color, background: '#ffffff' };
                     return item.originalColors;
                 }
                 
-                // NEW LOGIC: Most frequent is background, second most is foreground.
+                // NEW LOGIC: Most frequent is background, second most is foreground. This is now the definitive logic.
                 const backgroundColor = numberToHex(sortedColors[0][0]);
                 const foregroundColor = numberToHex(sortedColors[1][0]);
 
@@ -2651,7 +2654,7 @@
                 btn.classList.toggle('active', btn.id.endsWith(currentDrawingTool));
             });
 
-            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZHRoPSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE4SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
+            const imageCursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2EtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik0zIDNoMTh2MThIM3ogTTEyIDd2MTAgTTcgMTJoMTAiLz48cGF0aCBkPSJNMzYzaDE4djE4SDN6IE0xMiA3djEwIE03IDEyaDEwIi8+PC9zdmc+') 16 16, auto";
 
             if (currentDrawingTool === 'image-placement') {
                 pdfViewer.style.cursor = imageCursor;
