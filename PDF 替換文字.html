@@ -1033,15 +1033,15 @@
                                 第 <span id="currentPageIndicator">1</span> / <span id="totalPagesIndicator">1</span> 頁
                             </div>
 
-                            <button class="btn btn-nav" id="prevResultBtn" title="上一個 (Shift+F3)">
+                            <button class="btn btn-nav" id="prevResultBtn" title="上一個 (Shift + ←)">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="15 18 9 12 15 6"></polyline></svg>
                             </button>
-                            <button class="btn btn-nav" id="nextResultBtn" title="下一個 (F3)">
+                            <button class="btn btn-nav" id="nextResultBtn" title="下一個 (Shift + →)">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </button>
                             
                              <div class="search-replace-group">
-                                <button class="btn btn-primary" id="replaceNextBtn" title="依序替換下一個找到的「搜尋文字」 (Alt+R)">依序替換</button>
+                                <button class="btn btn-primary" id="replaceNextBtn" title="依序替換下一個找到的「搜尋文字」 (Shift + R)">依序替換</button>
                                 <label for="replaceText">取代文字</label>
                                 <input type="text" id="replaceText" placeholder="輸入新文字" list="replaceHistoryList" style="flex-grow:1;">
                                 <datalist id="replaceHistoryList"></datalist>
@@ -1150,7 +1150,7 @@
                             </div>
                             <p>
                                 <b class="keyword">「 搜尋/取代 」</b>: 輸入文字即時預覽結果。計數器分母為總目標數，分子為當前導覽項目。注意：<b style="color: var(--system-red);">替換後總數不變</b>，以利追蹤原始位置。搜尋與取代的字元數必須相同。<br>
-                                <b class="keyword">「 快速鍵 」</b>: 您可以使用 <b class="keyword">F3</b> (下一個)、<b class="keyword">Shift+F3</b> (上一個) 來導覽搜尋結果，並用 <b class="keyword">Alt+R</b> 執行依序替換。<br>
+                                <b class="keyword">「 快速鍵 」</b>: 您可以使用 <b class="keyword">Shift + →</b> (下一個)、<b class="keyword">Shift + ←</b> (上一個) 來導覽搜尋結果，並用 <b class="keyword">Shift + R</b> 執行依序替換。<br>
                                 <b class="keyword">「 單字編輯 」</b>: 直接用滑鼠點擊 PDF 頁面上的任何一個字元，即可彈出編輯框進行單獨修改。<br>
                                 <b class="keyword">「 上一步 (Undo) 」</b>: 點擊可復原上一個操作，包含文字編輯、取代、新增或移動圖形等。
                             </p>
@@ -1682,7 +1682,8 @@
                 const colorCounts = new Map();
 
                 for (let i = 0; i < data.length; i += 4) {
-                    if (data[i + 3] < 128) continue;
+                    if (data[i + 3] < 128) continue; 
+                    
                     const colorKey = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
                     colorCounts.set(colorKey, (colorCounts.get(colorKey) || 0) + 1);
                 }
@@ -1691,12 +1692,12 @@
                 const numberToHex = (num) => '#' + num.toString(16).padStart(6, '0');
 
                 if (sortedColors.length === 0) return null;
+                
                 if (sortedColors.length === 1) {
                     item.originalColors = { foreground: numberToHex(sortedColors[0][0]), background: '#ffffff' };
                     return item.originalColors;
                 }
                 
-                // NEW LOGIC: Boundary analysis
                 const colorA = sortedColors[0][0];
                 const colorB = sortedColors[1][0];
                 let borderA = 0;
@@ -1776,20 +1777,16 @@
             const objectToEdit = pdfPageData[pageNum].drawings[index];
             if (!objectToEdit) return;
 
-            // Set global controls to match the object's properties
             fontSelect.value = objectToEdit.font;
             fontSizeSelect.value = objectToEdit.size;
             fontColor.value = objectToEdit.color;
             fontBoldBtn.classList.toggle('active', objectToEdit.fontWeight === 'bold');
             
-            // Temporarily remove the object
             pdfPageData[pageNum].drawings.splice(index, 1);
             historyStack.push({ actionType: 'deleteDrawing', pageNum, index, deletedObject: objectToEdit });
             updateUndoButtonState();
 
             redrawPageCanvas(pageNum);
-
-            // Create a new textbox at the same position with the same text
             createTextbox(objectToEdit.x * currentScale, objectToEdit.y * currentScale, pageNum, objectToEdit.text);
         }
         
@@ -1962,13 +1959,13 @@
         }
 
         function navigateToNextResult() {
-            if (originalSearchResults.length === 0) return;
+            if (originalSearchResults.length === 0 || nextResultBtn.disabled) return;
             currentSearchIndex = (currentSearchIndex + 1) % originalSearchResults.length;
             drawNextHighlight();
         }
 
         function navigateToPrevResult() {
-            if (originalSearchResults.length === 0) return;
+            if (originalSearchResults.length === 0 || prevResultBtn.disabled) return;
             currentSearchIndex = (currentSearchIndex - 1 + originalSearchResults.length) % originalSearchResults.length;
             drawNextHighlight();
         }
@@ -3145,23 +3142,23 @@
                 return;
             }
 
-            // Shortcuts for search navigation and replace
-            if (e.key === 'F3' && !e.shiftKey) {
-                e.preventDefault();
-                if (!nextResultBtn.disabled) navigateToNextResult();
-                return;
+            if (e.shiftKey) {
+                switch(e.key) {
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        if (!nextResultBtn.disabled) navigateToNextResult();
+                        return;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        if (!prevResultBtn.disabled) navigateToPrevResult();
+                        return;
+                    case 'R':
+                    case 'r':
+                        e.preventDefault();
+                        if (!replaceNextBtn.disabled) replaceNext();
+                        return;
+                }
             }
-            if (e.shiftKey && e.key === 'F3') {
-                e.preventDefault();
-                if (!prevResultBtn.disabled) navigateToPrevResult();
-                return;
-            }
-            if (e.altKey && e.key.toLowerCase() === 'r') {
-                e.preventDefault();
-                if (!replaceNextBtn.disabled) replaceNext();
-                return;
-            }
-
 
             if (!selectedObject) return;
 
