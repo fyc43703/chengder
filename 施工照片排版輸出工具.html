@@ -443,7 +443,7 @@
                             <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/tiff,image/heic,image/heif,image/jfif,application/pdf" id="file-input" class="hidden">
                         </label>
                         <div>
-                            <select id="import-resolution" title="設定最終輸出的圖片品質" class="px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                            <select id="import-resolution" title="設定 HTML 報告中的圖片品質" class="px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                                 <option value="1.0">低 (檔案小)</option>
                                 <option value="1.5" selected>中 (建議)</option>
                                 <option value="2.0">高 (品質好)</option>
@@ -466,12 +466,22 @@
                         </button>
                     </div>
 
-                    <div class="flex items-center gap-2">
-                        <!-- 新增：裁切並打包按鈕 -->
-                        <button id="crop-zip-btn" class="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="將直式照片裁切為橫式(4:3)，並將所有照片打包下載為 ZIP 檔">
+                    <div class="flex items-end gap-2">
+                        <button id="crop-zip-btn" class="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="將直式照片裁切為橫式(4:3)，並打包下載為 JPG 檔">
                             <i data-lucide="crop" class="w-5 h-5"></i>
                             <span class="font-medium">裁切並打包</span>
                         </button>
+                        <div class="flex items-center">
+                            <button id="pack-png-btn" class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white pl-5 pr-4 py-2.5 rounded-l-lg transition-all shadow-sm hover:shadow-md" title="將設定好的頁面版面，輸出為 PNG 圖片並打包下載">
+                                <i data-lucide="image" class="w-5 h-5"></i>
+                                <span class="font-medium">縮圖排版</span>
+                            </button>
+                            <select id="layout-export-resolution" title="設定縮圖排版的輸出解析度" class="py-2.5 border-l-0 border rounded-r-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm h-[46px]">
+                                <option value="low">低 (檔案小)</option>
+                                <option value="medium" selected>中 (建議)</option>
+                                <option value="high">高 (品質好)</option>
+                            </select>
+                        </div>
                         <button id="generate-html-btn" class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="將目前的設定與照片生成可列印的 HTML 報告">
                             <i data-lucide="file-code-2" class="w-5 h-5"></i>
                             <span id="generate-html-btn-text" class="font-medium">生成 HTML</span>
@@ -522,7 +532,8 @@
                         <ul class="list-disc list-inside space-y-2 text-sm pl-2">
                             <li><b class="instruction-keyword">選擇檔案：</b>支援多選圖片 (JPG, PNG, HEIC) 或 PDF。PDF 會自動逐頁轉為圖片。</li>
                             <li><b class="instruction-keyword">生成 HTML：</b>產生可列印的報告頁面，可透過瀏覽器的列印功能另存為 PDF。</li>
-                            <li><b class="instruction-keyword">裁切並打包：</b>將所有直式照片裁切為 4:3 橫式，並打包成一個 ZIP 檔下載。</li>
+                            <li><b class="instruction-keyword">裁切並打包：</b>將所有直式照片裁切為 4:3 橫式，並打包成一個 ZIP 檔下載 (JPG)。</li>
+                             <li><b class="instruction-keyword">縮圖排版：</b>將依「版面設定」的樣式，將每一頁的排版結果分別輸出一張 PNG 圖檔，並打包成 ZIP 下載。可自訂輸出解析度。</li>
                         </ul>
                     </div>
                 </div>
@@ -630,7 +641,9 @@
             rocDateDisplay: document.getElementById('roc-date-display'),
             selectPhotosLabel: document.getElementById('select-photos-label'),
             generateHtmlBtn: document.getElementById('generate-html-btn'),
-            cropZipBtn: document.getElementById('crop-zip-btn'), // 新增
+            cropZipBtn: document.getElementById('crop-zip-btn'),
+            packPngBtn: document.getElementById('pack-png-btn'),
+            layoutExportResolution: document.getElementById('layout-export-resolution'), // *** NEW ***
             photoCountInfo: document.getElementById('photo-count-info'),
             emptyState: document.getElementById('empty-state'),
             photoGrid: document.getElementById('photo-grid'),
@@ -700,7 +713,8 @@
             dom.fileInput.disabled = !isIdle;
             dom.selectPhotosLabel.classList.toggle('disabled-label', !isIdle);
             dom.generateHtmlBtn.disabled = !isIdle || !hasPhotos;
-            dom.cropZipBtn.disabled = !isIdle || !hasPhotos; // 新增
+            dom.cropZipBtn.disabled = !isIdle || !hasPhotos;
+            dom.packPngBtn.disabled = !isIdle || !hasPhotos;
         };
         
         const adjustTextareaHeight = (textarea) => { textarea.style.height = 'auto'; textarea.style.height = `${textarea.scrollHeight}px`; };
@@ -975,7 +989,6 @@
             }
         };
 
-        // --- 新增：裁切並打包為 ZIP 的功能 ---
         const cropAndZipPhotos = async () => {
             if (appState !== AppState.IDLE || photos.length === 0) return;
             setAppState(AppState.PROCESSING_FILES);
@@ -996,17 +1009,13 @@
                             const canvas = document.createElement('canvas');
                             const ctx = canvas.getContext('2d');
                             
-                            // 判斷是否為直式照片 (height > width)
                             if (img.height > img.width) {
-                                // 裁切為 4:3 橫式
                                 const newHeight = img.width / ASPECT_RATIO;
                                 const yOffset = (img.height - newHeight) / 2;
-
                                 canvas.width = img.width;
                                 canvas.height = newHeight;
                                 ctx.drawImage(img, 0, yOffset, img.width, newHeight, 0, 0, img.width, newHeight);
                             } else {
-                                // 橫式或方形照片，直接使用原尺寸
                                 canvas.width = img.width;
                                 canvas.height = img.height;
                                 ctx.drawImage(img, 0, 0);
@@ -1038,6 +1047,181 @@
                 showError(`處理過程發生問題：${error.message}`);
             }
         };
+
+        const generateLayoutAsPngAndZip = async () => {
+            if (appState !== AppState.IDLE || photos.length === 0) return;
+            setAppState(AppState.PROCESSING_FILES);
+            showLoader('準備產生版面圖片...');
+
+            try {
+                const zip = new JSZip();
+                
+                const resolutionSettings = {
+                    'low':    { short: 827,  long: 1169, scale: 0.667 }, // ~100 DPI
+                    'medium': { short: 1240, long: 1754, scale: 1.0 },   // ~150 DPI (Base)
+                    'high':   { short: 2480, long: 3508, scale: 2.0 }    // ~300 DPI
+                };
+                
+                const selectedResKey = dom.layoutExportResolution.value || 'medium';
+                const res = resolutionSettings[selectedResKey];
+                const scale = res.scale;
+
+                const pageWidth = layoutSettings.orientation === 'portrait' ? res.short : res.long;
+                const pageHeight = layoutSettings.orientation === 'portrait' ? res.long : res.short;
+                const MARGIN = 100 * scale;
+
+                const photosPerPage = layoutSettings.photosPerPage;
+                const totalPages = Math.ceil(photos.length / photosPerPage);
+                const pagesWithFooter = parsePageRange(paginationSettings.range, totalPages);
+
+                for (let i = 0; i < totalPages; i++) {
+                    const currentPage = i + 1;
+                    updateLoaderText(`正在繪製第 ${currentPage} / ${totalPages} 頁...`);
+                    
+                    const canvas = document.createElement('canvas');
+                    canvas.width = pageWidth;
+                    canvas.height = pageHeight;
+                    const ctx = canvas.getContext('2d');
+
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    let currentY = MARGIN;
+
+                    if (i === 0) {
+                        ctx.fillStyle = '#000000';
+                        if (reportInfo.showThemeName && reportInfo.themeName) {
+                            ctx.font = `bold ${48 * scale}px sans-serif`;
+                            ctx.textAlign = 'center';
+                            ctx.fillText(reportInfo.themeName, canvas.width / 2, currentY);
+                            currentY += (60 * scale);
+                        }
+                        if ((reportInfo.showConstructionLot && reportInfo.constructionLot) || (reportInfo.showReportDate && reportInfo.reportDate)) {
+                            ctx.font = `${24 * scale}px sans-serif`;
+                            ctx.textAlign = 'left';
+                            const subHeaderText = [];
+                            if (reportInfo.showConstructionLot && reportInfo.constructionLot) subHeaderText.push(`施工標別：${reportInfo.constructionLot}`);
+                            if (reportInfo.showReportDate && reportInfo.reportDate) subHeaderText.push(`日期：${toRocDate(reportInfo.reportDate)}`);
+                            
+                            if (subHeaderText.length > 0) {
+                                ctx.fillText(subHeaderText.join('    '), MARGIN, currentY);
+                                currentY += (40 * scale);
+                            }
+                        }
+                        currentY += (20 * scale);
+                    }
+
+                    const headerHeight = (i === 0) ? currentY : MARGIN;
+                    let footerHeight = MARGIN;
+                    if (paginationSettings.enabled && pagesWithFooter.has(currentPage)) {
+                        footerHeight = MARGIN + (40 * scale);
+                    }
+
+                    const contentAreaX = MARGIN;
+                    const contentAreaY = headerHeight;
+                    const contentAreaWidth = canvas.width - (MARGIN * 2);
+                    const contentAreaHeight = canvas.height - headerHeight - footerHeight;
+
+                    const { cols, rows } = getGridDimensions(photosPerPage);
+                    const gap = 20 * scale;
+                    const cellWidth = (contentAreaWidth - (gap * (cols - 1))) / cols;
+                    const cellHeight = (contentAreaHeight - (gap * (rows - 1))) / rows;
+                    
+                    const photoSlice = photos.slice(i * photosPerPage, (i * photosPerPage) + photosPerPage);
+
+                    for (let j = 0; j < photoSlice.length; j++) {
+                        const photo = photoSlice[j];
+                        const row = Math.floor(j / cols);
+                        const col = j % cols;
+
+                        const cellX = contentAreaX + col * (cellWidth + gap);
+                        const cellY = contentAreaY + row * (cellHeight + gap);
+                        
+                        const captionHeight = layoutSettings.showCaptions ? (60 * scale) : 0;
+                        const photoContainerHeight = cellHeight - captionHeight;
+                        
+                        if (layoutSettings.showBorders) {
+                            ctx.strokeStyle = '#AAAAAA';
+                            ctx.lineWidth = Math.max(1, 1 * scale);
+                            ctx.strokeRect(cellX, cellY, cellWidth, cellHeight);
+                        }
+
+                        const img = await new Promise((resolve, reject) => {
+                            const image = new Image();
+                            image.onload = () => resolve(image);
+                            image.onerror = () => reject(new Error(`第 ${i * photosPerPage + j + 1} 張圖片載入失敗`));
+                            image.src = photo.url;
+                        });
+                        
+                        const hRatio = (cellWidth - (10 * scale)) / img.width;
+                        const vRatio = (photoContainerHeight - (10 * scale)) / img.height;
+                        const ratio = Math.min(hRatio, vRatio);
+                        const scaledWidth = img.width * ratio;
+                        const scaledHeight = img.height * ratio;
+                        const imgX = cellX + (cellWidth - scaledWidth) / 2;
+                        const imgY = cellY + (photoContainerHeight - scaledHeight) / 2;
+
+                        ctx.drawImage(img, imgX, imgY, scaledWidth, scaledHeight);
+
+                        if (layoutSettings.showCaptions) {
+                            const captionY = cellY + photoContainerHeight;
+                            if (layoutSettings.showBorders) {
+                                ctx.beginPath();
+                                ctx.moveTo(cellX, captionY);
+                                ctx.lineTo(cellX + cellWidth, captionY);
+                                ctx.stroke();
+                            }
+                            ctx.fillStyle = '#000000';
+                            ctx.font = `${22 * scale}px sans-serif`;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            
+                            const lines = (photo.description || '').split('\n');
+                            const lineHeight = 26 * scale;
+                            const totalTextHeight = lines.length * lineHeight;
+                            let textStartY = captionY + (captionHeight - totalTextHeight) / 2;
+
+                            for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+                               ctx.fillText(lines[lineIndex], cellX + cellWidth / 2, textStartY + (lineIndex * lineHeight) + (lineHeight / 2));
+                            }
+                        }
+                    }
+                    
+                    if (paginationSettings.enabled && pagesWithFooter.has(currentPage)) {
+                        let pageText = paginationSettings.format.replace('{page}', currentPage).replace('{total}', totalPages);
+                        ctx.fillStyle = paginationSettings.fontColor;
+                        ctx.font = `${(paginationSettings.fontSize || 12) * 1.5 * scale}px sans-serif`;
+                        ctx.textBaseline = 'bottom';
+                        
+                        if(paginationSettings.position === 'center') {
+                            ctx.textAlign = 'center';
+                            ctx.fillText(pageText, canvas.width / 2, canvas.height - (MARGIN / 2));
+                        } else if (paginationSettings.position === 'right') {
+                            ctx.textAlign = 'right';
+                            ctx.fillText(pageText, canvas.width - MARGIN, canvas.height - (MARGIN / 2));
+                        } else {
+                            ctx.textAlign = 'left';
+                            ctx.fillText(pageText, MARGIN, canvas.height - (MARGIN / 2));
+                        }
+                    }
+
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                    const sanitizedThemeName = (reportInfo.themeName || '照片').replace(/[\\/:*?"<>|]/g, '_');
+                    const fileName = `${sanitizedThemeName}_頁${String(currentPage).padStart(2, '0')}.png`;
+                    zip.file(fileName, blob);
+                }
+
+                updateLoaderText('正在生成 ZIP 檔案...');
+                const zipBlob = await zip.generateAsync({ type: "blob" });
+                const url = URL.createObjectURL(zipBlob);
+                const zipFileName = `${reportInfo.themeName || '照片報告'}_縮圖排版.zip`;
+                showSuccess(url, zipFileName);
+
+            } catch (error) {
+                console.error('產生縮圖排版失敗:', error);
+                showError(`處理過程發生問題：${error.message}`);
+            }
+        };
         
         const saveSessionData = () => { const data = { ...reportInfo }; delete data.constructionLotSelect; delete data.constructionLotInput; localStorage.setItem('reportSession', JSON.stringify(data)); };
         const loadSessionData = () => { const data = JSON.parse(localStorage.getItem('reportSession')); if (data) { applySettings(data); } };
@@ -1060,16 +1244,17 @@
         [dom.fileInput, dom.insertFileInput].forEach(input => input.addEventListener('change', (e) => handleFileSelect(e, input === dom.insertFileInput)));
         [dom.themeNameInput, dom.constructionLotSelect, dom.constructionLotInput, dom.reportDateInput, dom.showThemeName, dom.showConstructionLot, dom.showReportDate, dom.importResolution].forEach(input => { input.addEventListener('input', updateReportInfo); input.addEventListener('change', updateReportInfo); });
         dom.generateHtmlBtn.addEventListener('click', generateHTML);
-        dom.cropZipBtn.addEventListener('click', cropAndZipPhotos); // 新增
+        dom.cropZipBtn.addEventListener('click', cropAndZipPhotos);
+        dom.packPngBtn.addEventListener('click', generateLayoutAsPngAndZip);
         dom.photoGrid.addEventListener('input', (e) => { if (e.target.classList.contains('text-input')) { const id = parseFloat(e.target.dataset.id); updatePhotoText(id, e.target.value); if(e.target.tagName === 'TEXTAREA') { adjustTextareaHeight(e.target); } } });
         
         dom.photoGrid.addEventListener('click', (e) => { 
             const button = e.target.closest('button'); 
-            if (button) { // Handle button clicks (delete, insert)
+            if (button) {
                 if (appState === AppState.PROCESSING_FILES) return; 
                 if (button.classList.contains('remove-btn')) { removePhoto(parseFloat(button.dataset.id)); } 
                 else if (button.classList.contains('insert-btn')) { insertIndex = parseInt(button.dataset.index, 10); dom.insertFileInput.click(); }
-            } else if (e.target.tagName === 'IMG') { // Handle image preview click
+            } else if (e.target.tagName === 'IMG') {
                 dom.previewImage.src = e.target.src;
                 dom.imagePreviewModal.style.display = 'flex';
             }
@@ -1078,7 +1263,6 @@
         const closePreviewModal = () => { dom.imagePreviewModal.style.display = 'none'; dom.previewImage.src = ''; };
         dom.imagePreviewModal.addEventListener('click', closePreviewModal);
         
-        // Modal Setup
         const setupModal = (btn, modal, ...closeElements) => {
             btn.addEventListener('click', () => modal.style.display = 'flex');
             const closeModal = () => modal.style.display = 'none';
@@ -1107,7 +1291,6 @@
         dom.savePresetBtn.addEventListener('click', handleSavePreset);
         dom.presetsList.addEventListener('click', (e) => { const loadBtn = e.target.closest('.load-preset-btn'); const deleteBtn = e.target.closest('.delete-preset-btn'); if (loadBtn) { handleLoadPreset(loadBtn.dataset.name); } else if (deleteBtn) { handleDeletePreset(deleteBtn.dataset.name); } });
         
-        // 主題切換邏輯
         const applyTheme = (theme) => {
             if (theme === 'dark') {
                 document.documentElement.classList.add('dark');
@@ -1122,7 +1305,6 @@
             const currentTheme = localStorage.getItem('theme') || 'light';
             applyTheme(currentTheme === 'light' ? 'dark' : 'light');
         });
-
 
         document.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('theme');
