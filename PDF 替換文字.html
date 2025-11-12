@@ -16,7 +16,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF替換文字與編輯</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- 載入 Google Fonts 以確保字型可用性 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1522,7 +1521,7 @@
                 document.getElementById('statusMessage').style.display = 'none';
             } catch (error) {
                 console.error('PDF 載入失敗:', error);
-                showStatus('PDF 載入失敗: ' + error.message, 'error');
+                showStatus('PDF 載入失敗: ' + (error.message || error), 'error');
                 resetTool(true);
             }
         }
@@ -2360,11 +2359,99 @@
                     return { isValid: false, errorMessage: '無效的頁數範圍。請檢查您的輸入。' };
                 }
             }
-            return { isValid: true, startPage, endPage, totalPages };
+            return { isValid: true, startPage, endPage, scale };
+        }
+        
+        // --- START: MODIFIED CODE SECTION (ULTIMATE FIX) ---
+
+        /**
+         * Dynamically loads a script and returns a promise that resolves ONLY when the script is loaded
+         * AND the expected global variable is available. This is the most robust way to handle this.
+         * @param {string} src - The URL of the script to load.
+         * @param {string} globalVar - The name of the global variable the script is expected to create.
+         * @returns {Promise<void>}
+         */
+        function loadScript(src, globalVar) {
+            // If already loaded, return immediately.
+            if (typeof window[globalVar] !== 'undefined') {
+                return Promise.resolve();
+            }
+
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.id = `script-${globalVar}`; // Add an ID for easy lookup
+
+                script.onload = () => {
+                    // Script has been downloaded and executed. Now, we poll until the global var is ready.
+                    const timeout = 5000; // 5 seconds timeout
+                    const interval = 50;   // check every 50ms
+                    let elapsedTime = 0;
+
+                    const poll = setInterval(() => {
+                        elapsedTime += interval;
+                        if (typeof window[globalVar] !== 'undefined') {
+                            clearInterval(poll);
+                            resolve();
+                        } else if (elapsedTime >= timeout) {
+                            clearInterval(poll);
+                            reject(new Error(`核心程式庫 (${globalVar}) 載入成功但逾時，可能檔案有問題。`));
+                        }
+                    }, interval);
+                };
+
+                script.onerror = () => {
+                    reject(new Error(`無法載入 PDF 核心程式庫。`));
+                };
+                
+                // Prevent duplicate script tags
+                if (!document.getElementById(script.id)) {
+                    document.head.appendChild(script);
+                }
+            });
+        }
+
+        async function createExportCanvas(pageNum, initialScale) {
+            const pageData = pdfPageData[pageNum];
+            if (!pageData) return null;
+
+            const page = pageData.pageRef;
+            let viewport = page.getViewport({ scale: initialScale });
+
+            const MAX_CANVAS_PIXELS = 16777216; // 4096 * 4096, a safe limit for most browsers
+            let finalScale = initialScale;
+            if (viewport.width * viewport.height > MAX_CANVAS_PIXELS) {
+                finalScale = Math.sqrt(MAX_CANVAS_PIXELS / (viewport.width / initialScale * viewport.height / initialScale));
+                console.warn(`頁面 ${pageNum} 的匯出解析度過高，已從 ${initialScale.toFixed(2)}x 自動調整為 ${finalScale.toFixed(2)}x 以避免瀏覽器錯誤。`);
+                viewport = page.getViewport({ scale: finalScale });
+            }
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = viewport.width;
+            tempCanvas.height = viewport.height;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            await page.render({ canvasContext: tempCtx, viewport: viewport }).promise;
+
+            pageData.textItems.forEach(item => {
+                if (item.isModified) {
+                    drawModifiedTextOnCanvas(tempCtx, item, finalScale, viewport);
+                }
+            });
+
+            pageData.drawings.forEach(item => {
+                drawSavedItem(tempCtx, item, finalScale);
+            });
+            
+            return tempCanvas;
         }
 
         async function exportPDF() {
-            if (Object.keys(pdfPageData).length === 0) { showStatus('沒有可匯出的 PDF', 'error'); return; }
+            if (Object.keys(pdfPageData).length === 0) { 
+                showStatus('沒有可匯出的 PDF', 'error'); 
+                return; 
+            }
             
             const settings = getExportSettings();
             if (!settings.isValid) {
@@ -2375,6 +2462,10 @@
             showSpinner('正在準備匯出 PDF...');
 
             try {
+                updateSpinnerStatus('正在載入 PDF 核心程式庫...');
+                // FINAL FIX: Use the correct variable name 'PDFLib' (capital L)
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js', 'PDFLib');
+                
                 const { PDFDocument } = PDFLib;
                 const pdfLibDoc = await PDFDocument.create();
 
@@ -2382,30 +2473,9 @@
                     const progress = pageNum - settings.startPage + 1;
                     const total = settings.endPage - settings.startPage + 1;
                     updateSpinnerStatus(`正在處理 PDF 第 ${progress} / ${total} 頁...`);
-                    await new Promise(resolve => setTimeout(resolve, 10));
-
-                    const pageData = pdfPageData[pageNum];
-                    if (!pageData) continue;
-
-                    const page = pageData.pageRef;
-                    const viewport = page.getViewport({ scale: settings.scale });
-
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = viewport.width;
-                    tempCanvas.height = viewport.height;
-                    const tempCtx = tempCanvas.getContext('2d');
-
-                    await page.render({ canvasContext: tempCtx, viewport: viewport }).promise;
-
-                    pageData.textItems.forEach(item => {
-                        if (item.isModified) {
-                            drawModifiedTextOnCanvas(tempCtx, item, settings.scale, viewport);
-                        }
-                    });
-
-                    pageData.drawings.forEach(item => {
-                        drawSavedItem(tempCtx, item, settings.scale);
-                    });
+                    
+                    const tempCanvas = await createExportCanvas(pageNum, settings.scale);
+                    if (!tempCanvas) continue;
 
                     const pngImageBytes = await pdfLibDoc.embedPng(tempCanvas.toDataURL('image/png'));
                     const pdfPage = pdfLibDoc.addPage([tempCanvas.width, tempCanvas.height]);
@@ -2427,8 +2497,10 @@
                 hideSpinner();
             } catch (error) {
                 hideSpinner();
-                showStatus('PDF 匯出失敗: ' + error.message, 'error');
-                console.error(error);
+                const errorMessage = error.message || '未知錯誤';
+                const finalMessage = `PDF 匯出失敗：${errorMessage}。請檢查您的網路連線，或嘗試停用瀏覽器擴充功能後，重新整理頁面再試一次。`;
+                showStatus(finalMessage, 'error', 10000);
+                console.error("PDF Export failed:", error);
             }
         }
 
@@ -2444,39 +2516,25 @@
             showSpinner('正在準備匯出 PNG (ZIP)...');
 
             try {
+                if (typeof JSZip === 'undefined') {
+                    throw new Error("無法載入 ZIP 核心程式庫。");
+                }
                 const zip = new JSZip();
 
                 for (let pageNum = settings.startPage; pageNum <= settings.endPage; pageNum++) {
                     const progress = pageNum - settings.startPage + 1;
                     const total = settings.endPage - settings.startPage + 1;
                     updateSpinnerStatus(`正在處理 PNG 第 ${progress} / ${total} 頁...`);
-                    await new Promise(resolve => setTimeout(resolve, 10));
-
-                    const pageData = pdfPageData[pageNum];
-                    if (!pageData) continue;
-
-                    const page = pageData.pageRef;
-                    const viewport = page.getViewport({ scale: settings.scale });
-
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = viewport.width;
-                    tempCanvas.height = viewport.height;
-                    const tempCtx = tempCanvas.getContext('2d');
-
-                    await page.render({ canvasContext: tempCtx, viewport: viewport }).promise;
-
-                    pageData.textItems.forEach(item => {
-                        if (item.isModified) {
-                            drawModifiedTextOnCanvas(tempCtx, item, settings.scale, viewport);
-                        }
-                    });
-
-                     pageData.drawings.forEach(item => {
-                        drawSavedItem(tempCtx, item, settings.scale);
-                    });
+                    
+                    const tempCanvas = await createExportCanvas(pageNum, settings.scale);
+                    if (!tempCanvas) continue;
 
                     const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
-                    zip.file(`page_${pageNum}.png`, blob);
+                    if (blob && blob.size > 0) {
+                        zip.file(`page_${pageNum}.png`, blob);
+                    } else {
+                        console.warn(`頁面 ${pageNum} 產生的 PNG 檔案為空，已略過。`);
+                    }
                 }
 
                 updateSpinnerStatus('正在產生 ZIP 檔案...');
@@ -2493,10 +2551,14 @@
                 hideSpinner();
             } catch (error) {
                 hideSpinner();
-                showStatus('PNG (ZIP) 匯出失敗: ' + error.message, 'error');
-                console.error(error);
+                const errorMessage = error.message || error.toString();
+                showStatus('PNG (ZIP) 匯出失敗: ' + errorMessage, 'error');
+                console.error("PNG (ZIP) Export failed:", error);
             }
         }
+        
+        // --- END: MODIFIED CODE SECTION ---
+
 
         function setEditingControlsState(enabled) {
             searchText.disabled = !enabled;
