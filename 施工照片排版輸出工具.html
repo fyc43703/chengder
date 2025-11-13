@@ -20,8 +20,11 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
     </script>
 
-    <!-- 新增：引入 JSZip 用於打包檔案 -->
+    <!-- 引入 JSZip 用於打包檔案 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- 引入 SortableJS 用於拖曳排序 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 
     <style>
         /* 使用 Google Fonts 的 Noto Sans TC */
@@ -87,6 +90,16 @@
         }
         .photo-card:hover .photo-controls {
             opacity: 1;
+        }
+        .sortable-ghost {
+            opacity: 0.4;
+            border: 2px dashed #007aff;
+        }
+        .sortable-chosen {
+            cursor: grabbing;
+        }
+        .photo-card {
+            cursor: grab;
         }
         .loader-overlay, .modal-overlay {
             position: fixed;
@@ -177,30 +190,25 @@
         .header-field .input-group {
             flex-grow: 1;
         }
-        /* 加大核取方塊 */
         .header-field input[type="checkbox"] {
             margin-bottom: 0.5rem; 
             width: 1.25rem;
             height: 1.25rem;
         }
-        /* 修正：按鈕內文字與圖示顏色繼承 */
         button span, label span, button i, label i, button svg, label svg, a span, a svg {
             color: inherit;
         }
-        #image-preview-modal img {
+        #image-preview-modal img, #layout-preview-modal img {
             max-width: 90vw;
             max-height: 85vh;
             object-fit: contain;
         }
-        /* 功能說明關鍵字顏色 */
         .instruction-keyword {
             color: var(--instruction-keyword-color);
             font-weight: 600;
         }
-        
-        /* 全新功能說明卡片樣式 */
         .instruction-card {
-            perspective: 1000px; /* For 3D effect */
+            perspective: 1000px;
         }
         .instruction-card-inner {
             background-color: var(--glass-bg);
@@ -218,25 +226,31 @@
             box-shadow: var(--card-shadow-hover);
         }
         .instruction-card-icon {
-            transform: translateZ(30px); /* Make icon pop out */
+            transform: translateZ(30px);
         }
         .instruction-card h3, .instruction-card ul {
-             transform: translateZ(10px); /* Bring text forward */
+             transform: translateZ(10px);
         }
     </style>
 </head>
-<body class="min-h-screen p-8">
+<body class="min-h-screen px-8 pb-8">
     
-    <!-- 全螢幕載入指示器 -->
-    <div id="loader-overlay" class="loader-overlay" style="display: none;">
-        <!-- 內容由 JavaScript 動態生成 -->
-    </div>
+    <div id="loader-overlay" class="loader-overlay" style="display: none;"></div>
     
     <!-- Modal 區域 -->
     <div id="image-preview-modal" class="modal-overlay" style="display: none; cursor: zoom-out;">
         <div class="relative">
             <img id="preview-image" src="" alt="圖片預覽">
-            <button id="image-preview-close" class="absolute -top-4 -right-4 bg-white rounded-full p-1 text-gray-800 hover:bg-gray-200" style="cursor: pointer;">
+            <button class="absolute -top-4 -right-4 bg-white rounded-full p-1 text-gray-800 hover:bg-gray-200" style="cursor: pointer;" onclick="document.getElementById('image-preview-modal').style.display='none'">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div id="layout-preview-modal" class="modal-overlay" style="display: none; cursor: zoom-out;">
+        <div class="relative bg-white dark:bg-gray-800 p-2 rounded-lg shadow-2xl">
+            <img id="layout-preview-image" src="" alt="版面預覽">
+            <button class="absolute -top-4 -right-4 bg-white rounded-full p-1 text-gray-800 hover:bg-gray-200" style="cursor: pointer;" onclick="document.getElementById('layout-preview-modal').style.display='none'">
                 <i data-lucide="x" class="w-6 h-6"></i>
             </button>
         </div>
@@ -247,7 +261,7 @@
          <div class="bg-white/70 dark:bg-black/70 backdrop-blur-sm rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
             <div class="flex justify-between items-center mb-8">
                 <h1 class="text-3xl font-bold">版面設定</h1>
-                <a href="https://fyc43703.github.io/chengder/PowerPoint%E8%AC%9B%E7%BE%A9%E7%89%88%E9%9D%A2%E9%85%8D%E7%BD%AE%E9%A0%90%E8%A6%BD%E5%B7%A5%E5%85%B7.html" target="_blank" rel="noopener noreferrer" id="layout-preview-link" class="bg-blue-600 text-white dark:text-white font-semibold py-2 px-4 rounded-lg flex items-center space-x-2 shadow-md hover:bg-blue-700 transition-all duration-300">
+                <a href="https://fyc43703.github.io/chengder/PowerPoint%E8%AC%9B%E7%BE%A9%E7%89%88%E9%9D%A2%E9%85%8D%E7%BD%AE%E9%A0%90%E8%A6%BD%E5%B7%A5%E5%85%B7.html" target="_blank" rel="noopener noreferrer" id="layout-preview-link" class="bg-blue-600 text-white dark:text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-1.5 shadow-md hover:bg-blue-700 transition-all duration-300">
                     <span>版面配置預覽示意圖</span>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
@@ -353,8 +367,8 @@
                 <div class="space-y-3">
                     <h3 class="font-semibold">儲存目前設定為樣板</h3>
                     <input type="text" id="preset-name-input" placeholder="請輸入樣板名稱..." class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button id="save-preset-btn" class="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-semibold transition-all shadow-sm">
-                        <i data-lucide="save" class="w-5 h-5"></i>
+                    <button id="save-preset-btn" class="w-full flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-all shadow-sm">
+                        <i data-lucide="save" class="w-4 h-4"></i>
                         <span>儲存樣板</span>
                     </button>
                 </div>
@@ -374,9 +388,10 @@
         </div>
     </div>
 
-    <!-- **** MODIFIED: Removed max-w-7xl and mx-auto for wider layout **** -->
+    <!-- **** MODIFIED: Removed pt-8 from app div **** -->
     <div id="app" class="">
-        <header class="glass-effect relative rounded-xl shadow-lg p-6 mb-6">
+        <!-- **** MODIFIED: Removed mt-8 from header **** -->
+        <header class="glass-effect relative rounded-xl shadow-lg p-6 mt-8">
             <div class="traffic-lights">
                 <div class="traffic-light red"></div>
                 <div class="traffic-light yellow"></div>
@@ -395,8 +410,8 @@
             <p class="text-center text-xs mt-1">製作者：陳政德</p>
         </header>
 
-        <div class="glass-effect rounded-xl shadow-lg p-6 mb-6 sticky top-4 z-10">
-            <div class="flex flex-col gap-4">
+        <div class="glass-effect rounded-xl shadow-lg px-6 py-4 mt-6 mb-6 sticky top-4 z-10">
+            <div class="flex flex-col gap-3">
                 <div class="flex items-end gap-4">
                     <div class="header-field flex-grow" style="min-width: 400px;">
                         <div class="input-group">
@@ -437,13 +452,13 @@
                 <div class="flex justify-between items-end gap-4">
                     <div class="flex items-end gap-2">
                          <div id="photo-count-info" class="mr-4"></div>
-                         <label id="select-photos-label" class="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg cursor-pointer transition-all shadow-sm hover:shadow-md" title="選擇圖片或 PDF 檔案匯入">
-                            <i data-lucide="upload" class="w-5 h-5"></i>
+                         <label id="select-photos-label" class="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-all shadow-sm hover:shadow-md" title="選擇圖片或 PDF 檔案匯入">
+                            <i data-lucide="upload" class="w-4 h-4"></i>
                             <span class="font-medium">選擇照片/PDF</span>
                             <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/tiff,image/heic,image/heif,image/jfif,application/pdf" id="file-input" class="hidden">
                         </label>
                         <div>
-                            <select id="import-resolution" title="設定 HTML 報告中的圖片品質" class="px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                            <select id="import-resolution" title="設定 HTML 報告中的圖片品質" class="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm h-[40px]">
                                 <option value="1.0">低 (檔案小)</option>
                                 <option value="1.5" selected>中 (建議)</option>
                                 <option value="2.0">高 (品質好)</option>
@@ -452,40 +467,41 @@
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <button id="layout-settings-btn" class="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="設定報告的頁面排版">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                        <button id="layout-settings-btn" class="flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow-md" title="設定報告的頁面排版">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
                             <span class="font-medium">版面</span>
                         </button>
-                        <button id="presets-btn" class="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="儲存或載入常用的設定組合">
-                            <i data-lucide="layout-template" class="w-5 h-5"></i>
+                        <button id="presets-btn" class="flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow-md" title="儲存或載入常用的設定組合">
+                            <i data-lucide="layout-template" class="w-4 h-4"></i>
                             <span class="font-medium">樣板</span>
                         </button>
-                        <button id="pagination-settings-btn" class="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="自訂報告的頁碼樣式與範圍">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 7h6"/><path d="m10 10-2 2 2 2"/><path d="M14 10h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2v-4Z"/></svg>
+                        <button id="pagination-settings-btn" class="flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow-md" title="自訂報告的頁碼樣式與範圍">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 7h6"/><path d="m10 10-2 2 2 2"/><path d="M14 10h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2v-4Z"/></svg>
                             <span class="font-medium">頁碼</span>
                         </button>
                     </div>
 
                     <div class="flex items-end gap-2">
-                        <!-- **** MODIFIED: Renamed button **** -->
-                        <button id="crop-zip-btn" class="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="將直式照片裁切為橫式(4:3)，並打包下載為 JPG 檔">
-                            <i data-lucide="crop" class="w-5 h-5"></i>
+                        <button id="crop-zip-btn" class="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow-md" title="將直式照片裁切為橫式(4:3)，並打包下載為 JPG 檔">
+                            <i data-lucide="crop" class="w-4 h-4"></i>
                             <span class="font-medium">裁切輸出</span>
                         </button>
-                        <!-- **** MODIFIED: Renamed button and added resolution dropdown **** -->
                         <div class="flex items-center">
-                            <button id="pack-png-btn" class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white pl-5 pr-4 py-2.5 rounded-l-lg transition-all shadow-sm hover:shadow-md" title="將設定好的頁面版面，輸出為 PNG 圖片並打包下載">
-                                <i data-lucide="image" class="w-5 h-5"></i>
+                            <button id="pack-png-btn" class="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white pl-3 pr-2 py-2 rounded-l-lg transition-all shadow-sm hover:shadow-md" title="將設定好的頁面版面，輸出為 PNG 圖片並打包下載">
+                                <i data-lucide="image" class="w-4 h-4"></i>
                                 <span class="font-medium">縮圖排版</span>
                             </button>
-                            <select id="layout-export-resolution" title="設定縮圖排版的輸出解析度" class="py-2.5 border-l-0 border rounded-r-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm h-[46px]">
+                            <button id="preview-layout-btn" class="flex items-center p-2 bg-green-700 hover:bg-green-800 text-white transition-all shadow-sm h-[40px]" title="預覽第一頁的縮圖排版結果">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </button>
+                            <select id="layout-export-resolution" title="設定縮圖排版的輸出解析度" class="py-2 border-l-0 border rounded-r-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm h-[40px]">
                                 <option value="low">低</option>
                                 <option value="medium" selected>中</option>
                                 <option value="high">高</option>
                             </select>
                         </div>
-                        <button id="generate-html-btn" class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md" title="將目前的設定與照片生成可列印的 HTML 報告">
-                            <i data-lucide="file-code-2" class="w-5 h-5"></i>
+                        <button id="generate-html-btn" class="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow-md" title="將目前的設定與照片生成可列印的 HTML 報告">
+                            <i data-lucide="file-code-2" class="w-4 h-4"></i>
                             <span id="generate-html-btn-text" class="font-medium">生成 HTML</span>
                         </button>
                     </div>
@@ -501,7 +517,7 @@
                 <p class="text-lg font-medium">尚未選擇檔案</p>
                 <p class="text-sm mt-2">請點擊上方的「選擇照片/PDF」按鈕開始</p>
             </div>
-            <div id="photo-grid" class="grid grid-cols-4 gap-6"></div>
+            <div id="photo-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6"></div>
         </main>
         
         <footer class="mt-12 glass-effect rounded-xl shadow-lg p-8">
@@ -510,9 +526,43 @@
                 
                 <div class="instruction-card">
                     <div class="instruction-card-inner">
+                         <div class="flex items-center mb-4">
+                            <div class="instruction-card-icon bg-yellow-100 dark:bg-yellow-900/50 p-3 rounded-full mr-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-500 dark:text-yellow-400"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.499l13.17-13.17z" /><path d="m15 5 4 4" /><path d="M9.5 12.5 11.5 14.5" /></svg>
+                            </div>
+                            <h3 class="text-lg font-semibold">照片編輯與排序</h3>
+                        </div>
+                        <ul class="list-disc list-inside space-y-2 text-sm pl-2">
+                             <li><b class="instruction-keyword">拖曳排序：</b>直接用滑鼠按住照片卡片，即可自由拖曳以調整順序。</li>
+                             <li><b class="instruction-keyword">編輯說明：</b>點擊文字框即可輸入或修改說明，支援多行文字。</li>
+                             <li><b class="instruction-keyword">刪除/插入：</b>滑鼠移至照片上方會顯示控制按鈕，可刪除或插入新檔。</li>
+                             <li><b class="instruction-keyword">預覽照片：</b>點擊照片縮圖，即可彈出大圖預覽視窗。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="instruction-card">
+                    <div class="instruction-card-inner">
+                        <div class="flex items-center mb-4">
+                            <div class="instruction-card-icon bg-green-100 dark:bg-green-900/50 p-3 rounded-full mr-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500 dark:text-green-400"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" /><line x1="16" y1="5" x2="22" y2="5" /><line x1="19" y1="2" x2="19" y2="8" /><path d="M12 18L12 12L15 15L12 12L9 15" /></svg>
+                            </div>
+                            <h3 class="text-lg font-semibold">檔案匯入與輸出</h3>
+                        </div>
+                        <ul class="list-disc list-inside space-y-2 text-sm pl-2">
+                            <li><b class="instruction-keyword">選擇檔案：</b>支援多選圖片 (JPG, PNG, HEIC) 或 PDF。PDF 會自動逐頁轉為圖片。</li>
+                            <li><b class="instruction-keyword">生成 HTML：</b>產生可列印的報告頁面，可透過瀏覽器的列印功能另存為 PDF。</li>
+                            <li><b class="instruction-keyword">裁切輸出：</b>將所有直式照片裁切為 4:3 橫式，並打包成一個 ZIP 檔下載 (JPG)。</li>
+                             <li><b class="instruction-keyword">縮圖排版：</b>將依「版面設定」的樣式，將每一頁的排版結果分別輸出為 PNG 圖檔並打包。可自訂解析度與即時預覽。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="instruction-card">
+                    <div class="instruction-card-inner">
                         <div class="flex items-center mb-4">
                             <div class="instruction-card-icon bg-blue-100 dark:bg-blue-900/50 p-3 rounded-full mr-4">
-                               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500 dark:text-blue-400"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+                               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500 dark:text-blue-400"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></svg>
                             </div>
                             <h3 class="text-lg font-semibold">報告資訊設定</h3>
                         </div>
@@ -522,46 +572,12 @@
                         </ul>
                     </div>
                 </div>
-                
-                <div class="instruction-card">
-                    <div class="instruction-card-inner">
-                        <div class="flex items-center mb-4">
-                            <div class="instruction-card-icon bg-green-100 dark:bg-green-900/50 p-3 rounded-full mr-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500 dark:text-green-400"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path><line x1="16" y1="5" x2="22" y2="5"></line><line x1="19" y1="2" x2="19" y2="8"></line><path d="M12 18L12 12L15 15L12 12L9 15"></path></svg>
-                            </div>
-                            <h3 class="text-lg font-semibold">檔案匯入與輸出</h3>
-                        </div>
-                        <ul class="list-disc list-inside space-y-2 text-sm pl-2">
-                            <li><b class="instruction-keyword">選擇檔案：</b>支援多選圖片 (JPG, PNG, HEIC) 或 PDF。PDF 會自動逐頁轉為圖片。</li>
-                            <li><b class="instruction-keyword">生成 HTML：</b>產生可列印的報告頁面，可透過瀏覽器的列印功能另存為 PDF。</li>
-                            <!-- **** MODIFIED: Renamed text **** -->
-                            <li><b class="instruction-keyword">裁切輸出：</b>將所有直式照片裁切為 4:3 橫式，並打包成一個 ZIP 檔下載 (JPG)。</li>
-                             <li><b class="instruction-keyword">縮圖排版：</b>將依「版面設定」的樣式，將每一頁的排版結果分別輸出一張 PNG 圖檔，並打包成 ZIP 下載。可自訂輸出解析度。</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <div class="instruction-card">
-                    <div class="instruction-card-inner">
-                         <div class="flex items-center mb-4">
-                            <div class="instruction-card-icon bg-yellow-100 dark:bg-yellow-900/50 p-3 rounded-full mr-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-500 dark:text-yellow-400"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
-                            </div>
-                            <h3 class="text-lg font-semibold">照片編輯區</h3>
-                        </div>
-                        <ul class="list-disc list-inside space-y-2 text-sm pl-2">
-                            <li><b class="instruction-keyword">編輯說明：</b>直接點擊照片下方的文字框即可輸入或修改說明，支援多行文字。</li>
-                            <li><b class="instruction-keyword">刪除/插入：</b>滑鼠移至照片上方會顯示控制按鈕，可刪除照片或在此之後插入新檔。</li>
-                            <li><b class="instruction-keyword">預覽照片：</b>直接點擊照片縮圖，即可彈出大圖預覽視窗，方便檢視細節。</li>
-                        </ul>
-                    </div>
-                </div>
 
                 <div class="instruction-card">
                     <div class="instruction-card-inner">
                         <div class="flex items-center mb-4">
                             <div class="instruction-card-icon bg-teal-100 dark:bg-teal-900/50 p-3 rounded-full mr-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-teal-500 dark:text-teal-400"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M9 21V9"></path></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-teal-500 dark:text-teal-400"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M3 9h18" /><path d="M9 21V9" /></svg>
                             </div>
                             <h3 class="text-lg font-semibold">版面設定</h3>
                         </div>
@@ -577,7 +593,7 @@
                     <div class="instruction-card-inner">
                         <div class="flex items-center mb-4">
                            <div class="instruction-card-icon bg-indigo-100 dark:bg-indigo-900/50 p-3 rounded-full mr-4">
-                               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500 dark:text-indigo-400"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500 dark:text-indigo-400"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
                            </div>
                             <h3 class="text-lg font-semibold">樣板管理</h3>
                         </div>
@@ -592,7 +608,7 @@
                     <div class="instruction-card-inner">
                         <div class="flex items-center mb-4">
                              <div class="instruction-card-icon bg-purple-100 dark:bg-purple-900/50 p-3 rounded-full mr-4">
-                                 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-500 dark:text-purple-400"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path><path d="M8 7h6"></path><path d="m10 10-2 2 2 2"></path><path d="M14 10h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2v-4Z"></path></svg>
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-500 dark:text-purple-400"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /><path d="M8 7h6" /><path d="m10 10-2 2 2 2" /><path d="M14 10h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2v-4Z" /></svg>
                              </div>
                             <h3 class="text-lg font-semibold">頁碼設定</h3>
                         </div>
@@ -632,6 +648,7 @@
             fontColor: '#555555', format: '第 {page} 頁 / 共 {total} 頁', range: ''
         };
         let insertIndex = -1;
+        let sortableInstance = null; // For SortableJS instance
 
         // --- DOM 元素參考 ---
         const dom = {
@@ -647,6 +664,7 @@
             cropZipBtn: document.getElementById('crop-zip-btn'),
             packPngBtn: document.getElementById('pack-png-btn'),
             layoutExportResolution: document.getElementById('layout-export-resolution'),
+            previewLayoutBtn: document.getElementById('preview-layout-btn'),
             photoCountInfo: document.getElementById('photo-count-info'),
             emptyState: document.getElementById('empty-state'),
             photoGrid: document.getElementById('photo-grid'),
@@ -683,7 +701,8 @@
             importResolution: document.getElementById('import-resolution'),
             imagePreviewModal: document.getElementById('image-preview-modal'),
             previewImage: document.getElementById('preview-image'),
-            imagePreviewClose: document.getElementById('image-preview-close'),
+            layoutPreviewModal: document.getElementById('layout-preview-modal'),
+            layoutPreviewImage: document.getElementById('layout-preview-image'),
             themeToggle: document.getElementById('theme-toggle'),
         };
 
@@ -718,26 +737,44 @@
             dom.generateHtmlBtn.disabled = !isIdle || !hasPhotos;
             dom.cropZipBtn.disabled = !isIdle || !hasPhotos;
             dom.packPngBtn.disabled = !isIdle || !hasPhotos;
+            dom.previewLayoutBtn.disabled = !isIdle || !hasPhotos;
         };
         
         const adjustTextareaHeight = (textarea) => { textarea.style.height = 'auto'; textarea.style.height = `${textarea.scrollHeight}px`; };
         
         const renderPhotos = () => {
+            if (sortableInstance) {
+                sortableInstance.destroy();
+            }
             dom.photoGrid.innerHTML = '';
             const hasPhotos = photos.length > 0;
             dom.emptyState.style.display = hasPhotos ? 'none' : 'block';
-            // **** MODIFIED: Removed photo count display ****
             dom.photoCountInfo.innerHTML = '';
-             if(!hasPhotos) hideLoaderAndResetState();
+             if(!hasPhotos) {
+                 hideLoaderAndResetState();
+                 return;
+             }
 
             photos.forEach((photo, index) => {
                 const card = document.createElement('div');
                 card.className = 'photo-card glass-effect rounded-lg shadow-md overflow-hidden flex flex-col transition-all';
-                card.innerHTML = `<div class="relative group"><div class="h-48 flex items-center justify-center bg-black/5 dark:bg-white/5 overflow-hidden cursor-zoom-in"><img src="${photo.url}" alt="照片 ${index + 1}" class="max-w-full max-h-full object-contain"></div><div class="photo-controls absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all bg-black/40 p-1 rounded-full"><button title="在此後插入照片" class="insert-btn" data-index="${index}"><i data-lucide="plus-circle" class="w-5 h-5 text-white hover:text-blue-300"></i></button><button title="刪除照片" class="remove-btn" data-id="${photo.id}"><i data-lucide="trash-2" class="w-5 h-5 text-white hover:text-red-400"></i></button></div></div><div class="p-4 flex-grow flex flex-col"><label class="block text-sm font-medium mb-1">說明文字 #${index + 1}</label><textarea data-id="${photo.id}" placeholder="請輸入說明..." class="description-textarea text-input w-full text-center px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 flex-grow">${photo.description}</textarea></div>`;
+                card.dataset.id = photo.id;
+                card.innerHTML = `<div class="relative group"><div class="h-48 flex items-center justify-center bg-black/5 dark:bg-white/5 overflow-hidden"><img src="${photo.url}" alt="照片 ${index + 1}" class="max-w-full max-h-full object-contain cursor-zoom-in"></div><div class="photo-controls absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all bg-black/40 p-1 rounded-full"><button title="在此後插入照片" class="insert-btn" data-index="${index}"><i data-lucide="plus-circle" class="w-5 h-5 text-white hover:text-blue-300"></i></button><button title="刪除照片" class="remove-btn" data-id="${photo.id}"><i data-lucide="trash-2" class="w-5 h-5 text-white hover:text-red-400"></i></button></div></div><div class="p-4 flex-grow flex flex-col"><label class="block text-sm font-medium mb-1">說明文字 #${index + 1}</label><textarea data-id="${photo.id}" placeholder="請輸入說明..." class="description-textarea text-input w-full text-center px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 flex-grow">${photo.description}</textarea></div>`;
                 dom.photoGrid.appendChild(card);
                 adjustTextareaHeight(card.querySelector('textarea'));
             });
             lucide.createIcons();
+            
+            sortableInstance = new Sortable(dom.photoGrid, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: (evt) => {
+                    const movedItem = photos.splice(evt.oldIndex, 1)[0];
+                    photos.splice(evt.newIndex, 0, movedItem);
+                    renderPhotos(); 
+                },
+            });
         };
 
         const convertImageToPngData = (url, maxDimension) => new Promise((resolve, reject) => {
@@ -846,8 +883,8 @@
             }
         };
 
-        const updatePhotoText = (id, value) => { const photo = photos.find(p => p.id === id); if (photo) photo.description = value; };
-        const removePhoto = (id) => { const photo = photos.find(p => p.id === id); if (photo) URL.revokeObjectURL(photo.url); photos = photos.filter(p => p.id !== id); renderPhotos(); };
+        const updatePhotoText = (id, value) => { const photo = photos.find(p => p.id === parseFloat(id)); if (photo) photo.description = value; };
+        const removePhoto = (id) => { const photo = photos.find(p => p.id === parseFloat(id)); if (photo) URL.revokeObjectURL(photo.url); photos = photos.filter(p => p.id !== parseFloat(id)); renderPhotos(); };
         const toRocDate = (dateString, format = 'YYY/MM/DD') => { if (!dateString) return ''; const date = new Date(dateString); if (isNaN(date.getTime())) return ''; const year = date.getFullYear() - 1911; const month = (date.getMonth() + 1).toString().padStart(2, '0'); const day = date.getDate().toString().padStart(2, '0'); return format.replace('YYY', year).replace('MM', month).replace('DD', day); };
         const parsePageRange = (rangeStr, totalPages) => { const pages = new Set(); if (!rangeStr || rangeStr.trim() === '') { for (let i = 1; i <= totalPages; i++) pages.add(i); return pages; } const parts = rangeStr.split(','); for (const part of parts) { const trimmedPart = part.trim(); if (trimmedPart.includes('-')) { const [start, end] = trimmedPart.split('-').map(Number); if (!isNaN(start) && !isNaN(end)) { for (let i = start; i <= end; i++) { if (i > 0 && i <= totalPages) pages.add(i); } } } else { const page = Number(trimmedPart); if (!isNaN(page) && page > 0 && page <= totalPages) pages.add(page); } } return pages; };
         
@@ -1051,6 +1088,132 @@
                 showError(`處理過程發生問題：${error.message}`);
             }
         };
+        
+        const drawLayoutOnCanvas = async (canvas, pageIndex, totalPages) => {
+            const ctx = canvas.getContext('2d');
+            const resolutionSettings = {
+                'low': { short: 827, long: 1169, scale: 0.667 },
+                'medium': { short: 1240, long: 1754, scale: 1.0 },
+                'high': { short: 2480, long: 3508, scale: 2.0 }
+            };
+            const selectedResKey = dom.layoutExportResolution.value || 'medium';
+            const res = resolutionSettings[selectedResKey];
+            const scale = res.scale;
+            
+            canvas.width = layoutSettings.orientation === 'portrait' ? res.short : res.long;
+            canvas.height = layoutSettings.orientation === 'portrait' ? res.long : res.short;
+            const MARGIN = 100 * scale;
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            let currentY = MARGIN;
+            if (pageIndex === 0) {
+                ctx.fillStyle = '#000000';
+                if (reportInfo.showThemeName && reportInfo.themeName) {
+                    ctx.font = `bold ${48 * scale}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(reportInfo.themeName, canvas.width / 2, currentY);
+                    currentY += (60 * scale);
+                }
+                if ((reportInfo.showConstructionLot && reportInfo.constructionLot) || (reportInfo.showReportDate && reportInfo.reportDate)) {
+                    ctx.font = `${24 * scale}px sans-serif`;
+                    ctx.textAlign = 'left';
+                    const subHeaderText = [];
+                    if (reportInfo.showConstructionLot && reportInfo.constructionLot) subHeaderText.push(`施工標別：${reportInfo.constructionLot}`);
+                    if (reportInfo.showReportDate && reportInfo.reportDate) subHeaderText.push(`日期：${toRocDate(reportInfo.reportDate)}`);
+                    if (subHeaderText.length > 0) {
+                        ctx.fillText(subHeaderText.join('    '), MARGIN, currentY);
+                        currentY += (40 * scale);
+                    }
+                }
+                currentY += (20 * scale);
+            }
+
+            const headerHeight = (pageIndex === 0) ? currentY : MARGIN;
+            let footerHeight = MARGIN;
+            const currentPage = pageIndex + 1;
+            const pagesWithFooter = parsePageRange(paginationSettings.range, totalPages);
+            if (paginationSettings.enabled && pagesWithFooter.has(currentPage)) {
+                footerHeight = MARGIN + (40 * scale);
+            }
+
+            const contentAreaY = headerHeight;
+            const contentAreaWidth = canvas.width - (MARGIN * 2);
+            const contentAreaHeight = canvas.height - headerHeight - footerHeight;
+            const { cols, rows } = getGridDimensions(layoutSettings.photosPerPage);
+            const gap = 20 * scale;
+            const cellWidth = (contentAreaWidth - (gap * (cols - 1))) / cols;
+            const cellHeight = (contentAreaHeight - (gap * (rows - 1))) / rows;
+            const photoSlice = photos.slice(pageIndex * layoutSettings.photosPerPage, (pageIndex + 1) * layoutSettings.photosPerPage);
+
+            for (let j = 0; j < photoSlice.length; j++) {
+                const photo = photoSlice[j];
+                const row = Math.floor(j / cols);
+                const col = j % cols;
+                const cellX = MARGIN + col * (cellWidth + gap);
+                const cellY = contentAreaY + row * (cellHeight + gap);
+                const captionHeight = layoutSettings.showCaptions ? (60 * scale) : 0;
+                const photoContainerHeight = cellHeight - captionHeight;
+
+                if (layoutSettings.showBorders) {
+                    ctx.strokeStyle = '#AAAAAA';
+                    ctx.lineWidth = Math.max(1, 1 * scale);
+                    ctx.strokeRect(cellX, cellY, cellWidth, cellHeight);
+                }
+
+                const img = await new Promise((resolve, reject) => {
+                    const image = new Image();
+                    image.onload = () => resolve(image);
+                    image.onerror = () => reject(new Error(`第 ${pageIndex * layoutSettings.photosPerPage + j + 1} 張圖片載入失敗`));
+                    image.src = photo.url;
+                });
+
+                const hRatio = (cellWidth - (10 * scale)) / img.width;
+                const vRatio = (photoContainerHeight - (10 * scale)) / img.height;
+                const ratio = Math.min(hRatio, vRatio);
+                const scaledWidth = img.width * ratio;
+                const scaledHeight = img.height * ratio;
+                const imgX = cellX + (cellWidth - scaledWidth) / 2;
+                const imgY = cellY + (photoContainerHeight - scaledHeight) / 2;
+                ctx.drawImage(img, imgX, imgY, scaledWidth, scaledHeight);
+
+                if (layoutSettings.showCaptions) {
+                    const captionY = cellY + photoContainerHeight;
+                    if (layoutSettings.showBorders) {
+                        ctx.beginPath(); ctx.moveTo(cellX, captionY); ctx.lineTo(cellX + cellWidth, captionY); ctx.stroke();
+                    }
+                    ctx.fillStyle = '#000000';
+                    ctx.font = `${22 * scale}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const lines = (photo.description || '').split('\n');
+                    const lineHeight = 26 * scale;
+                    const totalTextHeight = lines.length * lineHeight;
+                    let textStartY = captionY + (captionHeight - totalTextHeight) / 2;
+                    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+                       ctx.fillText(lines[lineIndex], cellX + cellWidth / 2, textStartY + (lineIndex * lineHeight) + (lineHeight / 2));
+                    }
+                }
+            }
+
+            if (paginationSettings.enabled && pagesWithFooter.has(currentPage)) {
+                let pageText = paginationSettings.format.replace('{page}', currentPage).replace('{total}', totalPages);
+                ctx.fillStyle = paginationSettings.fontColor;
+                ctx.font = `${(paginationSettings.fontSize || 12) * 1.5 * scale}px sans-serif`;
+                ctx.textBaseline = 'bottom';
+                if (paginationSettings.position === 'center') {
+                    ctx.textAlign = 'center';
+                    ctx.fillText(pageText, canvas.width / 2, canvas.height - (MARGIN / 2));
+                } else if (paginationSettings.position === 'right') {
+                    ctx.textAlign = 'right';
+                    ctx.fillText(pageText, canvas.width - MARGIN, canvas.height - (MARGIN / 2));
+                } else {
+                    ctx.textAlign = 'left';
+                    ctx.fillText(pageText, MARGIN, canvas.height - (MARGIN / 2));
+                }
+            }
+        };
 
         const generateLayoutAsPngAndZip = async () => {
             if (appState !== AppState.IDLE || photos.length === 0) return;
@@ -1059,160 +1222,16 @@
 
             try {
                 const zip = new JSZip();
-                
-                // **** MODIFIED: Added resolution settings ****
-                const resolutionSettings = {
-                    'low':    { short: 827,  long: 1169, scale: 0.667 }, // ~100 DPI
-                    'medium': { short: 1240, long: 1754, scale: 1.0 },   // ~150 DPI (Base)
-                    'high':   { short: 2480, long: 3508, scale: 2.0 }    // ~300 DPI
-                };
-                
-                const selectedResKey = dom.layoutExportResolution.value || 'medium';
-                const res = resolutionSettings[selectedResKey];
-                const scale = res.scale;
-
-                const pageWidth = layoutSettings.orientation === 'portrait' ? res.short : res.long;
-                const pageHeight = layoutSettings.orientation === 'portrait' ? res.long : res.short;
-                const MARGIN = 100 * scale;
-
-                const photosPerPage = layoutSettings.photosPerPage;
-                const totalPages = Math.ceil(photos.length / photosPerPage);
-                const pagesWithFooter = parsePageRange(paginationSettings.range, totalPages);
+                const totalPages = Math.ceil(photos.length / layoutSettings.photosPerPage);
 
                 for (let i = 0; i < totalPages; i++) {
-                    const currentPage = i + 1;
-                    updateLoaderText(`正在繪製第 ${currentPage} / ${totalPages} 頁...`);
-                    
+                    updateLoaderText(`正在繪製第 ${i + 1} / ${totalPages} 頁...`);
                     const canvas = document.createElement('canvas');
-                    canvas.width = pageWidth;
-                    canvas.height = pageHeight;
-                    const ctx = canvas.getContext('2d');
-
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                    let currentY = MARGIN;
-
-                    if (i === 0) {
-                        ctx.fillStyle = '#000000';
-                        if (reportInfo.showThemeName && reportInfo.themeName) {
-                            ctx.font = `bold ${48 * scale}px sans-serif`;
-                            ctx.textAlign = 'center';
-                            ctx.fillText(reportInfo.themeName, canvas.width / 2, currentY);
-                            currentY += (60 * scale);
-                        }
-                        if ((reportInfo.showConstructionLot && reportInfo.constructionLot) || (reportInfo.showReportDate && reportInfo.reportDate)) {
-                            ctx.font = `${24 * scale}px sans-serif`;
-                            ctx.textAlign = 'left';
-                            const subHeaderText = [];
-                            if (reportInfo.showConstructionLot && reportInfo.constructionLot) subHeaderText.push(`施工標別：${reportInfo.constructionLot}`);
-                            if (reportInfo.showReportDate && reportInfo.reportDate) subHeaderText.push(`日期：${toRocDate(reportInfo.reportDate)}`);
-                            
-                            if (subHeaderText.length > 0) {
-                                ctx.fillText(subHeaderText.join('    '), MARGIN, currentY);
-                                currentY += (40 * scale);
-                            }
-                        }
-                        currentY += (20 * scale);
-                    }
-
-                    const headerHeight = (i === 0) ? currentY : MARGIN;
-                    let footerHeight = MARGIN;
-                    if (paginationSettings.enabled && pagesWithFooter.has(currentPage)) {
-                        footerHeight = MARGIN + (40 * scale);
-                    }
-
-                    const contentAreaX = MARGIN;
-                    const contentAreaY = headerHeight;
-                    const contentAreaWidth = canvas.width - (MARGIN * 2);
-                    const contentAreaHeight = canvas.height - headerHeight - footerHeight;
-
-                    const { cols, rows } = getGridDimensions(photosPerPage);
-                    const gap = 20 * scale;
-                    const cellWidth = (contentAreaWidth - (gap * (cols - 1))) / cols;
-                    const cellHeight = (contentAreaHeight - (gap * (rows - 1))) / rows;
+                    await drawLayoutOnCanvas(canvas, i, totalPages);
                     
-                    const photoSlice = photos.slice(i * photosPerPage, (i * photosPerPage) + photosPerPage);
-
-                    for (let j = 0; j < photoSlice.length; j++) {
-                        const photo = photoSlice[j];
-                        const row = Math.floor(j / cols);
-                        const col = j % cols;
-
-                        const cellX = contentAreaX + col * (cellWidth + gap);
-                        const cellY = contentAreaY + row * (cellHeight + gap);
-                        
-                        const captionHeight = layoutSettings.showCaptions ? (60 * scale) : 0;
-                        const photoContainerHeight = cellHeight - captionHeight;
-                        
-                        if (layoutSettings.showBorders) {
-                            ctx.strokeStyle = '#AAAAAA';
-                            ctx.lineWidth = Math.max(1, 1 * scale);
-                            ctx.strokeRect(cellX, cellY, cellWidth, cellHeight);
-                        }
-
-                        const img = await new Promise((resolve, reject) => {
-                            const image = new Image();
-                            image.onload = () => resolve(image);
-                            image.onerror = () => reject(new Error(`第 ${i * photosPerPage + j + 1} 張圖片載入失敗`));
-                            image.src = photo.url;
-                        });
-                        
-                        const hRatio = (cellWidth - (10 * scale)) / img.width;
-                        const vRatio = (photoContainerHeight - (10 * scale)) / img.height;
-                        const ratio = Math.min(hRatio, vRatio);
-                        const scaledWidth = img.width * ratio;
-                        const scaledHeight = img.height * ratio;
-                        const imgX = cellX + (cellWidth - scaledWidth) / 2;
-                        const imgY = cellY + (photoContainerHeight - scaledHeight) / 2;
-
-                        ctx.drawImage(img, imgX, imgY, scaledWidth, scaledHeight);
-
-                        if (layoutSettings.showCaptions) {
-                            const captionY = cellY + photoContainerHeight;
-                            if (layoutSettings.showBorders) {
-                                ctx.beginPath();
-                                ctx.moveTo(cellX, captionY);
-                                ctx.lineTo(cellX + cellWidth, captionY);
-                                ctx.stroke();
-                            }
-                            ctx.fillStyle = '#000000';
-                            ctx.font = `${22 * scale}px sans-serif`;
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            
-                            const lines = (photo.description || '').split('\n');
-                            const lineHeight = 26 * scale;
-                            const totalTextHeight = lines.length * lineHeight;
-                            let textStartY = captionY + (captionHeight - totalTextHeight) / 2;
-
-                            for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-                               ctx.fillText(lines[lineIndex], cellX + cellWidth / 2, textStartY + (lineIndex * lineHeight) + (lineHeight / 2));
-                            }
-                        }
-                    }
-                    
-                    if (paginationSettings.enabled && pagesWithFooter.has(currentPage)) {
-                        let pageText = paginationSettings.format.replace('{page}', currentPage).replace('{total}', totalPages);
-                        ctx.fillStyle = paginationSettings.fontColor;
-                        ctx.font = `${(paginationSettings.fontSize || 12) * 1.5 * scale}px sans-serif`;
-                        ctx.textBaseline = 'bottom';
-                        
-                        if(paginationSettings.position === 'center') {
-                            ctx.textAlign = 'center';
-                            ctx.fillText(pageText, canvas.width / 2, canvas.height - (MARGIN / 2));
-                        } else if (paginationSettings.position === 'right') {
-                            ctx.textAlign = 'right';
-                            ctx.fillText(pageText, canvas.width - MARGIN, canvas.height - (MARGIN / 2));
-                        } else {
-                            ctx.textAlign = 'left';
-                            ctx.fillText(pageText, MARGIN, canvas.height - (MARGIN / 2));
-                        }
-                    }
-
                     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
                     const sanitizedThemeName = (reportInfo.themeName || '照片').replace(/[\\/:*?"<>|]/g, '_');
-                    const fileName = `${sanitizedThemeName}_頁${String(currentPage).padStart(2, '0')}.png`;
+                    const fileName = `${sanitizedThemeName}_頁${String(i + 1).padStart(2, '0')}.png`;
                     zip.file(fileName, blob);
                 }
 
@@ -1228,6 +1247,24 @@
             }
         };
         
+        const generateLayoutPreview = async () => {
+            if (appState !== AppState.IDLE || photos.length === 0) return;
+            setAppState(AppState.PROCESSING_FILES);
+            showLoader('正在產生預覽圖...');
+            try {
+                const canvas = document.createElement('canvas');
+                const totalPages = Math.ceil(photos.length / layoutSettings.photosPerPage);
+                await drawLayoutOnCanvas(canvas, 0, totalPages);
+                dom.layoutPreviewImage.src = canvas.toDataURL('image/png');
+                dom.layoutPreviewModal.style.display = 'flex';
+            } catch (error) {
+                 console.error('產生預覽圖失敗:', error);
+                showError(`產生預覽圖時發生問題：${error.message}`);
+            } finally {
+                hideLoaderAndResetState();
+            }
+        };
+
         const saveSessionData = () => { const data = { ...reportInfo }; delete data.constructionLotSelect; delete data.constructionLotInput; localStorage.setItem('reportSession', JSON.stringify(data)); };
         const loadSessionData = () => { const data = JSON.parse(localStorage.getItem('reportSession')); if (data) { applySettings(data); } };
         const updateReportInfo = () => { 
@@ -1251,16 +1288,19 @@
         dom.generateHtmlBtn.addEventListener('click', generateHTML);
         dom.cropZipBtn.addEventListener('click', cropAndZipPhotos);
         dom.packPngBtn.addEventListener('click', generateLayoutAsPngAndZip);
+        dom.previewLayoutBtn.addEventListener('click', generateLayoutPreview);
+
         dom.photoGrid.addEventListener('input', (e) => { if (e.target.classList.contains('text-input')) { const id = parseFloat(e.target.dataset.id); updatePhotoText(id, e.target.value); if(e.target.tagName === 'TEXTAREA') { adjustTextareaHeight(e.target); } } });
         
         dom.photoGrid.addEventListener('click', (e) => { 
             const button = e.target.closest('button'); 
+            const img = e.target.closest('img');
             if (button) {
                 if (appState === AppState.PROCESSING_FILES) return; 
                 if (button.classList.contains('remove-btn')) { removePhoto(parseFloat(button.dataset.id)); } 
                 else if (button.classList.contains('insert-btn')) { insertIndex = parseInt(button.dataset.index, 10); dom.insertFileInput.click(); }
-            } else if (e.target.tagName === 'IMG') {
-                dom.previewImage.src = e.target.src;
+            } else if (img) {
+                dom.previewImage.src = img.src;
                 dom.imagePreviewModal.style.display = 'flex';
             }
         });
