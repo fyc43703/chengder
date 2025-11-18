@@ -459,7 +459,7 @@
                                 <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/tiff,image/heic,image/heif,image/jfif,application/pdf" id="file-input" class="hidden">
                             </label>
                             <div>
-                                <select id="import-resolution" title="設定 HTML 報告中的圖片品質" class="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm h-[40px]">
+                                <select id="import-resolution" title="設定 PDF 轉圖片的匯入品質" class="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm h-[40px]">
                                     <option value="1.0">低 (檔案小)</option>
                                     <option value="1.5" selected>中 (建議)</option>
                                     <option value="2.0">高 (品質好)</option>
@@ -503,10 +503,20 @@
                                     <option value="high">高</option>
                                 </select>
                             </div>
-                            <button id="generate-html-btn" class="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow-md" title="將目前的設定與照片生成可列印的 HTML 報告">
-                                <i data-lucide="file-code-2" class="w-4 h-4"></i>
-                                <span id="generate-html-btn-text" class="font-medium">生成 HTML</span>
-                            </button>
+                            <!-- MODIFIED: Changed generate HTML button to a group with a select dropdown -->
+                            <div class="flex items-center">
+                                <button id="generate-html-btn" class="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-l-lg transition-all shadow-sm hover:shadow-md h-[40px]" title="將目前的設定與照片生成可列印的 HTML 報告">
+                                    <i data-lucide="file-code-2" class="w-4 h-4"></i>
+                                    <span id="generate-html-btn-text" class="font-medium">生成 HTML</span>
+                                </button>
+                                <select id="html-export-resolution" title="設定 HTML 報告中的圖片解析度" class="py-2 border-l-0 border rounded-r-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm h-[40px]">
+                                    <option value="lowest">最低</option>
+                                    <option value="very-low">極低</option>
+                                    <option value="low">低</option>
+                                    <option value="medium" selected>中</option>
+                                    <option value="high">高</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -637,7 +647,8 @@
         let reportInfo = { 
             themeName: '', constructionLot: '', reportDate: '',
             showThemeName: true, showConstructionLot: true, showReportDate: true,
-            importResolution: 1.5
+            importResolution: 1.5,
+            htmlExportResolution: 'medium'
         };
         
         let layoutSettings = {
@@ -665,6 +676,7 @@
             rocDateDisplay: document.getElementById('roc-date-display'),
             selectPhotosLabel: document.getElementById('select-photos-label'),
             generateHtmlBtn: document.getElementById('generate-html-btn'),
+            htmlExportResolution: document.getElementById('html-export-resolution'),
             cropZipBtn: document.getElementById('crop-zip-btn'),
             packPngBtn: document.getElementById('pack-png-btn'),
             layoutExportResolution: document.getElementById('layout-export-resolution'),
@@ -914,6 +926,7 @@
              dom.showConstructionLot.checked = typeof reportInfo.showConstructionLot === 'boolean' ? reportInfo.showConstructionLot : true;
              dom.showReportDate.checked = typeof reportInfo.showReportDate === 'boolean' ? reportInfo.showReportDate : true;
              dom.importResolution.value = reportInfo.importResolution || 1.5;
+             dom.htmlExportResolution.value = reportInfo.htmlExportResolution || 'medium';
 
              if (settings.paginationSettings) {
                 paginationSettings = { ...paginationSettings, ...settings.paginationSettings };
@@ -954,8 +967,14 @@
             showLoader('正在生成 HTML 檔案...');
 
             try {
-                const resolutionMap = { '1.0': 800, '1.5': 1280, '2.0': 1920 };
-                const maxDimension = resolutionMap[reportInfo.importResolution] || 1280;
+                const htmlResolutionMap = {
+                    'lowest': 480,
+                    'very-low': 640,
+                    'low': 800,
+                    'medium': 1280,
+                    'high': 1920
+                };
+                const maxDimension = htmlResolutionMap[reportInfo.htmlExportResolution] || 1280;
 
                 let imageDatas = [];
                 for(let i = 0; i < photos.length; i++) {
@@ -1285,12 +1304,13 @@
             reportInfo.showConstructionLot = dom.showConstructionLot.checked;
             reportInfo.showReportDate = dom.showReportDate.checked;
             reportInfo.importResolution = dom.importResolution.value;
+            reportInfo.htmlExportResolution = dom.htmlExportResolution.value;
             dom.rocDateDisplay.textContent = toRocDate(reportInfo.reportDate); 
             saveSessionData(); 
         }
 
         [dom.fileInput, dom.insertFileInput].forEach(input => input.addEventListener('change', (e) => handleFileSelect(e, input === dom.insertFileInput)));
-        [dom.themeNameInput, dom.constructionLotSelect, dom.constructionLotInput, dom.reportDateInput, dom.showThemeName, dom.showConstructionLot, dom.showReportDate, dom.importResolution].forEach(input => { input.addEventListener('input', updateReportInfo); input.addEventListener('change', updateReportInfo); });
+        [dom.themeNameInput, dom.constructionLotSelect, dom.constructionLotInput, dom.reportDateInput, dom.showThemeName, dom.showConstructionLot, dom.showReportDate, dom.importResolution, dom.htmlExportResolution].forEach(input => { input.addEventListener('input', updateReportInfo); input.addEventListener('change', updateReportInfo); });
         dom.generateHtmlBtn.addEventListener('click', generateHTML);
         dom.cropZipBtn.addEventListener('click', cropAndZipPhotos);
         dom.packPngBtn.addEventListener('click', generateLayoutAsPngAndZip);
