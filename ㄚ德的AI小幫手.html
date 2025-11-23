@@ -179,15 +179,47 @@
         html.dark-mode .sun { display: none; }
         html.dark-mode .moon { display: block; }
 
+        /* --- 修改部分：副標題自動縮放與不換行 --- */
         .main-subtitle {
-            font-size: clamp(0.8rem, 2vw, 0.95rem);
-            font-weight: 400;
-            margin: 0;
+            margin: 0 auto;
             color: var(--text-secondary);
-            padding: 0 1rem;
             transition: var(--transition-slow);
             margin-bottom: 1.5rem;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
+
+        .subtitle-line {
+            display: block;
+            width: 100%;
+            text-align: center;
+            /* 強制不換行 */
+            white-space: nowrap;
+            /* 字體粗體 */
+            font-weight: 700;
+            /* 行高 */
+            line-height: 1.8;
+            /* 
+               自動計算字體大小：
+               1.05vw 經過計算，可以讓第一行約88個字元在寬螢幕下剛好撐滿而不換行。
+               clamp() 設定了最小 10px (手機不至於看不到) 到最大 18px (大螢幕不過大)。
+            */
+            font-size: clamp(10px, 0.9vw, 18px);
+        }
+
+        /* 手機版例外處理：若螢幕真的太小，強制不換行會變螞蟻字，
+           此時稍微允許換行或保持最小字體 */
+        @media screen and (max-width: 600px) {
+            .subtitle-line {
+                white-space: normal; /* 手機上允許換行以免字太小 */
+                font-size: 0.85rem;  /* 手機版固定可讀大小 */
+                padding: 0 5px;
+            }
+        }
+        /* --- 修改結束 --- */
 
         /* --- 新增：互動式控制中心樣式 --- */
         .controls-container {
@@ -247,7 +279,7 @@
             color: var(--text-secondary);
             padding: 6px 14px;
             border-radius: 15px;
-            font-size: 0.85rem;
+            font-size: 1rem;
             cursor: pointer;
             transition: var(--transition-fast);
             font-weight: 500;
@@ -352,16 +384,15 @@
         }
 
         /* Media Queries */
-        @media screen and (min-width: 1400px) { .container { width: min(95%, 1600px); padding: 2rem; margin: 15px; } .card-grid { grid-template-columns: repeat(5, 1fr); gap: 1.5rem; } .header h1 { font-size: 2.0rem; } .main-subtitle { font-size: 1rem; } }
-        @media screen and (min-width: 1024px) and (max-width: 1399px) { .container { width: min(95%, 1400px); padding: 2rem; margin: 15px; } .card-grid { grid-template-columns: repeat(4, 1fr); gap: 1.25rem; } .header h1 { font-size: 1.7rem; } .main-subtitle { font-size: 0.95rem; } }
-        @media screen and (min-width: 768px) and (max-width: 1023px) { .container { width: 96%; padding: 1.5rem; margin: 10px; } .card-grid { grid-template-columns: repeat(3, 1fr); gap: 1rem; } .header h1 { font-size: 1.5rem; } .main-subtitle { font-size: 0.9rem; padding: 0 0.5rem; } .card { padding: 0.85rem; } .card-title { font-size: 1.05rem; } .card-description { font-size: 0.9rem; } .card-icon-container { width: 36px; height: 36px; margin-right: 0.65rem; } }
+        @media screen and (min-width: 1400px) { .container { width: min(95%, 1600px); padding: 2rem; margin: 15px; } .card-grid { grid-template-columns: repeat(5, 1fr); gap: 1.5rem; } .header h1 { font-size: 2.0rem; } }
+        @media screen and (min-width: 1024px) and (max-width: 1399px) { .container { width: min(95%, 1400px); padding: 2rem; margin: 15px; } .card-grid { grid-template-columns: repeat(4, 1fr); gap: 1.25rem; } .header h1 { font-size: 1.7rem; } }
+        @media screen and (min-width: 768px) and (max-width: 1023px) { .container { width: 96%; padding: 1.5rem; margin: 10px; } .card-grid { grid-template-columns: repeat(3, 1fr); gap: 1rem; } .header h1 { font-size: 1.5rem; } .card { padding: 0.85rem; } .card-title { font-size: 1.05rem; } .card-description { font-size: 0.9rem; } .card-icon-container { width: 36px; height: 36px; margin-right: 0.65rem; } }
         @media screen and (max-width: 767px) { 
             body { padding: 0 5px; } 
             .container { width: 100%; margin: 5px 0; padding: 1rem; border-radius: 1rem; } 
             .card-grid { grid-template-columns: 1fr; justify-content: center; gap: 0.75rem; } 
             .header { margin-bottom: 0.5rem; } 
             .header h1 { font-size: 1.4rem; } 
-            .main-subtitle { font-size: 0.8rem; padding: 0; line-height: 1.5; } 
             .card { width: 100%; max-width: 100%; padding: 0.8rem; border-radius: 0.75rem; } 
             .card-icon-container { width: 34px; height: 34px; margin-right: 0.65rem; } 
             .card-title { font-size: 1rem; line-height: 1.2; } 
@@ -371,7 +402,7 @@
             .controls-container { flex-direction: column; align-items: stretch; gap: 10px; }
             .search-wrapper { width: 100%; }
         }
-        @media screen and (max-width: 480px) { .container { padding: 0.75rem; margin: 3px 0; } .header { margin-bottom: 0.5rem; } .header h1 { font-size: 1.3rem; } .main-subtitle { font-size: 0.75rem; } .card { padding: 0.7rem; } .card-icon-container { width: 32px; height: 32px; margin-right: 0.6rem; } .card-title { font-size: 0.95rem; } .card-description { font-size: 0.8rem; } }
+        @media screen and (max-width: 480px) { .container { padding: 0.75rem; margin: 3px 0; } .header { margin-bottom: 0.5rem; } .header h1 { font-size: 1.3rem; } .card { padding: 0.7rem; } .card-icon-container { width: 32px; height: 32px; margin-right: 0.6rem; } .card-title { font-size: 0.95rem; } .card-description { font-size: 0.8rem; } }
         @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } .card:hover { transform: none; } }
     </style>
 </head>
@@ -395,7 +426,11 @@
                     <svg class="moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                 </button>
             </div>
-            <p class="main-subtitle">「Vibe coding」 是一種由 AI 輔助的程式設計模式，使用者透過自然語言向 AI 描述需求，讓 AI 自動生成程式碼，開發者則<br>專注於創意與引導，也就是駕馭 AI 的「管理者思維」，將其視為您的頂尖部屬來協作。這種模式在降低程式設計門檻，<br>讓非技術背景的人也能開發應用程式，其核心概念是「完全順應感覺（vibes），忘記程式碼的存在」</p>
+            <!-- 修改部分：將文字分為兩個獨立的 div，並移除 br -->
+            <div class="main-subtitle">
+                <div class="subtitle-line">「Vibe coding」 是一種由 AI 輔助的程式設計模式，使用者透過自然語言向 AI 描述需求，讓 AI 自動生成程式碼，開發者則專注於創意與引導，也就是駕馭 AI 的管理者思維，將其視為您的頂尖部屬來協作</div>
+                <div class="subtitle-line">這種模式在降低程式設計門檻，讓非技術背景的人也能開發應用程式，其核心概念是「完全順應感覺（vibes），忘記程式碼的存在」</div>
+            </div>
         </div>
 
         <!-- 互動式控制中心 -->
