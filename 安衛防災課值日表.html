@@ -13,6 +13,7 @@
             --holiday-red: #ff3b30;
             --weekend-gray: #a1a1a6; /* Lighter weekend text */
             --today-bg: #007aff;
+            --custom-off-color: #ff9500; /* Orange for custom off days */
         }
 
         html {
@@ -106,6 +107,9 @@
             padding: 10px 0;
             margin-bottom: 1.5%;
             flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
         
         .names-grid {
@@ -129,6 +133,38 @@
             border-color: var(--primary-blue);
             box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
             background-color: #fff;
+        }
+
+        /* --- 指定休假日期樣式 --- */
+        .custom-off-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 4px;
+        }
+        .custom-off-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-color);
+            white-space: nowrap;
+        }
+        
+        /* 調整輸入框樣式，取消 flex-grow 避免過長 */
+        .custom-input {
+            text-align: left;
+            padding-left: 8px;
+            flex-grow: 0 !important; /* 強制不自動延伸 */
+            width: auto;
+        }
+        
+        /* 名目欄位寬度 (約6個中文字) */
+        #customHolidayName {
+            width: 8em; 
+        }
+        
+        /* 日期欄位寬度 (約4個字元) */
+        #customOffDates {
+            width: 5em;
         }
         
         .custom-select {
@@ -212,6 +248,11 @@
             text-align: center;
         }
 
+        /* 指定休假日的文字樣式 */
+        .holiday-name.custom-off {
+            color: var(--custom-off-color);
+        }
+
         .duty-person {
             margin-top: 4%;
             padding: 0.4em 0.8em;
@@ -266,6 +307,8 @@
             .day-number { font-size: 0.875rem; }
             .duty-person { font-size: 0.75rem; padding: 0.3em 0.6em; }
             .holiday-name { font-size: 0.65rem; }
+            
+            .custom-off-label { font-size: 0.875rem; }
         }
 
         @media (max-width: 480px) {
@@ -289,6 +332,10 @@
             }
             .names-grid {
                 grid-template-columns: 1fr; /* Single column on very small screens */
+            }
+            /* 手機版讓休假日設定換行顯示比較清楚 */
+            .custom-off-row {
+                flex-wrap: wrap;
             }
         }
 
@@ -372,6 +419,14 @@
                     <div class="name-entry"><span class="name-number">7</span><input type="text" class="name-input-field"></div>
                     <div class="name-entry"><span class="name-number">8</span><input type="text" class="name-input-field"></div>
                 </div>
+                <!-- 修改：指定休假日分為 名目 與 日期 兩個欄位 -->
+                <div class="custom-off-row">
+                    <label for="customHolidayName" class="custom-off-label">指定休假日名目：</label>
+                    <input type="text" id="customHolidayName" class="name-input-field custom-input" placeholder="名目(如:員旅)">
+                    
+                    <label for="customOffDates" class="custom-off-label">當月日期：</label>
+                    <input type="text" id="customOffDates" class="name-input-field custom-input" placeholder="日期(如:25)">
+                </div>
             </div>
 
             <div id="calendarContainer" class="calendar-container">
@@ -396,6 +451,8 @@ const monthSelect = document.getElementById('monthSelect');
 const calendarContainer = document.getElementById('calendarContainer');
 const rosterTitle = document.getElementById('rosterTitle');
 const nameInputs = document.querySelectorAll('.names-grid .name-input-field');
+const customHolidayNameInput = document.getElementById('customHolidayName'); // 新增：名目
+const customOffDatesInput = document.getElementById('customOffDates'); // 新增：日期
 const printTitleForPDF = document.getElementById('printTitleForPDF');
 const prevMonthBtn = document.getElementById('prevMonthBtn');
 const nextMonthBtn = document.getElementById('nextMonthBtn');
@@ -409,10 +466,12 @@ document.addEventListener('DOMContentLoaded', () => {
     populateMonthSelect(today.getMonth() + 1);
     
     loadNames(); 
+    loadCustomDates(); // 載入休假設定
     generateRoster();
 
     // Event Listeners
-    [yearSelect, monthSelect, ...nameInputs, rosterTitle].forEach(el => {
+    // 加入 customHolidayNameInput 與 customOffDatesInput 的監聽
+    [yearSelect, monthSelect, ...nameInputs, rosterTitle, customHolidayNameInput, customOffDatesInput].forEach(el => {
         el.addEventListener('change', generateRoster);
     });
     
@@ -478,10 +537,34 @@ function loadNames() {
     }
 }
 
+// 儲存自訂休假日 (包含名目與日期)
+function saveCustomDates() {
+    localStorage.setItem('dutyRosterCustomDates_v2', customOffDatesInput.value);
+    localStorage.setItem('dutyRosterCustomName_v1', customHolidayNameInput.value);
+}
+
+// 載入自訂休假日
+function loadCustomDates() {
+    const savedDates = localStorage.getItem('dutyRosterCustomDates_v2');
+    const savedName = localStorage.getItem('dutyRosterCustomName_v1');
+    
+    if (savedDates) {
+        customOffDatesInput.value = savedDates;
+    }
+    // 兼容舊版與新版
+    if (savedName) {
+        customHolidayNameInput.value = savedName;
+    } else if (!savedDates) {
+        // 如果是新使用者或資料清空，可以保持空白
+    }
+}
+
 function generateRoster() {
     calendarContainer.style.opacity = 0;
     setTimeout(() => {
         saveNames();
+        saveCustomDates(); // 儲存休假設定
+        
         const names = Array.from(nameInputs).map(input => input.value.trim()).filter(name => name);
         
         if (names.length === 0) {
@@ -489,6 +572,15 @@ function generateRoster() {
             calendarContainer.style.opacity = 1;
             return;
         }
+
+        // 取得自訂休假名目，若無則預設文字
+        const customOffName = customHolidayNameInput.value.trim() || "指定休假";
+
+        // 解析指定休假日
+        const customOffDatesString = customOffDatesInput.value;
+        const customOffDays = customOffDatesString.split(/[,，、\s]+/)
+            .map(s => parseInt(s.trim()))
+            .filter(n => !isNaN(n) && n > 0 && n <= 31);
 
         const PREDEFINED_COLORS = { 
             '劉清蘭': '#f6ad49', 
@@ -548,15 +640,21 @@ function generateRoster() {
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
             const isHoliday = TAIWAN_HOLIDAYS[year]?.[dateString];
             const isAdjustedWorkday = ADJUSTED_WORKDAYS[year]?.[dateString];
+            // 判斷是否為使用者指定的休假日
+            const isCustomOffDay = customOffDays.includes(day);
 
             let dayContentHTML = `<div class="day-number-wrapper"><div class="day-number">${day}</div></div>`;
 
             if (isHoliday) {
                 holidayName = TAIWAN_HOLIDAYS[year][dateString];
                 dayContentHTML += `<div class="holiday-name">${holidayName}</div>`;
+            } else if (isCustomOffDay) {
+                 // 如果是指定休假，顯示使用者輸入的名目
+                dayContentHTML += `<div class="holiday-name custom-off">${customOffName}</div>`;
             }
 
-            if ((!isWeekend && !isHoliday) || isAdjustedWorkday) {
+            // 調整排班邏輯：如果是指定休假日，則不排班
+            if (!isCustomOffDay && ((!isWeekend && !isHoliday) || isAdjustedWorkday)) {
                 const dutyPerson = names[dutyIndex % names.length];
                 const bgColor = nameColorMap.get(dutyPerson);
                 const dutyPersonHTML = `<div class="duty-person" style="background-color: ${bgColor};">${dutyPerson}</div>`;
