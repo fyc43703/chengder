@@ -9,25 +9,51 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
     <style>
         :root {
-            --brand-blue: #0056b3;
-            --brand-light-blue: #e6f0fa;
-            --text-main: #1f2937;
-            --text-secondary: #4b5563;
-            --highlight-green: #10b981;
-            --highlight-bg: #fef08a;
+            /* macOS Color Palette */
+            --macos-bg: #f5f5f7;
+            --macos-blue: #007aff;
+            --macos-blue-hover: #0062cc;
+            --text-main: #1d1d1f;
+            --text-secondary: #86868b;
+            --glass-bg: rgba(255, 255, 255, 0.72);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --highlight-green: #34c759;
+            --highlight-bg: #ffe066; /* macOS Note highlight color */
         }
 
         body {
-            font-family: "Noto Sans TC", "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, sans-serif;
+            /* macOS System Fonts */
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
             color: var(--text-main);
-            background-color: #f8fafc;
+            background-color: var(--macos-bg);
             line-height: 1.6;
             overflow-x: hidden;
             margin: 0;
             padding: 0;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* --- 排版與佈局優化 --- */
+        /* --- macOS Glassmorphism Utilities --- */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            transition: all 0.3s ease;
+        }
+
+        /* --- 排版與佈局 --- */
         .layout-container {
             width: 100%;
             max-width: 100%;
@@ -50,125 +76,125 @@
             }
         }
 
-        /* 標頭效果 */
-        header {
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(12px);
-            box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05);
-            position: sticky;
-            top: 0;
-            z-index: 50;
-        }
-
-        /* 進度條 */
+        /* 進度條 - 類似 Safari 下載進度 */
         #progress-bar {
-            height: 3px;
-            background: linear-gradient(90deg, var(--brand-blue), #3b82f6);
+            height: 2px;
+            background: var(--macos-blue);
             width: 0%;
-            transition: width 0.15s ease-out;
+            transition: width 0.2s ease-out;
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            z-index: 51;
         }
 
-        /* 導航按鈕 */
+        /* 導航按鈕 - macOS Pill Style */
         .nav-item {
             transition: all 0.2s ease;
             position: relative;
-        }
-        .nav-item::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 50%;
-            width: 0;
-            height: 2px;
-            background-color: var(--brand-blue);
-            transition: all 0.3s ease;
-            transform: translateX(-50%);
+            color: var(--text-secondary);
+            font-weight: 500;
+            letter-spacing: -0.01em;
         }
         .nav-item:hover {
-            color: var(--brand-blue);
-            background-color: var(--brand-light-blue);
+            color: var(--macos-blue);
+            background-color: rgba(0, 122, 255, 0.08);
         }
         .nav-item.active {
-            color: var(--brand-blue);
-            font-weight: 600;
-            background-color: var(--brand-light-blue);
-        }
-        .nav-item.active::after {
-            width: 80%;
+            color: #fff;
+            background-color: var(--macos-blue);
+            box-shadow: 0 2px 10px rgba(0, 122, 255, 0.25);
         }
 
-        /* --- 側邊欄樣式調整 --- */
+        /* --- 側邊欄樣式 (Sidebar / Finder Style) --- */
+        .sidebar-container {
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
         .sidebar-link {
-            border-left: 3px solid transparent;
+            border-radius: 8px;
             transition: all 0.2s;
-            font-size: 1rem;
-            padding: 0.5rem 1rem;
-            margin-bottom: 2px;
+            font-size: 0.95rem;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 4px;
             display: block;
             line-height: 1.5;
-        }
-        .sidebar-link:hover {
-            background-color: #f1f5f9;
             color: var(--text-main);
         }
+        .sidebar-link:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
         .sidebar-link.active {
-            background-color: #eff6ff;
-            border-left-color: var(--brand-blue);
-            color: var(--brand-blue);
+            background-color: rgba(0, 122, 255, 0.15); /* Light Blue bg */
+            color: var(--macos-blue);
             font-weight: 600;
         }
 
-        /* 自定義側邊欄滾動條 */
+        /* Custom Scrollbar (Mac Style) */
         .custom-scrollbar {
             overflow-y: auto;
-            scrollbar-width: thin; /* Firefox */
-            scrollbar-color: #cbd5e1 #f1f5f9;
+            scrollbar-width: thin;
+            scrollbar-color: #d1d1d6 transparent;
         }
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 4px;
+            background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1; /* 灰色滑塊 */
-            border-radius: 4px;
+            background: #d1d1d6;
+            border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; /* 深灰 Hover */
+            background: #a1a1a6;
         }
 
-        /* 內容樣式 */
+        /* 內容區塊 */
+        #main-display {
+            border-radius: 16px;
+        }
+
         .content-area h2 {
-            font-size: 1.875rem;
+            font-size: 2rem;
             font-weight: 700;
-            color: #111827;
+            color: var(--text-main);
             margin-bottom: 1.5rem;
             padding-bottom: 0.75rem;
-            border-bottom: 3px solid var(--brand-blue);
+            border-bottom: 1px solid #e5e5ea;
+            letter-spacing: -0.02em;
         }
         .content-area h3 {
             font-size: 1.5rem;
             font-weight: 600;
-            color: #374151;
-            margin-top: 2rem;
+            color: var(--text-main);
+            margin-top: 2.5rem;
             margin-bottom: 1rem;
-            padding-left: 1rem;
-            border-left: 5px solid var(--highlight-green);
+            display: flex;
+            align-items: center;
+        }
+        .content-area h3::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 24px;
+            background: var(--macos-blue);
+            border-radius: 3px;
+            margin-right: 12px;
         }
         .content-area h4 {
             font-size: 1.25rem;
             font-weight: 600;
-            color: #4b5563;
-            margin-top: 1.5rem;
+            color: #1d1d1f;
+            margin-top: 1.75rem;
             margin-bottom: 0.75rem;
         }
         .content-area p {
-            font-size: 1.15rem;
+            font-size: 1.1rem;
             margin-bottom: 1.25rem;
-            color: #4b5563;
-            line-height: 1.8;
+            color: #3a3a3c;
+            line-height: 1.75;
             text-align: justify;
         }
         
@@ -180,97 +206,103 @@
         .content-area ul li {
             position: relative;
             margin-bottom: 0.75rem;
-            font-size: 1.15rem;
-            color: #4b5563;
+            font-size: 1.1rem;
+            color: #3a3a3c;
             list-style: none;
         }
         .content-area ul li::before {
             content: "•";
-            color: var(--brand-blue);
+            color: var(--macos-blue);
             font-weight: bold;
             display: inline-block;
             width: 1em;
             margin-left: -1em;
+            font-size: 1.2em;
         }
         .content-area ol li {
             margin-bottom: 0.75rem;
-            font-size: 1.15rem;
-            color: #4b5563;
+            font-size: 1.1rem;
+            color: #3a3a3c;
             list-style-type: decimal;
         }
 
-        /* 表格樣式 */
+        /* 表格樣式 (macOS Numbers Style) */
         .content-table {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
             margin: 1.5rem 0;
-            background: white;
-            border-radius: 0.5rem;
+            background: transparent;
+            border-radius: 12px;
             overflow: hidden;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #d1d1d6;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
         }
         .content-table th {
-            background-color: var(--brand-blue);
-            color: white;
+            background-color: #f2f2f7;
+            color: #1d1d1f;
             padding: 1rem;
             text-align: left;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
+            font-weight: 600;
             white-space: nowrap;
+            border-bottom: 1px solid #d1d1d6;
         }
         .content-table td {
             padding: 1rem;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 1.1rem;
+            border-bottom: 1px solid #e5e5ea;
+            font-size: 1.05rem;
             vertical-align: top;
+            background: white;
         }
         .content-table tr:last-child td {
             border-bottom: none;
         }
-        .content-table tr:hover {
-            background-color: #f9fafb;
+        .content-table tr:hover td {
+            background-color: #f5f5f7;
         }
 
         /* 引用塊 */
         blockquote {
-            background: #f8fafc;
-            border-left: 4px solid var(--brand-blue);
+            background: #f2f2f7;
+            border-left: 4px solid var(--macos-blue);
             padding: 1.25rem;
             margin: 1.5rem 0;
-            border-radius: 0 0.5rem 0.5rem 0;
-            color: #4b5563;
+            border-radius: 8px;
+            color: #3a3a3c;
             font-style: normal;
-            font-size: 1.15rem;
+            font-size: 1.1rem;
         }
 
         /* 搜尋高亮 */
         .search-highlight-core {
             background-color: var(--highlight-bg) !important;
             color: #000 !important;
-            padding: 0 2px;
-            border-radius: 2px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            padding: 0 4px;
+            border-radius: 4px;
         }
         
         .highlight-term {
             color: var(--highlight-green);
-            font-weight: 700;
+            font-weight: 600;
         }
 
         /* 動畫 */
         .fade-in-up {
-            animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(15px); filter: blur(5px); }
+            to { opacity: 1; transform: translateY(0); filter: blur(0); }
         }
 
         /* 回到頂部按鈕 */
         #back-to-top {
             opacity: 0;
             pointer-events: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            backdrop-filter: blur(10px);
+            background: rgba(0, 122, 255, 0.9);
         }
         #back-to-top.visible {
             opacity: 1;
@@ -280,54 +312,83 @@
         
         /* 連結樣式優化 */
         a {
-            color: var(--brand-blue);
+            color: var(--macos-blue);
             text-decoration: none;
             transition: color 0.2s;
+            font-weight: 500;
         }
         a:hover {
-            color: #004494;
+            color: var(--macos-blue-hover);
             text-decoration: underline;
+        }
+
+        /* 搜尋框優化 */
+        .macos-search {
+            background-color: rgba(118, 118, 128, 0.12);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+        .macos-search:focus {
+            background-color: #fff;
+            border-color: var(--macos-blue);
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15);
         }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
 
-    <!-- 頂部導航 -->
-    <header class="w-full border-b border-gray-200">
-        <div class="layout-container py-3 flex flex-col gap-3">
+    <!-- 頂部導航 (macOS Title Bar Style) -->
+    <header class="w-full glass-header">
+        <div id="progress-bar"></div>
+        
+        <div class="layout-container py-3 flex flex-col gap-4">
             
-            <!-- Row 1: Logo & Title (修正重點：移除外層的 onclick) -->
-            <div class="flex items-center justify-between w-full border-b lg:border-none border-gray-100 pb-2 lg:pb-0">
-                <!-- 修正重點：將 onclick 移到只有 Logo 和標題的這個 div -->
-                <div class="flex items-center gap-3 cursor-pointer group" onclick="app.resetHome()">
-                    <div class="w-10 h-10 lg:w-12 lg:h-12 bg-blue-700 rounded-lg flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105 flex-shrink-0">
-                        <i class="fa-solid fa-robot text-xl lg:text-2xl"></i>
+            <!-- Row 1: Logo, Centered Title & Mobile Menu -->
+            <div class="flex items-center justify-between w-full lg:h-12 relative">
+                
+                <!-- Left: Logo (Absolute on Desktop to allow visual centering of title) -->
+                <div class="flex items-center gap-3 cursor-pointer group z-20" onclick="app.resetHome()">
+                    <div class="w-10 h-10 lg:w-11 lg:h-11 bg-white rounded-xl flex items-center justify-center shadow-sm border border-gray-200 transition-transform group-hover:scale-105 flex-shrink-0 p-1.5">
+                        <img src="https://upload.wikimedia.org/wikipedia/zh/c/c3/The_seal_of_Department_of_Rapid_Transit_Systems%2C_Taipei_City_Government_20140108.svg" 
+                             alt="臺北市政府捷運工程局 Logo" 
+                             class="w-full h-full object-contain">
                     </div>
-                    <h1 class="text-xl lg:text-3xl font-bold text-gray-800 tracking-tight leading-tight">
+                    <!-- Mobile only title next to logo -->
+                    <h1 class="text-lg font-bold text-gray-800 tracking-tight leading-tight lg:hidden">
+                        AI 輔助公務流程優化
+                    </h1>
+                </div>
+
+                <!-- Center: Main Title (Hidden on mobile, Centered on Desktop) -->
+                <div class="hidden lg:flex absolute left-0 right-0 justify-center items-center pointer-events-none">
+                    <h1 class="text-2xl font-bold text-gray-900 tracking-tight leading-tight pointer-events-auto">
                         AI 輔助公務流程優化實戰指南（政風室）
                     </h1>
                 </div>
                 
-                <!-- Mobile Menu Button (獨立於 onclick 區域之外) -->
-                <button id="mobile-menu-btn" class="lg:hidden p-2 text-gray-600 hover:text-blue-600 focus:outline-none">
-                    <i class="fa-solid fa-bars text-2xl"></i>
+                <!-- Right: Mobile Menu Button -->
+                <button id="mobile-menu-btn" class="lg:hidden p-2 text-gray-500 hover:text-blue-600 focus:outline-none rounded-lg hover:bg-gray-100 z-20">
+                    <i class="fa-solid fa-bars text-xl"></i>
                 </button>
+
+                <!-- Right Desktop Placeholder (to balance the flex) -->
+                <div class="hidden lg:block w-12"></div>
             </div>
 
-            <!-- Row 2: Nav & Search -->
-            <div class="hidden lg:flex items-center justify-between w-full">
-                <nav id="desktop-nav" class="flex items-center gap-1 flex-wrap">
-                    <!-- JS Rendered -->
+            <!-- Row 2: Nav & Search (Toolbar Style) -->
+            <div class="hidden lg:flex items-center justify-between w-full pt-1 pb-1">
+                <nav id="desktop-nav" class="flex items-center gap-2 flex-wrap bg-gray-100/50 p-1 rounded-xl">
+                    <!-- JS Rendered Pills -->
                 </nav>
                 
-                <div class="relative w-80 flex-shrink-0 ml-4">
+                <div class="relative w-72 flex-shrink-0 ml-4">
                     <input type="text" id="search-input" 
-                           placeholder="搜尋報告內容..." 
-                           class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm">
-                    <i class="fa-solid fa-search absolute left-3.5 top-3 text-gray-400"></i>
+                           placeholder="搜尋內容..." 
+                           class="macos-search w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none transition-all placeholder-gray-500">
+                    <i class="fa-solid fa-search absolute left-3 top-2.5 text-gray-400 text-xs"></i>
                     
                     <!-- Search Results Dropdown -->
-                    <div id="search-results" class="hidden absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 max-h-[500px] overflow-y-auto">
+                    <div id="search-results" class="hidden absolute right-0 mt-2 w-96 glass-panel rounded-xl overflow-hidden z-50 max-h-[500px] overflow-y-auto">
                         <!-- JS Rendered -->
                     </div>
                 </div>
@@ -335,36 +396,33 @@
         </div>
         
         <!-- Mobile Menu (Expandable) -->
-        <div id="mobile-menu" class="hidden lg:hidden bg-white border-t border-gray-100 shadow-lg">
+        <div id="mobile-menu" class="hidden lg:hidden glass-panel border-t border-gray-200">
             <div class="p-4 space-y-3">
-                <input type="text" id="mobile-search-input" placeholder="搜尋..." class="w-full p-2 border rounded-lg bg-gray-50 text-base">
-                <nav id="mobile-nav" class="flex flex-col space-y-2">
+                <input type="text" id="mobile-search-input" placeholder="搜尋..." class="w-full p-2.5 border border-gray-300 rounded-lg bg-gray-50 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <nav id="mobile-nav" class="flex flex-col space-y-1">
                     <!-- JS Rendered -->
                 </nav>
             </div>
         </div>
-
-        <!-- Progress Bar -->
-        <div id="progress-bar"></div>
     </header>
 
     <!-- 主內容區 (全寬幅) -->
     <main class="w-full flex-grow py-6 lg:py-8 layout-container">
-        <div class="flex flex-col lg:flex-row gap-8 min-h-[calc(100vh-200px)]">
+        <div class="flex flex-col lg:flex-row gap-6 min-h-[calc(100vh-200px)]">
             
-            <!-- 左側邊欄 (固定寬度) -->
-            <aside class="w-full lg:w-[320px] xl:w-[380px] flex-shrink-0">
-                <div class="lg:sticky lg:top-40 transition-all duration-300">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="bg-gray-50 px-5 py-3 border-b border-gray-100">
-                            <h3 class="font-semibold text-gray-700 flex items-center gap-2">
-                                <i class="fa-solid fa-list-ul text-blue-600"></i>
+            <!-- 左側邊欄 (固定寬度, Glass Effect) -->
+            <aside class="w-full lg:w-[320px] xl:w-[360px] flex-shrink-0">
+                <div class="lg:sticky lg:top-44 transition-all duration-300">
+                    <div class="glass-panel sidebar-container">
+                        <div class="bg-gray-50/50 px-5 py-4 border-b border-gray-200/50 backdrop-blur-sm">
+                            <h3 class="font-semibold text-gray-500 text-xs uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-list-ul"></i>
                                 章節導覽
                             </h3>
                         </div>
-                        <div id="sidebar-content" class="p-2 max-h-[70vh] custom-scrollbar">
+                        <div id="sidebar-content" class="p-3 max-h-[70vh] custom-scrollbar">
                             <div class="p-8 text-center text-gray-400 text-sm">
-                                <i class="fa-regular fa-hand-pointer mb-2 text-2xl"></i>
+                                <i class="fa-regular fa-hand-pointer mb-2 text-2xl opacity-50"></i>
                                 <p>請選擇上方主類別</p>
                             </div>
                         </div>
@@ -372,27 +430,27 @@
                 </div>
             </aside>
 
-            <!-- 右側內容區 (自動填滿剩餘空間) -->
-            <article id="main-display" class="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:p-10 content-area relative min-w-0">
+            <!-- 右側內容區 (自動填滿, Glass Effect) -->
+            <article id="main-display" class="flex-1 glass-panel p-8 lg:p-12 content-area relative min-w-0 shadow-xl">
                 <!-- 預設歡迎頁 -->
                 <div id="welcome-screen" class="flex flex-col items-center justify-center h-full py-20 text-center fade-in-up">
-                    <div class="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                        <i class="fa-solid fa-book-open text-4xl text-blue-600"></i>
+                    <div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-8 shadow-lg text-white transform -rotate-3">
+                        <i class="fa-solid fa-book-open text-4xl"></i>
                     </div>
-                    <h2 class="!border-none !mb-4 text-3xl text-gray-800">歡迎閱讀實戰指南</h2>
-                    <p class="text-gray-500 max-w-3xl mx-auto text-lg mb-8">
+                    <h2 class="!border-none !mb-4 text-4xl font-bold tracking-tight text-gray-900">歡迎閱讀實戰指南</h2>
+                    <p class="text-gray-500 max-w-2xl mx-auto text-lg mb-10 leading-relaxed">
                         本平台完整收錄「AI 輔助公務流程優化實戰指南（政風室）」所有內容。<br>
                         請點擊上方導航列選擇章節，或使用搜尋功能查找特定 AI 工具與應用案例。
                     </p>
                     
-                    <div class="bg-gray-50 p-6 rounded-xl border border-gray-100 inline-block text-left">
-                         <h3 class="!text-xl !mt-0 !mb-4 !border-none !pl-0 text-center">教材資料下載</h3>
+                    <div class="bg-gray-50/80 p-8 rounded-2xl border border-gray-200 inline-block text-left shadow-sm backdrop-blur-sm">
+                         <h3 class="!text-lg !mt-0 !mb-5 !border-none !pl-0 text-center font-semibold text-gray-700 !block before:hidden">教材資料下載</h3>
                          <div class="flex flex-col sm:flex-row gap-4">
-                            <a href="https://drive.google.com/file/d/1bpuNTSNdif1yiM0KMuI8MV2lrz-3wE8v/view?usp=sharing" target="_blank" class="flex items-center px-6 py-3 bg-white border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition shadow-sm group">
+                            <a href="https://drive.google.com/file/d/1bpuNTSNdif1yiM0KMuI8MV2lrz-3wE8v/view?usp=sharing" target="_blank" class="flex items-center px-6 py-3 bg-white border border-gray-300 rounded-xl hover:border-blue-500 hover:text-blue-600 hover:shadow-md transition-all group">
                                 <i class="fa-solid fa-file-pdf text-red-500 text-xl mr-3 group-hover:scale-110 transition-transform"></i>
                                 <span class="font-medium">下載 PDF 檔案</span>
                             </a>
-                            <a href="https://drive.google.com/drive/folders/1pTcF_nAfaKbrr8hVehKPXy-GvDwutTa7?usp=drive_link" target="_blank" class="flex items-center px-6 py-3 bg-white border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition shadow-sm group">
+                            <a href="https://drive.google.com/drive/folders/1pTcF_nAfaKbrr8hVehKPXy-GvDwutTa7?usp=drive_link" target="_blank" class="flex items-center px-6 py-3 bg-white border border-gray-300 rounded-xl hover:border-blue-500 hover:text-blue-600 hover:shadow-md transition-all group">
                                 <i class="fa-brands fa-google-drive text-green-500 text-xl mr-3 group-hover:scale-110 transition-transform"></i>
                                 <span class="font-medium">實例連結雲端硬碟</span>
                             </a>
@@ -405,18 +463,18 @@
     </main>
 
     <!-- 頁尾 -->
-    <footer class="bg-gray-800 text-white py-12 mt-auto w-full">
+    <footer class="bg-white border-t border-gray-200 text-gray-600 py-10 mt-auto w-full">
         <div class="layout-container text-center">
             <div class="mb-4">
-                <i class="fa-solid fa-building-columns text-3xl text-gray-400 mb-3"></i>
-                <h3 class="text-xl font-semibold">臺北市政府捷運工程局 政風室</h3>
+                <i class="fa-solid fa-building-columns text-3xl text-gray-300 mb-3"></i>
+                <h3 class="text-lg font-semibold text-gray-800">臺北市政府捷運工程局 政風室</h3>
             </div>
             <p class="text-gray-400 text-sm">© 2025 AI 輔助公務流程優化實戰指南 | 專業報告網頁平台</p>
         </div>
     </footer>
 
     <!-- Back to Top -->
-    <button id="back-to-top" class="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 focus:outline-none z-40">
+    <button id="back-to-top" class="fixed bottom-8 right-8 text-white w-12 h-12 rounded-full shadow-2xl flex items-center justify-center transform hover:scale-110 focus:outline-none z-40 border border-white/20">
         <i class="fa-solid fa-arrow-up"></i>
     </button>
 
@@ -534,7 +592,7 @@
                 <h3>應用程式</h3>
                 <p><strong>NotebookLM：</strong>直接上傳語音檔案後，系統利用自動語音辨識技術將語音轉換為文字，並添加標點符號，使文字更容易閱讀。支援的音訊格式包括 WAV、MP3 及 iPhone 語音的 M4A。單一音訊檔案的上限為 200MB，若檔案超過此限制，可先分割成多個檔案後再分別上傳。</p>
                 
-                <blockquote style="color: #b91c1c; background-color: #fef2f2; border-left-color: #ef4444;">
+                <blockquote style="color: #c92a2a; background-color: #fff5f5; border-left-color: #ff6b6b;">
                     <strong>提醒：</strong>機密等級以上之公文或極機敏個資，仍應審慎評估是否上傳至公有雲端 AI 平台。
                 </blockquote>
             </a>
@@ -640,13 +698,13 @@
                 <blockquote>
                     請扮演具備深厚學術背景的戰略分析師，以「批判性辯證」為核心，針對指定議題展開 60 項全方位解析。具體規範如下：<br><br>
                     1. 知識論與方法論要求：<br>
-                    - 跨領域統合：結合經濟模型、社會心理、法律規章及倫理學等學科，剖析各利害關係人的動機衝突與博弈立場。<br>
-                    - 邏輯實證主義：嚴格以事實與數據為論證基石，主動識別並排除認知偏誤，維持高度的客觀中立。<br>
-                    - 穿透式深度分析：由表層現象溯源至結構性根因，探討非線性因果關係，並針對不同解決方案進行壓力測試與風險評估。<br><br>
+                    跨領域統合：結合經濟模型、社會心理、法律規章及倫理學等學科，剖析各利害關係人的動機衝突與博弈立場。<br>
+                    邏輯實證主義：嚴格以事實與數據為論證基石，主動識別並排除認知偏誤，維持高度的客觀中立。<br>
+                    穿透式深度分析：由表層現象溯源至結構性根因，探討非線性因果關係，並針對不同解決方案進行壓力測試與風險評估。<br>
                     2. 產出規格與架構：<br>
-                    - 高密度內容：共計產出 60 項獨立重點。每項標題須加粗，內文須具備 200 字以上之實質論述，拒絕空泛描述。<br>
-                    - 論證結構：每項內容需包含「核心命題、理論/數據支撐、實例佐證、交互影響評估」之完整論證閉環。<br>
-                    - 全景視角：依序涵蓋問題定義、現況挑戰、多方視角、根因解構、情境模擬、策略規劃、風險矩陣及前瞻建議。<br><br>
+                    高密度內容：共計產出 60 項獨立重點。每項標題須加粗，內文須具備 200 字以上之實質論述，拒絕空泛描述。<br>
+                    論證結構：每項內容需包含「核心命題、理論/數據支撐、實例佐證、交互影響評估」之完整論證閉環。<br>
+                    全景視角：依序涵蓋問題定義、現況挑戰、多方視角、根因解構、情境模擬、策略規劃、風險矩陣及前瞻建議。<br>
                     3. 品質指標：追求思想深度與論證密度，確保觀點具備前瞻性，文字流暢且邏輯無懈可擊。
                     <p><strong><a href="https://drive.google.com/file/d/167CIwweslnZr6g7UC5WRoNuGuCYSbVKc/view?usp=drive_link" target="_blank">○ 111年廉政會報</a></strong></p><p><strong><a href="https://drive.google.com/file/d/1923XjJwSgXWR_5Tqz-GPwKjBe6mQn1Ds/view?usp=drive_link" target="_blank">○ 透明晶質獎參賽過程分享-衛工處</a></strong></p>
                 </blockquote>
@@ -665,17 +723,17 @@
                 <blockquote>
                     請扮演專業評審委員的角色，針對目標對象進行全面性的痛點分析與改進建議。請按照以下結構進行系統性評估：<br><br>
                     1. 問題診斷：<br>
-                    - 核心痛點識別：列舉目標對象當前面臨的主要問題，分析問題產生的根本原因，說明問題之間的關聯性。<br>
-                    - 影響程度評估：評估各項痛點的嚴重性（高/中/低），分析對整體運作的影響範圍，判斷問題的急迫性與優先順序。<br>
+                    核心痛點識別：列舉目標對象當前面臨的主要問題，分析問題產生的根本原因，說明問題之間的關聯性。<br>
+                    影響程度評估：評估各項痛點的嚴重性（高/中/低），分析對整體運作的影響範圍，判斷問題的急迫性與優先順序。<br>
                     2. 改進建議：<br>
-                    - 具體解決措施：針對各項痛點提出對應的改進方案，說明措施的執行方式與步驟，評估所需資源（人力、時間、經費）。<br>
-                    - 可行性分析：評估各項措施的實施難度，分析執行過程可能遭遇的障礙，提出配套措施或替代方案。<br>
+                    具體解決措施：針對各項痛點提出對應的改進方案，說明措施的執行方式與步驟，評估所需資源（人力、時間、經費）。<br>
+                    可行性分析：評估各項措施的實施難度，分析執行過程可能遭遇的障礙，提出配套措施或替代方案。<br>
                     3. 精進方案：<br>
-                    - 重點強化計畫：制定短期（3 個月內）改善目標。規劃中期（6-12 個月）發展策略。設定長期（1 年以上）精進方向。<br>
-                    - 成效指標設定：建立量化指標（如：效率提升 %、錯誤率降低 %），設定質化指標（如：滿意度、品質改善程度），訂定各階段的檢核時間點與標準。<br>
+                    重點強化計畫：制定短期（3 個月內）改善目標。規劃中期（6-12 個月）發展策略。設定長期（1 年以上）精進方向。<br>
+                    成效指標設定：建立量化指標（如：效率提升 %、錯誤率降低 %），設定質化指標（如：滿意度、品質改善程度），訂定各階段的檢核時間點與標準。<br>
                     4. 預期效益：<br>
-                    - 改進成果評估：預估各項措施帶來的具體效益，分析對整體績效的正面影響，評估成本效益比與投資報酬。<br>
-                    - 執行風險分析：識別實施過程可能的風險因素，評估風險發生的機率與衝擊程度，提出風險控管與應變措施。<br>
+                    改進成果評估：預估各項措施帶來的具體效益，分析對整體績效的正面影響，評估成本效益比與投資報酬。<br>
+                    執行風險分析：識別實施過程可能的風險因素，評估風險發生的機率與衝擊程度，提出風險控管與應變措施。<br>
                     5. 輸出格式要求：內容條理分明、邏輯嚴謹。建議具體可行、操作性強。分析客觀專業、有理有據。用語正式規範、符合評審標準。請依此架構完整進行評估分析。
                     <p><strong><a href="https://drive.google.com/file/d/1IX480fQ2GmQsSdl62qKXu6WwNHEREcXC/view?usp=drive_link" target="_blank">○ 111年廉政會報</a></strong></p><p><strong><a href="https://drive.google.com/file/d/1FGYqopmeb09xvSNh-OhqUtgXdTuyTTdK/view?usp=drive_link" target="_blank">○ 透明晶質獎參賽過程分享-衛工處</a></strong></p>
                 </blockquote>
@@ -995,41 +1053,42 @@
             <div data-sub-id="case-17" data-sub-title="17. 製作互動網頁">
                 <h2>17. 製作互動網頁</h2>
                 <h3>目的</h3>
-                <p>Gemini 視覺版面配置是 Google 在 2025 年為 Gemini 推出的一項實驗性功能。它改變了以往 AI 只提供單純文字回覆的模式，轉而生成具有沈浸感、互動性且類似雜誌排版的視覺介面。</p>
+                <p>在網頁上以圖形化具互動性的方式展示資料狀態，能讓使用者更直覺的理解整體架構與操作資訊。這種設計結合動態視覺效果與使用者互動。透過簡易的互動式網頁，使用者可以即時查看詳細內容、切換不同資料目錄，讓資訊呈現更生動且易於理解。</p>
+                <p>利用 Gemini 建構互動式網頁，應切換至 Canvas 模式。透過 JavaScript 在像素層級進行精確操控，此技術路徑適合打造動態背景或高複雜度的數據視覺化作品。 Canvas 初始化程式碼，採用標準 HTML 格式封裝，開發者僅需透過瀏覽器即可即時預覽運行效果。</p>
                 <h3>文件說明</h3>
                 <p>內容是利用 AI 提示詞製作高度專業化、具互動性的網頁報告和資訊視覺化圖表，專門用於分享臺北市政府捷運工程局參與「透明晶質獎」的經驗與成果。<br>
                 展示從策略發想到最終成品的整個流程：首先透過詳細的 AI 提示詞指導生成資訊視覺化圖表；接著將參賽的策略與申請書內容，轉化為使用現代網頁技術製作的互動式網頁報告，提升了內容的傳播效率和使用者體驗。</p>
                 <h3>提示詞</h3>
                 <h4>範例 1: 資訊視覺化圖表</h4>
                 <blockquote>
-                    請使用繁體中文分析以下數據資料，並製作資訊視覺化（Information Visualization）圖表，具體要求如下：
-                    1. 識別關鍵趨勢與核心資訊，並依據數據特性選擇適合的圖表類型，製作清晰、專業且符合日系風格的視覺化圖表，強調重點資訊，確保簡潔易懂，提升數據溝通效果。
-                    2. 數據分析：深入解析數據，識別關鍵趨勢與核心資訊。
-                    3. 透過描述性、診斷性、預測性和指示性分析方法，數據背後的趨勢與模式，找出影響因素。
-                    4. 圖表選擇：依據數據特性選用最適合的圖表類型（如折線圖、柱狀圖、圓餅圖等）。
-                    5. 根據數據的類型與分析目標，選擇折線圖展示趨勢，柱狀圖或條形圖比較類別數據，圓餅圖呈現比例分布，並視需求使用散點圖、面積圖等多種圖表。
-                    6. 視覺呈現：製作專業綜合圖表，包含清晰的數據視覺化、重點資訊突出、簡潔易懂的日系設計風格。
-                    7. 採用簡潔明瞭的日系設計風格，合理運用顏色強調重點，保持視覺一致性，避免過度裝飾，使圖表既專業又易讀，幫助快速理解數據。
-                    8. 重點說明：闡述圖表的關鍵發現並提供清晰解讀。
+                    <p>請使用繁體中文分析以下數據資料，並製作資訊視覺化（Information Visualization）圖表，具體要求如下：<p>
+                    <p>1. 識別關鍵趨勢與核心資訊，並依據數據特性選擇適合的圖表類型，製作清晰、專業且符合日系風格的視覺化圖表，強調重點資訊，確保簡潔易懂，提升數據溝通效果。<p>
+                    <p>2. 數據分析：深入解析數據，識別關鍵趨勢與核心資訊。<p>
+                    <p>3. 透過描述性、診斷性、預測性和指示性分析方法，數據背後的趨勢與模式，找出影響因素。<p>
+                    <p>4. 圖表選擇：依據數據特性選用最適合的圖表類型（如折線圖、柱狀圖、圓餅圖等）。<p>
+                    <p>5. 根據數據的類型與分析目標，選擇折線圖展示趨勢，柱狀圖或條形圖比較類別數據，圓餅圖呈現比例分布，並視需求使用散點圖、面積圖等多種圖表。<p>
+                    <p>6. 視覺呈現：製作專業綜合圖表，包含清晰的數據視覺化、重點資訊突出、簡潔易懂的日系設計風格。<p>
+                    <p>7. 採用簡潔明瞭的日系設計風格，合理運用顏色強調重點，保持視覺一致性，避免過度裝飾，使圖表既專業又易讀，幫助快速理解數據。<p>
+                    <p>8. 重點說明：闡述圖表的關鍵發現並提供清晰解讀。<p>
                 </blockquote>
 
                 <h4>範例 2: 網頁可視化</h4>
                 <blockquote>
-                    請製作一個交互式單頁的網頁可視化（Web Visualization）應用，實現點選某個項目時僅顯示該項目的內容，其他內容隱藏，具體要求如下：
-                    1. 核心架構與互動：建立一個單頁式網頁應用。點擊導覽列項目時，僅顯示對應內容區塊，其餘隱藏。主要內容標題（如「業務簡介」）設計為可收合式區塊，若內容過長則以限定高度搭配內部捲軸顯示。
-                    2. 導覽列與頁首設計：導覽列需固定置頂、置中，且不遮擋內文。頁首應包含置中加粗的深藍色主題文字、全站搜尋框，以及右上角深藍色的「製作者：○○○」署名。
-                    3. 視覺風格與字體：整體採日系清新的淺藍綠漸層風格，搭配柔和的動畫與過渡效果。導覽列目錄為藍底半圓角、白色大字。全站統一使用 Noto Sans TC 字體以確保顯示清晰。
-                    4. 內容呈現與格式：需一字不漏地忠實呈現所有原始文字，並自動識別其中的超連結。表格應維持原始格式並進行美化。明確定義正文（1.3rem）、目錄標題及副標題的相對字體大小。
-                    5. 使用者體驗優化：搜尋功能需將關鍵字與結果列表背景以黃色突顯。已閱讀的目錄項目應有顏色變化等視覺標記。提供「回到頂端」的固定按鈕，方便使用者快速跳轉。
-                    6. 響應式設計：網頁需具備完整的響應式設計，確保在桌面電腦與行動裝置上皆能提供良好的顯示效果與操作體驗。
+                    <p>請製作一個交互式單頁的網頁可視化（Web Visualization）應用，實現點選某個項目時僅顯示該項目的內容，其他內容隱藏，具體要求如下：<p>
+                    <p>1. 核心架構與互動：建立一個單頁式網頁應用。點擊導覽列項目時，僅顯示對應內容區塊，其餘隱藏。主要內容標題（如「業務簡介」）設計為可收合式區塊，若內容過長則以限定高度搭配內部捲軸顯示。<p>
+                    <p>2. 導覽列與頁首設計：導覽列需固定置頂、置中，且不遮擋內文。頁首應包含置中加粗的深藍色主題文字、全站搜尋框，以及右上角深藍色的「製作者：○○○」署名。<p>
+                    <p>3. 視覺風格與字體：整體採日系清新的淺藍綠漸層風格，搭配柔和的動畫與過渡效果。導覽列目錄為藍底半圓角、白色大字。全站統一使用 Noto Sans TC 字體以確保顯示清晰。<p>
+                    <p>4. 內容呈現與格式：需一字不漏地忠實呈現所有原始文字，並自動識別其中的超連結。表格應維持原始格式並進行美化。明確定義正文（1.3rem）、目錄標題及副標題的相對字體大小。<p>
+                    <p>5. 使用者體驗優化：搜尋功能需將關鍵字與結果列表背景以黃色突顯。已閱讀的目錄項目應有顏色變化等視覺標記。提供「回到頂端」的固定按鈕，方便使用者快速跳轉。<p>
+                    <p>6. 響應式設計：網頁需具備完整的響應式設計，確保在桌面電腦與行動裝置上皆能提供良好的顯示效果與操作體驗。<p>
                 </blockquote>
                 <h4>範例 3: 頂部主導航 + 左側次導航 + 右側內容區</h4>
                 <blockquote>
-                    請製作一個交互式網頁可視化專業報告展示平台
-                    1. 總體設計理念
+                    <p>請製作一個交互式網頁可視化專業報告展示平台<p>
+                        <p>1. 總體設計理念<p>
                     目標：建立一個專業、權威且易於導覽的線上報告展示平台。使用者應能快速掌握報告的整體架構，並能輕鬆深入探究特定章節的詳細內容。設計需兼顧桌面與行動裝置的閱讀體驗。需一字不漏地忠實呈現所有原始文字，這是必須遵守的規則。
                     核心關鍵詞：專業權威、結構清晰、動態互動、資訊導向、響應式設計、使用者友善。
-                    2. 核心版面佈局規則 (Core Layout Rules)
+                    <p>2. 核心版面佈局規則 (Core Layout Rules)<p>
                     請採用一個三段式的垂直佈局，並在主內容區採用兩欄式水平佈局：
                     頂部固定標頭 (Sticky Header):
                     此區域在頁面滾動時需始終固定在頂部。
@@ -1041,8 +1100,8 @@
                     頁面輔助元件 (Page Utility Components):
                     滾動進度條 (Scroll Progress Bar): 位於頂部標頭下方，視覺化呈現使用者當前閱讀進度。
                     返回頂部按鈕 (Back-to-Top Button): 在使用者向下滾動一定距離後，於右下角淡入顯示，提供快速返回頁首的功能。
-                    3. 詳細元件設計規範 (Detailed Component Design Specs)
-                    A. 頂部導航列 (Header / Top Navigation)
+                    <p>3. 詳細元件設計規範 (Detailed Component Design Specs)<p>
+                    <p>A. 頂部導航列 (Header / Top Navigation)<p>
                     視覺風格： 背景為半透明白色，帶有輕微的模糊效果 (backdrop-filter) 和底部陰影，營造懸浮感。
                     Logo 與標題： Logo 位於左側，主標題居中，字體需加粗以突顯重要性。
                     搜尋框 (#search-box):
@@ -1054,14 +1113,14 @@
                     預設狀態: 淺灰色背景，藍色文字。
                     滑鼠懸停 (Hover): 背景色變淺藍，有輕微向上位移的動效。
                     啟用狀態 (.active): 品牌主色（深藍色）背景，白色文字，並帶有陰影效果，以明確標示當前所在章節。
-                    B. 左側次導航欄 (Left Sidebar / #left-sidebar)
+                    <p>B. 左側次導航欄 (Left Sidebar / #left-sidebar)<p>
                     功能定位： 作為次級導航，動態載入當前主章節下的所有子項目標題。
                     視覺風格： 具有獨立的卡片式外觀（白色背景、圓角、細邊框、輕微陰影）。
                     連結 (a) 樣式：
                     預設狀態: 一般文字樣式，左側有 4px 的透明邊框。
                     滑鼠懸停 (Hover): 背景變為淺灰色。
                     啟用狀態 (.active): 背景變為淺藍色，文字加粗，且左側的 4px 邊框變為品牌主色（深藍色），提供強烈的視覺焦點。
-                    C. 右側內容顯示區 (Right Content Panel / #right-content)
+                    <p>C. 右側內容顯示區 (Right Content Panel / #right-content)<p>
                     功能定位： 顯示使用者在左側次導航欄所點選的詳細內容。
                     內容呈現：
                     標題 (h2): 在內容最頂部顯示該子項目的完整標題，並帶有品牌主色的下底線，作為內容的起始點。
@@ -1070,7 +1129,7 @@
                     移除預設項目符號。
                     使用 ::before 偽元素自定義項目符號，第一層為實心圓（•），第二層為空心圓（○），依此類推，以建立清晰的資訊層級。
                     強調文字 (strong): 統一使用綠色，與品牌主色（藍色）形成對比，用於突顯關鍵數據或術語。
-                    D. 視覺與互動體驗 (Visual & Interactive Experience)
+                    <p>D. 視覺與互動體驗 (Visual & Interactive Experience)<p>
                     核心互動流程：
                     點擊頂部主導航 -> 更新左側次導航欄的內容 -> 自動顯示該章節的第一個子項目內容於右側內容區。
                     點擊左側次導航 -> 僅更新右側內容區的內容。
@@ -1079,11 +1138,11 @@
                     所有可點擊元素都必須有滑鼠懸停 (Hover) 的視覺回饋。
                     文字高亮 (.highlight):
                     當透過搜尋結果跳轉時，所到每頁內容中的關鍵字內容背景為黃色螢光筆效果進行高亮，切記不要疏忽，以幫助使用者快速定位，使文字更容易閱讀。
-                    4. 技術實現提示 (Technical Implementation Notes)
+                    <p>4. 技術實現提示 (Technical Implementation Notes)<p>
                     CSS：
                     強烈建議使用 CSS 變數 (:root) 來管理全站的顏色配置（如 --logo-blue, --text-color），便於未來快速更換主題。
                     HTML：
-                    將所有報告的原始資料內容預先放置在一個隱藏的 div (#data-source) 中。每個主章節對應一個 <section>。這種方式將資料與顯示分離，有利於 JavaScript 的操作。
+                    將所有報告的原始資料內容預先放置在一個隱藏的 div (#data-source) 中。每個主章節對應一個。這種方式將資料與顯示分離，有利於 JavaScript 的操作。
                     JavaScript：
                     核心邏輯是基於使用者點擊事件，透過 DOM 操作來動態生成左側邊欄的連結，並將對應的內容 .innerHTML 注入到右側內容區。
                     搜尋功能需建立一個包含所有章節標題與內容的索引（一個 JavaScript 物件陣列），以實現高效的即時過濾。
@@ -1289,7 +1348,8 @@
                 this.elements.desktopNav.innerHTML = '';
                 this.data.forEach(item => {
                     const btn = document.createElement('button');
-                    btn.className = 'nav-item px-4 py-2 rounded-lg text-[15px] font-medium text-gray-600 hover:text-blue-700 whitespace-nowrap';
+                    // 修正重點：使用 macOS 系統字體大小風格
+                    btn.className = 'nav-item px-3 py-1.5 rounded-lg text-[15px] whitespace-nowrap cursor-pointer select-none';
                     btn.textContent = item.title;
                     btn.dataset.id = item.id;
                     btn.onclick = () => this.switchMainSection(item.id);
@@ -1300,7 +1360,7 @@
                 this.elements.mobileNav.innerHTML = '';
                 this.data.forEach(item => {
                     const btn = document.createElement('button');
-                    btn.className = 'w-full text-left p-3 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition';
+                    btn.className = 'w-full text-left p-3 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition border-b border-gray-50 last:border-0';
                     btn.textContent = item.title;
                     btn.onclick = () => {
                         this.switchMainSection(item.id);
@@ -1341,7 +1401,7 @@
 
                 sectionData.subItems.forEach(item => {
                     const btn = document.createElement('button');
-                    btn.className = 'sidebar-link w-full text-left px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors text-base leading-relaxed';
+                    btn.className = 'sidebar-link w-full text-left cursor-pointer';
                     btn.textContent = item.title;
                     btn.dataset.subId = item.id;
                     btn.onclick = () => this.switchSubSection(item.id);
@@ -1437,14 +1497,16 @@
                 
                 resultsContainer.innerHTML = '';
                 if (matches.length === 0) {
-                    resultsContainer.innerHTML = '<div class="p-4 text-gray-500 text-center">查無結果</div>';
+                    resultsContainer.innerHTML = '<div class="p-6 text-gray-500 text-center text-sm">找不到相關結果</div>';
                 } else {
                     matches.forEach(match => {
                         const div = document.createElement('div');
-                        div.className = 'p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0';
+                        div.className = 'p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors';
                         div.innerHTML = `
-                            <div class="text-xs text-blue-600 font-bold mb-1">${match.mainTitle} > ${match.subTitle}</div>
-                            <div class="text-sm text-gray-700 truncate">${match.text.substring(0, 50)}...</div>
+                            <div class="text-xs text-blue-600 font-bold mb-1 flex items-center gap-1">
+                                <i class="fa-solid fa-turn-up fa-rotate-90"></i> ${match.mainTitle} / ${match.subTitle}
+                            </div>
+                            <div class="text-sm text-gray-700 truncate">${match.text.substring(0, 60)}...</div>
                         `;
                         div.onclick = () => {
                             this.jumpToResult(match.mainId, match.subId, query);
