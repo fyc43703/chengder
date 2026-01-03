@@ -212,7 +212,7 @@
             padding-bottom: 1rem;
             border-bottom: 2px solid #e2e8f0;
             position: relative;
-            display: flex; /* 為收藏按鈕做準備 */
+            display: flex; 
             align-items: center;
             justify-content: space-between;
         }
@@ -429,10 +429,13 @@
         .theme-toggle-btn:hover { background-color: rgba(0,0,0,0.05); }
         body.dark-mode .theme-toggle-btn:hover { background-color: rgba(255,255,255,0.1); }
         
+        /* 側邊欄捲動修正 */
         .custom-scrollbar {
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #cbd5e0 transparent;
+            max-height: calc(100vh - 14rem); /* 動態計算高度，避免被截斷 */
+            padding-bottom: 40px; /* 增加底部空間，確保最後一項可見 */
         }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 10px; }
@@ -451,30 +454,8 @@
         }
 
         /* =========================================
-           新增功能樣式 (收藏、提示詞、字體)
+           新增功能樣式 (提示詞、字體)
            ========================================= */
-
-        /* 1. 收藏按鈕樣式 */
-        .bookmark-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #cbd5e0;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            font-size: 1.5rem !important; /* 強制大小 */
-            margin-left: 10px;
-            vertical-align: middle;
-            display: inline-block;
-        }
-        .bookmark-btn.active {
-            color: #fbbf24; /* 金黃色 */
-            transform: scale(1.2);
-            text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
-        }
-        .bookmark-btn:hover {
-            color: #fbbf24;
-            transform: scale(1.1);
-        }
 
         /* 2. 字體調整控制區 (Header) */
         .font-controls {
@@ -659,7 +640,7 @@
                                 目錄導覽
                             </h3>
                         </div>
-                        <div id="sidebar-content" class="p-2 max-h-[75vh] custom-scrollbar">
+                        <div id="sidebar-content" class="p-2 custom-scrollbar">
                             <div class="p-10 text-center text-gray-400 text-sm flex flex-col items-center">
                                 <i class="fa-solid fa-mountain-sun text-4xl mb-3 opacity-30 text-green-700"></i>
                                 <p>請點選上方類別<br>開啟智慧之門</p>
@@ -1697,7 +1678,8 @@
                 favBtn.className = 'nav-item px-5 py-2 whitespace-nowrap cursor-pointer select-none border border-yellow-400 text-yellow-600 bg-yellow-50 hover:bg-yellow-100';
                 favBtn.innerHTML = '<i class="fa-solid fa-star mr-1"></i> 我的收藏';
                 favBtn.onclick = () => this.renderFavoritesPage();
-                this.elements.desktopNav.appendChild(favBtn);
+                // 移除收藏功能，所以這行不會執行
+                // this.elements.desktopNav.appendChild(favBtn);
 
                 // Mobile Nav
                 this.elements.mobileNav.innerHTML = '';
@@ -1707,7 +1689,8 @@
                 mobileFav.className = 'w-full text-left p-3 rounded-lg font-bold text-yellow-600 bg-yellow-50 mb-2 border border-yellow-200';
                 mobileFav.innerHTML = '<i class="fa-solid fa-star mr-2"></i> 我的收藏';
                 mobileFav.onclick = () => { this.renderFavoritesPage(); this.toggleMobileMenu(false); };
-                this.elements.mobileNav.appendChild(mobileFav);
+                // 移除收藏功能
+                // this.elements.mobileNav.appendChild(mobileFav);
 
                 this.data.forEach(item => {
                     const btn = document.createElement('button');
@@ -1721,61 +1704,9 @@
                 });
             },
 
-            // --- 渲染收藏頁面 ---
+            // --- 渲染收藏頁面 --- (雖然移除了功能，但保留函式結構以防錯誤，不過不會被調用)
             renderFavoritesPage: function() {
-                // 清除 active 狀態
-                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                
-                this.elements.sidebarContent.innerHTML = `
-                    <div class="p-5 text-center text-yellow-600 font-bold bg-yellow-50 rounded-lg">
-                        <i class="fa-solid fa-star text-2xl mb-2"></i><br>我的收藏庫
-                    </div>`;
-                
-                const display = this.elements.mainDisplay;
-                display.classList.remove('fade-in-up');
-                void display.offsetWidth;
-                display.classList.add('fade-in-up');
-
-                if (this.bookmarks.size === 0) {
-                    display.innerHTML = `
-                        <div class="flex flex-col items-center justify-center h-full py-20 text-center">
-                            <i class="fa-regular fa-star text-6xl text-gray-300 mb-4"></i>
-                            <h2 class="text-2xl font-bold text-gray-400 mb-2">目前沒有收藏</h2>
-                            <p class="text-gray-500">在閱讀文章時，點擊標題旁的 <i class="fa-regular fa-star"></i> 即可加入收藏。</p>
-                        </div>`;
-                    return;
-                }
-
-                let htmlContent = `<h2 class="text-3xl font-bold text-yellow-600 mb-8 border-b-2 border-yellow-200 pb-4">
-                    <i class="fa-solid fa-star mr-2"></i>已收藏的項目 (${this.bookmarks.size})
-                </h2><div class="grid gap-6">`;
-
-                this.bookmarks.forEach(subId => {
-                    // 尋找對應資料
-                    for (const main of this.data) {
-                        const sub = main.subItems.find(s => s.id === subId);
-                        if (sub) {
-                            htmlContent += `
-                                <div class="bg-white/80 p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition cursor-pointer group"
-                                     onclick="app.jumpToResult('${main.id}', '${sub.id}', '')">
-                                    <div class="text-xs text-green-600 font-bold mb-2 uppercase tracking-wider">
-                                        ${main.title}
-                                    </div>
-                                    <h3 class="!mt-0 !mb-2 text-xl font-bold text-gray-800 group-hover:text-green-700 transition-colors">
-                                        ${sub.title}
-                                    </h3>
-                                    <p class="text-gray-500 text-sm line-clamp-2">
-                                        ${sub.plainText.substring(0, 100)}...
-                                    </p>
-                                </div>
-                            `;
-                            break;
-                        }
-                    }
-                });
-
-                htmlContent += `</div>`;
-                display.innerHTML = htmlContent;
+                // ... (邏輯已不再使用)
             },
 
             switchMainSection: function(mainId) {
@@ -1835,8 +1766,8 @@
 
                 display.innerHTML = subData.content;
 
-                // 注入收藏按鈕
-                this.injectBookmarkButton(subId);
+                // 移除收藏按鈕注入
+                // this.injectBookmarkButton(subId);
 
                 // 如果是咒語工坊，觸發一次預設生成
                 if (subId === 'prompt-builder') {
@@ -1846,41 +1777,13 @@
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             },
 
-            // --- 注入收藏按鈕邏輯 ---
+            // --- 注入收藏按鈕邏輯 --- (已移除)
             injectBookmarkButton: function(subId) {
-                const h2 = this.elements.mainDisplay.querySelector('h2');
-                if (!h2) return;
-
-                const isBookmarked = this.bookmarks.has(subId);
-                const btn = document.createElement('button');
-                btn.className = `bookmark-btn ${isBookmarked ? 'active' : ''}`;
-                btn.innerHTML = isBookmarked ? '<i class="fa-solid fa-star"></i>' : '<i class="fa-regular fa-star"></i>';
-                btn.title = isBookmarked ? "取消收藏" : "加入收藏";
-                
-                btn.onclick = (e) => {
-                    e.stopPropagation();
-                    this.toggleBookmark(subId, btn);
-                };
-
-                h2.appendChild(btn);
+                // ...
             },
 
             toggleBookmark: function(subId, btnElement) {
-                if (this.bookmarks.has(subId)) {
-                    this.bookmarks.delete(subId);
-                    btnElement.classList.remove('active');
-                    btnElement.innerHTML = '<i class="fa-regular fa-star"></i>';
-                    btnElement.title = "加入收藏";
-                } else {
-                    this.bookmarks.add(subId);
-                    btnElement.classList.add('active');
-                    btnElement.innerHTML = '<i class="fa-solid fa-star"></i>';
-                    btnElement.title = "取消收藏";
-                    
-                    btnElement.style.transform = "scale(1.4)";
-                    setTimeout(() => btnElement.style.transform = "scale(1.2)", 200);
-                }
-                localStorage.setItem('zenBookmarks', JSON.stringify([...this.bookmarks]));
+                // ...
             },
 
             // --- 字體調整功能 ---
