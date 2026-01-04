@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>臺北市政府115年「誠就永續獎」評獎及推廣計畫</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* =========================================
+           核心樣式變數與重置
+           ========================================= */
+        :root {
+            --brand-blue: #0056b3;
+            --brand-light-blue: #e0f2fe;
+            --brand-hover-blue: #0ea5e9;
+            --apple-blue: #007AFF;
+            --text-primary: #333333;
+            --bg-gray: #f9fafb;
+            --sidebar-width: 320px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+            color: var(--text-primary);
+            background-color: var(--bg-gray);
+            line-height: 1.9;
+            font-size: 18px;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden; /* 防止水平捲軸 */
+        }
+
+        /* =========================================
+           佈局核心演算 (修正版)
+           ========================================= */
+        
+        .layout-grid {
+            display: grid;
+            /* 修正：使用 100% 而非 100vw，避免包含捲軸寬度造成溢出 */
+            width: 100%; 
+            min-height: 100vh;
+            grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+            padding-top: 190px;
+        }
+
+        @media (max-width: 1023px) {
+            .layout-grid {
+                display: block;
+                padding-top: 240px;
+            }
+            .sidebar-area {
+                width: 100% !important;
+                position: relative !important;
+                top: 0 !important;
+                height: auto !important;
+                border-right: none !important;
+                border-bottom: 1px solid #e5e7eb;
+            }
+        }
+
+        /* 左側邊欄區域 */
+        .sidebar-area {
+            background-color: #f9fafb;
+            border-right: 1px solid #e5e7eb;
+            position: sticky;
+            top: 200px;
+            height: calc(100vh - 200px);
+            overflow-y: auto;
+            width: 100%;
+        }
+
+        /* 右側內容區域 - 修正重點 */
+        .content-area {
+            background-color: white;
+            padding: 3rem 4rem;
+            width: 100%;
+            min-width: 0; /* 關鍵：允許 Flex/Grid 子元素收縮 */
+            
+            /* 強制長文字換行，防止撐開版面 */
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+
+        /* 響應式調整：螢幕較小時縮減內距 */
+        @media (max-width: 1280px) {
+            .content-area {
+                padding: 3rem 2rem;
+            }
+        }
+
+        /* =========================================
+           元件樣式
+           ========================================= */
+
+        #main-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        #scroll-progress-bar {
+            height: 4px;
+            background: var(--apple-blue);
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        .nav-btn {
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            padding: 0.5rem 1rem;
+        }
+        .nav-btn:hover { transform: translateY(-2px); background-color: var(--brand-light-blue); }
+        .nav-btn.active { background-color: var(--brand-blue); color: white; box-shadow: 0 4px 6px rgba(0, 86, 179, 0.3); }
+
+        .sidebar-link {
+            transition: all 0.2s ease;
+            border-left: 5px solid transparent;
+            font-size: 1rem;
+        }
+        .sidebar-link:hover { background-color: #e5e7eb; }
+        .sidebar-link.active { background-color: var(--brand-light-blue); font-weight: bold; border-left-color: var(--brand-blue); color: var(--brand-blue); }
+
+        .content-section h2 {
+            border-bottom: 3px solid var(--brand-blue);
+            display: inline-block;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--brand-blue);
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .keyword-apple-blue {
+            color: var(--apple-blue);
+            font-weight: 800;
+        }
+
+        /* 表格樣式優化 */
+        table {
+            width: 100% !important;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            font-size: 1.1rem;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 14px 18px;
+            text-align: left;
+            /* 確保表格內容也會換行 */
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+        th { background-color: var(--brand-blue); color: white; font-weight: 600; }
+        tr:nth-child(even) { background-color: #f9fafb; }
+
+        .highlight { background-color: #fef08a; padding: 0 2px; border-radius: 2px; font-weight: bold; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+        #back-to-top { transition: opacity 0.3s, transform 0.3s; opacity: 0; pointer-events: none; }
+        #back-to-top.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+        .sidebar-area::-webkit-scrollbar { width: 6px; }
+        .sidebar-area::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header id="main-header" class="fixed top-0 left-0 right-0 z-50">
+        <div class="w-full px-8 py-4">
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-col lg:flex-row items-center justify-between relative">
+                    <div class="flex items-center gap-4 justify-center w-full lg:w-auto lg:justify-start mb-3 lg:mb-0">
+                        <div class="w-12 h-12 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-2xl shadow-md flex-shrink-0">北</div>
+                        <h1 class="text-2xl lg:text-3xl font-bold text-gray-800 tracking-wide text-center lg:text-left">
+                            臺北市政府115年「誠就永續獎」評獎及推廣計畫
+                        </h1>
+                    </div>
+                    <div class="relative w-full lg:w-80 flex-shrink-0">
+                        <div class="relative">
+                            <input type="text" id="search-input" placeholder="搜尋報告內容..." class="w-full pl-10 pr-4 py-2.5 rounded-full border border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-base">
+                            <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <div id="search-results" class="hidden absolute top-full mt-2 w-full bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden" style="max-height: 400px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+                <nav class="w-full border-t pt-3 border-gray-100">
+                    <div class="flex flex-wrap justify-center gap-x-3 gap-y-2 px-1" id="main-nav-container"></div>
+                </nav>
+            </div>
+        </div>
+        <div class="w-full h-1 bg-transparent absolute bottom-0 left-0"><div id="scroll-progress-bar"></div></div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="layout-grid">
+        
+        <!-- Left Sidebar -->
+        <aside id="left-sidebar" class="sidebar-area">
+            <div class="p-6">
+                <h3 class="text-base uppercase text-gray-500 font-bold mb-6 tracking-wider border-b pb-2">本章節導覽</h3>
+                <div id="sidebar-links" class="flex flex-col gap-2"></div>
+            </div>
+        </aside>
+
+        <!-- Right Content -->
+        <article id="right-content" class="content-area">
+            <div class="text-center text-gray-400 py-20 text-xl">載入中...</div>
+        </article>
+
+    </main>
+
+    <!-- Back to top -->
+    <button id="back-to-top" class="fixed bottom-10 right-10 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transform transition hover:scale-110 z-40 focus:outline-none">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+    </button>
+
+    <script>
+        // 報告資料
+        const reportData = [
+            {
+                id: "ch1",
+                title: "壹、緣起",
+                subsections: [
+                    {
+                        id: "ch1-content",
+                        title: "計畫緣起",
+                        content: `
+                            <p class="mb-6">114年12月22日府政三字第1143011203號函訂定</p>
+                            <p class="mb-6">依<strong>聯合國反貪腐公約(United Nations Convention against Corruption, 以下簡稱UNCAC)</strong>第2章預防措施相關規定，以及落實中華民國(下同)107年(西元2018年)UNCAC首次國家報告國際審查會議結論性意見提出：「每年對公共機構進行廉潔評估，以激勵內部致力於追求更好的治理和建立良好的廉潔形象。」、111年(西元2022年) UNCAC第2次國家報告國際審查會議結論性意見提出：「私部門在反貪腐工作中普遍缺乏主動性，因此公部門需要與私部門推動更多的合作，以鼓勵公司和企業瞭解提升誠信和反貪意識及作法的價值(包含良善治理、聲譽和成功經營)，並與政府機關合作發展這些價值。」及聯合國大會於104年(西元2015年)通過的永續發展目標(SDGs, Sustainable Development Goals)第16項「倡建和平、包容的社會以促進永續發展；為所有人提供訴諸司法的機會；在各級建立有效、負責和包容的機構」，細項16.5「大幅減少一切形式的貪腐和賄賂」及16.6「在各級建立有效、負責和透明的機構」。</p>
+                            <p class="mb-6">臺北市政府(以下簡稱本府)於98年首創「行政透明獎」評獎活動，鼓勵本府所屬各級機關(構)推動建置行政透明化措施，109年更名為「廉能透明獎」，評獎目的從著重行政透明的防弊功能，進展到重視透明措施所帶來的廉能興利效益。有鑑於公部門的廉潔與私部門的誠信相輔相成，清廉施政與誠信經營，需與公私部門夥伴關係協力完成，爰依本府廉政透明委員會第36次會議暨112年第1次廉政會報決議，於113年將原「廉能透明獎」轉型為「誠就永續獎」評獎及推廣活動。</p>
+                        `
+                    }
+                ]
+            },
+            {
+                id: "ch2",
+                title: "貳、辦理目的",
+                subsections: [
+                    {
+                        id: "ch2-content",
+                        title: "辦理目的",
+                        content: `
+                            <p class="mb-6">本府為結合臺北市(以下簡稱本市)公部門及私部門反貪腐能量，倡議<strong>「永續治理、公開透明、風險管理及廉能創新」</strong>等四大價值，爰期望透過「公部門評獎激勵、私部門輔導推廣」方式，評獎本府所屬各級機關(構)之整體廉能作為，激勵本府各級機關(構)持續推動公部門廉能治理作為，促進本府廉能施政；同時致力與本府往來之私部門建立合作夥伴關係，輔導及推廣誠信經營理念，共同建構本市誠信治理文化。</p>
+                        `
+                    }
+                ]
+            },
+            {
+                id: "ch3",
+                title: "參、辦理類別及對象",
+                subsections: [
+                    {
+                        id: "ch3-1",
+                        title: "一、廉能政府類",
+                        content: `
+                            <p class="mb-6">本計畫依辦理方式分為「廉能政府類」及「誠信企業類」，前者為2年辦理1次，後者為每年辦理。本(115)年度預計辦理如下：</p>
+                            <p class="mb-6"><strong>一、廉能政府類：</strong>針對本府所屬各級機關(構)及本府依法律或自治條例設立之行政法人辦理評獎。</p>
+                        `
+                    },
+                    {
+                        id: "ch3-2",
+                        title: "二、誠信企業類",
+                        content: `
+                            <p class="mb-6"><strong>二、誠信企業類：</strong>近3年(112年至114年)曾承攬本府所屬各機關(構)公告金額以上之採購廠商。</p>
+                        `
+                    }
+                ]
+            },
+            {
+                id: "ch4",
+                title: "肆、辦理機關",
+                subsections: [
+                    {
+                        id: "ch4-1",
+                        title: "一、主辦機關",
+                        content: `<p><strong>一、主辦機關：</strong>臺北市政府。</p>`
+                    },
+                    {
+                        id: "ch4-2",
+                        title: "二、執行機關",
+                        content: `<p><strong>二、執行機關：</strong>臺北市政府政風處(以下簡稱政風處)。</p>`
+                    }
+                ]
+            },
+            {
+                id: "ch5",
+                title: "伍、廉能政府類辦理方式",
+                subsections: [
+                    {
+                        id: "ch5-1",
+                        title: "一、參獎方式",
+                        content: `<p>由本府所屬各級機關(構)及本府依法律或自治條例設立之行政法人自薦參獎。</p>`
+                    },
+                    {
+                        id: "ch5-2",
+                        title: "二、參獎應備資料",
+                        content: `
+                            <ul class="custom-list pl-6">
+                                <li>(一)參獎申請書(附件1：紙本及電子檔)。</li>
+                                <li>(二)評核項目應提出<strong>112年至114年度</strong>之廉政作為及相關實績資料，參獎資料內各類統計數據與書面佐證資料建議以區分年度數據呈現，並可製作趨勢圖或比較圖呈現。無法提出3個年度之數據或資料之項目，請具體說明原因。</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        id: "ch5-3",
+                        title: "三、評獎程序",
+                        content: `
+                            <ul class="custom-list pl-6">
+                                <li>
+                                    <strong>(一)組成評選小組(以下簡稱本小組)：</strong>
+                                    <ul class="list-none pl-6 mt-2">
+                                        <li class="mb-2">1. 本小組置委員5人至7人，召集人由市長指派之副市長1人兼任，副召集人1人，由市長指派政風處處長兼任，其餘委員由市長就專家學者聘之。</li>
+                                        <li class="mb-2">2. 本小組委員有行政程序法第三十二條所列情形之一者，應自行迴避；有行政程序法第三十三條第一項所列情形之一者，評選對象得申請評選委員迴避。</li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <strong>(二)初審階段：</strong>由政風處彙整各機關(構)參獎申請書，送請評選委員依評核項目(附件2「誠就永續獎-廉能政府類」整體廉能作為評選標準)進行書面審查，並進行相關網站、資訊系統或平臺審查；嗣由副召集人召開初審會議，評定複審名單。會議應有委員總額三分之二以上出席，決議應經出席委員過半數之同意。
+                                </li>
+                                <li>
+                                    <strong>(三)複審階段：</strong>由本小組至入圍複審機關(構)進行實地評核；嗣由召集人召開複審會議，評定獲獎名單，並於複審會議後公告。會議應有委員總額三分之二以上出席，決議應經出席委員過半數之同意。
+                                </li>
+                            </ul>
+                        `
+                    },
+                    {
+                        id: "ch5-4",
+                        title: "四、評核內容",
+                        content: `
+                            <p class="mb-4"><strong>(一)評核項目</strong></p>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width:10%">項次</th>
+                                        <th style="width:15%">評核百分比</th>
+                                        <th style="width:25%">評核項目</th>
+                                        <th style="width:50%">評核構面</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>一</td>
+                                        <td>15%</td>
+                                        <td>1.首長決心與持續作為</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>二</td>
+                                        <td>35%</td>
+                                        <td>2.資訊與行政透明成效</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>三</td>
+                                        <td>50%</td>
+                                        <td>3.廉政風險防制作為與廉能措施展現</td>
+                                        <td>
+                                            3.1廉政風險評估、辨識及防制<br>
+                                            3.2廉政風險危機處理與課責<br>
+                                            3.3廉能政策擴散與外部回饋
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p class="mt-6 mb-2"><strong>(二)評核計分方式：</strong>本獎項經評選委員檢視參獎機關整體廉能作為，依據上揭評核標準之三大評核項目進行評分。</p>
+                            <p class="font-bold text-center my-6 p-6 bg-blue-50 border border-blue-100 rounded text-xl text-blue-800">總成績 = 參獎申請書面審查成績 × 50% + 實地評核成績 × 50%。</p>
+                        `
+                    },
+                    {
+                        id: "ch5-5",
+                        title: "五、獎勵、取消及撤銷規定",
+                        content: `
+                            <ul class="custom-list pl-6">
+                                <li>
+                                    <strong>(一)獎勵方式：</strong>
+                                    <ul class="list-none pl-6 mt-2">
+                                        <li class="mb-4">1. <strong>特優機關(構)：</strong>
+                                            <div class="pl-4 text-gray-600 mt-1">(1)頒發獎座1座及獎狀1幀。<br>(2)頒發新臺幣5萬元等值禮券。</div>
+                                        </li>
+                                        <li class="mb-4">2. <strong>優等機關(構)：</strong>
+                                            <div class="pl-4 text-gray-600 mt-1">(1)頒發獎狀1幀。<br>(2)頒發新臺幣2萬5千元等值禮券。</div>
+                                        </li>
+                                        <li class="mb-2">3. 特優至多3名、優等額度將視實際評選狀況而定，若評選結果無適當獎勵對象，則獎項額度得從缺。</li>
+                                        <li class="mb-2">4. 依公務人員激勵辦法第6條第1項第5款辦理。</li>
+                                    </ul>
+                                </li>
+                                <li>(二)特優機關(構)總獎勵額度30次嘉獎、優等機關(構)總獎勵額度20次嘉獎；首長、主要承辦主管及主要承辦人最高核予記功1次，其他有功人員最高核予嘉獎2次(政風人員敘獎依法務部廉政署相關規定)。</li>
+                                <li>(三)特優之本府所屬各級機關(構)於總獎勵額度範圍內，視各相關人員貢獻度，由政風處依本府專案敘獎原則(二)規定，統一辦理本案專案敘獎；特優之本市行政法人及優等機關(構)於總獎勵額度範圍內，視各相關人員貢獻度，自行核予獎勵。</li>
+                                <li>(四)參獎機關(構)於參獎期間內涉有重大違失，而嚴重影響本府廉潔形象者，取消其參獎資格；若獲獎機關(構)自公告獲獎日起3年內涉有重大違失，而嚴重影響本府廉潔形象者，撤銷其獲獎資格，並追回相關獎勵。</li>
+                                <li>(五)參獎機關(構)之參獎資料須遵守著作財產權相關規定，所提報成果數據，應為真實，不得任意增減。若評選過程發現參獎機關(構)違反上開情事並經查證屬實，取消其參獎資格；若於獲獎後發現，撤銷其獲獎資格，並追回相關獎勵。</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        id: "ch5-6",
+                        title: "六、作業期程",
+                        content: `
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th width="40%">作業項目</th>
+                                        <th>時程</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>報名作業</td>
+                                        <td>即日起至115年4月中前</td>
+                                    </tr>
+                                    <tr>
+                                        <td>書面審查暨初審作業</td>
+                                        <td>115年4月至5月</td>
+                                    </tr>
+                                    <tr>
+                                        <td>實地評核暨複審作業</td>
+                                        <td>115年6月至7月</td>
+                                    </tr>
+                                    <tr>
+                                        <td>公告獲獎名單</td>
+                                        <td>115年8月底前</td>
+                                    </tr>
+                                    <tr>
+                                        <td>辦理頒獎暨推廣成果活動</td>
+                                        <td>115年9月底前</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p class="text-sm text-gray-500 mt-2">※以上作業時程得視實際狀況進行調整</p>
+                        `
+                    }
+                ]
+            },
+            {
+                id: "ch6",
+                title: "陸、誠信企業類辦理方式",
+                subsections: [
+                    {
+                        id: "ch6-1",
+                        title: "一、推廣對象",
+                        content: `<p class="mb-6">為強化誠信治理效益，並期能對私部門誠信經營和拓展積極發揮作用，規劃由本府所屬各級機關(構)邀請並推派近3年(112年至114年)曾承攬本府所屬各機關(構)公告金額以上之採購廠商負責人、董事、監事、經理人或主管層級以上人員，參與本計畫誠信治理輔導及推廣作為。</p>`
+                    },
+                    {
+                        id: "ch6-2",
+                        title: "二、辦理形式",
+                        content: `<p class="mb-6">為持續深化私部門誠信意識及法令遵循概念，規劃以專題演講、標竿案例經驗分享及分組討論等方式，辦理「企業誠信工作坊」，並於課後進行評測、滿意度調查等以蒐集參與者回饋，俾瞭解參與者對於誠信治理及本府廉潔價值之認識程度；全程參與本府辦理之誠信治理輔導推廣活動，並完成評測達一定標準者，將授予完訓證明文件。</p>`
+                    },
+                    {
+                        id: "ch6-3",
+                        title: "三、推廣內容",
+                        content: `<p class="mb-6">協助私部門盤點、訂定及落實有關「企業內部員工及往來供應商之誠信守則」、「對股東及利害關係人揭露企業營運狀況、重大危機事件影響運營等公開透明之情形」、「多元反映管道建立」及「有關承攬政府採購應遵守之法令規範與契約義務等法令遵循落實情形」等誠信經營作為。</p>`
+                    },
+                    {
+                        id: "ch6-4",
+                        title: "四、作業期程",
+                        content: `
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th width="40%">作業項目</th>
+                                        <th>時程</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>內容規劃</td>
+                                        <td>即日起至115年7月底前</td>
+                                    </tr>
+                                    <tr>
+                                        <td>活動辦理</td>
+                                        <td>115年8月底前</td>
+                                    </tr>
+                                    <tr>
+                                        <td>寄送完訓證書</td>
+                                        <td>115年9月底前</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p class="text-sm text-gray-500 mt-2">※ 以上作業時程得視實際狀況進行調整</p>
+                        `
+                    }
+                ]
+            },
+            {
+                id: "ch7",
+                title: "柒、經費來源",
+                subsections: [
+                    {
+                        id: "ch7-content",
+                        title: "經費來源",
+                        content: `<p class="mb-6">本計畫所需經費由本府政風處115年度預算相關經費調整支應。</p>`
+                    }
+                ]
+            },
+            {
+                id: "ch8",
+                title: "捌、其他",
+                subsections: [
+                    {
+                        id: "ch8-1",
+                        title: "其他事項",
+                        content: `
+                            <ul class="custom-list pl-6">
+                                <li>一、為辦理評選及輔導推廣作業，得成立工作小組。工作小組置組長1人綜理組務，由政風處簡任官等以上人員兼任；置組員若干人，由本府所屬各級機關之政風機構派員兼任。</li>
+                                <li>二、廉能政府類獲獎之機關(構)及誠信企業類參與輔導推廣之企業，應配合參加本府辦理之頒獎或宣傳活動，本府並得使用參獎申請書內之績優事項或推廣成果等相關資料，作為廣宣表揚之用途。</li>
+                                <li>三、廉能政府類獲獎之機關(構)，將列入本府參獎法務部「透明晶質獎」時優先考量推薦之機關。</li>
+                            </ul>
+                        `
+                    }
+                ]
+            },
+            {
+                id: "appendix1",
+                title: "附件1",
+                subsections: [
+                    {
+                        id: "app1-content",
+                        title: "參獎申請書內容及體例",
+                        content: `
+                            <p class="mb-6"><strong>「誠就永續獎-廉能政府類」參獎申請書內容及體例</strong></p>
+                            <div class="p-6 bg-gray-50 border rounded mb-6 w-full">
+                                <h4 class="font-bold mb-4 text-xl">基本資料表</h4>
+                                <ul class="list-disc pl-5 mb-4">
+                                    <li>機關(構)名稱、首長、地址、網址、總預算、員額。</li>
+                                    <li>近三年(112-114)機關(構)投入政風經費、政風人員數。</li>
+                                    <li>機關(構)首長整體廉能推動主軸(100字內)。</li>
+                                    <li>廉政亮點簡介(首長決心與持續作為、資訊與行政透明成效、廉政風險防制作為與廉能措施展現)。</li>
+                                </ul>
+                            </div>
+                            <div class="p-6 bg-gray-50 border rounded w-full">
+                                <h4 class="font-bold mb-4 text-xl">參獎申請書體例</h4>
+                                <ul class="list-disc pl-5 mb-4">
+                                    <li>壹、機關(構)業務現況簡介</li>
+                                    <li>貳、機關(構)透明廉能作為
+                                        <ul class="pl-4">
+                                            <li>一、首長決心與持續作為</li>
+                                            <li>二、資訊與行政透明成效</li>
+                                            <li>三、廉政風險防制作為與廉能措施展現</li>
+                                        </ul>
+                                    </li>
+                                    <li>參、未來努力方向</li>
+                                    <li>肆、附件</li>
+                                </ul>
+                                <p class="text-sm text-gray-500 mt-2">* 申請書本文至多40頁，總頁數不超過70頁。</p>
+                            </div>
+                        `
+                    }
+                ]
+            },
+            {
+                id: "appendix2",
+                title: "附件2",
+                subsections: [
+                    {
+                        id: "app2-content",
+                        title: "整體廉能作為評選標準",
+                        content: `
+                            <h3 class="font-bold text-2xl mb-6">「誠就永續獎-廉能政府類」整體廉能作為評選標準</h3>
+                            <div class="overflow-x-auto w-full">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>評核百分比</th>
+                                            <th>細項配分</th>
+                                            <th>評核項目</th>
+                                            <th>評核構面及評核重點</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td rowspan="2" class="text-center font-bold">15%</td>
+                                            <td class="text-center">10%</td>
+                                            <td rowspan="2" class="font-bold">1.首長決心與持續作為</td>
+                                            <td>1.1首長在各項會議，對於廉政議題所為的裁示(決議)，能充分展現出對廉政工作的高度重視與支持的態度；且就後續落實情形，首長持續關切執行狀況或就未落實情形原因指示檢討改進。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center">5%</td>
+                                            <td>1.2首長支持機關(構)主(協)辦與廉政相關的活動(會議或獎勵措施)，並能親自參與。</td>
+                                        </tr>
+                                        <tr>
+                                            <td rowspan="3" class="text-center font-bold">35%</td>
+                                            <td class="text-center">10%</td>
+                                            <td rowspan="3" class="font-bold">2.資訊與行政透明成效</td>
+                                            <td>2.1人民能透過機關公開之資訊及流程，使用政府服務並得以監督機關(構)施政，且公開的資訊完整、正確，具備易讀性與可近性。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center">10%</td>
+                                            <td>2.2機關(構)主動建立公民參與管道或公私協力機制，提升機關(構)透明度，以及受到外部正向回饋的情形。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center">15%</td>
+                                            <td>2.3機關(構)運用行政透明措施之其他具體成效展現。例如：提升行政效率、減少人民陳情、檢舉或廠商申訴、異議、非正式人員進用情形。</td>
+                                        </tr>
+                                        <tr>
+                                            <td rowspan="4" class="text-center font-bold">50%</td>
+                                            <td class="text-center">20%</td>
+                                            <td rowspan="4" class="font-bold">3.廉政風險防制作為與廉能措施展現</td>
+                                            <td>
+                                                <strong>3.1 廉政風險評估、辨識及防制</strong>
+                                                <br>3.1.1 機關(構)能夠透過各種管道(如專案清查、稽核、內部控制、內外部的陳情及檢舉、定期或不定期的檢視機制等)，確實辨識出既有的廉政風險區塊或危機事件，並能對未來或創新過程中可能產生之廉政風險進行評估，以防制廉政風險事件的發生。
+                                                <br>3.1.2 機關(構)能透過導入創新數位化或人工智慧系統，有效提前辨識廉政高風險案件或異常行為。
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center">10%</td>
+                                            <td>
+                                                <strong>3.2 廉政風險危機處理與課責</strong>
+                                                <br>3.2.1 針對已發生之廉政風險事件，自法規面、制度面、執行面等深入分析疏漏之處，研提檢討與策進作為。
+                                                <br>3.2.2 機關(構)針對已發生之廉政風險事件，檢討相關人員有無行政或刑事責任。
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center" rowspan="2">20%</td>
+                                            <td>
+                                                <strong>3.3 廉能政策擴散與外部回饋</strong>
+                                                <br>3.3.1 機關(構)能針對攸關民眾權益、易引發民眾抱怨或不便民業務等，規劃推出創新作法，且予以制度化或公開揭露。例如：任何有助於提升廉潔程度與廉潔意識、降低廉政風險之政策、機制、課程、活動、程序或流程等。
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                3.3.2 機關(構)的廉能事件、其他有效降低可能貪腐之事例或創新作為，予以制度化或公開揭露，可供其他機關(構)學習，或受到其他機關(構)正向回饋的情形。例如：透過各類平臺、管道或會議與他機關(構)進行交流與分享、獲媒體報導或問卷調查肯定等。
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        `
+                    }
+                ]
+            }
+        ];
+
+        // 狀態管理
+        let currentChapterIndex = 0;
+        let currentSubIndex = 0;
+
+        // DOM Elements
+        const navContainer = document.getElementById('main-nav-container');
+        const sidebarContainer = document.getElementById('sidebar-links');
+        const contentContainer = document.getElementById('right-content');
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        const backToTopBtn = document.getElementById('back-to-top');
+        const progressBar = document.getElementById('scroll-progress-bar');
+
+        function init() {
+            renderNav();
+            loadChapter(0);
+            setupEventListeners();
+        }
+
+        function renderNav() {
+            navContainer.innerHTML = '';
+            reportData.forEach((chapter, index) => {
+                const btn = document.createElement('button');
+                btn.className = `nav-btn rounded-full text-gray-600 whitespace-nowrap border border-transparent ${index === 0 ? 'active' : ''}`;
+                btn.textContent = chapter.title; 
+                btn.onclick = () => loadChapter(index);
+                navContainer.appendChild(btn);
+            });
+        }
+
+        function loadChapter(index) {
+            currentChapterIndex = index;
+            currentSubIndex = 0;
+            document.querySelectorAll('.nav-btn').forEach((btn, idx) => {
+                if (idx === index) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            renderSidebar();
+            renderContent(0);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderSidebar() {
+            sidebarContainer.innerHTML = '';
+            const chapter = reportData[currentChapterIndex];
+            chapter.subsections.forEach((sub, index) => {
+                const link = document.createElement('a');
+                link.href = "#";
+                link.className = `sidebar-link block p-3 rounded-lg text-gray-600 ${index === 0 ? 'active' : ''}`;
+                link.textContent = sub.title;
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    renderContent(index);
+                };
+                sidebarContainer.appendChild(link);
+            });
+        }
+
+        function renderContent(subIndex) {
+            currentSubIndex = subIndex;
+            document.querySelectorAll('.sidebar-link').forEach((link, idx) => {
+                if (idx === subIndex) link.classList.add('active');
+                else link.classList.remove('active');
+            });
+
+            const chapter = reportData[currentChapterIndex];
+            const sub = chapter.subsections[subIndex];
+            let processedContent = sub.content;
+
+            const keywords = [
+                "推廣計畫", "每年辦理", "112年至114年度", "5人至7人",
+                "委員總額三分之二以上出席", "15%", "35%", "50%",
+                "新臺幣5萬元", "特優至多3名", "20次嘉獎", "記功1次",
+                "3年內涉有重大違失", "實地評核暨複審作業", "115年6月至7月"
+            ];
+            
+            keywords.forEach(keyword => {
+                const regex = new RegExp(keyword, 'g');
+                processedContent = processedContent.replace(regex, `<span class="keyword-apple-blue">${keyword}</span>`);
+            });
+
+            contentContainer.classList.remove('fade-in');
+            void contentContainer.offsetWidth; 
+            contentContainer.classList.add('fade-in');
+
+            contentContainer.innerHTML = `
+                <div class="content-section">
+                    <h2>${sub.title}</h2>
+                    <div class="text-gray-700">
+                        ${processedContent}
+                    </div>
+                </div>
+            `;
+            
+            // 移除了舊的 JS 佈局強制計算，依靠 CSS 自動處理
+        }
+
+        function handleSearch(query) {
+            if (!query.trim()) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+            const results = [];
+            reportData.forEach((chapter, cIdx) => {
+                chapter.subsections.forEach((sub, sIdx) => {
+                    const textContent = sub.content.replace(/<[^>]*>/g, '');
+                    if (textContent.includes(query) || sub.title.includes(query)) {
+                        results.push({
+                            chapterIdx: cIdx,
+                            subIdx: sIdx,
+                            title: sub.title,
+                            snippet: getSnippet(textContent, query)
+                        });
+                    }
+                });
+            });
+            renderSearchResults(results, query);
+        }
+
+        function getSnippet(text, query) {
+            const index = text.indexOf(query);
+            const start = Math.max(0, index - 10);
+            const end = Math.min(text.length, index + query.length + 20);
+            return '...' + text.substring(start, end) + '...';
+        }
+
+        function renderSearchResults(results, query) {
+            searchResults.innerHTML = '';
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div class="p-4 text-sm text-gray-500">找不到符合的內容</div>';
+            } else {
+                results.forEach(res => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 hover:bg-gray-50 cursor-pointer border-b last:border-0';
+                    const highlightedSnippet = res.snippet.replace(
+                        new RegExp(query, 'g'), 
+                        `<span class="bg-yellow-200 font-bold">${query}</span>`
+                    );
+                    item.innerHTML = `
+                        <div class="text-xs text-blue-600 font-bold mb-1">${reportData[res.chapterIdx].title}</div>
+                        <div class="text-sm font-semibold text-gray-800">${res.title}</div>
+                        <div class="text-xs text-gray-500 mt-1">${highlightedSnippet}</div>
+                    `;
+                    item.onclick = () => {
+                        loadChapter(res.chapterIdx);
+                        renderContent(res.subIdx);
+                        highlightContent(query);
+                        searchResults.classList.add('hidden');
+                        searchInput.value = '';
+                    };
+                    searchResults.appendChild(item);
+                });
+            }
+            searchResults.classList.remove('hidden');
+        }
+
+        function highlightContent(query) {
+            const contentDiv = document.querySelector('.content-section .text-gray-700');
+            if (!contentDiv) return;
+            const walker = document.createTreeWalker(contentDiv, NodeFilter.SHOW_TEXT, null, false);
+            const nodes = [];
+            while(walker.nextNode()) nodes.push(walker.currentNode);
+            nodes.forEach(node => {
+                if (node.nodeValue.includes(query)) {
+                    const span = document.createElement('span');
+                    span.innerHTML = node.nodeValue.replace(
+                        new RegExp(query, 'g'), 
+                        `<span class="highlight">${query}</span>`
+                    );
+                    node.parentNode.replaceChild(span, node);
+                }
+            });
+        }
+
+        function setupEventListeners() {
+            searchInput.addEventListener('input', (e) => handleSearch(e.target.value));
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.classList.add('hidden');
+                }
+            });
+            window.addEventListener('scroll', () => {
+                const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+                const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const scrolled = (winScroll / height) * 100;
+                progressBar.style.width = scrolled + "%";
+                if (winScroll > 300) backToTopBtn.classList.add('visible');
+                else backToTopBtn.classList.remove('visible');
+            });
+            backToTopBtn.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
