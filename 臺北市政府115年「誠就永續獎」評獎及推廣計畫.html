@@ -1,22 +1,63 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>臺北市政府115年「誠就永續獎」評獎及推廣計畫</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // 啟用手動切換深色模式
+        }
+    </script>
     <style>
         /* =========================================
-           核心樣式變數與重置
+           核心樣式變數與主題定義
            ========================================= */
         :root {
+            /* 預設 (亮色) 主題變數 */
             --brand-blue: #0056b3;
             --brand-light-blue: #e0f2fe;
             --brand-hover-blue: #0ea5e9;
             --apple-blue: #007AFF;
+            
+            --bg-body: #f9fafb;
+            --bg-sidebar: #f9fafb;
+            --bg-content: #ffffff;
+            --bg-card: #f9fafb; /* 內容中的小區塊 */
+            --bg-input: #ffffff;
+            
             --text-primary: #333333;
-            --bg-gray: #f9fafb;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            
+            --border-color: #e5e7eb;
+            --header-bg: rgba(255, 255, 255, 0.95);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+
             --sidebar-width: 320px;
+        }
+
+        /* 深色模式變數覆蓋 */
+        [data-theme="dark"] {
+            --brand-blue: #3b82f6; /* 稍微亮一點的藍色以便在深色背景閱讀 */
+            --brand-light-blue: #1e3a8a;
+            --brand-hover-blue: #2563eb;
+            --apple-blue: #60a5fa;
+
+            --bg-body: #111827;     /* gray-900 */
+            --bg-sidebar: #111827;
+            --bg-content: #1f2937;  /* gray-800 */
+            --bg-card: #374151;     /* gray-700 */
+            --bg-input: #374151;
+
+            --text-primary: #f3f4f6; /* gray-100 */
+            --text-secondary: #d1d5db; /* gray-300 */
+            --text-muted: #9ca3af;
+
+            --border-color: #374151;
+            --header-bg: rgba(31, 41, 55, 0.95);
+            --shadow-color: rgba(0, 0, 0, 0.5);
         }
 
         * {
@@ -26,21 +67,21 @@
         body {
             font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
             color: var(--text-primary);
-            background-color: var(--bg-gray);
+            background-color: var(--bg-body);
             line-height: 1.9;
             font-size: 18px;
             margin: 0;
             padding: 0;
-            overflow-x: hidden; /* 防止水平捲軸 */
+            overflow-x: hidden;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         /* =========================================
-           佈局核心演算 (修正版)
+           佈局核心演算
            ========================================= */
         
         .layout-grid {
             display: grid;
-            /* 修正：使用 100% 而非 100vw，避免包含捲軸寬度造成溢出 */
             width: 100%; 
             min-height: 100vh;
             grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
@@ -58,35 +99,34 @@
                 top: 0 !important;
                 height: auto !important;
                 border-right: none !important;
-                border-bottom: 1px solid #e5e7eb;
+                border-bottom: 1px solid var(--border-color);
             }
         }
 
         /* 左側邊欄區域 */
         .sidebar-area {
-            background-color: #f9fafb;
-            border-right: 1px solid #e5e7eb;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
             position: sticky;
             top: 200px;
             height: calc(100vh - 200px);
             overflow-y: auto;
             width: 100%;
+            transition: background-color 0.3s, border-color 0.3s;
         }
 
-        /* 右側內容區域 - 修正重點 */
+        /* 右側內容區域 */
         .content-area {
-            background-color: white;
+            background-color: var(--bg-content);
             padding: 3rem 4rem;
             width: 100%;
-            min-width: 0; /* 關鍵：允許 Flex/Grid 子元素收縮 */
-            
-            /* 強制長文字換行，防止撐開版面 */
+            min-width: 0;
             overflow-wrap: break-word;
             word-wrap: break-word;
             word-break: break-word;
+            transition: background-color 0.3s;
         }
 
-        /* 響應式調整：螢幕較小時縮減內距 */
         @media (max-width: 1280px) {
             .content-area {
                 padding: 3rem 2rem;
@@ -98,10 +138,10 @@
            ========================================= */
 
         #main-header {
-            background: rgba(255, 255, 255, 0.95);
+            background: var(--header-bg);
             backdrop-filter: blur(10px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px var(--shadow-color);
+            transition: background 0.3s, box-shadow 0.3s;
         }
 
         #scroll-progress-bar {
@@ -111,21 +151,46 @@
             transition: width 0.1s;
         }
 
+        /* 修正導覽列按鈕跳動問題：移除 transform */
         .nav-btn {
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             font-size: 1rem;
             padding: 0.5rem 1rem;
+            color: var(--text-secondary);
+            /* transform: translateY(-2px);  <-- 已移除此行以解決抖動 */
         }
-        .nav-btn:hover { transform: translateY(-2px); background-color: var(--brand-light-blue); }
-        .nav-btn.active { background-color: var(--brand-blue); color: white; box-shadow: 0 4px 6px rgba(0, 86, 179, 0.3); }
+        .nav-btn:hover { 
+            background-color: var(--brand-light-blue);
+            color: var(--brand-blue);
+        }
+        .nav-btn.active { 
+            background-color: var(--brand-blue); 
+            color: white; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+        }
 
+        /* 側邊欄連結 */
         .sidebar-link {
             transition: all 0.2s ease;
             border-left: 5px solid transparent;
             font-size: 1rem;
+            color: var(--text-secondary);
         }
-        .sidebar-link:hover { background-color: #e5e7eb; }
-        .sidebar-link.active { background-color: var(--brand-light-blue); font-weight: bold; border-left-color: var(--brand-blue); color: var(--brand-blue); }
+        .sidebar-link:hover { 
+            background-color: var(--bg-card); 
+            color: var(--text-primary);
+        }
+        .sidebar-link.active { 
+            background-color: var(--brand-light-blue); 
+            font-weight: bold; 
+            border-left-color: var(--brand-blue); 
+            color: var(--brand-blue); 
+        }
+
+        /* 標題與文字 */
+        h1, h2, h3, h4 { color: var(--text-primary); }
+        .text-gray-800 { color: var(--text-primary) !important; }
+        .text-gray-600, .text-gray-500, .text-gray-700 { color: var(--text-secondary) !important; }
 
         .content-section h2 {
             border-bottom: 3px solid var(--brand-blue);
@@ -142,31 +207,52 @@
             font-weight: 800;
         }
 
-        /* 表格樣式優化 */
+        /* 表格樣式優化 (支援深色) */
         table {
             width: 100% !important;
             border-collapse: collapse;
             margin: 1.5rem 0;
-            background: white;
+            background: var(--bg-content);
             border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px var(--shadow-color);
             font-size: 1.1rem;
             table-layout: fixed;
         }
         th, td {
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border-color);
             padding: 14px 18px;
             text-align: left;
-            /* 確保表格內容也會換行 */
             overflow-wrap: break-word;
             word-break: break-word;
+            color: var(--text-primary);
         }
         th { background-color: var(--brand-blue); color: white; font-weight: 600; }
-        tr:nth-child(even) { background-color: #f9fafb; }
+        tr:nth-child(even) { background-color: var(--bg-card); }
 
-        .highlight { background-color: #fef08a; padding: 0 2px; border-radius: 2px; font-weight: bold; }
+        .highlight { background-color: #fef08a; padding: 0 2px; border-radius: 2px; font-weight: bold; color: #333; }
 
+        /* 卡片與區塊背景 (深色模式適配) */
+        .bg-gray-50 {
+            background-color: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-primary) !important;
+        }
+        .border { border-color: var(--border-color) !important; }
+        .bg-white { background-color: var(--bg-content) !important; }
+        
+        /* 搜尋輸入框 */
+        #search-input {
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+        #search-results {
+            background-color: var(--bg-content);
+            border-color: var(--border-color);
+        }
+
+        /* 動畫 */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.4s ease-out forwards; }
 
@@ -175,6 +261,53 @@
 
         .sidebar-area::-webkit-scrollbar { width: 6px; }
         .sidebar-area::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
+
+        /* =========================================
+           Tooltips (懸浮提示) CSS
+           ========================================= */
+        [data-tooltip] {
+            position: relative;
+        }
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 8px;
+            background-color: #333;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            white-space: nowrap;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            opacity: 0;
+            animation: tooltipFade 0.2s forwards;
+            pointer-events: none;
+        }
+        /* 主題按鈕的 tooltip 位置微調 */
+        #theme-toggle[data-tooltip]:hover::after {
+            top: auto;
+            bottom: -40px;
+        }
+        
+        @keyframes tooltipFade {
+            to { opacity: 1; }
+        }
+        
+        /* 深色模式下的 Tooltip 顏色 */
+        [data-theme="dark"] [data-tooltip]:hover::after {
+            background-color: #555;
+            color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        /* 修正藍色區塊文字顏色 */
+        .text-blue-800 { color: var(--brand-blue) !important; }
+        .bg-blue-50 { background-color: var(--bg-card) !important; border-color: var(--brand-blue) !important; }
+        
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -184,21 +317,36 @@
         <div class="w-full px-8 py-4">
             <div class="flex flex-col gap-4">
                 <div class="flex flex-col lg:flex-row items-center justify-between relative">
+                    <!-- Title Area -->
                     <div class="flex items-center gap-4 justify-center w-full lg:w-auto lg:justify-start mb-3 lg:mb-0">
                         <div class="w-12 h-12 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-2xl shadow-md flex-shrink-0">北</div>
-                        <h1 class="text-2xl lg:text-3xl font-bold text-gray-800 tracking-wide text-center lg:text-left">
+                        <h1 class="text-2xl lg:text-3xl font-bold tracking-wide text-center lg:text-left">
                             臺北市政府115年「誠就永續獎」評獎及推廣計畫
                         </h1>
                     </div>
-                    <div class="relative w-full lg:w-80 flex-shrink-0">
-                        <div class="relative">
-                            <input type="text" id="search-input" placeholder="搜尋報告內容..." class="w-full pl-10 pr-4 py-2.5 rounded-full border border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-base">
-                            <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    
+                    <!-- Right Action Area: Search + Theme Toggle -->
+                    <div class="flex items-center gap-3 w-full lg:w-auto justify-end">
+                        <!-- Theme Toggle Button -->
+                        <button id="theme-toggle" class="p-2.5 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" data-tooltip="切換深色/明亮模式">
+                            <!-- Sun Icon (Default hidden in dark mode) -->
+                            <svg id="icon-sun" class="w-6 h-6 text-yellow-500 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            <!-- Moon Icon (Default visible in light mode) -->
+                            <svg id="icon-moon" class="w-6 h-6 text-gray-500 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                        </button>
+
+                        <!-- Search -->
+                        <div class="relative w-full lg:w-80 flex-shrink-0">
+                            <div class="relative">
+                                <input type="text" id="search-input" placeholder="搜尋報告內容..." class="w-full pl-10 pr-4 py-2.5 rounded-full border focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-base">
+                                <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                            <div id="search-results" class="hidden absolute top-full mt-2 w-full rounded-lg shadow-xl border z-50 overflow-hidden" style="max-height: 400px; overflow-y: auto;"></div>
                         </div>
-                        <div id="search-results" class="hidden absolute top-full mt-2 w-full bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden" style="max-height: 400px; overflow-y: auto;"></div>
                     </div>
                 </div>
-                <nav class="w-full border-t pt-3 border-gray-100">
+                <!-- Navigation -->
+                <nav class="w-full border-t pt-3 border-gray-100 dark:border-gray-700">
                     <div class="flex flex-wrap justify-center gap-x-3 gap-y-2 px-1" id="main-nav-container"></div>
                 </nav>
             </div>
@@ -212,7 +360,7 @@
         <!-- Left Sidebar -->
         <aside id="left-sidebar" class="sidebar-area">
             <div class="p-6">
-                <h3 class="text-base uppercase text-gray-500 font-bold mb-6 tracking-wider border-b pb-2">本章節導覽</h3>
+                <h3 class="text-base uppercase font-bold mb-6 tracking-wider border-b pb-2" style="color: var(--text-muted); border-color: var(--border-color);">本章節導覽</h3>
                 <div id="sidebar-links" class="flex flex-col gap-2"></div>
             </div>
         </aside>
@@ -225,12 +373,12 @@
     </main>
 
     <!-- Back to top -->
-    <button id="back-to-top" class="fixed bottom-10 right-10 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transform transition hover:scale-110 z-40 focus:outline-none">
+    <button id="back-to-top" class="fixed bottom-10 right-10 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transform transition hover:scale-110 z-40 focus:outline-none" data-tooltip="回到頂部">
         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
     </button>
 
     <script>
-        // 報告資料
+        // 報告資料 (維持原樣)
         const reportData = [
             {
                 id: "ch1",
@@ -377,7 +525,7 @@
                                 </tbody>
                             </table>
                             <p class="mt-6 mb-2"><strong>(二)評核計分方式：</strong>本獎項經評選委員檢視參獎機關整體廉能作為，依據上揭評核標準之三大評核項目進行評分。</p>
-                            <p class="font-bold text-center my-6 p-6 bg-blue-50 border border-blue-100 rounded text-xl text-blue-800">總成績 = 參獎申請書面審查成績 × 50% + 實地評核成績 × 50%。</p>
+                            <p class="font-bold text-center my-6 p-6 bg-blue-50 border rounded text-xl text-blue-800">總成績 = 參獎申請書面審查成績 × 50% + 實地評核成績 × 50%。</p>
                         `
                     },
                     {
@@ -655,19 +803,49 @@
         const searchResults = document.getElementById('search-results');
         const backToTopBtn = document.getElementById('back-to-top');
         const progressBar = document.getElementById('scroll-progress-bar');
+        const themeToggleBtn = document.getElementById('theme-toggle');
 
         function init() {
+            initTheme(); // 初始化主題
             renderNav();
             loadChapter(0);
             setupEventListeners();
+        }
+
+        // ============================
+        // 主題切換邏輯
+        // ============================
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            if (newTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            localStorage.setItem('theme', newTheme);
         }
 
         function renderNav() {
             navContainer.innerHTML = '';
             reportData.forEach((chapter, index) => {
                 const btn = document.createElement('button');
-                btn.className = `nav-btn rounded-full text-gray-600 whitespace-nowrap border border-transparent ${index === 0 ? 'active' : ''}`;
+                btn.className = `nav-btn rounded-full whitespace-nowrap border border-transparent ${index === 0 ? 'active' : ''}`;
                 btn.textContent = chapter.title; 
+                // 新增 Tooltip 屬性
+                btn.setAttribute('data-tooltip', `檢視 ${chapter.title}`);
                 btn.onclick = () => loadChapter(index);
                 navContainer.appendChild(btn);
             });
@@ -691,7 +869,7 @@
             chapter.subsections.forEach((sub, index) => {
                 const link = document.createElement('a');
                 link.href = "#";
-                link.className = `sidebar-link block p-3 rounded-lg text-gray-600 ${index === 0 ? 'active' : ''}`;
+                link.className = `sidebar-link block p-3 rounded-lg ${index === 0 ? 'active' : ''}`;
                 link.textContent = sub.title;
                 link.onclick = (e) => {
                     e.preventDefault();
@@ -736,8 +914,6 @@
                     </div>
                 </div>
             `;
-            
-            // 移除了舊的 JS 佈局強制計算，依靠 CSS 自動處理
         }
 
         function handleSearch(query) {
@@ -776,15 +952,15 @@
             } else {
                 results.forEach(res => {
                     const item = document.createElement('div');
-                    item.className = 'p-3 hover:bg-gray-50 cursor-pointer border-b last:border-0';
+                    item.className = 'p-3 hover:bg-gray-100 cursor-pointer border-b last:border-0 dark:hover:bg-gray-700 dark:border-gray-600';
                     const highlightedSnippet = res.snippet.replace(
                         new RegExp(query, 'g'), 
-                        `<span class="bg-yellow-200 font-bold">${query}</span>`
+                        `<span class="bg-yellow-200 font-bold text-gray-800">${query}</span>`
                     );
                     item.innerHTML = `
-                        <div class="text-xs text-blue-600 font-bold mb-1">${reportData[res.chapterIdx].title}</div>
-                        <div class="text-sm font-semibold text-gray-800">${res.title}</div>
-                        <div class="text-xs text-gray-500 mt-1">${highlightedSnippet}</div>
+                        <div class="text-xs text-blue-600 font-bold mb-1 dark:text-blue-400">${reportData[res.chapterIdx].title}</div>
+                        <div class="text-sm font-semibold text-gray-800 dark:text-gray-200">${res.title}</div>
+                        <div class="text-xs text-gray-500 mt-1 dark:text-gray-400">${highlightedSnippet}</div>
                     `;
                     item.onclick = () => {
                         loadChapter(res.chapterIdx);
@@ -835,6 +1011,9 @@
             backToTopBtn.addEventListener('click', () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
+            
+            // 綁定主題切換事件
+            themeToggleBtn.addEventListener('click', toggleTheme);
         }
 
         init();
