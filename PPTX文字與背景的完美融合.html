@@ -1,0 +1,504 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>PPTX 魔法合併工具 (macOS Pro)</title>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
+      <style>
+      html, body { margin: 0; padding: 24px; background: #FFFFFF; color: #1d1d1f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; font-size: 15px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+      h1, h2, h3, h4, h5, h6, b, strong { font-weight: 600; } h1 { font-weight: 700; }
+      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; } ul { list-style-type: disc; } ol { list-style-type: decimal; } li { display: list-item; }
+      .hljs-container { padding: 1.5rem; border-radius: .75rem; overflow-x: auto; background: #fcfcfd; border: 1px solid #d2d2d7; }
+      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
+      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
+    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPTX 魔法合併工具 (macOS Pro)</title>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Libraries for PPTX Processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        /* macOS 系統字體堆疊 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f5f5f7; /* macOS 淺灰背景 */
+            color: #1d1d1f;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* 毛玻璃特效通用類別 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+        }
+
+        /* 3D 卡片基礎 */
+        .card-3d {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 藍色立體風格 (文字) */
+        .card-3d-blue {
+            background: linear-gradient(145deg, #ffffff, #f0f7ff);
+            border: 1px solid #dbeafe;
+            box-shadow: 
+                0 10px 15px -3px rgba(59, 130, 246, 0.1), 
+                0 4px 6px -2px rgba(59, 130, 246, 0.05),
+                inset 0 -2px 0 0 #3b82f6; /* 底部立體厚度 */
+        }
+        .card-3d-blue:hover {
+            transform: translateY(-4px);
+            box-shadow: 
+                0 20px 25px -5px rgba(59, 130, 246, 0.2), 
+                0 10px 10px -5px rgba(59, 130, 246, 0.1),
+                inset 0 -2px 0 0 #2563eb;
+        }
+
+        /* 橘色立體風格 (背景) */
+        .card-3d-orange {
+            background: linear-gradient(145deg, #ffffff, #fff7ed);
+            border: 1px solid #ffedd5;
+            box-shadow: 
+                0 10px 15px -3px rgba(249, 115, 22, 0.1), 
+                0 4px 6px -2px rgba(249, 115, 22, 0.05),
+                inset 0 -2px 0 0 #f97316; /* 底部立體厚度 */
+        }
+        .card-3d-orange:hover {
+            transform: translateY(-4px);
+            box-shadow: 
+                0 20px 25px -5px rgba(249, 115, 22, 0.2), 
+                0 10px 10px -5px rgba(249, 115, 22, 0.1),
+                inset 0 -2px 0 0 #ea580c;
+        }
+
+        /* 終端機風格 */
+        .glass-terminal {
+            background: #1e1e1e;
+            border-radius: 0.75rem;
+            color: #73fa79;
+            font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* 隱藏滾動條但保留功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="h-screen w-full flex items-center justify-center p-4 overflow-hidden bg-gray-100">
+
+    <div id="root" class="w-full h-full flex justify-center items-center"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        // --- Icons ---
+        const IconFileText = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+        );
+        const IconImage = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        );
+        const IconArrowRight = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        );
+        const IconCheck = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        );
+        const IconDownload = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+        );
+        const IconRefresh = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+        );
+        const IconLoader = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        );
+
+        // --- Logic Helper ---
+        const getSpTree = (doc) => {
+            if (!doc) return null;
+            let tree = doc.getElementsByTagName("p:spTree")[0];
+            if (tree) return tree;
+            const all = doc.getElementsByTagName("*");
+            for (let i = 0; i < all.length; i++) {
+                if (all[i].localName === "spTree") return all[i];
+            }
+            return null;
+        };
+
+        const App = () => {
+            const [textFile, setTextFile] = useState(null);
+            const [bgFile, setBgFile] = useState(null);
+            const [status, setStatus] = useState('idle');
+            const [logs, setLogs] = useState([]);
+            const [downloadUrl, setDownloadUrl] = useState(null);
+
+            const addLog = (msg) => setLogs(prev => [...prev, msg]);
+
+            const handleFileDrop = (e, type) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files[0];
+                if (file && file.name.endsWith('.pptx')) {
+                    if (type === 'text') setTextFile(file);
+                    else setBgFile(file);
+                } else {
+                    alert('請僅上傳 .pptx 格式檔案');
+                }
+            };
+
+            const processPPTX = async () => {
+                if (!textFile || !bgFile) return;
+                
+                setStatus('processing');
+                setLogs([]);
+                addLog('正在初始化合併引擎...');
+
+                try {
+                    const textZip = new JSZip();
+                    const bgZip = new JSZip();
+
+                    addLog('載入文字 PPTX...');
+                    const textContent = await textZip.loadAsync(textFile);
+                    
+                    addLog('載入背景 PPTX...');
+                    const bgContent = await bgZip.loadAsync(bgFile);
+
+                    const textSlides = Object.keys(textContent.files).filter(path => path.match(/ppt\/slides\/slide\d+\.xml/));
+                    const bgSlides = Object.keys(bgContent.files).filter(path => path.match(/ppt\/slides\/slide\d+\.xml/));
+
+                    const sorter = (a, b) => {
+                        const getNum = (str) => {
+                            const match = str.match(/slide(\d+)\.xml/);
+                            return match ? parseInt(match[1]) : 0;
+                        };
+                        return getNum(a) - getNum(b);
+                    };
+                    textSlides.sort(sorter);
+                    bgSlides.sort(sorter);
+
+                    addLog(`分析完成：文字檔 ${textSlides.length} 頁 / 背景檔 ${bgSlides.length} 頁`);
+
+                    const processCount = Math.min(textSlides.length, bgSlides.length);
+                    const parser = new DOMParser();
+                    const serializer = new XMLSerializer();
+
+                    for (let i = 0; i < processCount; i++) {
+                        const textSlidePath = textSlides[i];
+                        const bgSlidePath = bgSlides[i];
+
+                        const textXmlStr = await textContent.file(textSlidePath).async("string");
+                        const bgXmlStr = await bgContent.file(bgSlidePath).async("string");
+
+                        const textDoc = parser.parseFromString(textXmlStr, "application/xml");
+                        const bgDoc = parser.parseFromString(bgXmlStr, "application/xml");
+
+                        if (textDoc.getElementsByTagName("parsererror").length > 0) throw new Error(`XML 解析錯誤: ${textSlidePath}`);
+
+                        const textSpTree = getSpTree(textDoc);
+                        const bgSpTree = getSpTree(bgDoc);
+
+                        if (textSpTree && bgSpTree) {
+                            const textChildren = Array.from(textSpTree.childNodes);
+                            let addedCount = 0;
+                            
+                            textChildren.forEach(node => {
+                                const localName = node.localName || node.nodeName.split(':').pop();
+                                const allowedTags = ['sp', 'grpSp', 'graphicFrame', 'pic'];
+
+                                if (allowedTags.includes(localName)) {
+                                    try {
+                                        const clonedNode = bgDoc.importNode(node, true);
+                                        const cNvPr = clonedNode.getElementsByTagName ?
+                                            (clonedNode.getElementsByTagName("p:cNvPr")[0] || clonedNode.getElementsByTagName("cNvPr")[0]) : null;
+                                        
+                                        if (cNvPr && cNvPr.getAttribute("id")) {
+                                            cNvPr.setAttribute("id", cNvPr.getAttribute("id") + "999");
+                                        }
+                                        bgSpTree.appendChild(clonedNode);
+                                        addedCount++;
+                                    } catch (e) {
+                                        console.warn("Node import failed", e);
+                                    }
+                                }
+                            });
+                        }
+                        
+                        const newBgXmlStr = serializer.serializeToString(bgDoc);
+                        bgContent.file(bgSlidePath, newBgXmlStr);
+                    }
+
+                    addLog('正在封裝新 PPTX 檔案...');
+                    const content = await bgContent.generateAsync({ type: "blob" });
+                    
+                    const url = URL.createObjectURL(content);
+                    setDownloadUrl(url);
+                    setStatus('success');
+                    addLog('檔案已準備就緒。');
+
+                } catch (err) {
+                    console.error(err);
+                    setStatus('error');
+                    addLog(`錯誤: ${err.message}`);
+                }
+            };
+
+            const downloadFile = () => {
+                if (downloadUrl) {
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = "merged_presentation.pptx";
+                    a.click();
+                }
+            };
+
+            const reset = () => {
+                setTextFile(null);
+                setBgFile(null);
+                setStatus('idle');
+                setDownloadUrl(null);
+                setLogs([]);
+            };
+
+            return (
+                <div className="relative w-full max-w-6xl glass-panel rounded-2xl overflow-hidden flex flex-col h-[85vh] transition-all duration-300">
+                    
+                    {/* macOS Title Bar */}
+                    <div className="h-10 bg-white/40 border-b border-white/50 flex items-center justify-between px-4 shrink-0 backdrop-blur-md sticky top-0 z-50">
+                        <div className="flex space-x-2">
+                            <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E] shadow-sm"></div>
+                            <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123] shadow-sm"></div>
+                            <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29] shadow-sm"></div>
+                        </div>
+                        <div className="text-sm font-semibold text-gray-600 flex-1 text-center select-none tracking-wide">
+                            PPTX 合併工具 Pro
+                        </div>
+                        <div className="w-14"></div>
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div className="p-10 flex-1 overflow-y-auto no-scrollbar flex flex-col">
+                        
+                        <div className="text-center mb-8 shrink-0">
+                            <h1 className="text-3xl font-bold text-[#1d1d1f] mb-2 tracking-tight">
+                                文字與背景的完美融合
+                            </h1>
+                            <p className="text-[#86868b] text-base">
+                                將「文字內容」與「設計背景」結合，創造專業簡報
+                            </p>
+                        </div>
+
+                        {/* File Upload Grid - Expanded & Distinct */}
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-8 items-center mb-8 px-4">
+                            
+                            <FileUploader 
+                                file={textFile} 
+                                setFile={setTextFile}
+                                title="文字 PPTX 檔"
+                                subtitle="純文字內容來源"
+                                icon={<IconFileText />}
+                                type="text"
+                                onDrop={handleFileDrop}
+                            />
+
+                            <div className="flex justify-center text-gray-300">
+                                <div className="hidden md:block transform scale-150 opacity-50">
+                                    <IconArrowRight />
+                                </div>
+                                <div className="md:hidden transform rotate-90 scale-150 opacity-50">
+                                    <IconArrowRight />
+                                </div>
+                            </div>
+
+                            <FileUploader 
+                                file={bgFile} 
+                                setFile={setBgFile}
+                                title="背景 PPTX 檔"
+                                subtitle="設計風格模板"
+                                icon={<IconImage />}
+                                type="bg"
+                                onDrop={handleFileDrop}
+                            />
+                        </div>
+
+                        {/* Control Center */}
+                        <div className="flex flex-col items-center justify-center space-y-6 mt-auto pb-4">
+                            
+                            {/* Action Buttons */}
+                            <div className="h-14 flex items-center justify-center">
+                                {status === 'idle' && (
+                                    <button 
+                                        onClick={processPPTX}
+                                        disabled={!textFile || !bgFile}
+                                        className={`
+                                            px-10 py-3 rounded-full font-medium text-lg transition-all duration-300 shadow-xl
+                                            ${(!textFile || !bgFile) 
+                                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
+                                                : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:shadow-2xl hover:scale-105 active:scale-95'}
+                                        `}
+                                    >
+                                        開始合併
+                                    </button>
+                                )}
+
+                                {status === 'processing' && (
+                                    <div className="flex items-center space-x-3 bg-white/60 px-8 py-3 rounded-full border border-white/60 shadow-lg backdrop-blur">
+                                        <div className="text-[#007aff] animate-spin"><IconLoader /></div>
+                                        <span className="font-medium text-gray-600">正在處理投影片...</span>
+                                    </div>
+                                )}
+
+                                {status === 'error' && (
+                                    <div className="text-[#ff3b30] font-medium bg-red-50 px-6 py-3 rounded-full border border-red-100 flex items-center gap-2">
+                                        <span>發生錯誤</span>
+                                        <button onClick={reset} className="underline hover:text-red-700 font-bold">重試</button>
+                                    </div>
+                                )}
+
+                                {status === 'success' && (
+                                    <div className="flex space-x-4 animate-fade-in-up">
+                                        <button 
+                                            onClick={downloadFile}
+                                            className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-[#34c759] to-[#30b753] text-white rounded-full font-medium text-lg shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 active:scale-95 active:translate-y-0"
+                                        >
+                                            <IconDownload />
+                                            <span>下載檔案</span>
+                                        </button>
+                                        <button 
+                                            onClick={reset}
+                                            className="flex items-center justify-center w-12 h-12 bg-white hover:bg-gray-50 text-gray-600 rounded-full shadow-md border border-gray-100 transition-all active:scale-95"
+                                            title="重新開始"
+                                        >
+                                            <IconRefresh />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Terminal / Logs Area */}
+                            <div className={`
+                                w-full max-w-3xl rounded-xl overflow-hidden transition-all duration-500 ease-in-out shadow-2xl
+                                ${logs.length > 0 || status === 'processing' ? 'h-48 opacity-100 translate-y-0' : 'h-0 opacity-0 translate-y-4'}
+                            `}>
+                                <div className="glass-terminal w-full h-full p-5 text-sm leading-relaxed overflow-y-auto custom-scrollbar border border-gray-700/50">
+                                    <div className="opacity-40 mb-3 border-b border-gray-600 pb-2 flex justify-between font-mono text-xs">
+                                        <span>PROCESS LOG</span>
+                                        <span>STATUS: ACTIVE</span>
+                                    </div>
+                                    {logs.map((log, idx) => (
+                                        <div key={idx} className="flex font-mono mb-1">
+                                            <span className="mr-3 text-blue-400 font-bold">➜</span>
+                                            <span>{log}</span>
+                                        </div>
+                                    ))}
+                                    {status === 'processing' && (
+                                        <div className="animate-pulse flex mt-2">
+                                            <span className="mr-3 text-blue-400">➜</span>
+                                            <span className="w-2 h-5 bg-[#73fa79] inline-block align-middle"></span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="bg-white/40 border-t border-white/40 py-3 px-4 text-xs text-center text-gray-500 backdrop-blur-sm shrink-0">
+                        安全聲明：所有運算皆在您的瀏覽器本地執行，檔案不會上傳至伺服器
+                    </div>
+                </div>
+            );
+        };
+
+        const FileUploader = ({ file, setFile, title, subtitle, icon, accept, type, onDrop }) => {
+            const fileInputRef = useRef(null);
+            const [isDragOver, setIsDragOver] = useState(false);
+
+            // Determine style based on type
+            const baseClass = "card-3d relative group rounded-2xl p-8 h-64 flex flex-col items-center justify-center text-center cursor-pointer border-2 border-dashed";
+            
+            const typeClasses = type === 'text' 
+                ? (file ? "bg-blue-50/80 border-blue-500 border-solid shadow-inner" : "card-3d-blue border-transparent")
+                : (file ? "bg-orange-50/80 border-orange-500 border-solid shadow-inner" : "card-3d-orange border-transparent");
+
+            const activeClass = isDragOver ? "scale-105 ring-4 ring-offset-2 ring-blue-200" : "";
+
+            return (
+                <div 
+                    className={`${baseClass} ${typeClasses} ${activeClass}`}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={(e) => { setIsDragOver(false); onDrop(e, type); }}
+                    onClick={() => fileInputRef.current.click()}
+                >
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept=".pptx"
+                        onChange={(e) => setFile(e.target.files[0])}
+                    />
+
+                    {file ? (
+                        <div className="animate-fade-in space-y-4 w-full">
+                            <div className={`w-16 h-16 rounded-2xl shadow-lg flex items-center justify-center mx-auto transform transition-transform group-hover:scale-110 ${type==='text' ? 'bg-blue-500 text-white' : 'bg-orange-500 text-white'}`}>
+                                <IconCheck />
+                            </div>
+                            <div>
+                                <p className="font-bold text-gray-800 text-lg max-w-[200px] truncate mx-auto" title={file.name}>
+                                    {file.name}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1 font-mono uppercase bg-white/50 inline-block px-2 py-1 rounded">
+                                    PPTX • {(file.size / 1024 / 1024).toFixed(1)} MB
+                                </p>
+                            </div>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                                className="text-sm text-red-500 hover:text-red-600 hover:bg-red-50 px-3 py-1 rounded transition-colors"
+                            >
+                                移除檔案
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 pointer-events-none transition-opacity group-hover:opacity-100">
+                            <div className="transform transition-transform group-hover:-translate-y-2 duration-300 bg-white p-4 rounded-full shadow-sm inline-block">
+                                {icon}
+                            </div>
+                            <div>
+                                <h3 className={`text-xl font-bold ${type==='text' ? 'text-blue-900' : 'text-orange-900'}`}>{title}</h3>
+                                <p className={`text-sm mt-1 font-medium ${type==='text' ? 'text-blue-400' : 'text-orange-400'}`}>{subtitle}</p>
+                            </div>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-gray-400 absolute bottom-4 left-0 right-0">
+                                點擊或拖曳檔案至此
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html></div></body></html>
