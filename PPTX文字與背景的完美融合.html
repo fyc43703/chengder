@@ -10,22 +10,42 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS (啟用 Dark Mode) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
     <!-- PPTX Libs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <style>
-        /* 字體設定 */
+        /* 全域字體與過渡 */
         body {
             font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
-            background-color: #f0f4f8;
-            color: #333;
             -webkit-font-smoothing: antialiased;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* 3D 藍色柔和框架 (左) */
+        /* --- 3D 樣式定義 (包含深色模式適配) --- */
+
+        /* 主控條 */
+        .control-bar-3d {
+            background: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.05), inset 0 -2px 0 rgba(0, 0, 0, 0.05);
+            border: 1px solid #f1f5f9;
+            transition: all 0.3s ease;
+        }
+        .dark .control-bar-3d {
+            background: #1e293b; /* Slate 800 */
+            border-color: #334155;
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 藍色框架 */
         .frame-3d-blue {
             background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
             border-radius: 1.5rem;
@@ -33,9 +53,15 @@
             border: 1px solid #bfdbfe;
             position: relative;
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .dark .frame-3d-blue {
+            background: linear-gradient(180deg, #1e3a8a 0%, #172554 100%); /* Dark Blue */
+            border-color: #1e40af;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
         }
 
-        /* 3D 橘色柔和框架 (右) */
+        /* 橘色框架 */
         .frame-3d-orange {
             background: linear-gradient(180deg, #ffedd5 0%, #fed7aa 100%);
             border-radius: 1.5rem;
@@ -43,9 +69,15 @@
             border: 1px solid #fed7aa;
             position: relative;
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .dark .frame-3d-orange {
+            background: linear-gradient(180deg, #7c2d12 0%, #431407 100%); /* Dark Orange/Brown */
+            border-color: #9a3412;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
         }
 
-        /* 內凹深井效果 (Input Area) */
+        /* 內凹深井效果 */
         .inset-well {
             background-color: rgba(255, 255, 255, 0.4);
             border-radius: 1.25rem;
@@ -54,20 +86,31 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             backdrop-filter: blur(2px);
         }
-        
-        .frame-3d-blue .inset-well { border-color: rgba(59, 130, 246, 0.3); }
-        .frame-3d-blue .inset-well:hover { background-color: rgba(255, 255, 255, 0.7); border-color: rgba(59, 130, 246, 0.6); }
+        .dark .inset-well {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
 
+        .frame-3d-blue .inset-well { border-color: rgba(59, 130, 246, 0.3); }
+        .dark .frame-3d-blue .inset-well { border-color: rgba(96, 165, 250, 0.3); } /* Lighter blue dash in dark mode */
+        
         .frame-3d-orange .inset-well { border-color: rgba(249, 115, 22, 0.3); }
-        .frame-3d-orange .inset-well:hover { background-color: rgba(255, 255, 255, 0.7); border-color: rgba(249, 115, 22, 0.6); }
+        .dark .frame-3d-orange .inset-well { border-color: rgba(251, 146, 60, 0.3); }
+
+        .inset-well:hover { background-color: rgba(255, 255, 255, 0.7); }
+        .dark .inset-well:hover { background-color: rgba(255, 255, 255, 0.05); }
 
         .inset-well.has-file {
             background-color: #ffffff;
             border-style: solid;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
+        .dark .inset-well.has-file {
+            background-color: #0f172a; /* Slate 900 */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
 
-        /* 3D 藍色按鈕 (開始合併) */
+        /* 按鈕樣式 */
         .btn-3d-action {
             background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
             color: white;
@@ -80,8 +123,8 @@
         .btn-3d-action:hover:not(:disabled) { transform: translateY(1px); border-bottom-width: 4px; filter: brightness(1.1); }
         .btn-3d-action:active:not(:disabled) { transform: translateY(4px); border-bottom-width: 0px; box-shadow: none; }
         .btn-3d-action:disabled { background: #cbd5e1; border-bottom-color: #94a3b8; cursor: not-allowed; color: #94a3b8; }
+        .dark .btn-3d-action:disabled { background: #475569; border-bottom-color: #334155; color: #94a3b8; }
 
-        /* 3D 綠色按鈕 (下載檔案) */
         .btn-3d-success {
             background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
             color: white;
@@ -89,12 +132,11 @@
             border-radius: 0.75rem;
             border-bottom: 4px solid #15803d;
             box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
-            transition: all 0.15s ease;
         }
-        .btn-3d-success:hover { transform: translateY(1px); border-bottom-width: 4px; filter: brightness(1.1); }
+        .btn-3d-success:hover { transform: translateY(1px); filter: brightness(1.1); }
         .btn-3d-success:active { transform: translateY(4px); border-bottom-width: 0px; box-shadow: none; }
 
-        /* 終端機樣式 */
+        /* 終端機 */
         .log-terminal-3d {
             background-color: #1e293b;
             border-radius: 0.75rem;
@@ -104,9 +146,28 @@
         }
         
         .icon-box { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 6px; }
+        .dark .icon-box { background: #334155; color: #e2e8f0; }
+
+        /* 頂部功能列樣式 */
+        .top-bar-pill {
+            background-color: #f3f4f6;
+            border-radius: 9999px;
+            padding: 4px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+            color: #4b5563;
+        }
+        .dark .top-bar-pill {
+            background-color: #334155;
+            color: #e2e8f0;
+        }
+        .font-btn:hover { color: #000; cursor: pointer; }
+        .dark .font-btn:hover { color: #fff; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center py-10 px-4">
+<body class="min-h-screen flex flex-col items-center py-6 px-4 bg-[#f0f4f8] dark:bg-[#0f172a] text-[#333] dark:text-[#f1f5f9]">
 
     <div id="root" class="w-full max-w-[1200px]"></div>
 
@@ -129,11 +190,18 @@
         };
 
         const App = () => {
+            // State
             const [textFile, setTextFile] = useState(null);
             const [bgFile, setBgFile] = useState(null);
             const [status, setStatus] = useState('idle');
             const [logs, setLogs] = useState([]);
             const [downloadUrl, setDownloadUrl] = useState(null);
+            const [fileName, setFileName] = useState("");
+            
+            // UI State
+            const [darkMode, setDarkMode] = useState(false);
+            const [fontScale, setFontScale] = useState(1);
+            const [timeString, setTimeString] = useState("");
             const logEndRef = useRef(null);
 
             const addLog = (msg) => setLogs(prev => [...prev, msg]);
@@ -141,6 +209,44 @@
             useEffect(() => {
                 logEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, [logs]);
+
+            // --- Timer Logic (ROC format) ---
+            useEffect(() => {
+                const updateTime = () => {
+                    const now = new Date();
+                    const rocYear = now.getFullYear() - 1911;
+                    const month = now.getMonth() + 1;
+                    const date = now.getDate();
+                    const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
+                    const day = dayNames[now.getDay()];
+                    
+                    const pad = (n) => n.toString().padStart(2, '0');
+                    const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+                    
+                    setTimeString(`${rocYear}年 ${month}月${date}日 週${day} ${time}`);
+                };
+                updateTime();
+                const timer = setInterval(updateTime, 1000);
+                return () => clearInterval(timer);
+            }, []);
+
+            // --- Dark Mode Logic ---
+            useEffect(() => {
+                if (darkMode) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }, [darkMode]);
+
+            // --- Filename Generator ---
+            const generateFileName = () => {
+                const now = new Date();
+                const yyyy = now.getFullYear();
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const dd = String(now.getDate()).padStart(2, '0');
+                return `圖文結合PPTX檔_${yyyy}${mm}${dd}.pptx`;
+            };
 
             // --- Merging Process ---
             const processPPTX = async () => {
@@ -272,6 +378,7 @@
                     }
                     const content = await baseZip.generateAsync({ type: "blob" });
                     setDownloadUrl(URL.createObjectURL(content));
+                    setFileName(generateFileName()); // Set dynamic filename
                     setStatus('success');
                     addLog('✅ 合併完成！');
                 } catch (err) {
@@ -284,12 +391,54 @@
             const reset = () => { setTextFile(null); setBgFile(null); setStatus('idle'); setDownloadUrl(null); setLogs([]); };
 
             return (
-                <div className="w-full flex flex-col items-center">
+                <div style={{ transform: `scale(${fontScale})`, transformOrigin: 'top center' }} className="w-full flex flex-col items-center transition-transform duration-200">
                     
+                    {/* Top Bar (Right Aligned) */}
+                    <div className="w-full max-w-6xl flex justify-end mb-4 px-2">
+                        <div className="flex items-center gap-4">
+                            {/* Font Size Control */}
+                            <div className="top-bar-pill shadow-sm">
+                                <button 
+                                    onClick={() => setFontScale(s => Math.max(0.8, s - 0.1))}
+                                    className="font-btn px-2 text-sm font-bold"
+                                    title="縮小字型"
+                                >
+                                    A-
+                                </button>
+                                <button 
+                                    onClick={() => setFontScale(s => Math.min(1.2, s + 0.1))}
+                                    className="font-btn px-2 text-lg font-bold"
+                                    title="放大字型"
+                                >
+                                    A+
+                                </button>
+                            </div>
+
+                            {/* Divider & Time */}
+                            <div className="text-gray-500 dark:text-gray-400 font-bold flex items-center gap-3 text-sm tracking-wide">
+                                <span className="opacity-30">|</span>
+                                <span>{timeString}</span>
+                            </div>
+
+                            {/* Dark Mode Toggle */}
+                            <button 
+                                onClick={() => setDarkMode(!darkMode)}
+                                className="text-gray-500 dark:text-yellow-400 hover:bg-gray-200 dark:hover:bg-slate-700 p-2 rounded-full transition-colors"
+                                title={darkMode ? "切換亮色模式" : "切換深色模式"}
+                            >
+                                {darkMode ? (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                ) : (
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Header */}
-                    <div className="text-center mb-10 mt-4">
-                        <h1 className="text-4xl font-black text-gray-800 mb-3 tracking-tight">NotebookLM 圖文結合工具</h1>
-                        <p className="text-base font-medium text-gray-500">專為 NotebookLM 生成之簡報量身打造，將「文字」與「圖片」完美結合</p>
+                    <div className="text-center mb-10 mt-2">
+                        <h1 className="text-4xl font-black text-gray-800 dark:text-white mb-3 tracking-tight">NotebookLM 圖文結合工具</h1>
+                        <p className="text-base font-medium text-gray-500 dark:text-gray-400">專為 NotebookLM 生成之簡報量身打造，將「文字」與「圖片」完美結合</p>
                     </div>
 
                     {/* Main Grid */}
@@ -298,10 +447,10 @@
                         {/* 藍色框架 (原始文稿) */}
                         <div className="frame-3d-blue p-5 flex flex-col h-[340px]">
                             <div className="flex items-center space-x-3 mb-4 z-10 pl-2">
-                                <span className="icon-box text-blue-600">
+                                <span className="icon-box text-blue-600 dark:text-blue-300">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                 </span>
-                                <h2 className="text-xl font-bold text-blue-900 tracking-wide">1. 原始文稿</h2>
+                                <h2 className="text-xl font-bold text-blue-900 dark:text-blue-100 tracking-wide">1. 原始文稿</h2>
                             </div>
                             
                             <div className="flex-1 relative">
@@ -319,14 +468,13 @@
                         {/* 橘色框架 (背景模板) */}
                         <div className="frame-3d-orange p-5 flex flex-col h-[340px]">
                             <div className="flex items-center space-x-3 mb-4 z-10 pl-2">
-                                <span className="icon-box text-orange-600">
+                                <span className="icon-box text-orange-600 dark:text-orange-300">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                 </span>
-                                <h2 className="text-xl font-bold text-orange-900 tracking-wide">2. 背景模板</h2>
+                                <h2 className="text-xl font-bold text-orange-900 dark:text-orange-100 tracking-wide">2. 背景模板</h2>
                             </div>
                             
                             <div className="flex-1 relative">
-                                {/* 這裡不再顯示下載按鈕，始終顯示文件輸入框或文件狀態 */}
                                 <FileInput 
                                     file={bgFile} 
                                     setFile={setBgFile} 
@@ -349,19 +497,20 @@
                                     <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg animate-[bounce_0.6s_infinite]">
                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
                                     </div>
-                                    <span className="text-2xl font-bold text-gray-700">處理完成！</span>
+                                    <span className="text-2xl font-bold text-gray-700 dark:text-gray-200">處理完成！</span>
                                 </div>
 
                                 <a 
                                     href={downloadUrl} 
-                                    download="Merged_Slide.pptx" 
+                                    download={fileName}
                                     className="btn-3d-success w-full py-4 text-xl flex items-center justify-center gap-3 no-underline"
+                                    title={`下載檔案: ${fileName}`}
                                 >
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                                     下載檔案
                                 </a>
 
-                                <button onClick={reset} className="mt-4 text-gray-400 text-sm hover:text-gray-600 underline font-medium">
+                                <button onClick={reset} className="mt-4 text-gray-400 dark:text-gray-500 text-sm hover:text-gray-600 dark:hover:text-gray-300 underline font-medium">
                                     清除並重新開始
                                 </button>
                             </div>
@@ -371,6 +520,7 @@
                                 onClick={processPPTX}
                                 disabled={!textFile || !bgFile || status === 'processing'}
                                 className="btn-3d-action px-12 py-3 text-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full justify-center transition-all"
+                                title="開始合併兩份 PPTX 檔案"
                             >
                                 {status === 'processing' ? (
                                     <>
@@ -405,8 +555,6 @@
         const FileInput = ({ file, setFile, accept, placeholder, subText, theme }) => {
             const inputRef = useRef();
             const isBlue = theme === 'blue';
-            const iconColor = isBlue ? 'text-blue-300' : 'text-orange-300';
-            const iconBg = isBlue ? 'bg-blue-50' : 'bg-orange-50';
             const activeClass = file ? 'has-file' : '';
 
             return (
@@ -415,6 +563,7 @@
                     onClick={() => inputRef.current.click()}
                     onDragOver={e => e.preventDefault()}
                     onDrop={e => { e.preventDefault(); if(e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); }}
+                    title={file ? "點擊更換檔案" : "點擊或拖曳檔案至此"}
                 >
                     <input type="file" ref={inputRef} className="hidden" accept={accept} onChange={e => e.target.files[0] && setFile(e.target.files[0])} />
 
@@ -423,16 +572,16 @@
                              <div className={`w-14 h-14 rounded-xl mx-auto mb-3 flex items-center justify-center shadow-sm ${isBlue ? 'bg-blue-500' : 'bg-orange-500'} text-white`}>
                                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
                             </div>
-                            <p className="font-bold text-gray-700 text-base truncate max-w-[220px]">{file.name}</p>
-                            <p className="text-xs text-gray-400 mt-2 font-bold uppercase tracking-wider hover:text-red-400">更換檔案</p>
+                            <p className="font-bold text-gray-700 dark:text-gray-200 text-base truncate max-w-[220px]">{file.name}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 font-bold uppercase tracking-wider hover:text-red-400">更換檔案</p>
                         </div>
                     ) : (
                         <div className="group">
-                            <div className={`w-16 h-16 border-2 border-dashed rounded-2xl mx-auto mb-4 flex items-center justify-center transition-all group-hover:scale-110 ${isBlue ? 'border-blue-200' : 'border-orange-200'}`}>
-                                <span className="text-2xl font-light text-gray-300">+</span>
+                            <div className={`w-16 h-16 border-2 border-dashed rounded-2xl mx-auto mb-4 flex items-center justify-center transition-all group-hover:scale-110 ${isBlue ? 'border-blue-200 dark:border-blue-800' : 'border-orange-200 dark:border-orange-800'}`}>
+                                <span className="text-2xl font-light text-gray-300 dark:text-gray-600">+</span>
                             </div>
-                            <p className="font-bold text-lg text-gray-400 group-hover:text-gray-500 transition-colors">{placeholder}</p>
-                            <p className="text-xs text-gray-300 mt-1 font-medium">{subText}</p>
+                            <p className="font-bold text-lg text-gray-400 dark:text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300 transition-colors">{placeholder}</p>
+                            <p className="text-xs text-gray-300 dark:text-gray-600 mt-1 font-medium">{subText}</p>
                         </div>
                     )}
                 </div>
