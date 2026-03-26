@@ -30,14 +30,17 @@
         h2 { text-align: center; font-size: 20px; margin: 0 0 20px 0; font-weight: normal; }
         
         .date-row { text-align: right; margin-bottom: 15px; font-size: 16px; font-weight: bold; }
-        .date-input { 
-            display: inline-block; 
-            min-width: 40px; 
-            border-bottom: 1px solid #333; 
-            text-align: center; 
-            outline: none; 
-            padding: 0 5px;
+        
+        /* 下拉選單樣式 */
+        select.date-year, select.date-month, select.date-day {
+            font-family: inherit; font-size: 16px; padding: 2px 5px; text-align: center;
+            border: none; border-bottom: 1px solid #333; outline: none; background: transparent; cursor: pointer;
         }
+        select.proj-sel {
+            width: 100%; padding: 6px; font-family: inherit; font-size: 15px; border: 1px solid #ccc;
+            border-radius: 4px; outline: none; cursor: pointer; background-color: #fdfdfd; transition: 0.2s;
+        }
+        select.proj-sel:hover { background-color: #f0f7ff; border-color: #007bff; }
 
         /* 表格共用設定 */
         table { width: 100%; border-collapse: collapse; min-width: 700px; margin-bottom: 20px; }
@@ -48,6 +51,9 @@
         .info-table th { width: 15%; }
         .info-table td { width: 35%; }
         
+        /* 連動文字呈現的特殊設定 */
+        .org-main, .org-super, .org-contractor { color: #0056b3; font-weight: bold; }
+
         /* 稽查項目表格寬度分配 */
         .checklist-table th.col-cat { width: 6%; }
         .checklist-table th.col-desc { width: 44%; }
@@ -64,9 +70,9 @@
             font-weight: bold;
         }
 
-        /* 可編輯欄位互動效果 (僅限允許輸入的欄位) */
-        [contenteditable="true"] { transition: background 0.2s; min-height: 24px; }
-        [contenteditable="true"]:hover { background-color: #f0f7ff; cursor: text; }[contenteditable="true"]:focus { background-color: #fff; box-shadow: inset 0 0 0 2px #007bff; }
+        /* 可編輯欄位互動效果 (僅限允許輸入的欄位) */[contenteditable="true"] { transition: background 0.2s; min-height: 24px; }
+        [contenteditable="true"]:hover { background-color: #f0f7ff; cursor: text; }
+        [contenteditable="true"]:focus { background-color: #fff; box-shadow: inset 0 0 0 2px #007bff; }
         .editable-remark { margin-top: 5px; padding: 5px; color: #0056b3; font-weight: bold; }
         .editable-remark:empty:before { content: "點此輸入..."; color: #aaa; font-weight: normal; font-size: 13px; }
 
@@ -85,13 +91,11 @@
             width: 24px; height: 24px; border: 2px solid #aaa; border-radius: 50%; 
             display: inline-block; position: relative; background: #fff; transition: all 0.2s;
         }
-        /* 合格 (藍色) */
         .radio-cell input[type="radio"].pass-radio:checked + .custom-radio { border-color: #007bff; }
         .radio-cell input[type="radio"].pass-radio:checked + .custom-radio::after {
             content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 14px; height: 14px; background-color: #007bff; border-radius: 50%;
         }
-        /* 不合格 (紅色) */
         .radio-cell input[type="radio"].fail-radio:checked + .custom-radio { border-color: #dc3545; }
         .radio-cell input[type="radio"].fail-radio:checked + .custom-radio::after {
             content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -129,10 +133,8 @@
         
         .btn-photo { background-color: #17a2b8; box-shadow: 0 6px 0 #117a8b; }
         .btn-photo:active { box-shadow: 0 2px 0 #117a8b; }
-
         .btn-draft { background-color: #fd7e14; box-shadow: 0 6px 0 #c35e00; }
         .btn-draft:active { box-shadow: 0 2px 0 #c35e00; }
-
         .btn-system { background-color: #28a745; box-shadow: 0 6px 0 #1e7e34; }
         .btn-system:active { box-shadow: 0 2px 0 #1e7e34; }
 
@@ -156,7 +158,6 @@
             .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #ccc; }
             table { min-width: 800px; }
             .scroll-hint { display: block; } 
-
             .signatures { flex-direction: column; gap: 15px; }
             .sign-column { width: 100%; }
             .bottom-actions { flex-direction: column; }
@@ -172,9 +173,9 @@
             .table-responsive { overflow-x: visible; border: none; }
             table { min-width: 100%; }
             .scroll-hint, .bottom-actions { display: none; }
+            select { appearance: none; -webkit-appearance: none; border: none !important; }
             .editable-remark:empty:before { display: none; }
-            tr { page-break-inside: avoid; }
-            [contenteditable="true"]:focus { box-shadow: none; }
+            tr { page-break-inside: avoid; }[contenteditable="true"]:focus { box-shadow: none; }
         }
     </style>
 </head>
@@ -194,6 +195,37 @@
 </div>
 
 <script>
+    // 專案名稱與連動資料規則
+    const projectData = {
+        "北環段CF680B": { main: "第一區工程處", super: "土木第三工務所", contractor: "大陸工程股份有限公司" },
+        "南環段CF670":  { main: "第二區工程處", super: "土木第十工務所", contractor: "大陸工程股份有限公司" },
+        "東環段CF710":  { main: "第一區工程處", super: "土木第一工務所", contractor: "工信工程股份有限公司" },
+        "東環段CF760":  { main: "第一區工程處", super: "土木第一工務所", contractor: "工信工程股份有限公司" } // 考量規則2與5皆適用東環段
+    };
+
+    // 專案名稱連動函式
+    window.updateProjectInfo = function(val) {
+        const data = projectData[val] || { main: "", super: "", contractor: "" };
+        // 同步所有表單的專案名稱下拉選單
+        document.querySelectorAll('.proj-sel').forEach(el => el.value = val);
+        // 渲染連動欄位
+        document.querySelectorAll('.org-main').forEach(el => el.textContent = data.main);
+        document.querySelectorAll('.org-super').forEach(el => el.textContent = data.super);
+        document.querySelectorAll('.org-contractor').forEach(el => el.textContent = data.contractor);
+    };
+
+    // 日期同步函式 (在任一表單修改，全表單同步)
+    window.syncDate = function(type, val) {
+        document.querySelectorAll('.date-' + type).forEach(el => el.value = val);
+    };
+
+    // 產生日期下拉選單 HTML 內容
+    let yearOpts = '<option value="">請選擇</option><option value="115">115</option><option value="116">116</option><option value="117">117</option>';
+    let monthOpts = '<option value="">請選擇</option>';
+    for(let i=1; i<=12; i++) monthOpts += `<option value="${i}">${i}</option>`;
+    let dayOpts = '<option value="">請選擇</option>';
+    for(let i=1; i<=31; i++) dayOpts += `<option value="${i}">${i}</option>`;
+
     // 彙整表單資料
     const formsData =[
         {
@@ -254,7 +286,7 @@
             formCode: "表單編碼：FP23-EMA2-50-B-R00",
             title: "一般性作業安全衛生稽查表（三）",
             subtitle: "",
-            categories: [
+            categories:[
                 {
                     name: "安全衛生管理",
                     items:[
@@ -294,24 +326,32 @@
             
             <div class="date-row">
                 檢查日期： 
-                <span contenteditable="true" class="date-input"></span> 年 
-                <span contenteditable="true" class="date-input"></span> 月 
-                <span contenteditable="true" class="date-input"></span> 日
+                <select class="date-year" onchange="syncDate('year', this.value)">${yearOpts}</select> 年 
+                <select class="date-month" onchange="syncDate('month', this.value)">${monthOpts}</select> 月 
+                <select class="date-day" onchange="syncDate('day', this.value)">${dayOpts}</select> 日
             </div>
 
-            <!-- 基本資料區：僅右側欄位允許編輯 -->
             <table class="info-table">
                 <tr>
-                    <th>工程名稱</th><td contenteditable="true"></td>
+                    <th>工程名稱</th>
+                    <td>
+                        <select class="proj-sel" onchange="updateProjectInfo(this.value)">
+                            <option value="">-- 請選擇工程名稱 --</option>
+                            <option value="北環段CF680B">北環段CF680B</option>
+                            <option value="南環段CF670">南環段CF670</option>
+                            <option value="東環段CF710">東環段CF710</option>
+                            <option value="東環段CF760">東環段CF760</option>
+                        </select>
+                    </td>
                     <th>不合格數量</th><td contenteditable="true"></td>
                 </tr>
                 <tr>
-                    <th>主辦機關</th><td contenteditable="true"></td>
+                    <th>主辦機關</th><td class="org-main"></td>
                     <th>專案管理廠商</th><td contenteditable="true"></td>
                 </tr>
                 <tr>
-                    <th>監造單位</th><td contenteditable="true"></td>
-                    <th>承攬廠商</th><td contenteditable="true"></td>
+                    <th>監造單位</th><td class="org-super"></td>
+                    <th>承攬廠商</th><td class="org-contractor"></td>
                 </tr>
                 <tr>
                     <th>檢查地點</th><td contenteditable="true"></td>
@@ -348,7 +388,6 @@
                 }
 
                 htmlContent += `
-                    <!-- 移除 desc 編輯功能，保護原始文字 -->
                     <td class="col-desc desc-text"><strong>${item.id}</strong> ${item.desc}</td>
                     
                     <td class="radio-cell col-pass">
@@ -364,7 +403,6 @@
                         </label>
                     </td>
                     
-                    <!-- 缺失說明：保留預設文字(不可編輯)，並提供下方空白區(可編輯)供人員手寫填入 -->
                     <td class="col-remark">
                         ${item.remark ? `<div class="fixed-text">${item.remark}</div>` : ''}
                         <div contenteditable="true" class="editable-remark"></div>
@@ -378,10 +416,8 @@
                 </table>
             </div>
 
-            <!-- 移除 notes 的編輯功能 -->
             <div class="notes">${form.notes}</div>
             
-            <!-- 電子簽章區塊 -->
             <div class="signatures">
                 <div class="sign-column">
                     <div class="sign-row">
