@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一般性作業安全衛生稽查表</title>
+    <style>
+        /* 基本重置與全域設定 */
+        * { box-sizing: border-box; }
+        body { 
+            font-family: "微軟正黑體", "Microsoft JhengHei", sans-serif; 
+            margin: 0; 
+            padding: 30px 20px; 
+            background-color: #eef2f5; 
+            color: #333;
+        }
+        .container { 
+            max-width: 1100px; 
+            margin: 0 auto; 
+            background: #fff; 
+            padding: 40px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            border-radius: 4px;
+        }
+
+        /* 標題與表頭資訊 */
+        .form-page { margin-bottom: 60px; }
+        .form-code { font-size: 14px; margin-bottom: 10px; color: #555; }
+        h1 { text-align: center; font-size: 26px; margin: 0 0 5px 0; letter-spacing: 1px; }
+        h2 { text-align: center; font-size: 20px; margin: 0 0 20px 0; font-weight: normal; }
+        
+        .date-row { text-align: right; margin-bottom: 15px; font-size: 16px; font-weight: bold; }
+        .date-input { 
+            display: inline-block; 
+            min-width: 40px; 
+            border-bottom: 1px solid #333; 
+            text-align: center; 
+            outline: none; 
+            padding: 0 5px;
+        }
+
+        /* 表格共用設定 */
+        table { width: 100%; border-collapse: collapse; min-width: 700px; margin-bottom: 20px; }
+        th, td { border: 1px solid #222; padding: 10px; line-height: 1.5; outline: none; }
+        th { background-color: #ffffcc; font-weight: bold; text-align: center; } 
+        
+        /* 基本資訊表格 */
+        .info-table th { width: 15%; }
+        .info-table td { width: 35%; }
+        
+        /* 稽查項目表格寬度分配 */
+        .checklist-table th.col-cat { width: 6%; }
+        .checklist-table th.col-desc { width: 44%; }
+        .checklist-table th.col-pass { width: 8%; }
+        .checklist-table th.col-fail { width: 8%; }
+        .checklist-table th.col-remark { width: 34%; }
+
+        /* 文字直排設定 */
+        .vertical-text {
+            text-align: center;
+            vertical-align: middle;
+            line-height: 1.2;
+            letter-spacing: 3px;
+            font-weight: bold;
+        }
+
+        /* 可編輯欄位互動效果 (僅限允許輸入的欄位) */
+        [contenteditable="true"] { transition: background 0.2s; min-height: 24px; }
+        [contenteditable="true"]:hover { background-color: #f0f7ff; cursor: text; }[contenteditable="true"]:focus { background-color: #fff; box-shadow: inset 0 0 0 2px #007bff; }
+        .editable-remark { margin-top: 5px; padding: 5px; color: #0056b3; font-weight: bold; }
+        .editable-remark:empty:before { content: "點此輸入..."; color: #aaa; font-weight: normal; font-size: 13px; }
+
+        /* 固定文字樣式 (不允許編輯的提示) */
+        .fixed-text { font-size: 14px; color: #d32f2f; font-weight: bold; line-height: 1.4; }
+        .desc-text { font-size: 15px; }
+
+        /* 客製化單選按鈕 (合格藍點 / 不合格紅點) */
+        .radio-cell { padding: 0 !important; text-align: center; vertical-align: middle; }
+        .radio-cell label {
+            display: flex; align-items: center; justify-content: center;
+            width: 100%; height: 100%; min-height: 50px; cursor: pointer; margin: 0;
+        }
+        .radio-cell input[type="radio"] { display: none; }
+        .custom-radio {
+            width: 24px; height: 24px; border: 2px solid #aaa; border-radius: 50%; 
+            display: inline-block; position: relative; background: #fff; transition: all 0.2s;
+        }
+        /* 合格 (藍色) */
+        .radio-cell input[type="radio"].pass-radio:checked + .custom-radio { border-color: #007bff; }
+        .radio-cell input[type="radio"].pass-radio:checked + .custom-radio::after {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 14px; height: 14px; background-color: #007bff; border-radius: 50%;
+        }
+        /* 不合格 (紅色) */
+        .radio-cell input[type="radio"].fail-radio:checked + .custom-radio { border-color: #dc3545; }
+        .radio-cell input[type="radio"].fail-radio:checked + .custom-radio::after {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 14px; height: 14px; background-color: #dc3545; border-radius: 50%;
+        }
+
+        /* 說明區域 */
+        .notes { font-size: 14px; line-height: 1.6; margin-bottom: 30px; background: #fdfdfd; padding: 15px; border: 1px solid #ddd; border-radius: 4px; }
+
+        /* 電子簽章區域 */
+        .signatures { display: flex; justify-content: space-between; border-top: 2px solid #333; padding-top: 25px; gap: 20px; }
+        .sign-column { width: 48%; display: flex; flex-direction: column; gap: 15px; }
+        .sign-row { display: flex; align-items: center; justify-content: space-between; }
+        .sign-label { font-size: 16px; font-weight: bold; width: 100px; }
+        .sign-box {
+            flex: 1; height: 50px; border: 2px dashed #999; border-radius: 6px; 
+            background-color: #fafafa; display: flex; align-items: center; justify-content: center;
+            color: #888; font-size: 15px; font-weight: bold; cursor: pointer; letter-spacing: 2px;
+            transition: all 0.2s;
+        }
+        .sign-box:hover { border-color: #007bff; color: #007bff; background-color: #f0f7ff; }
+
+        /* 底部 3D 功能按鈕 */
+        .bottom-actions {
+            display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
+            margin-top: 40px; padding-top: 30px; border-top: 1px dashed #ccc;
+        }
+        .btn-3d {
+            padding: 15px 30px; font-size: 18px; font-weight: bold; color: #fff;
+            border: none; border-radius: 8px; cursor: pointer; outline: none;
+            letter-spacing: 1px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn-3d:active { transform: translateY(4px); }
+        
+        .btn-photo { background-color: #17a2b8; box-shadow: 0 6px 0 #117a8b; }
+        .btn-photo:active { box-shadow: 0 2px 0 #117a8b; }
+
+        .btn-draft { background-color: #fd7e14; box-shadow: 0 6px 0 #c35e00; }
+        .btn-draft:active { box-shadow: 0 2px 0 #c35e00; }
+
+        .btn-system { background-color: #28a745; box-shadow: 0 6px 0 #1e7e34; }
+        .btn-system:active { box-shadow: 0 2px 0 #1e7e34; }
+
+        /* 響應式：平板 (768px - 1024px) */
+        @media (max-width: 1024px) {
+            .container { padding: 30px; }
+            h1 { font-size: 24px; }
+            h2 { font-size: 18px; }
+            th, td { padding: 8px; }
+        }
+
+        /* 響應式：手機版 (<768px) */
+        .scroll-hint { display: none; text-align: right; font-size: 13px; color: #d32f2f; margin-bottom: 5px; font-weight: bold; }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            h1 { font-size: 20px; }
+            h2 { font-size: 16px; }
+            
+            /* 表格橫向滾動 */
+            .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #ccc; }
+            table { min-width: 800px; }
+            .scroll-hint { display: block; } 
+
+            .signatures { flex-direction: column; gap: 15px; }
+            .sign-column { width: 100%; }
+            .bottom-actions { flex-direction: column; }
+            .btn-3d { width: 100%; }
+        }
+
+        /* 列印樣式優化 */
+        @media print {
+            body { background-color: #fff; padding: 0; margin: 0; }
+            .container { box-shadow: none; padding: 0; max-width: 100%; width: 100%; }
+            .form-page { page-break-after: always; margin-bottom: 0; }
+            .form-page:last-child { page-break-after: auto; }
+            .table-responsive { overflow-x: visible; border: none; }
+            table { min-width: 100%; }
+            .scroll-hint, .bottom-actions { display: none; }
+            .editable-remark:empty:before { display: none; }
+            tr { page-break-inside: avoid; }
+            [contenteditable="true"]:focus { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="app">
+        <!-- JavaScript 會在此處動態生成表單 -->
+    </div>
+
+    <!-- 底部 3D 功能按鈕區塊 -->
+    <div class="bottom-actions">
+        <button class="btn-3d btn-photo">📸 傳送照片</button>
+        <button class="btn-3d btn-draft">💾 暫存</button>
+        <button class="btn-3d btn-system">🚀 登錄安衛稽查管理系統</button>
+    </div>
+</div>
+
+<script>
+    // 彙整表單資料
+    const formsData =[
+        {
+            formCode: "表單編碼：FP23-EMA2-50-B-R00",
+            title: "一般性作業安全衛生稽查表（一）",
+            subtitle: "（勞工有立即發生危險之虞檢查事項）",
+            categories:[
+                {
+                    name: "有立即發生墜落危險之虞",
+                    items:[
+                        { id: "010101", desc: "於高差 2 公尺以上之工作場所邊緣及開口部分，設置符合規定之護欄、護蓋、安全網或配掛安全帶之防墜設施。", remark: "" },
+                        { id: "010102", desc: "於高差 2 公尺以上之處所進行作業時，使用高空工作車，或以架設施工架等方法設置工作臺；設置工作臺有困難時，採取張掛安全網或配掛安全帶之設施。", remark: "" },
+                        { id: "010103", desc: "於石綿板、鐵皮板、瓦、木板、茅草、塑膠等易踏穿材料構築之屋頂及雨遮，或於以礦纖板、石膏板等易踏穿材料構築之夾層天花板從事作業時，於屋架上設置防止踏穿及寬度30 公分以上之踏板、裝設安全網或配掛安全帶。", remark: "" },
+                        { id: "010104", desc: "於高差超過 1.5 公尺以上之場所作業，設置符合規定之安全上下設備。", remark: "" },
+                        { id: "010105", desc: "高差超過二層樓或7.5 公尺以上之鋼構建築，張設安全網，且其下方具有足夠淨空及工作面與安全網間未具有障礙物。", remark: "" },
+                        { id: "010106", desc: "使用移動式起重機吊掛平台從事貨物、機械等之吊升，鋼索於負荷狀態且非不得已情形下，使人員進入高度 2 公尺以上平台運搬貨物或駕駛車輛機械，平台採取設置圍欄、人員使用安全母索、安全帶等足以防止墜落之設施。", remark: "" }
+                    ]
+                },
+                {
+                    name: "有立即發生感電危險之虞",
+                    items:[
+                        { id: "010201", desc: "對電氣機具之帶電部分，於作業進行中或通行時，有因接觸（含經由導電體而接觸者）或接近致發生感電之虞者，設防止感電之護圍或絕緣被覆。", remark: "" },
+                        { id: "010202", desc: "使用對地電壓在 150 伏特以上移動式或攜帶式電動機具，或於含水或被其他導電度高之液體濕潤之潮濕場所、金屬板上或鋼架上等導電性良好場所使用移動式或攜帶式電動機具，或於建築或工程作業使用之臨時用電設備，於各該電動機具之連接電路上設置適合其規格，具有高敏感度、高速型，能確實動作之防止感電用漏電斷路器。", remark: "" },
+                        { id: "010203", desc: "於良導體機器設備內之狹小空間，或於鋼架等有觸及高導電性接地物之虞之場所，作業時所使用之交流電焊機(不含自動式焊接者)，裝設自動電擊防止裝置。", remark: "" },
+                        { id: "010204", desc: "於架空電線或電氣機具電路之接近場所從事工作物之裝設、解體、檢查、修理、油漆等作業及其附屬性作業或使用車輛系營建機械、移動式起重機、高空工作車及其他有關作業時，該作業使用之機械、車輛或勞工作業中或通行之際，有因接觸或接近該電路引起感電之虞者，使勞工與帶電體保持規定之接近界線距離，設置護圍或於該電路四周裝置絕緣用防護裝備或採取移開該電路之措施。", remark: "" }
+                    ]
+                },
+                {
+                    name: "有立即發生倒塌、崩塌危險之虞",
+                    items:[
+                        { id: "010301", desc: "施工架之垂直方向5.5 公尺、水平方向7.5 公尺內，與穩定構造物妥實連接。", remark: "" },
+                        { id: "010302", desc: "露天開挖場所開挖深度在 1.5 公尺以上，或有地面崩塌、土石飛落之虞時，設擋土支撐、反循環樁、連續壁、邊坡保護或張設防護網之設施。", remark: "" },
+                        { id: "010303", desc: "隧道、坑道作業有落磐或土石崩塌之虞，設置支撐、岩栓或噴凝土之支持構造及清除浮石...", remark: "" }
+                    ]
+                }
+            ],
+            notes: "說明：<br>1、本表供機關及監造單位定期稽查使用，由稽查人員及相關單位會同人員簽認，並作為安全衛生費用扣罰之依據。<br>2、本表係依勞動部 94 年 6 月 10 日勞檢 4 字第 0940028724 號令修正發布之標準訂定，廠商有缺失時應要求暫停作業至改善完成。<br>3、廠商於同一區域重複發生本表之缺失者，每次扣罰新臺幣 25,000 元整，並得連續扣罰。<br>4、稽查缺失應由監造單位列管追蹤至改善完成，非經複驗合格，廠商不得進行後續施工。"
+        },
+        {
+            formCode: "表單編碼：FP23-EMA2-50-B-R00",
+            title: "一般性作業安全衛生稽查表（二）",
+            subtitle: "（臺北市政府所屬各機關公共工程施工安全衛生須知第 5 點檢查事項）",
+            categories:[
+                {
+                    name: "「施工安全衛生須知」第5點",
+                    items:[
+                        { id: "020101", desc: "邊緣及開口部分或高處作業有墜落危險之虞者，應設置護欄、護蓋或安全網等防護設備。設置上列設施有困難，應採取使勞工使用安全帶等防止因墜落之措施。", remark: "為有立即發生危險之虞項目<br>010101" },
+                        { id: "020102", desc: "除使用移動式起重機於道路或鄰接道路從事作業者外，從事垂直高度 20 公尺以下之高處作業，不得使用搭乘設備搭載或吊升人員作業。", remark: "" },
+                        { id: "020103", desc: "無固定護欄或圍籬之臨時道路施工場所，應依核定之交通維持計畫辦理，並指派交通引導人員手執閃光指揮棒在場指揮交通。", remark: "" },
+                        { id: "020104", desc: "工作場所邊緣及開口所設置之護欄，應符合營造安全衛生設施標準規定。", remark: "為有立即發生危險之虞項目<br>010101" },
+                        { id: "020105", desc: "臨時用電設備裝設漏電斷路器、電焊機裝設自動電擊防止裝置、移動電線應予以架高等措施。", remark: "為有立即發生危險之虞項目<br>010202<br>010203" }
+                    ]
+                }
+            ],
+            notes: "說明：<br>1、本表供機關及監造單位定期稽查使用。<br>2、廠商有違反「臺北市政府所屬各機關公共工程施工安全衛生須知」第五點規定之情事時，該稽（檢）查缺失應併入當次缺失計算扣罰。<br>3、未立即停工或未於規定期限改善完成者，每次扣罰新臺幣 25,000 元整。"
+        },
+        {
+            formCode: "表單編碼：FP23-EMA2-50-B-R00",
+            title: "一般性作業安全衛生稽查表（三）",
+            subtitle: "",
+            categories: [
+                {
+                    name: "安全衛生管理",
+                    items:[
+                        { id: "030101", desc: "職業安全衛生人員常駐工地。", remark: "" },
+                        { id: "030111", desc: "設置休息區，配置飲水及食鹽。", remark: "◎請注意與安衛稽查系統登錄編號相符" },
+                        { id: "030112", desc: "工區內禁止置放酒精性飲料，且禁止具有醉意之人員進行工作及在工作時段（含午休及晚休）飲酒。", remark: "◎請注意與安衛稽查系統登錄編號相符<br>本項於說明 2 規定每人次扣罰 3000 元" }
+                    ]
+                },
+                {
+                    name: "個人防護具",
+                    items:[
+                        { id: "030201", desc: "工區中人員應依規定配戴安全帽。", remark: "本項於說明 2 規定每人次扣罰 3000 元" },
+                        { id: "030203", desc: "高架作業配帶安全帶及安全母索。", remark: "為有立即發生危險之虞項目 010101" }
+                    ]
+                },
+                {
+                    name: "墜落防止",
+                    items:[
+                        { id: "030301", desc: "高差 2 公尺以上之工作場所邊緣或開孔，設置護欄、護蓋、安全網或配帶安全帶之防墜設施。", remark: "為有立即發生危險之虞項目 010101" },
+                        { id: "030302", desc: "於易踏穿材料構築之屋頂從事作業時，設置防止踏穿及寬度 30 公分以上之踏板、裝設安全網或配掛安全帶。", remark: "為有立即發生危險之虞項目 010103" }
+                    ]
+                }
+            ],
+            notes: "說明：<br>1、本表供機關及監造單位定期稽查使用。<br>2、廠商工區中人員有未依法投保勞工保險、未依規定配戴安全帽等，除禁止該人員繼續作業外，每人次扣罰新臺幣3,000 元整。<br>3、廠商於同一區域重複發生非屬立即發生危險之缺失，除限期改善外，每項次扣罰新臺幣 5,000 元整。"
+        }
+    ];
+
+    const appContainer = document.getElementById('app');
+    let htmlContent = '';
+
+    formsData.forEach((form, fIndex) => {
+        htmlContent += `
+        <div class="form-page">
+            <div class="form-code">${form.formCode}</div>
+            <h1>${form.title}</h1>
+            ${form.subtitle ? `<h2>${form.subtitle}</h2>` : '<div style="height:20px;"></div>'}
+            
+            <div class="date-row">
+                檢查日期： 
+                <span contenteditable="true" class="date-input"></span> 年 
+                <span contenteditable="true" class="date-input"></span> 月 
+                <span contenteditable="true" class="date-input"></span> 日
+            </div>
+
+            <!-- 基本資料區：僅右側欄位允許編輯 -->
+            <table class="info-table">
+                <tr>
+                    <th>工程名稱</th><td contenteditable="true"></td>
+                    <th>不合格數量</th><td contenteditable="true"></td>
+                </tr>
+                <tr>
+                    <th>主辦機關</th><td contenteditable="true"></td>
+                    <th>專案管理廠商</th><td contenteditable="true"></td>
+                </tr>
+                <tr>
+                    <th>監造單位</th><td contenteditable="true"></td>
+                    <th>承攬廠商</th><td contenteditable="true"></td>
+                </tr>
+                <tr>
+                    <th>檢查地點</th><td contenteditable="true"></td>
+                    <th>檢查位置</th><td contenteditable="true"></td>
+                </tr>
+            </table>
+
+            <div class="scroll-hint">向右滑動查看更多欄位 ➔</div>
+            <div class="table-responsive">
+                <table class="checklist-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" colspan="2">檢查項目</th>
+                            <th colspan="2">檢查結果</th>
+                            <th rowspan="2" class="col-remark">缺失情形／改善期限</th>
+                        </tr>
+                        <tr>
+                            <th class="col-pass">合格</th>
+                            <th class="col-fail">不合格</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        form.categories.forEach(cat => {
+            const verticalName = cat.name.split('').join('<br>'); 
+            
+            cat.items.forEach((item, iIndex) => {
+                const uniqueName = `radio_${fIndex}_${item.id}`;
+                htmlContent += `<tr>`;
+                
+                if (iIndex === 0) {
+                    htmlContent += `<td rowspan="${cat.items.length}" class="col-cat vertical-text">${verticalName}</td>`;
+                }
+
+                htmlContent += `
+                    <!-- 移除 desc 編輯功能，保護原始文字 -->
+                    <td class="col-desc desc-text"><strong>${item.id}</strong> ${item.desc}</td>
+                    
+                    <td class="radio-cell col-pass">
+                        <label>
+                            <input type="radio" class="pass-radio" name="${uniqueName}" value="pass">
+                            <span class="custom-radio"></span>
+                        </label>
+                    </td>
+                    <td class="radio-cell col-fail">
+                        <label>
+                            <input type="radio" class="fail-radio" name="${uniqueName}" value="fail">
+                            <span class="custom-radio"></span>
+                        </label>
+                    </td>
+                    
+                    <!-- 缺失說明：保留預設文字(不可編輯)，並提供下方空白區(可編輯)供人員手寫填入 -->
+                    <td class="col-remark">
+                        ${item.remark ? `<div class="fixed-text">${item.remark}</div>` : ''}
+                        <div contenteditable="true" class="editable-remark"></div>
+                    </td>
+                </tr>`;
+            });
+        });
+
+        htmlContent += `
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 移除 notes 的編輯功能 -->
+            <div class="notes">${form.notes}</div>
+            
+            <!-- 電子簽章區塊 -->
+            <div class="signatures">
+                <div class="sign-column">
+                    <div class="sign-row">
+                        <span class="sign-label">會同單位：</span>
+                        <div class="sign-box" onclick="alert('啟動會同單位電子簽章模組')">電子簽章</div>
+                    </div>
+                    <div class="sign-row">
+                        <span class="sign-label">會同人員：</span>
+                        <div class="sign-box" onclick="alert('啟動會同人員電子簽章模組')">電子簽章</div>
+                    </div>
+                </div>
+                <div class="sign-column">
+                    <div class="sign-row">
+                        <span class="sign-label">稽查單位：</span>
+                        <div class="sign-box" onclick="alert('啟動稽查單位電子簽章模組')">電子簽章</div>
+                    </div>
+                    <div class="sign-row">
+                        <span class="sign-label">稽查人員：</span>
+                        <div class="sign-box" onclick="alert('啟動稽查人員電子簽章模組')">電子簽章</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+
+    appContainer.innerHTML = htmlContent;
+</script>
+
+</body>
+</html>
