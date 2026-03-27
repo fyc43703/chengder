@@ -51,8 +51,14 @@
         .info-table th { width: 15%; }
         .info-table td { width: 35%; }
         
-        /* 連動文字呈現的特殊設定 */
-        .org-main, .org-super, .org-contractor { color: #0056b3; font-weight: bold; }
+        /* 連動文字與不合格數量呈現的特殊設定 */
+        .org-main, .org-super, .org-pm, .org-contractor { color: #0056b3; font-weight: bold; }
+        .fail-count-cell { color: #dc3545; font-weight: bold; text-align: center; font-size: 18px; }
+        
+        /* 檢查地點與位置同步輸入框特效 */
+        .sync-text { color: #0056b3; font-weight: bold; transition: background 0.2s; }
+        .sync-loc:empty:before { content: "點此輸入..."; color: #aaa; font-weight: normal; font-size: 14px; }
+        .sync-pos:empty:before { content: "點此輸入..."; color: #aaa; font-weight: normal; font-size: 14px; }
 
         /* 稽查項目表格寬度分配 */
         .checklist-table th.col-cat { width: 6%; }
@@ -70,13 +76,12 @@
             font-weight: bold;
         }
 
-        /* 可編輯欄位互動效果 (僅限允許輸入的欄位) */[contenteditable="true"] { transition: background 0.2s; min-height: 24px; }
-        [contenteditable="true"]:hover { background-color: #f0f7ff; cursor: text; }
-        [contenteditable="true"]:focus { background-color: #fff; box-shadow: inset 0 0 0 2px #007bff; }
-        .editable-remark { margin-top: 5px; padding: 5px; color: #0056b3; font-weight: bold; }
+        /* 可編輯欄位互動效果 */[contenteditable="true"]:hover { background-color: #f0f7ff; cursor: text; }
+        [contenteditable="true"]:focus { background-color: #fff; box-shadow: inset 0 0 0 2px #007bff; outline: none; }
+        .editable-remark { margin-top: 5px; padding: 5px; color: #0056b3; font-weight: bold; min-height: 24px; }
         .editable-remark:empty:before { content: "點此輸入..."; color: #aaa; font-weight: normal; font-size: 13px; }
 
-        /* 固定文字樣式 (不允許編輯的提示) */
+        /* 固定文字樣式 */
         .fixed-text { font-size: 14px; color: #d32f2f; font-weight: bold; line-height: 1.4; }
         .desc-text { font-size: 15px; }
 
@@ -127,55 +132,59 @@
             padding: 15px 30px; font-size: 18px; font-weight: bold; color: #fff;
             border: none; border-radius: 8px; cursor: pointer; outline: none;
             letter-spacing: 1px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-            transition: transform 0.1s, box-shadow 0.1s;
+            transition: transform 0.1s, box-shadow 0.1s; display: flex; align-items: center; gap: 8px;
         }
         .btn-3d:active { transform: translateY(4px); }
-        
         .btn-photo { background-color: #17a2b8; box-shadow: 0 6px 0 #117a8b; }
         .btn-photo:active { box-shadow: 0 2px 0 #117a8b; }
         .btn-draft { background-color: #fd7e14; box-shadow: 0 6px 0 #c35e00; }
         .btn-draft:active { box-shadow: 0 2px 0 #c35e00; }
         .btn-system { background-color: #28a745; box-shadow: 0 6px 0 #1e7e34; }
         .btn-system:active { box-shadow: 0 2px 0 #1e7e34; }
+        .btn-pdf { background-color: #007bff; box-shadow: 0 6px 0 #0056b3; }
+        .btn-pdf:active { box-shadow: 0 2px 0 #0056b3; }
 
-        /* 響應式：平板 (768px - 1024px) */
+        /* 響應式設定 */
         @media (max-width: 1024px) {
             .container { padding: 30px; }
-            h1 { font-size: 24px; }
-            h2 { font-size: 18px; }
             th, td { padding: 8px; }
         }
-
-        /* 響應式：手機版 (<768px) */
         .scroll-hint { display: none; text-align: right; font-size: 13px; color: #d32f2f; margin-bottom: 5px; font-weight: bold; }
         @media (max-width: 768px) {
             body { padding: 10px; }
             .container { padding: 15px; }
-            h1 { font-size: 20px; }
-            h2 { font-size: 16px; }
-            
-            /* 表格橫向滾動 */
             .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #ccc; }
             table { min-width: 800px; }
             .scroll-hint { display: block; } 
             .signatures { flex-direction: column; gap: 15px; }
             .sign-column { width: 100%; }
             .bottom-actions { flex-direction: column; }
-            .btn-3d { width: 100%; }
+            .btn-3d { width: 100%; justify-content: center; }
         }
-
-        /* 列印樣式優化 */
+        
+        /* 列印/PDF 輸出專屬完美排版 */
         @media print {
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            @page { size: A4 portrait; margin: 15mm; }
             body { background-color: #fff; padding: 0; margin: 0; }
-            .container { box-shadow: none; padding: 0; max-width: 100%; width: 100%; }
-            .form-page { page-break-after: always; margin-bottom: 0; }
+            .container { box-shadow: none; padding: 0; max-width: 100%; width: 100%; border: none; }
+            
+            .form-page { page-break-after: always; margin-bottom: 0; page-break-inside: auto; }
             .form-page:last-child { page-break-after: auto; }
-            .table-responsive { overflow-x: visible; border: none; }
-            table { min-width: 100%; }
-            .scroll-hint, .bottom-actions { display: none; }
-            select { appearance: none; -webkit-appearance: none; border: none !important; }
-            .editable-remark:empty:before { display: none; }
-            tr { page-break-inside: avoid; }[contenteditable="true"]:focus { box-shadow: none; }
+            
+            .table-responsive { overflow: visible !important; display: block !important; width: 100% !important; page-break-inside: auto !important; border: none; }
+            table { min-width: 100%; page-break-inside: auto; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            
+            thead { display: table-header-group; } 
+            tfoot { display: table-footer-group; }
+            
+            .scroll-hint, .bottom-actions { display: none !important; }
+            
+            select { appearance: none; -webkit-appearance: none; border: none !important; background: transparent !important; color: #0056b3; font-weight: bold; }
+            
+            .editable-remark:empty:before, .sync-loc:empty:before, .sync-pos:empty:before { display: none; }
+            [contenteditable="true"]:focus { box-shadow: none; }
         }
     </style>
 </head>
@@ -187,36 +196,96 @@
     </div>
 
     <!-- 底部 3D 功能按鈕區塊 -->
-    <div class="bottom-actions">
+    <div class="bottom-actions" id="action-buttons">
+        <button class="btn-3d btn-pdf" onclick="exportHTML()">📄 預覽</button>
         <button class="btn-3d btn-photo">📸 傳送照片</button>
         <button class="btn-3d btn-draft">💾 暫存</button>
-        <button class="btn-3d btn-system">🚀 登錄安衛稽查管理系統</button>
+        <button class="btn-3d btn-system">🚀 確認登錄安衛稽查管理系統</button>
     </div>
 </div>
 
 <script>
     // 專案名稱與連動資料規則
     const projectData = {
-        "北環段CF680B": { main: "第一區工程處", super: "土木第三工務所", contractor: "大陸工程股份有限公司" },
-        "南環段CF670":  { main: "第二區工程處", super: "土木第十工務所", contractor: "大陸工程股份有限公司" },
-        "東環段CF710":  { main: "第一區工程處", super: "土木第一工務所", contractor: "工信工程股份有限公司" },
-        "東環段CF760":  { main: "第一區工程處", super: "土木第一工務所", contractor: "工信工程股份有限公司" } // 考量規則2與5皆適用東環段
+        "環狀線北環段CF680B": { main: "第一區工程處", super: "土木第一工務所", pm: "台灣世曦工程顧問股份有限公司", contractor: "皇昌營造股份有限公司" },
+        "環狀線南環段CF670":  { main: "第二區工程處", super: "土木第十一工務所", pm: "台灣世曦工程顧問股份有限公司", contractor: "大陸工程股份有限公司" },
+        "環狀線東環段CF763":  { main: "第二區工程處", super: "土木第三工務所", pm: "中興工程顧問股份有限公司", contractor: "日商華大林組/互助營造" }
     };
 
     // 專案名稱連動函式
     window.updateProjectInfo = function(val) {
-        const data = projectData[val] || { main: "", super: "", contractor: "" };
-        // 同步所有表單的專案名稱下拉選單
+        const data = projectData[val] || { main: "", super: "", pm: "", contractor: "" };
         document.querySelectorAll('.proj-sel').forEach(el => el.value = val);
-        // 渲染連動欄位
         document.querySelectorAll('.org-main').forEach(el => el.textContent = data.main);
         document.querySelectorAll('.org-super').forEach(el => el.textContent = data.super);
+        document.querySelectorAll('.org-pm').forEach(el => el.textContent = data.pm);
         document.querySelectorAll('.org-contractor').forEach(el => el.textContent = data.contractor);
     };
 
-    // 日期同步函式 (在任一表單修改，全表單同步)
+    // 日期同步函式
     window.syncDate = function(type, val) {
         document.querySelectorAll('.date-' + type).forEach(el => el.value = val);
+    };
+
+    // 檢查地點 & 檢查位置跨頁自動同步函式
+    window.syncField = function(className, sourceElement) {
+        const val = sourceElement.textContent;
+        document.querySelectorAll('.' + className).forEach(el => {
+            if (el !== sourceElement) {
+                el.textContent = val;
+            }
+        });
+    };
+
+    // 計算不合格數量的函式
+    window.calcFailCount = function(fIndex) {
+        const failCount = document.querySelectorAll(`.form-${fIndex}-fail:checked`).length;
+        const countCell = document.getElementById(`fail_count_${fIndex}`);
+        if(countCell) {
+            countCell.textContent = failCount;
+        }
+    };
+
+    // HTML 匯出函式 (將當前狀態打包下載)
+    window.exportHTML = function() {
+        // 1. 將所有下拉式選單的狀態固定
+        document.querySelectorAll('select').forEach(select => {
+            const val = select.value;
+            select.querySelectorAll('option').forEach(opt => {
+                if (opt.value === val) {
+                    opt.setAttribute('selected', 'selected');
+                } else {
+                    opt.removeAttribute('selected');
+                }
+            });
+        });
+
+        // 2. 將所有單選按鈕(Radio)的狀態固定
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            if (radio.checked) {
+                radio.setAttribute('checked', 'checked');
+            } else {
+                radio.removeAttribute('checked');
+            }
+        });
+
+        // 3. 抓取整份 HTML
+        const htmlString = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+
+        // 4. 建立並下載 HTML 檔案
+        const blob = new Blob([htmlString], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        const d = new Date();
+        const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+        a.download = `一般性作業安全衛生稽查表_${dateStr}.html`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     // 產生日期下拉選單 HTML 內容
@@ -315,136 +384,143 @@
     ];
 
     const appContainer = document.getElementById('app');
-    let htmlContent = '';
+    
+    // 【防覆寫保護機制：徹底修正版】
+    // 確認 app 容器內「沒有任何子元素」才生成表單。
+    if (appContainer.children.length === 0) {
+        let htmlContent = '';
 
-    formsData.forEach((form, fIndex) => {
-        htmlContent += `
-        <div class="form-page">
-            <div class="form-code">${form.formCode}</div>
-            <h1>${form.title}</h1>
-            ${form.subtitle ? `<h2>${form.subtitle}</h2>` : '<div style="height:20px;"></div>'}
-            
-            <div class="date-row">
-                檢查日期： 
-                <select class="date-year" onchange="syncDate('year', this.value)">${yearOpts}</select> 年 
-                <select class="date-month" onchange="syncDate('month', this.value)">${monthOpts}</select> 月 
-                <select class="date-day" onchange="syncDate('day', this.value)">${dayOpts}</select> 日
-            </div>
-
-            <table class="info-table">
-                <tr>
-                    <th>工程名稱</th>
-                    <td>
-                        <select class="proj-sel" onchange="updateProjectInfo(this.value)">
-                            <option value="">-- 請選擇工程名稱 --</option>
-                            <option value="北環段CF680B">北環段CF680B</option>
-                            <option value="南環段CF670">南環段CF670</option>
-                            <option value="東環段CF710">東環段CF710</option>
-                            <option value="東環段CF760">東環段CF760</option>
-                        </select>
-                    </td>
-                    <th>不合格數量</th><td contenteditable="true"></td>
-                </tr>
-                <tr>
-                    <th>主辦機關</th><td class="org-main"></td>
-                    <th>專案管理廠商</th><td contenteditable="true"></td>
-                </tr>
-                <tr>
-                    <th>監造單位</th><td class="org-super"></td>
-                    <th>承攬廠商</th><td class="org-contractor"></td>
-                </tr>
-                <tr>
-                    <th>檢查地點</th><td contenteditable="true"></td>
-                    <th>檢查位置</th><td contenteditable="true"></td>
-                </tr>
-            </table>
-
-            <div class="scroll-hint">向右滑動查看更多欄位 ➔</div>
-            <div class="table-responsive">
-                <table class="checklist-table">
-                    <thead>
-                        <tr>
-                            <th rowspan="2" colspan="2">檢查項目</th>
-                            <th colspan="2">檢查結果</th>
-                            <th rowspan="2" class="col-remark">缺失情形／改善期限</th>
-                        </tr>
-                        <tr>
-                            <th class="col-pass">合格</th>
-                            <th class="col-fail">不合格</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        form.categories.forEach(cat => {
-            const verticalName = cat.name.split('').join('<br>'); 
-            
-            cat.items.forEach((item, iIndex) => {
-                const uniqueName = `radio_${fIndex}_${item.id}`;
-                htmlContent += `<tr>`;
+        formsData.forEach((form, fIndex) => {
+            htmlContent += `
+            <div class="form-page">
+                <div class="form-code">${form.formCode}</div>
+                <h1>${form.title}</h1>
+                ${form.subtitle ? `<h2>${form.subtitle}</h2>` : '<div style="height:20px;"></div>'}
                 
-                if (iIndex === 0) {
-                    htmlContent += `<td rowspan="${cat.items.length}" class="col-cat vertical-text">${verticalName}</td>`;
-                }
+                <div class="date-row">
+                    檢查日期： 
+                    <select class="date-year" onchange="syncDate('year', this.value)">${yearOpts}</select> 年 
+                    <select class="date-month" onchange="syncDate('month', this.value)">${monthOpts}</select> 月 
+                    <select class="date-day" onchange="syncDate('day', this.value)">${dayOpts}</select> 日
+                </div>
 
-                htmlContent += `
-                    <td class="col-desc desc-text"><strong>${item.id}</strong> ${item.desc}</td>
+                <table class="info-table">
+                    <tr>
+                        <th>工程名稱</th>
+                        <td>
+                            <select class="proj-sel" onchange="updateProjectInfo(this.value)">
+                                <option value="">-- 請選擇工程名稱 --</option>
+                                <option value="環狀線北環段CF680B">環狀線北環段CF680B</option>
+                                <option value="環狀線南環段CF670">環狀線南環段CF670</option>
+                                <option value="環狀線東環段CF763">環狀線東環段CF763</option>
+                            </select>
+                        </td>
+                        <th>不合格數量</th>
+                        <td id="fail_count_${fIndex}" class="fail-count-cell">0</td>
+                    </tr>
+                    <tr>
+                        <th>主辦機關</th><td class="org-main"></td>
+                        <th>專案管理廠商</th><td class="org-pm"></td>
+                    </tr>
+                    <tr>
+                        <th>監造單位</th><td class="org-super"></td>
+                        <th>承攬廠商</th><td class="org-contractor"></td>
+                    </tr>
+                    <tr>
+                        <th>檢查地點</th>
+                        <td contenteditable="true" class="sync-loc sync-text" oninput="syncField('sync-loc', this)"></td>
+                        <th>檢查位置</th>
+                        <td contenteditable="true" class="sync-pos sync-text" oninput="syncField('sync-pos', this)"></td>
+                    </tr>
+                </table>
+
+                <div class="scroll-hint">向右滑動查看更多欄位 ➔</div>
+                <div class="table-responsive">
+                    <table class="checklist-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" colspan="2">檢查項目</th>
+                                <th colspan="2">檢查結果</th>
+                                <th rowspan="2" class="col-remark">缺失情形／改善期限</th>
+                            </tr>
+                            <tr>
+                                <th class="col-pass">合格</th>
+                                <th class="col-fail">不合格</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            form.categories.forEach(cat => {
+                const verticalName = cat.name.split('').join('<br>'); 
+                
+                cat.items.forEach((item, iIndex) => {
+                    const uniqueName = `radio_${fIndex}_${item.id}`;
+                    htmlContent += `<tr>`;
                     
-                    <td class="radio-cell col-pass">
-                        <label>
-                            <input type="radio" class="pass-radio" name="${uniqueName}" value="pass">
-                            <span class="custom-radio"></span>
-                        </label>
-                    </td>
-                    <td class="radio-cell col-fail">
-                        <label>
-                            <input type="radio" class="fail-radio" name="${uniqueName}" value="fail">
-                            <span class="custom-radio"></span>
-                        </label>
-                    </td>
-                    
-                    <td class="col-remark">
-                        ${item.remark ? `<div class="fixed-text">${item.remark}</div>` : ''}
-                        <div contenteditable="true" class="editable-remark"></div>
-                    </td>
-                </tr>`;
+                    if (iIndex === 0) {
+                        htmlContent += `<td rowspan="${cat.items.length}" class="col-cat vertical-text">${verticalName}</td>`;
+                    }
+
+                    htmlContent += `
+                        <td class="col-desc desc-text"><strong>${item.id}</strong> ${item.desc}</td>
+                        
+                        <td class="radio-cell col-pass">
+                            <label>
+                                <input type="radio" class="pass-radio" name="${uniqueName}" value="pass" onchange="calcFailCount(${fIndex})">
+                                <span class="custom-radio"></span>
+                            </label>
+                        </td>
+                        <td class="radio-cell col-fail">
+                            <label>
+                                <input type="radio" class="fail-radio form-${fIndex}-fail" name="${uniqueName}" value="fail" onchange="calcFailCount(${fIndex})">
+                                <span class="custom-radio"></span>
+                            </label>
+                        </td>
+                        
+                        <td class="col-remark">
+                            ${item.remark ? `<div class="fixed-text">${item.remark}</div>` : ''}
+                            <div contenteditable="true" class="editable-remark"></div>
+                        </td>
+                    </tr>`;
+                });
             });
+
+            htmlContent += `
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="notes">${form.notes}</div>
+                
+                <div class="signatures">
+                    <div class="sign-column">
+                        <div class="sign-row">
+                            <span class="sign-label">會同單位：</span>
+                            <div class="sign-box" onclick="alert('啟動會同單位電子簽章模組')">電子簽章</div>
+                        </div>
+                        <div class="sign-row">
+                            <span class="sign-label">會同人員：</span>
+                            <div class="sign-box" onclick="alert('啟動會同人員電子簽章模組')">電子簽章</div>
+                        </div>
+                    </div>
+                    <div class="sign-column">
+                        <div class="sign-row">
+                            <span class="sign-label">稽查單位：</span>
+                            <div class="sign-box" onclick="alert('啟動稽查單位電子簽章模組')">電子簽章</div>
+                        </div>
+                        <div class="sign-row">
+                            <span class="sign-label">稽查人員：</span>
+                            <div class="sign-box" onclick="alert('啟動稽查人員電子簽章模組')">電子簽章</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
         });
 
-        htmlContent += `
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="notes">${form.notes}</div>
-            
-            <div class="signatures">
-                <div class="sign-column">
-                    <div class="sign-row">
-                        <span class="sign-label">會同單位：</span>
-                        <div class="sign-box" onclick="alert('啟動會同單位電子簽章模組')">電子簽章</div>
-                    </div>
-                    <div class="sign-row">
-                        <span class="sign-label">會同人員：</span>
-                        <div class="sign-box" onclick="alert('啟動會同人員電子簽章模組')">電子簽章</div>
-                    </div>
-                </div>
-                <div class="sign-column">
-                    <div class="sign-row">
-                        <span class="sign-label">稽查單位：</span>
-                        <div class="sign-box" onclick="alert('啟動稽查單位電子簽章模組')">電子簽章</div>
-                    </div>
-                    <div class="sign-row">
-                        <span class="sign-label">稽查人員：</span>
-                        <div class="sign-box" onclick="alert('啟動稽查人員電子簽章模組')">電子簽章</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        `;
-    });
-
-    appContainer.innerHTML = htmlContent;
+        appContainer.innerHTML = htmlContent;
+    }
 </script>
 
 </body>
