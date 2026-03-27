@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>一般性作業安全衛生稽查表</title>
+    <title>安全衛生稽查表電子表單</title>
     <style>
         /* 基本重置與全域設定 */
         * { box-sizing: border-box; }
@@ -63,9 +63,19 @@
         /* 稽查項目表格寬度分配 */
         .checklist-table th.col-cat { width: 6%; }
         .checklist-table th.col-desc { width: 44%; }
-        .checklist-table th.col-pass { width: 8%; }
-        .checklist-table th.col-fail { width: 8%; }
+        .checklist-table th.col-pass { width: 8%; min-width: 65px; }
+        .checklist-table th.col-fail { width: 8%; min-width: 65px; }
         .checklist-table th.col-remark { width: 34%; }
+
+        /* 全選功能樣式 */
+        .btn-check-all { 
+            cursor: pointer; 
+            text-decoration: underline; 
+            color: #0056b3; 
+            display: block;
+            font-size: 13px;
+        }
+        .btn-check-all:hover { color: #007bff; background: #fff9c4; }
 
         /* 文字直排設定 */
         .vertical-text {
@@ -76,7 +86,8 @@
             font-weight: bold;
         }
 
-        /* 可編輯欄位互動效果 */[contenteditable="true"]:hover { background-color: #f0f7ff; cursor: text; }
+        /* 可編輯欄位互動效果 */
+        [contenteditable="true"]:hover { background-color: #f0f7ff; cursor: text; }
         [contenteditable="true"]:focus { background-color: #fff; box-shadow: inset 0 0 0 2px #007bff; outline: none; }
         .editable-remark { margin-top: 5px; padding: 5px; color: #0056b3; font-weight: bold; min-height: 24px; }
         .editable-remark:empty:before { content: "點此輸入..."; color: #aaa; font-weight: normal; font-size: 13px; }
@@ -150,11 +161,17 @@
             th, td { padding: 8px; }
         }
         .scroll-hint { display: none; text-align: right; font-size: 13px; color: #d32f2f; margin-bottom: 5px; font-weight: bold; }
+        
         @media (max-width: 768px) {
             body { padding: 10px; }
             .container { padding: 15px; }
             .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #ccc; }
-            table { min-width: 800px; }
+            
+            /* 手機版表格寬度優化，防止標頭擠壓 */
+            table { min-width: 850px; } 
+            .checklist-table th { white-space: nowrap; font-size: 14px; padding: 10px 4px; }
+            .checklist-table th.col-pass, .checklist-table th.col-fail { min-width: 80px; }
+
             .scroll-hint { display: block; } 
             .signatures { flex-direction: column; gap: 15px; }
             .sign-column { width: 100%; }
@@ -179,7 +196,7 @@
             thead { display: table-header-group; } 
             tfoot { display: table-footer-group; }
             
-            .scroll-hint, .bottom-actions { display: none !important; }
+            .scroll-hint, .bottom-actions, .btn-check-all { display: none !important; }
             
             select { appearance: none; -webkit-appearance: none; border: none !important; background: transparent !important; color: #0056b3; font-weight: bold; }
             
@@ -237,6 +254,16 @@
         });
     };
 
+    // 【新增】點選合格標頭全選功能
+    window.checkAllPass = function(fIndex) {
+        const passRadios = document.querySelectorAll(`.pass-radio-f${fIndex}`);
+        passRadios.forEach(radio => {
+            radio.checked = true;
+        });
+        // 全選後重新計算不合格數量 (全選合格應為 0)
+        calcFailCount(fIndex);
+    };
+
     // 計算不合格數量的函式
     window.calcFailCount = function(fIndex) {
         const failCount = document.querySelectorAll(`.form-${fIndex}-fail:checked`).length;
@@ -248,40 +275,27 @@
 
     // HTML 匯出函式 (將當前狀態打包下載)
     window.exportHTML = function() {
-        // 1. 將所有下拉式選單的狀態固定
         document.querySelectorAll('select').forEach(select => {
             const val = select.value;
             select.querySelectorAll('option').forEach(opt => {
-                if (opt.value === val) {
-                    opt.setAttribute('selected', 'selected');
-                } else {
-                    opt.removeAttribute('selected');
-                }
+                if (opt.value === val) opt.setAttribute('selected', 'selected');
+                else opt.removeAttribute('selected');
             });
         });
 
-        // 2. 將所有單選按鈕(Radio)的狀態固定
         document.querySelectorAll('input[type="radio"]').forEach(radio => {
-            if (radio.checked) {
-                radio.setAttribute('checked', 'checked');
-            } else {
-                radio.removeAttribute('checked');
-            }
+            if (radio.checked) radio.setAttribute('checked', 'checked');
+            else radio.removeAttribute('checked');
         });
 
-        // 3. 抓取整份 HTML
         const htmlString = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
-
-        // 4. 建立並下載 HTML 檔案
         const blob = new Blob([htmlString], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        
         const d = new Date();
         const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
         a.download = `一般性作業安全衛生稽查表_${dateStr}.html`;
-        
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -295,7 +309,7 @@
     let dayOpts = '<option value="">請選擇</option>';
     for(let i=1; i<=31; i++) dayOpts += `<option value="${i}">${i}</option>`;
 
-    // 彙整表單資料
+    // 彙整表單資料 (略過，與原程式碼相同)
     const formsData =[
         {
             formCode: "表單編碼：FP23-EMA2-50-B-R00",
@@ -385,8 +399,6 @@
 
     const appContainer = document.getElementById('app');
     
-    // 【防覆寫保護機制：徹底修正版】
-    // 確認 app 容器內「沒有任何子元素」才生成表單。
     if (appContainer.children.length === 0) {
         let htmlContent = '';
 
@@ -444,7 +456,10 @@
                                 <th rowspan="2" class="col-remark">缺失情形／改善期限</th>
                             </tr>
                             <tr>
-                                <th class="col-pass">合格</th>
+                                <th class="col-pass">
+                                    合格<br>
+                                    <span class="btn-check-all" onclick="checkAllPass(${fIndex})">(全選)</span>
+                                </th>
                                 <th class="col-fail">不合格</th>
                             </tr>
                         </thead>
@@ -467,7 +482,7 @@
                         
                         <td class="radio-cell col-pass">
                             <label>
-                                <input type="radio" class="pass-radio" name="${uniqueName}" value="pass" onchange="calcFailCount(${fIndex})">
+                                <input type="radio" class="pass-radio pass-radio-f${fIndex}" name="${uniqueName}" value="pass" onchange="calcFailCount(${fIndex})">
                                 <span class="custom-radio"></span>
                             </label>
                         </td>
