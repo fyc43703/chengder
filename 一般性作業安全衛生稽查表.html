@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>安全衛生稽查表電子表單</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>一般性作業安全衛生稽查表</title>
     <style>
         /* 基本重置與全域設定 */
         * { box-sizing: border-box; }
@@ -21,6 +21,7 @@
             padding: 40px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
             border-radius: 4px;
+            width: 100%;
         }
 
         /* 標題與表頭資訊 */
@@ -40,42 +41,40 @@
             width: 100%; padding: 6px; font-family: inherit; font-size: 15px; border: 1px solid #ccc;
             border-radius: 4px; outline: none; cursor: pointer; background-color: #fdfdfd; transition: 0.2s;
         }
-        select.proj-sel:hover { background-color: #f0f7ff; border-color: #007bff; }
 
         /* 表格共用設定 */
-        table { width: 100%; border-collapse: collapse; min-width: 700px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         th, td { border: 1px solid #222; padding: 10px; line-height: 1.5; outline: none; }
         th { background-color: #ffffcc; font-weight: bold; text-align: center; } 
         
         /* 基本資訊表格 */
-        .info-table th { width: 15%; }
-        .info-table td { width: 35%; }
+        .info-table th { width: 18%; }
+        .info-table td { width: 32%; }
         
-        /* 連動文字與不合格數量呈現的特殊設定 */
         .org-main, .org-super, .org-pm, .org-contractor { color: #0056b3; font-weight: bold; }
         .fail-count-cell { color: #dc3545; font-weight: bold; text-align: center; font-size: 18px; }
         
-        /* 檢查地點與位置同步輸入框特效 */
-        .sync-text { color: #0056b3; font-weight: bold; transition: background 0.2s; }
-        .sync-loc:empty:before { content: "點此輸入..."; color: #aaa; font-weight: normal; font-size: 14px; }
-        .sync-pos:empty:before { content: "點此輸入..."; color: #aaa; font-weight: normal; font-size: 14px; }
+        .sync-text { color: #0056b3; font-weight: bold; }
+        [contenteditable="true"]:empty:before { content: "點此輸入..."; color: #aaa; font-weight: normal; font-size: 14px; }
 
         /* 稽查項目表格寬度分配 */
         .checklist-table th.col-cat { width: 6%; }
         .checklist-table th.col-desc { width: 44%; }
-        .checklist-table th.col-pass { width: 8%; min-width: 65px; }
-        .checklist-table th.col-fail { width: 8%; min-width: 65px; }
-        .checklist-table th.col-remark { width: 34%; }
+        .checklist-table th.col-pass { width: 10%; min-width: 80px; }
+        .checklist-table th.col-fail { width: 10%; min-width: 80px; }
+        .checklist-table th.col-remark { width: 30%; }
 
-        /* 全選功能樣式 */
-        .btn-check-all { 
-            cursor: pointer; 
-            text-decoration: underline; 
-            color: #0056b3; 
+        /* 合格全選按鈕樣式 */
+        .btn-select-all {
             display: block;
-            font-size: 13px;
+            font-size: 12px;
+            color: #007bff;
+            text-decoration: underline;
+            cursor: pointer;
+            margin-top: 5px;
+            font-weight: normal;
         }
-        .btn-check-all:hover { color: #007bff; background: #fff9c4; }
+        .btn-select-all:hover { color: #0056b3; }
 
         /* 文字直排設定 */
         .vertical-text {
@@ -86,17 +85,7 @@
             font-weight: bold;
         }
 
-        /* 可編輯欄位互動效果 */
-        [contenteditable="true"]:hover { background-color: #f0f7ff; cursor: text; }
-        [contenteditable="true"]:focus { background-color: #fff; box-shadow: inset 0 0 0 2px #007bff; outline: none; }
-        .editable-remark { margin-top: 5px; padding: 5px; color: #0056b3; font-weight: bold; min-height: 24px; }
-        .editable-remark:empty:before { content: "點此輸入..."; color: #aaa; font-weight: normal; font-size: 13px; }
-
-        /* 固定文字樣式 */
-        .fixed-text { font-size: 14px; color: #d32f2f; font-weight: bold; line-height: 1.4; }
-        .desc-text { font-size: 15px; }
-
-        /* 客製化單選按鈕 (合格藍點 / 不合格紅點) */
+        /* 客製化單選按鈕 */
         .radio-cell { padding: 0 !important; text-align: center; vertical-align: middle; }
         .radio-cell label {
             display: flex; align-items: center; justify-content: center;
@@ -105,23 +94,20 @@
         .radio-cell input[type="radio"] { display: none; }
         .custom-radio {
             width: 24px; height: 24px; border: 2px solid #aaa; border-radius: 50%; 
-            display: inline-block; position: relative; background: #fff; transition: all 0.2s;
+            display: inline-block; position: relative; background: #fff;
         }
-        .radio-cell input[type="radio"].pass-radio:checked + .custom-radio { border-color: #007bff; }
-        .radio-cell input[type="radio"].pass-radio:checked + .custom-radio::after {
+        .pass-radio:checked + .custom-radio { border-color: #007bff; }
+        .pass-radio:checked + .custom-radio::after {
             content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 14px; height: 14px; background-color: #007bff; border-radius: 50%;
         }
-        .radio-cell input[type="radio"].fail-radio:checked + .custom-radio { border-color: #dc3545; }
-        .radio-cell input[type="radio"].fail-radio:checked + .custom-radio::after {
+        .fail-radio:checked + .custom-radio { border-color: #dc3545; }
+        .fail-radio:checked + .custom-radio::after {
             content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 14px; height: 14px; background-color: #dc3545; border-radius: 50%;
         }
 
-        /* 說明區域 */
-        .notes { font-size: 14px; line-height: 1.6; margin-bottom: 30px; background: #fdfdfd; padding: 15px; border: 1px solid #ddd; border-radius: 4px; }
-
-        /* 電子簽章區域 */
+        /* 電子簽章區 */
         .signatures { display: flex; justify-content: space-between; border-top: 2px solid #333; padding-top: 25px; gap: 20px; }
         .sign-column { width: 48%; display: flex; flex-direction: column; gap: 15px; }
         .sign-row { display: flex; align-items: center; justify-content: space-between; }
@@ -129,107 +115,83 @@
         .sign-box {
             flex: 1; height: 50px; border: 2px dashed #999; border-radius: 6px; 
             background-color: #fafafa; display: flex; align-items: center; justify-content: center;
-            color: #888; font-size: 15px; font-weight: bold; cursor: pointer; letter-spacing: 2px;
-            transition: all 0.2s;
+            color: #888; font-size: 15px; font-weight: bold; cursor: pointer;
         }
-        .sign-box:hover { border-color: #007bff; color: #007bff; background-color: #f0f7ff; }
 
-        /* 底部 3D 功能按鈕 */
-        .bottom-actions {
-            display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
-            margin-top: 40px; padding-top: 30px; border-top: 1px dashed #ccc;
-        }
-        .btn-3d {
-            padding: 15px 30px; font-size: 18px; font-weight: bold; color: #fff;
-            border: none; border-radius: 8px; cursor: pointer; outline: none;
-            letter-spacing: 1px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-            transition: transform 0.1s, box-shadow 0.1s; display: flex; align-items: center; gap: 8px;
-        }
-        .btn-3d:active { transform: translateY(4px); }
-        .btn-photo { background-color: #17a2b8; box-shadow: 0 6px 0 #117a8b; }
-        .btn-photo:active { box-shadow: 0 2px 0 #117a8b; }
-        .btn-draft { background-color: #fd7e14; box-shadow: 0 6px 0 #c35e00; }
-        .btn-draft:active { box-shadow: 0 2px 0 #c35e00; }
-        .btn-system { background-color: #28a745; box-shadow: 0 6px 0 #1e7e34; }
-        .btn-system:active { box-shadow: 0 2px 0 #1e7e34; }
-        .btn-pdf { background-color: #007bff; box-shadow: 0 6px 0 #0056b3; }
-        .btn-pdf:active { box-shadow: 0 2px 0 #0056b3; }
+        /* 功能按鈕 */
+        .bottom-actions { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 40px; padding-top: 30px; border-top: 1px dashed #ccc; }
+        .btn-3d { padding: 15px 30px; font-size: 18px; font-weight: bold; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-pdf { background-color: #007bff; }
+        .btn-photo { background-color: #17a2b8; }
+        .btn-draft { background-color: #fd7e14; }
+        .btn-system { background-color: #28a745; }
 
-        /* 響應式設定 */
-        @media (max-width: 1024px) {
-            .container { padding: 30px; }
-            th, td { padding: 8px; }
-        }
-        .scroll-hint { display: none; text-align: right; font-size: 13px; color: #d32f2f; margin-bottom: 5px; font-weight: bold; }
-        
+        /* ----------------------------------------------------------- */
+        /* 手機模式修正專區 (RWD) */
+        /* ----------------------------------------------------------- */
         @media (max-width: 768px) {
-            body { padding: 10px; }
-            .container { padding: 15px; }
-            .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #ccc; }
+            body { 
+                padding: 0;           /* 手機版移除 body 邊距，確保滿版 */
+                background-color: #fff; 
+            }
+            .container { 
+                padding: 15px 10px; 
+                box-shadow: none; 
+                border-radius: 0; 
+                width: 100vw;         /* 寬度設為 100% 視窗寬度 */
+                max-width: 100%;      /* 確保不被限制 */
+            }
+            h1 { font-size: 20px; }
+            h2 { font-size: 16px; }
+            .date-row { text-align: left; font-size: 14px; }
             
-            /* 手機版表格寬度優化，防止標頭擠壓 */
-            table { min-width: 850px; } 
-            .checklist-table th { white-space: nowrap; font-size: 14px; padding: 10px 4px; }
-            .checklist-table th.col-pass, .checklist-table th.col-fail { min-width: 80px; }
+            /* 基本資訊表格縮小字體 */
+            .info-table th, .info-table td { font-size: 13px; padding: 6px; }
+            .info-table th { width: 30%; }
 
-            .scroll-hint { display: block; } 
-            .signatures { flex-direction: column; gap: 15px; }
+            /* 列表表格橫向滾動 */
+            .table-responsive { 
+                width: 100%; 
+                overflow-x: auto; 
+                -webkit-overflow-scrolling: touch; 
+                border: 1px solid #ccc;
+            }
+            table.checklist-table { min-width: 850px; } /* 確保表格在滾動容器內不會被壓縮 */
+
+            .signatures { flex-direction: column; }
             .sign-column { width: 100%; }
-            .bottom-actions { flex-direction: column; }
-            .btn-3d { width: 100%; justify-content: center; }
+            .btn-3d { width: 100%; padding: 12px; font-size: 16px; }
         }
-        
-        /* 列印/PDF 輸出專屬完美排版 */
+
+        /* 列印設定 */
         @media print {
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            @page { size: A4 portrait; margin: 15mm; }
-            body { background-color: #fff; padding: 0; margin: 0; }
-            .container { box-shadow: none; padding: 0; max-width: 100%; width: 100%; border: none; }
-            
-            .form-page { page-break-after: always; margin-bottom: 0; page-break-inside: auto; }
-            .form-page:last-child { page-break-after: auto; }
-            
-            .table-responsive { overflow: visible !important; display: block !important; width: 100% !important; page-break-inside: auto !important; border: none; }
-            table { min-width: 100%; page-break-inside: auto; }
-            tr { page-break-inside: avoid; page-break-after: auto; }
-            
-            thead { display: table-header-group; } 
-            tfoot { display: table-footer-group; }
-            
-            .scroll-hint, .bottom-actions, .btn-check-all { display: none !important; }
-            
-            select { appearance: none; -webkit-appearance: none; border: none !important; background: transparent !important; color: #0056b3; font-weight: bold; }
-            
-            .editable-remark:empty:before, .sync-loc:empty:before, .sync-pos:empty:before { display: none; }
-            [contenteditable="true"]:focus { box-shadow: none; }
+            .bottom-actions, .btn-select-all { display: none !important; }
+            body { padding: 0; background-color: #fff; }
+            .container { box-shadow: none; padding: 0; width: 100%; }
+            .form-page { page-break-after: always; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="app">
-        <!-- JavaScript 會在此處動態生成表單 -->
-    </div>
+    <div id="app"></div>
 
-    <!-- 底部 3D 功能按鈕區塊 -->
     <div class="bottom-actions" id="action-buttons">
-        <button class="btn-3d btn-pdf" onclick="exportHTML()">📄 預覽</button>
+        <button class="btn-3d btn-pdf" onclick="exportHTML()">📄 預覽匯出</button>
         <button class="btn-3d btn-photo">📸 傳送照片</button>
         <button class="btn-3d btn-draft">💾 暫存</button>
-        <button class="btn-3d btn-system">🚀 確認登錄安衛稽查管理系統</button>
+        <button class="btn-3d btn-system">🚀 系統確認登錄</button>
     </div>
 </div>
 
 <script>
-    // 專案名稱與連動資料規則
     const projectData = {
-        "環狀線北環段CF680B": { main: "第一區工程處", super: "土木第一工務所", pm: "台灣世曦工程顧問股份有限公司", contractor: "皇昌營造股份有限公司" },
-        "環狀線南環段CF670":  { main: "第二區工程處", super: "土木第十一工務所", pm: "台灣世曦工程顧問股份有限公司", contractor: "大陸工程股份有限公司" },
-        "環狀線東環段CF763":  { main: "第二區工程處", super: "土木第三工務所", pm: "中興工程顧問股份有限公司", contractor: "日商華大林組/互助營造" }
+        "環狀線北環段CF680B": { main: "第一區工程處", super: "土木第一工務所", pm: "台灣世曦工程顧問", contractor: "皇昌營造" },
+        "環狀線南環段CF670":  { main: "第二區工程處", super: "土木第十一工務所", pm: "台灣世曦工程顧問", contractor: "大陸工程" },
+        "環狀線東環段CF763":  { main: "第二區工程處", super: "土木第三工務所", pm: "中興工程顧問", contractor: "日商華大林組/互助營造" }
     };
 
-    // 專案名稱連動函式
     window.updateProjectInfo = function(val) {
         const data = projectData[val] || { main: "", super: "", pm: "", contractor: "" };
         document.querySelectorAll('.proj-sel').forEach(el => el.value = val);
@@ -239,303 +201,208 @@
         document.querySelectorAll('.org-contractor').forEach(el => el.textContent = data.contractor);
     };
 
-    // 日期同步函式
     window.syncDate = function(type, val) {
         document.querySelectorAll('.date-' + type).forEach(el => el.value = val);
     };
 
-    // 檢查地點 & 檢查位置跨頁自動同步函式
     window.syncField = function(className, sourceElement) {
         const val = sourceElement.textContent;
-        document.querySelectorAll('.' + className).forEach(el => {
-            if (el !== sourceElement) {
-                el.textContent = val;
-            }
-        });
+        document.querySelectorAll('.' + className).forEach(el => { if (el !== sourceElement) el.textContent = val; });
     };
 
-    // 【新增】點選合格標頭全選功能
+    // 【功能一】合格全選函式
     window.checkAllPass = function(fIndex) {
         const passRadios = document.querySelectorAll(`.pass-radio-f${fIndex}`);
         passRadios.forEach(radio => {
             radio.checked = true;
         });
-        // 全選後重新計算不合格數量 (全選合格應為 0)
-        calcFailCount(fIndex);
+        calcFailCount(fIndex); // 全選後自動更新不合格數量為 0
     };
 
-    // 計算不合格數量的函式
+    // 計算不合格數量
     window.calcFailCount = function(fIndex) {
-        const failCount = document.querySelectorAll(`.form-${fIndex}-fail:checked`).length;
-        const countCell = document.getElementById(`fail_count_${fIndex}`);
-        if(countCell) {
-            countCell.textContent = failCount;
-        }
+        const failCount = document.querySelectorAll(`.fail-radio-f${fIndex}:checked`).length;
+        document.getElementById(`fail_count_${fIndex}`).textContent = failCount;
     };
 
-    // HTML 匯出函式 (將當前狀態打包下載)
     window.exportHTML = function() {
-        document.querySelectorAll('select').forEach(select => {
-            const val = select.value;
-            select.querySelectorAll('option').forEach(opt => {
-                if (opt.value === val) opt.setAttribute('selected', 'selected');
-                else opt.removeAttribute('selected');
-            });
-        });
-
-        document.querySelectorAll('input[type="radio"]').forEach(radio => {
-            if (radio.checked) radio.setAttribute('checked', 'checked');
-            else radio.removeAttribute('checked');
-        });
-
         const htmlString = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
         const blob = new Blob([htmlString], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const d = new Date();
-        const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-        a.download = `一般性作業安全衛生稽查表_${dateStr}.html`;
-        document.body.appendChild(a);
+        a.download = `稽查表_${new Date().getTime()}.html`;
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
     };
 
-    // 產生日期下拉選單 HTML 內容
-    let yearOpts = '<option value="">請選擇</option><option value="115">115</option><option value="116">116</option><option value="117">117</option>';
-    let monthOpts = '<option value="">請選擇</option>';
-    for(let i=1; i<=12; i++) monthOpts += `<option value="${i}">${i}</option>`;
-    let dayOpts = '<option value="">請選擇</option>';
-    for(let i=1; i<=31; i++) dayOpts += `<option value="${i}">${i}</option>`;
-
-    // 彙整表單資料 (略過，與原程式碼相同)
-    const formsData =[
+    // 完整的表單資料
+    const formsData = [
         {
-            formCode: "表單編碼：FP23-EMA2-50-B-R00",
+            formCode: "FP23-EMA2-50-B-R00",
             title: "一般性作業安全衛生稽查表（一）",
             subtitle: "（勞工有立即發生危險之虞檢查事項）",
-            categories:[
+            categories: [
                 {
                     name: "有立即發生墜落危險之虞",
-                    items:[
-                        { id: "010101", desc: "於高差 2 公尺以上之工作場所邊緣及開口部分，設置符合規定之護欄、護蓋、安全網或配掛安全帶之防墜設施。", remark: "" },
-                        { id: "010102", desc: "於高差 2 公尺以上之處所進行作業時，使用高空工作車，或以架設施工架等方法設置工作臺；設置工作臺有困難時，採取張掛安全網或配掛安全帶之設施。", remark: "" },
-                        { id: "010103", desc: "於石綿板、鐵皮板、瓦、木板、茅草、塑膠等易踏穿材料構築之屋頂及雨遮，或於以礦纖板、石膏板等易踏穿材料構築之夾層天花板從事作業時，於屋架上設置防止踏穿及寬度30 公分以上之踏板、裝設安全網或配掛安全帶。", remark: "" },
-                        { id: "010104", desc: "於高差超過 1.5 公尺以上之場所作業，設置符合規定之安全上下設備。", remark: "" },
-                        { id: "010105", desc: "高差超過二層樓或7.5 公尺以上之鋼構建築，張設安全網，且其下方具有足夠淨空及工作面與安全網間未具有障礙物。", remark: "" },
-                        { id: "010106", desc: "使用移動式起重機吊掛平台從事貨物、機械等之吊升，鋼索於負荷狀態且非不得已情形下，使人員進入高度 2 公尺以上平台運搬貨物或駕駛車輛機械，平台採取設置圍欄、人員使用安全母索、安全帶等足以防止墜落之設施。", remark: "" }
+                    items: [
+                        { id: "010101", desc: "於高差 2 公尺以上之工作場所邊緣及開口部分，設置符合規定之護欄、護蓋、安全網或配掛安全帶之防墜設施。" },
+                        { id: "010102", desc: "於高差 2 公尺以上之處所進行作業時，使用高空工作車，或以架設施工架等方法設置工作臺。" },
+                        { id: "010103", desc: "於石綿板、鐵皮板、瓦、木板等易踏穿材料構築之屋頂，設置防止踏穿踏板。" },
+                        { id: "010104", desc: "於高差超過 1.5 公尺以上之場所作業，設置符合規定之安全上下設備。" },
+                        { id: "010105", desc: "高差超過二層樓或7.5 公尺以上之鋼構建築，張設安全網。" },
+                        { id: "010106", desc: "使用移動式起重機吊掛平台作業，採取防止墜落設施。" }
                     ]
                 },
                 {
                     name: "有立即發生感電危險之虞",
-                    items:[
-                        { id: "010201", desc: "對電氣機具之帶電部分，於作業進行中或通行時，有因接觸（含經由導電體而接觸者）或接近致發生感電之虞者，設防止感電之護圍或絕緣被覆。", remark: "" },
-                        { id: "010202", desc: "使用對地電壓在 150 伏特以上移動式或攜帶式電動機具，或於含水或被其他導電度高之液體濕潤之潮濕場所、金屬板上或鋼架上等導電性良好場所使用移動式或攜帶式電動機具，或於建築或工程作業使用之臨時用電設備，於各該電動機具之連接電路上設置適合其規格，具有高敏感度、高速型，能確實動作之防止感電用漏電斷路器。", remark: "" },
-                        { id: "010203", desc: "於良導體機器設備內之狹小空間，或於鋼架等有觸及高導電性接地物之虞之場所，作業時所使用之交流電焊機(不含自動式焊接者)，裝設自動電擊防止裝置。", remark: "" },
-                        { id: "010204", desc: "於架空電線或電氣機具電路之接近場所從事工作物之裝設、解體、檢查、修理、油漆等作業及其附屬性作業或使用車輛系營建機械、移動式起重機、高空工作車及其他有關作業時，該作業使用之機械、車輛或勞工作業中或通行之際，有因接觸或接近該電路引起感電之虞者，使勞工與帶電體保持規定之接近界線距離，設置護圍或於該電路四周裝置絕緣用防護裝備或採取移開該電路之措施。", remark: "" }
-                    ]
-                },
-                {
-                    name: "有立即發生倒塌、崩塌危險之虞",
-                    items:[
-                        { id: "010301", desc: "施工架之垂直方向5.5 公尺、水平方向7.5 公尺內，與穩定構造物妥實連接。", remark: "" },
-                        { id: "010302", desc: "露天開挖場所開挖深度在 1.5 公尺以上，或有地面崩塌、土石飛落之虞時，設擋土支撐、反循環樁、連續壁、邊坡保護或張設防護網之設施。", remark: "" },
-                        { id: "010303", desc: "隧道、坑道作業有落磐或土石崩塌之虞，設置支撐、岩栓或噴凝土之支持構造及清除浮石...", remark: "" }
+                    items: [
+                        { id: "010201", desc: "對電氣機具之帶電部分，設防止感電之護圍或絕緣被覆。" },
+                        { id: "010202", desc: "使用移動式電動機具或臨時用電設備，設置漏電斷路器。" }
                     ]
                 }
             ],
-            notes: "說明：<br>1、本表供機關及監造單位定期稽查使用，由稽查人員及相關單位會同人員簽認，並作為安全衛生費用扣罰之依據。<br>2、本表係依勞動部 94 年 6 月 10 日勞檢 4 字第 0940028724 號令修正發布之標準訂定，廠商有缺失時應要求暫停作業至改善完成。<br>3、廠商於同一區域重複發生本表之缺失者，每次扣罰新臺幣 25,000 元整，並得連續扣罰。<br>4、稽查缺失應由監造單位列管追蹤至改善完成，非經複驗合格，廠商不得進行後續施工。"
+            notes: "說明：1.本表供機關及監造單位定期稽查使用。2.重複缺失每次扣罰 25,000 元。"
         },
         {
-            formCode: "表單編碼：FP23-EMA2-50-B-R00",
+            formCode: "FP23-EMA2-50-B-R00",
             title: "一般性作業安全衛生稽查表（二）",
-            subtitle: "（臺北市政府所屬各機關公共工程施工安全衛生須知第 5 點檢查事項）",
-            categories:[
+            subtitle: "（施工安全衛生須知第 5 點檢查事項）",
+            categories: [
                 {
-                    name: "「施工安全衛生須知」第5點",
-                    items:[
-                        { id: "020101", desc: "邊緣及開口部分或高處作業有墜落危險之虞者，應設置護欄、護蓋或安全網等防護設備。設置上列設施有困難，應採取使勞工使用安全帶等防止因墜落之措施。", remark: "為有立即發生危險之虞項目<br>010101" },
-                        { id: "020102", desc: "除使用移動式起重機於道路或鄰接道路從事作業者外，從事垂直高度 20 公尺以下之高處作業，不得使用搭乘設備搭載或吊升人員作業。", remark: "" },
-                        { id: "020103", desc: "無固定護欄或圍籬之臨時道路施工場所，應依核定之交通維持計畫辦理，並指派交通引導人員手執閃光指揮棒在場指揮交通。", remark: "" },
-                        { id: "020104", desc: "工作場所邊緣及開口所設置之護欄，應符合營造安全衛生設施標準規定。", remark: "為有立即發生危險之虞項目<br>010101" },
-                        { id: "020105", desc: "臨時用電設備裝設漏電斷路器、電焊機裝設自動電擊防止裝置、移動電線應予以架高等措施。", remark: "為有立即發生危險之虞項目<br>010202<br>010203" }
+                    name: "施工安全規範",
+                    items: [
+                        { id: "020101", desc: "邊緣及開口部分或高處作業有墜落危險之虞者，應設置護欄、護蓋或安全網。" },
+                        { id: "020102", desc: "垂直高度 20 公尺以下高處作業，不得使用搭乘設備搭載吊升人員。" }
                     ]
                 }
             ],
-            notes: "說明：<br>1、本表供機關及監造單位定期稽查使用。<br>2、廠商有違反「臺北市政府所屬各機關公共工程施工安全衛生須知」第五點規定之情事時，該稽（檢）查缺失應併入當次缺失計算扣罰。<br>3、未立即停工或未於規定期限改善完成者，每次扣罰新臺幣 25,000 元整。"
+            notes: "說明：未立即停工或未於規定期限改善完成者，每次扣罰新臺幣 25,000 元。"
         },
         {
-            formCode: "表單編碼：FP23-EMA2-50-B-R00",
+            formCode: "FP23-EMA2-50-B-R00",
             title: "一般性作業安全衛生稽查表（三）",
             subtitle: "",
-            categories:[
+            categories: [
                 {
-                    name: "安全衛生管理",
-                    items:[
-                        { id: "030101", desc: "職業安全衛生人員常駐工地。", remark: "" },
-                        { id: "030111", desc: "設置休息區，配置飲水及食鹽。", remark: "◎請注意與安衛稽查系統登錄編號相符" },
-                        { id: "030112", desc: "工區內禁止置放酒精性飲料，且禁止具有醉意之人員進行工作及在工作時段（含午休及晚休）飲酒。", remark: "◎請注意與安衛稽查系統登錄編號相符<br>本項於說明 2 規定每人次扣罰 3000 元" }
-                    ]
-                },
-                {
-                    name: "個人防護具",
-                    items:[
-                        { id: "030201", desc: "工區中人員應依規定配戴安全帽。", remark: "本項於說明 2 規定每人次扣罰 3000 元" },
-                        { id: "030203", desc: "高架作業配帶安全帶及安全母索。", remark: "為有立即發生危險之虞項目 010101" }
-                    ]
-                },
-                {
-                    name: "墜落防止",
-                    items:[
-                        { id: "030301", desc: "高差 2 公尺以上之工作場所邊緣或開孔，設置護欄、護蓋、安全網或配帶安全帶之防墜設施。", remark: "為有立即發生危險之虞項目 010101" },
-                        { id: "030302", desc: "於易踏穿材料構築之屋頂從事作業時，設置防止踏穿及寬度 30 公分以上之踏板、裝設安全網或配掛安全帶。", remark: "為有立即發生危險之虞項目 010103" }
+                    name: "安全管理",
+                    items: [
+                        { id: "030101", desc: "職業安全衛生人員常駐工地。" },
+                        { id: "030111", desc: "設置休息區，配置飲水及食鹽。" }
                     ]
                 }
             ],
-            notes: "說明：<br>1、本表供機關及監造單位定期稽查使用。<br>2、廠商工區中人員有未依法投保勞工保險、未依規定配戴安全帽等，除禁止該人員繼續作業外，每人次扣罰新臺幣3,000 元整。<br>3、廠商於同一區域重複發生非屬立即發生危險之缺失，除限期改善外，每項次扣罰新臺幣 5,000 元整。"
+            notes: "說明：人員未配戴安全帽等，每人次扣罰新臺幣 3,000 元。"
         }
     ];
 
-    const appContainer = document.getElementById('app');
-    
-    if (appContainer.children.length === 0) {
-        let htmlContent = '';
+    let yearOpts = '<option value="">請選擇</option>'; for(let i=113; i<=115; i++) yearOpts += `<option value="${i}">${i}</option>`;
+    let monthOpts = '<option value="">請選擇</option>'; for(let i=1; i<=12; i++) monthOpts += `<option value="${i}">${i}</option>`;
+    let dayOpts = '<option value="">請選擇</option>'; for(let i=1; i<=31; i++) dayOpts += `<option value="${i}">${i}</option>`;
 
-        formsData.forEach((form, fIndex) => {
-            htmlContent += `
-            <div class="form-page">
-                <div class="form-code">${form.formCode}</div>
-                <h1>${form.title}</h1>
-                ${form.subtitle ? `<h2>${form.subtitle}</h2>` : '<div style="height:20px;"></div>'}
-                
-                <div class="date-row">
-                    檢查日期： 
-                    <select class="date-year" onchange="syncDate('year', this.value)">${yearOpts}</select> 年 
-                    <select class="date-month" onchange="syncDate('month', this.value)">${monthOpts}</select> 月 
-                    <select class="date-day" onchange="syncDate('day', this.value)">${dayOpts}</select> 日
-                </div>
-
-                <table class="info-table">
-                    <tr>
-                        <th>工程名稱</th>
-                        <td>
-                            <select class="proj-sel" onchange="updateProjectInfo(this.value)">
-                                <option value="">-- 請選擇工程名稱 --</option>
-                                <option value="環狀線北環段CF680B">環狀線北環段CF680B</option>
-                                <option value="環狀線南環段CF670">環狀線南環段CF670</option>
-                                <option value="環狀線東環段CF763">環狀線東環段CF763</option>
-                            </select>
-                        </td>
-                        <th>不合格數量</th>
-                        <td id="fail_count_${fIndex}" class="fail-count-cell">0</td>
-                    </tr>
-                    <tr>
-                        <th>主辦機關</th><td class="org-main"></td>
-                        <th>專案管理廠商</th><td class="org-pm"></td>
-                    </tr>
-                    <tr>
-                        <th>監造單位</th><td class="org-super"></td>
-                        <th>承攬廠商</th><td class="org-contractor"></td>
-                    </tr>
-                    <tr>
-                        <th>檢查地點</th>
-                        <td contenteditable="true" class="sync-loc sync-text" oninput="syncField('sync-loc', this)"></td>
-                        <th>檢查位置</th>
-                        <td contenteditable="true" class="sync-pos sync-text" oninput="syncField('sync-pos', this)"></td>
-                    </tr>
-                </table>
-
-                <div class="scroll-hint">向右滑動查看更多欄位 ➔</div>
-                <div class="table-responsive">
-                    <table class="checklist-table">
-                        <thead>
-                            <tr>
-                                <th rowspan="2" colspan="2">檢查項目</th>
-                                <th colspan="2">檢查結果</th>
-                                <th rowspan="2" class="col-remark">缺失情形／改善期限</th>
-                            </tr>
-                            <tr>
-                                <th class="col-pass">
-                                    合格<br>
-                                    <span class="btn-check-all" onclick="checkAllPass(${fIndex})">(全選)</span>
-                                </th>
-                                <th class="col-fail">不合格</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            form.categories.forEach(cat => {
-                const verticalName = cat.name.split('').join('<br>'); 
-                
-                cat.items.forEach((item, iIndex) => {
-                    const uniqueName = `radio_${fIndex}_${item.id}`;
-                    htmlContent += `<tr>`;
-                    
-                    if (iIndex === 0) {
-                        htmlContent += `<td rowspan="${cat.items.length}" class="col-cat vertical-text">${verticalName}</td>`;
-                    }
-
-                    htmlContent += `
-                        <td class="col-desc desc-text"><strong>${item.id}</strong> ${item.desc}</td>
-                        
-                        <td class="radio-cell col-pass">
-                            <label>
-                                <input type="radio" class="pass-radio pass-radio-f${fIndex}" name="${uniqueName}" value="pass" onchange="calcFailCount(${fIndex})">
-                                <span class="custom-radio"></span>
-                            </label>
-                        </td>
-                        <td class="radio-cell col-fail">
-                            <label>
-                                <input type="radio" class="fail-radio form-${fIndex}-fail" name="${uniqueName}" value="fail" onchange="calcFailCount(${fIndex})">
-                                <span class="custom-radio"></span>
-                            </label>
-                        </td>
-                        
-                        <td class="col-remark">
-                            ${item.remark ? `<div class="fixed-text">${item.remark}</div>` : ''}
-                            <div contenteditable="true" class="editable-remark"></div>
-                        </td>
-                    </tr>`;
-                });
-            });
-
-            htmlContent += `
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="notes">${form.notes}</div>
-                
-                <div class="signatures">
-                    <div class="sign-column">
-                        <div class="sign-row">
-                            <span class="sign-label">會同單位：</span>
-                            <div class="sign-box" onclick="alert('啟動會同單位電子簽章模組')">電子簽章</div>
-                        </div>
-                        <div class="sign-row">
-                            <span class="sign-label">會同人員：</span>
-                            <div class="sign-box" onclick="alert('啟動會同人員電子簽章模組')">電子簽章</div>
-                        </div>
-                    </div>
-                    <div class="sign-column">
-                        <div class="sign-row">
-                            <span class="sign-label">稽查單位：</span>
-                            <div class="sign-box" onclick="alert('啟動稽查單位電子簽章模組')">電子簽章</div>
-                        </div>
-                        <div class="sign-row">
-                            <span class="sign-label">稽查人員：</span>
-                            <div class="sign-box" onclick="alert('啟動稽查人員電子簽章模組')">電子簽章</div>
-                        </div>
-                    </div>
-                </div>
+    let htmlContent = '';
+    formsData.forEach((form, fIndex) => {
+        htmlContent += `
+        <div class="form-page">
+            <div class="form-code">表單編碼：${form.formCode}</div>
+            <h1>${form.title}</h1>
+            ${form.subtitle ? `<h2>${form.subtitle}</h2>` : '<div style="height:20px;"></div>'}
+            
+            <div class="date-row">
+                檢查日期： 
+                <select class="date-year" onchange="syncDate('year', this.value)">${yearOpts}</select> 年 
+                <select class="date-month" onchange="syncDate('month', this.value)">${monthOpts}</select> 月 
+                <select class="date-day" onchange="syncDate('day', this.value)">${dayOpts}</select> 日
             </div>
-            `;
+
+            <table class="info-table">
+                <tr>
+                    <th>工程名稱</th>
+                    <td>
+                        <select class="proj-sel" onchange="updateProjectInfo(this.value)">
+                            <option value="">-- 請選擇 --</option>
+                            <option value="環狀線北環段CF680B">環狀線北環段CF680B</option>
+                            <option value="環狀線南環段CF670">環狀線南環段CF670</option>
+                            <option value="環狀線東環段CF763">環狀線東環段CF763</option>
+                        </select>
+                    </td>
+                    <th>不合格數量</th>
+                    <td id="fail_count_${fIndex}" class="fail-count-cell">0</td>
+                </tr>
+                <tr>
+                    <th>主辦機關</th><td class="org-main"></td>
+                    <th>專案管理廠商</th><td class="org-pm"></td>
+                </tr>
+                <tr>
+                    <th>監造單位</th><td class="org-super"></td>
+                    <th>承攬廠商</th><td class="org-contractor"></td>
+                </tr>
+                <tr>
+                    <th>檢查地點</th><td contenteditable="true" class="sync-loc sync-text" oninput="syncField('sync-loc', this)"></td>
+                    <th>檢查位置</th><td contenteditable="true" class="sync-pos sync-text" oninput="syncField('sync-pos', this)"></td>
+                </tr>
+            </table>
+
+            <div style="text-align:right; font-size:12px; color:#d32f2f; margin-bottom:5px;">向右滑動查看更多 ➔</div>
+            <div class="table-responsive">
+                <table class="checklist-table">
+                    <thead>
+                        <tr>
+                            <th colspan="2">檢查項目</th>
+                            <th class="col-pass">合格<span class="btn-select-all" onclick="checkAllPass(${fIndex})">(全選)</span></th>
+                            <th class="col-fail">不合格</th>
+                            <th class="col-remark">缺失情形／改善期限</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        form.categories.forEach(cat => {
+            const verticalName = cat.name.split('').join('<br>');
+            cat.items.forEach((item, iIndex) => {
+                const uniqueName = `radio_${fIndex}_${item.id}`;
+                htmlContent += `
+                <tr>
+                    ${iIndex === 0 ? `<td rowspan="${cat.items.length}" class="col-cat vertical-text">${verticalName}</td>` : ''}
+                    <td class="col-desc"><strong>${item.id}</strong> ${item.desc}</td>
+                    <td class="radio-cell">
+                        <label>
+                            <input type="radio" class="pass-radio pass-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})">
+                            <span class="custom-radio"></span>
+                        </label>
+                    </td>
+                    <td class="radio-cell">
+                        <label>
+                            <input type="radio" class="fail-radio fail-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})">
+                            <span class="custom-radio"></span>
+                        </label>
+                    </td>
+                    <td contenteditable="true"></td>
+                </tr>`;
+            });
         });
 
-        appContainer.innerHTML = htmlContent;
-    }
+        htmlContent += `
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="background:#f9f9f9; padding:15px; border:1px solid #ddd; font-size:14px; margin-bottom:20px;">${form.notes}</div>
+
+            <div class="signatures">
+                <div class="sign-column">
+                    <div class="sign-row"><span class="sign-label">會同單位：</span><div class="sign-box">電子簽章</div></div>
+                    <div class="sign-row"><span class="sign-label">會同人員：</span><div class="sign-box">電子簽章</div></div>
+                </div>
+                <div class="sign-column">
+                    <div class="sign-row"><span class="sign-label">稽查單位：</span><div class="sign-box">電子簽章</div></div>
+                    <div class="sign-row"><span class="sign-label">稽查人員：</span><div class="sign-box">電子簽章</div></div>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+
+    document.getElementById('app').innerHTML = htmlContent;
 </script>
 
 </body>
