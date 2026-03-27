@@ -300,14 +300,67 @@
         document.getElementById(`fail_count_${fIndex}`).textContent = failCount;
     };
 
-    window.exportHTML = function() {
-        const htmlString = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
-        const blob = new Blob([htmlString], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `稽查表_${new Date().getTime()}.html`;
-        a.click();
+    window.exportHTML = async function() {
+        const btn = document.querySelector('.btn-pdf');
+        const actions = document.getElementById('action-buttons');
+
+        // 載入 html2canvas（CDN）
+        if (!window.html2canvas) {
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                s.onload = resolve;
+                s.onerror = () => reject(new Error('html2canvas 載入失敗，請確認網路連線'));
+                document.head.appendChild(s);
+            });
+        }
+
+        // 提示使用者
+        const origText = btn.textContent;
+        btn.textContent = '⏳ 截圖中，請稍候…';
+        btn.disabled = true;
+
+        // 暫時隱藏底部按鈕，不納入截圖
+        actions.style.display = 'none';
+
+        try {
+            const target = document.querySelector('.container');
+
+            const canvas = await html2canvas(target, {
+                scale: 2,                      // 2x 高解析，避免模糊
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                scrollX: 0,
+                scrollY: 0,
+                windowWidth: target.scrollWidth,   // 以實際內容寬度截圖，確保不截斷
+                width: target.scrollWidth,
+                height: target.scrollHeight,
+                onclone: (doc) => {
+                    // 截圖文件中：讓 table-responsive 展開全部，不出現滾動截斷
+                    doc.querySelectorAll('.table-responsive').forEach(el => {
+                        el.style.overflow = 'visible';
+                        el.style.maxHeight = 'none';
+                    });
+                    // 確保 container 無陰影截圖較乾淨
+                    const c = doc.querySelector('.container');
+                    if (c) c.style.boxShadow = 'none';
+                }
+            });
+
+            // 下載 PNG
+            const filename = `稽查表_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.png`;
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+
+        } catch(err) {
+            alert('匯出失敗：' + err.message);
+        } finally {
+            actions.style.display = '';
+            btn.textContent = origText;
+            btn.disabled = false;
+        }
     };
 
     // 完整的表單資料
@@ -370,9 +423,27 @@
         }
     ];
 
-    let yearOpts = '<option value="">請選擇</option>'; for(let i=113; i<=115; i++) yearOpts += `<option value="${i}">${i}</option>`;
-    let monthOpts = '<option value="">請選擇</option>'; for(let i=1; i<=12; i++) monthOpts += `<option value="${i}">${i}</option>`;
-    let dayOpts = '<option value="">請選擇</option>'; for(let i=1; i<=31; i++) dayOpts += `<option value="${i}">${i}</option>`;
+    // 取得今日民國年月日
+    const _today = new Date();
+    const _rocYear  = _today.getFullYear() - 1911;
+    const _month    = _today.getMonth() + 1;
+    const _day      = _today.getDate();
+
+    // 年：民國 110 ~ 今年+2，預設今年
+    let yearOpts = '';
+    for (let i = 110; i <= _rocYear + 2; i++) {
+        yearOpts += `<option value="${i}" ${i === _rocYear ? 'selected' : ''}>${i}</option>`;
+    }
+    // 月：1～12，預設今月
+    let monthOpts = '';
+    for (let i = 1; i <= 12; i++) {
+        monthOpts += `<option value="${i}" ${i === _month ? 'selected' : ''}>${i}</option>`;
+    }
+    // 日：1～31，預設今日
+    let dayOpts = '';
+    for (let i = 1; i <= 31; i++) {
+        dayOpts += `<option value="${i}" ${i === _day ? 'selected' : ''}>${i}</option>`;
+    }
 
     let htmlContent = '';
     formsData.forEach((form, fIndex) => {
@@ -478,6 +549,11 @@
     });
 
     document.getElementById('app').innerHTML = htmlContent;
+
+    // 渲染完成後，將今日民國年月日同步到所有表單（options 已預選，此處確保 select.value 一致）
+    document.querySelectorAll('.date-year').forEach(el  => el.value = _rocYear);
+    document.querySelectorAll('.date-month').forEach(el => el.value = _month);
+    document.querySelectorAll('.date-day').forEach(el   => el.value = _day);
 </script>
 
 </body>
