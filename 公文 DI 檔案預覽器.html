@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公文 DI 檔案預覽器</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- PDF.js for PDF text extraction -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1208;
+    --paper: #f5f0e8;
+    --paper-dark: #ede6d6;
+    --seal-red: #8b1a1a;
+    --seal-red-light: #c0392b;
+    --gold: #b8963e;
+    --gold-light: #d4af6a;
+    --stone: #7a7060;
+    --stone-light: #a89e8c;
+    --border: #c8bfa8;
+    --shadow: rgba(26,18,8,0.12);
+    --shadow-deep: rgba(26,18,8,0.22);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #2a231a;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(184,150,62,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(139,26,26,0.06) 0%, transparent 60%);
+    min-height: 100vh;
+    font-family: 'Noto Sans TC', sans-serif;
+    color: var(--ink);
+    padding: 40px 20px;
+  }
+  .site-header {
+    text-align: center;
+    margin-bottom: 36px;
+    animation: fadeDown 0.7s ease both;
+  }
+  .site-header .eyebrow {
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 0.4em;
+    color: var(--gold-light);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    opacity: 0.8;
+  }
+  .site-header h1 {
+    font-family: 'Noto Serif TC', serif;
+    font-size: clamp(26px, 4vw, 40px);
+    font-weight: 700;
+    color: var(--paper);
+    letter-spacing: 0.1em;
+    text-shadow: 0 2px 12px rgba(184,150,62,0.3);
+  }
+  .site-header h1 span { color: var(--gold-light); }
+  .site-header .subtitle {
+    font-size: 12px;
+    color: var(--stone-light);
+    letter-spacing: 0.12em;
+    margin-top: 8px;
+  }
+  .header-rule {
+    width: 80px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 14px auto 0;
+  }
+  .main-card {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--paper);
+    border-radius: 4px;
+    box-shadow: 0 8px 60px var(--shadow-deep), 0 2px 8px var(--shadow);
+    overflow: hidden;
+    animation: fadeUp 0.7s ease 0.15s both;
+    position: relative;
+  }
+  .main-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--seal-red), var(--gold), var(--seal-red));
+  }
+
+  /* Upload */
+  .upload-section { padding: 32px 40px; border-bottom: 1px solid var(--border); }
+  .section-label {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--seal-red);
+    letter-spacing: 0.18em;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::before {
+    content: '';
+    display: inline-block;
+    width: 18px; height: 2px;
+    background: var(--seal-red);
+  }
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 4px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--paper-dark);
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--gold);
+    background: #e8e0cc;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(184,150,62,0.15);
+  }
+  .drop-zone.has-file { border-color: var(--seal-red); border-style: solid; }
+  .drop-icon { font-size: 42px; margin-bottom: 12px; opacity: 0.5; transition: opacity 0.2s; }
+  .drop-zone:hover .drop-icon { opacity: 0.8; }
+  .drop-text-main {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 5px;
+  }
+  .drop-text-sub { font-size: 12px; color: var(--stone); }
+  .file-types {
+    display: flex; gap: 8px; justify-content: center;
+    margin-top: 14px; flex-wrap: wrap;
+  }
+  .file-type-tag {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--stone);
+    background: var(--paper);
+  }
+  #fileInput { display: none; }
+  .file-info {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    background: #fff8ee;
+    border: 1px solid var(--gold-light);
+    border-radius: 3px;
+    padding: 11px 16px;
+    margin-top: 14px;
+    font-size: 13px;
+  }
+  .file-info.visible { display: flex; }
+  .file-info-name { font-weight: 500; color: var(--ink); flex: 1; }
+  .file-info-size { color: var(--stone); font-size: 12px; }
+  .file-type-badge {
+    font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 2px;
+    letter-spacing: 0.08em;
+    background: var(--ink); color: var(--paper);
+  }
+  .file-remove {
+    cursor: pointer; color: var(--stone);
+    font-size: 15px; padding: 2px 6px;
+    border-radius: 2px; transition: color 0.2s;
+  }
+  .file-remove:hover { color: var(--seal-red); }
+
+  /* Action bar */
+  .action-bar {
+    padding: 18px 40px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+    background: var(--paper-dark);
+  }
+  .btn-parse {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    padding: 10px 30px;
+    background: var(--seal-red);
+    color: #fff;
+    border: none; border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 8px rgba(139,26,26,0.3);
+  }
+  .btn-parse:hover { background: var(--seal-red-light); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(139,26,26,0.4); }
+  .btn-parse:disabled { background: var(--stone-light); cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-clear {
+    font-size: 13px; padding: 9px 18px;
+    background: transparent; color: var(--stone);
+    border: 1px solid var(--border); border-radius: 3px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-clear:hover { border-color: var(--stone); color: var(--ink); background: var(--paper); }
+  .parse-status { flex: 1; font-size: 12px; color: var(--stone); text-align: right; letter-spacing: 0.05em; }
+
+  /* Loading */
+  .loading-bar { height: 3px; background: var(--paper-dark); display: none; overflow: hidden; }
+  .loading-bar.active { display: block; }
+  .loading-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, var(--seal-red), var(--gold), var(--seal-red));
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* Preview */
+  .preview-section { display: none; padding: 32px 40px; animation: fadeUp 0.5s ease both; }
+  .preview-section.visible { display: block; }
+  .error-box {
+    background: #fdeaea; border: 1px solid #f5c6c6;
+    border-radius: 3px; padding: 13px 16px;
+    color: var(--seal-red); font-size: 13px; margin-bottom: 18px;
+  }
+
+  /* Format tag */
+  .format-tag-bar {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 16px; font-size: 12px; color: var(--stone);
+  }
+  .format-tag {
+    font-size: 10px; font-weight: 600;
+    padding: 3px 10px; border-radius: 2px;
+    letter-spacing: 0.12em;
+    background: var(--paper-dark);
+    border: 1px solid var(--border);
+    color: var(--stone);
+  }
+  .format-tag.xml  { background: #edf5ee; border-color: #b6d6ba; color: #2d6e35; }
+  .format-tag.text { background: #eef3fa; border-color: #b6c8e0; color: #2a4a72; }
+  .format-tag.pdf  { background: #fdf0e8; border-color: #e0c0a0; color: #7a3e10; }
+
+  /* Document preview */
+  .doc-preview {
+    background: #fff;
+    border: 1px solid #d0c8b4;
+    border-radius: 3px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.04), 0 2px 12px var(--shadow);
+    overflow: hidden;
+    font-family: 'Noto Serif TC', serif;
+  }
+  .doc-header-bar {
+    background: var(--ink);
+    padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .doc-org-name {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 17px; font-weight: 700;
+    color: var(--paper); letter-spacing: 0.2em;
+  }
+  .doc-seal {
+    width: 50px; height: 50px;
+    border: 2px solid var(--gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); font-size: 10px;
+    letter-spacing: 0.05em; text-align: center; line-height: 1.3;
+    opacity: 0.8;
+  }
+  .doc-title-area {
+    text-align: center;
+    padding: 18px 28px 13px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .doc-doc-type {
+    font-size: 11px; color: var(--stone);
+    letter-spacing: 0.35em; margin-bottom: 4px;
+  }
+  .doc-main-title {
+    font-size: 20px; font-weight: 700;
+    color: var(--ink); letter-spacing: 0.14em; line-height: 1.5;
+  }
+  .doc-meta-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid #ddd;
+    padding: 14px 28px;
+  }
+  .meta-row {
+    display: flex; align-items: flex-start;
+    padding: 5px 0; font-size: 13px; line-height: 1.7;
+  }
+  .meta-label {
+    min-width: 76px; font-weight: 500;
+    color: var(--stone); letter-spacing: 0.05em; flex-shrink: 0;
+  }
+  .meta-label::after { content: '：'; }
+  .meta-value { color: var(--ink); flex: 1; }
+  .badge {
+    display: inline-block; font-size: 11px;
+    padding: 2px 8px; border-radius: 2px; font-weight: 500;
+  }
+  .badge-red  { background: #fdeaea; color: var(--seal-red); border: 1px solid #f5c6c6; }
+  .badge-gold { background: #fdf6e3; color: #8a6d0f; border: 1px solid #e8d48b; }
+  .badge-stone{ background: #f0ede8; color: var(--stone); border: 1px solid var(--border); }
+  .doc-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 0 28px;
+  }
+  .doc-body { padding: 18px 28px; }
+  .doc-section { margin-bottom: 18px; }
+  .doc-section-title {
+    font-size: 12px; font-weight: 700;
+    color: var(--seal-red); letter-spacing: 0.18em;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #f0d8d8;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .doc-section-title::before {
+    content: '';
+    display: inline-block;
+    width: 4px; height: 13px;
+    background: var(--seal-red); border-radius: 1px;
+  }
+  .doc-section-content {
+    font-size: 14px; line-height: 2.1;
+    color: var(--ink); text-align: justify;
+    padding-left: 10px;
+  }
+  .attachment-list { list-style: none; }
+  .attachment-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 10px; font-size: 13px; color: var(--ink);
+    transition: background 0.2s;
+    border-left: 2px solid transparent;
+  }
+  .attachment-item:hover { background: var(--paper-dark); border-left-color: var(--gold); }
+  .contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 10px;
+  }
+  .contact-item {
+    background: var(--paper-dark);
+    border-radius: 3px; padding: 10px 14px; font-size: 12.5px;
+  }
+  .contact-item-label { color: var(--stone); font-size: 11px; letter-spacing: 0.08em; margin-bottom: 2px; }
+  .contact-item-value { color: var(--ink); font-weight: 500; }
+  .empty-state {
+    text-align: center; padding: 50px 20px;
+  }
+  .empty-state-icon { font-size: 42px; opacity: 0.2; margin-bottom: 10px; }
+  .empty-state-text { color: var(--stone-light); font-size: 13px; line-height: 1.8; }
+
+  /* Raw toggle */
+  .raw-toggle-bar {
+    padding: 14px 28px;
+    border-top: 1px solid var(--border);
+    background: var(--paper-dark);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .raw-toggle-label { font-size: 12px; color: var(--stone); letter-spacing: 0.08em; }
+  .toggle-btn {
+    font-size: 12px; padding: 5px 14px;
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 2px; color: var(--stone);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .toggle-btn:hover { border-color: var(--gold); color: var(--ink); }
+  .toggle-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .raw-content { display: none; padding: 20px 28px; border-top: 1px solid var(--border); }
+  .raw-content.visible { display: block; }
+  .raw-pre {
+    background: var(--ink); color: #c8d4c0;
+    padding: 18px; border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px; line-height: 1.8;
+    white-space: pre-wrap; word-break: break-all;
+    max-height: 380px; overflow-y: auto;
+  }
+  .raw-pre::-webkit-scrollbar { width: 5px; }
+  .raw-pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+
+  /* PDF notice */
+  .pdf-notice {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: #fdf6e3; border: 1px solid #e8d48b;
+    border-radius: 3px; padding: 11px 14px;
+    margin-bottom: 16px; font-size: 12.5px; color: #6a4f00;
+    line-height: 1.7;
+  }
+  .pdf-notice-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  @keyframes fadeDown { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:none} }
+  @keyframes fadeUp   { from{opacity:0;transform:translateY(14px)}  to{opacity:1;transform:none} }
+
+  @media(max-width:600px){
+    .upload-section,.action-bar,.preview-section{padding-left:18px;padding-right:18px}
+    .doc-meta-grid{grid-template-columns:1fr}
+    .doc-header-bar{flex-direction:column;gap:10px}
+    .doc-body,.doc-title-area,.raw-toggle-bar,.raw-content{padding-left:14px;padding-right:14px}
+    .doc-meta-grid{padding:12px 14px}
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="eyebrow">GOVERNMENT DOCUMENT PARSER</div>
+  <h1>公文 <span>DI</span> 檔案預覽器</h1>
+  <div class="subtitle">支援 .di · .txt · .xml · .pdf 等格式　│　純本機解析，無需 API</div>
+  <div class="header-rule"></div>
+</header>
+
+<div class="main-card">
+
+  <!-- Upload -->
+  <div class="upload-section">
+    <div class="section-label">上傳公文檔案</div>
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon">📄</div>
+      <div class="drop-text-main">拖曳檔案至此處，或點擊選擇</div>
+      <div class="drop-text-sub">支援多種公文格式，於本機直接解析</div>
+      <div class="file-types">
+        <span class="file-type-tag">.DI</span>
+        <span class="file-type-tag">.TXT</span>
+        <span class="file-type-tag">.XML</span>
+        <span class="file-type-tag">.PDF（文字型）</span>
+      </div>
+      <input type="file" id="fileInput" accept=".di,.txt,.xml,.pdf">
+    </div>
+    <div class="file-info" id="fileInfo">
+      <span style="font-size:18px">📎</span>
+      <span class="file-info-name" id="fileName">—</span>
+      <span class="file-info-size" id="fileSize"></span>
+      <span class="file-type-badge" id="fileTypeBadge"></span>
+      <span class="file-remove" id="fileRemove" title="移除檔案">✕</span>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="action-bar">
+    <button class="btn-parse" id="btnParse" disabled>解析公文</button>
+    <button class="btn-clear" id="btnClear">清除</button>
+    <span class="parse-status" id="parseStatus">請先上傳公文檔案</span>
+  </div>
+
+  <div class="loading-bar" id="loadingBar">
+    <div class="loading-bar-inner"></div>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview-section" id="previewSection">
+    <div id="errorBox" class="error-box" style="display:none"></div>
+    <div id="docPreviewContainer"></div>
+  </div>
+</div>
+
+<script>
+/* ── PDF.js worker 設定 ── */
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+/* ── state ── */
+let currentFile = null;
+let rawText = '';
+let detectedFormat = '';
+
+/* ── refs ── */
+const dropZone      = document.getElementById('dropZone');
+const fileInput     = document.getElementById('fileInput');
+const fileInfo      = document.getElementById('fileInfo');
+const fileNameEl    = document.getElementById('fileName');
+const fileSizeEl    = document.getElementById('fileSize');
+const fileTypeBadge = document.getElementById('fileTypeBadge');
+const fileRemove    = document.getElementById('fileRemove');
+const btnParse      = document.getElementById('btnParse');
+const btnClear      = document.getElementById('btnClear');
+const parseStatus   = document.getElementById('parseStatus');
+const loadingBar    = document.getElementById('loadingBar');
+const previewSec    = document.getElementById('previewSection');
+const errorBox      = document.getElementById('errorBox');
+const container     = document.getElementById('docPreviewContainer');
+
+/* ── drag & drop ── */
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+fileRemove.addEventListener('click', clearAll);
+btnClear.addEventListener('click', clearAll);
+btnParse.addEventListener('click', parseDocument);
+
+/* ── load file ── */
+function loadFile(f) {
+  currentFile = f;
+  fileNameEl.textContent = f.name;
+  fileSizeEl.textContent = fmtSize(f.size);
+  const ext = f.name.split('.').pop().toUpperCase();
+  fileTypeBadge.textContent = '.' + ext;
+  fileInfo.classList.add('visible');
+  dropZone.classList.add('has-file');
+  btnParse.disabled = false;
+  parseStatus.textContent = `已載入：${f.name}`;
+}
+
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(1) + ' MB';
+}
+
+/* ── clear ── */
+function clearAll() {
+  currentFile = null; rawText = ''; detectedFormat = '';
+  fileInput.value = '';
+  fileInfo.classList.remove('visible');
+  dropZone.classList.remove('has-file');
+  btnParse.disabled = true;
+  parseStatus.textContent = '請先上傳公文檔案';
+  previewSec.classList.remove('visible');
+  loadingBar.classList.remove('active');
+  errorBox.style.display = 'none';
+  container.innerHTML = '';
+}
+
+/* ── parse dispatch ── */
+async function parseDocument() {
+  if (!currentFile) return;
+  btnParse.disabled = true;
+  parseStatus.textContent = '解析中…';
+  loadingBar.classList.add('active');
+  previewSec.classList.remove('visible');
+  errorBox.style.display = 'none';
+  container.innerHTML = '';
+
+  try {
+    const ext = currentFile.name.split('.').pop().toLowerCase();
+    let text = '';
+    let isPDF = false;
+
+    if (ext === 'pdf') {
+      /* PDF 路徑 */
+      isPDF = true;
+      parseStatus.textContent = '正在讀取 PDF…';
+      text = await extractPdfText(currentFile);
+    } else {
+      /* 文字型路徑：依序嘗試 UTF-8、Big5 */
+      text = await readTextSmart(currentFile);
+    }
+
+    rawText = text;
+
+    /* 格式自動判斷 */
+    let data;
+    const trimmed = text.trimStart();
+    if (ext === 'xml' || ext === 'di' && trimmed.startsWith('<') || trimmed.startsWith('<')) {
+      data = parseXML(text);
+      detectedFormat = 'xml';
+    } else {
+      data = parsePlain(text);
+      detectedFormat = isPDF ? 'pdf' : 'text';
+    }
+
+    renderPreview(data, rawText, detectedFormat, isPDF);
+    parseStatus.textContent = '解析完成 ✓';
+    previewSec.classList.add('visible');
+  } catch (err) {
+    showErr('解析失敗：' + err.message);
+    parseStatus.textContent = '解析失敗';
+    previewSec.classList.add('visible');
+  } finally {
+    loadingBar.classList.remove('active');
+    btnParse.disabled = false;
+  }
+}
+
+/* ── PDF 文字擷取（PDF.js）── */
+async function extractPdfText(file) {
+  if (typeof pdfjsLib === 'undefined') {
+    throw new Error('PDF.js 尚未載入，請確認網路連線後重試');
+  }
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const totalPages = pdf.numPages;
+  const pageTexts = [];
+
+  for (let p = 1; p <= totalPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    /* 依 transform.y 排序（由上而下），再拼接同行文字 */
+    const items = content.items;
+    let prevY = null;
+    let lineStr = '';
+    const lines = [];
+    for (const item of items) {
+      const y = Math.round(item.transform[5]);
+      if (prevY === null) { prevY = y; }
+      if (Math.abs(y - prevY) > 4) {
+        if (lineStr.trim()) lines.push(lineStr.trim());
+        lineStr = item.str;
+        prevY = y;
+      } else {
+        lineStr += item.str;
+      }
+    }
+    if (lineStr.trim()) lines.push(lineStr.trim());
+    pageTexts.push(lines.join('\n'));
+  }
+  const fullText = pageTexts.join('\n\n--- 第 ' + totalPages + ' 頁共 ' + totalPages + ' 頁 ---\n\n');
+  if (!fullText.trim()) {
+    throw new Error('此 PDF 不含可擷取的文字（可能為掃描影像型）。請改用文字型 PDF。');
+  }
+  return pageTexts.join('\n');
+}
+
+/* ── 智慧讀取文字（UTF-8 fallback Big5）── */
+function readTextSmart(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = e => {
+      let text = e.target.result;
+      /* 若有亂碼特徵，嘗試 Big5 */
+      if (/\ufffd/.test(text)) {
+        const r2 = new FileReader();
+        r2.onload = e2 => resolve(e2.target.result);
+        r2.onerror = () => reject(new Error('讀取檔案失敗'));
+        r2.readAsText(file, 'Big5');
+      } else {
+        resolve(text);
+      }
+    };
+    r.onerror = () => reject(new Error('讀取檔案失敗'));
+    r.readAsText(file, 'UTF-8');
+  });
+}
+
+/* 舊版相容 */
+function readText(file) { return readTextSmart(file); }
+
+/* ── XML parser ── */
+function parseXML(text) {
+  const doc = new DOMParser().parseFromString(text, 'text/xml');
+  if (doc.querySelector('parsererror')) return parsePlain(text);
+
+  /* ── 通用單節點取值 ── */
+  const g = (...sels) => {
+    for (const s of sels) {
+      try {
+        const el = doc.querySelector(s);
+        if (el && el.textContent.trim()) return el.textContent.trim();
+      } catch(e) {}
+    }
+    return '';
+  };
+
+  /* ── 解析巢狀 <條列> 樹，輸出帶縮排的純文字 ── */
+  function parseCondList(parentEl, depth) {
+    if (!parentEl) return '';
+    const lines = [];
+    for (const child of parentEl.children) {
+      const tag = child.tagName;
+      if (tag === '文字') {
+        const t = child.textContent.trim();
+        if (t && t !== ' ') lines.push(t);
+      } else if (tag === '條列') {
+        const seq = child.getAttribute('序號') || '';
+        /* 取本條列的直屬 <文字>（不含子條列的） */
+        const ownText = Array.from(child.children)
+          .filter(c => c.tagName === '文字')
+          .map(c => c.textContent.trim())
+          .filter(Boolean)
+          .join('');
+        if (ownText) lines.push(seq + ownText);
+        /* 遞迴子條列 */
+        const subLines = parseCondList(child, depth + 1);
+        if (subLines) lines.push(subLines);
+      }
+    }
+    return lines.join('\n');
+  }
+
+  /* ── 找 <段落 段名="說明："> / <段落 段名="擬辦："> ── */
+  function getSection(segName) {
+    const all = doc.querySelectorAll('段落');
+    for (const el of all) {
+      const name = el.getAttribute('段名') || '';
+      if (name.includes(segName)) return parseCondList(el, 0);
+    }
+    return '';
+  }
+
+  /* ── 主旨：取 <主旨><文字> ── */
+  const subjectEl = doc.querySelector('主旨 文字') || doc.querySelector('主旨');
+  const subject = subjectEl ? subjectEl.textContent.trim() : '';
+
+  /* ── 機關名稱 ── */
+  const orgName = g('機關 全銜', '全銜', 'SendOrg', 'DocSendOrg', 'OrgName', '發文機關', '機關名稱');
+
+  /* ── 文號：<於> + 年月日 + 字號，或直接抓字號 ── */
+  const yuEl  = doc.querySelector('於');
+  const dateEl = doc.querySelector('年月日');
+  let docNo = '';
+  if (yuEl && yuEl.textContent.trim()) {
+    docNo = yuEl.textContent.trim();
+  } else {
+    /* 嘗試從全文抓公文字號 */
+    const m = text.match(/[\u4e00-\u9fff]+字第\s*[\d]+\s*號/);
+    if (m) docNo = m[0];
+  }
+  const docDate = dateEl ? dateEl.textContent.trim() : '';
+
+  /* ── 收文機關、密等、速別（部分 DI 格式有） ── */
+  const receiveOrg  = g('收文機關', 'ReceiveOrg', 'RecvOrg');
+  const secretLevel = g('密等', 'SecretLevel', 'Secret');
+  const urgentLevel = g('速別', 'UrgentLevel', 'Urgent');
+
+  /* ── 說明 / 擬辦 ── */
+  const content  = getSection('說明');
+  const proposal = getSection('擬辦');
+
+  /* ── 備註、聯絡資訊 ── */
+  const remark  = g('備註', 'Remark', 'Note');
+  const contact = g('聯絡人', 'Contact');
+  const phone   = g('電話', 'Phone', 'Tel');
+  const email   = g('電子郵件', 'Email');
+
+  /* ── 附件清單（ENTITY 宣告取檔名） ── */
+  const attachments = [];
+  const entityRe = /<!ENTITY\s+(\S+)\s+SYSTEM\s+"([^"]+\.pdf)"/gi;
+  let em;
+  while ((em = entityRe.exec(text)) !== null) {
+    attachments.push(em[2]);
+  }
+  /* 也找 <附件> 標籤 */
+  doc.querySelectorAll('附件, Attachment, Attach').forEach(el => {
+    const n = el.querySelector('Name,FileName,檔名')?.textContent.trim() || el.textContent.trim();
+    if (n && n.length < 120) attachments.push(n);
+  });
+
+  const data = {
+    orgName, docNo, docDate, receiveOrg, secretLevel, urgentLevel,
+    title: '', subject, content, proposal,
+    remark, contact, phone, email, attachments
+  };
+
+  /* ── fallback：若說明/擬辦仍空，嘗試其他常見 XML 標籤 ── */
+  if (!data.content) {
+    const gAll = (...sels) => {
+      for (const s of sels) {
+        try {
+          const els = doc.querySelectorAll(s);
+          if (els.length) {
+            const t = Array.from(els).map(e=>e.textContent.trim()).filter(Boolean).join('\n');
+            if (t) return t;
+          }
+        } catch(e) {}
+      }
+      return '';
+    };
+    data.content = gAll('說明','Content','Body','正文','CONTENT','BODY');
+  }
+  if (!data.proposal) {
+    try {
+      const els = doc.querySelectorAll('擬辦, Proposal, Opinion');
+      if (els.length) data.proposal = Array.from(els).map(e=>e.textContent.trim()).filter(Boolean).join('\n');
+    } catch(e) {}
+  }
+
+  /* ── 若全部正文仍空，回退純文字解析 ── */
+  if (!data.subject && !data.content && !data.proposal) {
+    const plain = parsePlain(doc.documentElement.textContent);
+    return { ...data, ...plain };
+  }
+
+  return data;
+}
+
+/* ── Plain text parser ── */
+function parsePlain(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const data = {
+    orgName:'', docNo:'', docDate:'', receiveOrg:'', secretLevel:'',
+    urgentLevel:'', title:'', subject:'', content:'', proposal:'', remark:'',
+    contact:'', phone:'', email:'', attachments:[]
+  };
+
+  const patterns = [
+    { key:'orgName',     re:/^(?:發文機關|機關名稱|發文單位|機\s*關)[：:]\s*(.+)/ },
+    { key:'docNo',       re:/^(?:文\s*號|公文文號|發文字號|字\s*號)[：:]\s*(.+)/ },
+    { key:'docDate',     re:/^(?:發文日期|日\s*期|Date)[：:]\s*(.+)/i },
+    { key:'receiveOrg',  re:/^(?:收文機關|受文者|收文單位|受\s*文)[：:]\s*(.+)/ },
+    { key:'secretLevel', re:/^(?:密\s*等|保密等級|機密)[：:]\s*(.+)/ },
+    { key:'urgentLevel', re:/^(?:速\s*別|緊急程度|時效)[：:]\s*(.+)/ },
+    { key:'title',       re:/^(?:標\s*題|公文標題)[：:]\s*(.+)/ },
+    /* 主旨：後面可能接完整句子，整行擷取 */
+    { key:'subject',     re:/^主\s*旨[：:]\s*(.+)/ },
+    /* 擬辦可能是單行 */
+    { key:'proposal',    re:/^擬\s*辦[：:]\s*(.+)/ },
+    { key:'remark',      re:/^(?:備\s*註|附\s*記)[：:]\s*(.+)/ },
+    { key:'contact',     re:/^(?:聯絡人|承辦人|承辦單位)[：:]\s*(.+)/ },
+    { key:'phone',       re:/^(?:電\s*話|分機|聯絡電話)[：:]\s*(.+)/ },
+    { key:'email',       re:/^(?:電子郵件|E-?mail)[：:]\s*(.+)/i },
+  ];
+
+  /* 段落型關鍵字 */
+  const SECTION_RE = /^(說\s*明|正\s*文|擬\s*辦|附\s*件|辦\s*法|依\s*據|理\s*由)[：:]/;
+  /* 短欄位終結判斷：1~6 中文字後接冒號且整行短 */
+  const FIELD_END_RE = /^[\u4e00-\u9fff\s]{1,6}[：:]/;
+  /* 數字 / 項目符號開頭（屬於段落內容，不視為新欄位） */
+  const ITEM_RE = /^[\d一二三四五六七八九十]+[.、．)）]\s*/;
+
+  let inSection = '';
+  const buf = { content: [], proposal: [], attachments: [] };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    /* 先檢查段落起始關鍵字 */
+    const secM = line.match(SECTION_RE);
+    if (secM) {
+      const secKey = secM[1].replace(/\s/g, '');
+      if      (/說明|正文/.test(secKey))        inSection = 'content';
+      else if (/擬辦/.test(secKey))             inSection = 'proposal';
+      else if (/附件/.test(secKey))             inSection = 'attachments';
+      else if (/辦法|依據|理由/.test(secKey))   inSection = 'content';
+
+      const after = line.replace(SECTION_RE, '').trim();
+      if (after) {
+        const push = /辦法|依據|理由/.test(secKey) ? `【${secKey}】${after}` : after;
+        buf[inSection]?.push(push);
+      }
+      continue;
+    }
+
+    /* 單行欄位比對 */
+    let matched = false;
+    for (const p of patterns) {
+      const m = line.match(p.re);
+      if (m) {
+        /* 若已在 proposal 緩衝且比對到 proposal 欄位，改用追加模式（多行擬辦） */
+        if (p.key === 'proposal' && inSection === 'proposal') {
+          buf.proposal.push(m[1].trim());
+          matched = true; break;
+        }
+        data[p.key] = m[1].trim();
+        inSection = '';
+        matched = true;
+        break;
+      }
+    }
+    if (matched) continue;
+
+    /* 段落內容收集 */
+    if (inSection && buf[inSection] !== undefined) {
+      /* 數字/項目符號開頭 → 一定是段落內容，不中斷 */
+      if (ITEM_RE.test(line)) {
+        buf[inSection].push(line);
+        continue;
+      }
+      /* 遇到短欄位標籤 → 結束當前段落，回退重新判斷 */
+      if (FIELD_END_RE.test(line) && line.length < 18) {
+        inSection = ''; i--;
+        continue;
+      }
+      const cleaned = inSection === 'attachments'
+        ? line.replace(/^\d+[.、．]\s*/, '').trim()
+        : line;
+      if (cleaned) buf[inSection].push(cleaned);
+    }
+  }
+
+  data.content  = buf.content.join('\n');
+  data.proposal = buf.proposal.join('\n');
+  data.attachments = buf.attachments.filter(Boolean);
+
+  /* 若未解析到標題，取第一行有意義的文字 */
+  if (!data.title && !data.subject) {
+    const first = lines.find(l => !/[：:]/.test(l) && l.length > 4 && l.length < 60);
+    if (first) data.title = first;
+  }
+
+  /* 從全文偵測公文字號 */
+  if (!data.docNo) {
+    const m = text.match(/[\u4e00-\u9fff]+字第\s*([\d一二三四五六七八九零〇]+)\s*號/);
+    if (m) data.docNo = m[0];
+  }
+
+  /* 從全文偵測民國年日期 */
+  if (!data.docDate) {
+    const m = text.match(/(?:民國)?\s*(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+    if (m) data.docDate = `民國 ${m[1]} 年 ${m[2]} 月 ${m[3]} 日`;
+  }
+
+  /* 從全文偵測收文機關 */
+  if (!data.receiveOrg) {
+    const m = text.match(/受文者[：:]\s*([^\n\r]{2,30})/);
+    if (m) data.receiveOrg = m[1].trim();
+  }
+
+  return data;
+}
+
+/* ── render ── */
+function renderPreview(d, raw, fmt, isPDF) {
+  /* 標題列只顯示 title；若無則顯示預設文字 */
+  const orgName  = d.orgName  || '（機關名稱）';
+  /* 簽類公文無獨立標題，以主旨前 30 字作為標題列顯示 */
+  const docTitle = d.title
+    || (d.subject ? d.subject.slice(0, 30) + (d.subject.length > 30 ? '…' : '') : '（公文標題）');
+
+  const secBadge = d.secretLevel
+    ? `<span class="badge badge-red">${esc(d.secretLevel)}</span>`
+    : '<span class="badge badge-stone">一般</span>';
+  const urgBadge = d.urgentLevel
+    ? `<span class="badge badge-gold">${esc(d.urgentLevel)}</span>`
+    : '<span class="badge badge-stone">普通件</span>';
+
+  /* 格式標籤 */
+  const fmtMap = { xml:'XML / DI 格式', text:'純文字格式', pdf:'PDF 文字型' };
+  const fmtCls = { xml:'xml', text:'text', pdf:'pdf' };
+  const fmtTag = `<div class="format-tag-bar">
+    <span class="format-tag ${fmtCls[fmt]||'text'}">${fmtMap[fmt]||'文字格式'}</span>
+    <span>自動判斷格式</span>
+  </div>`;
+
+  /* PDF 說明提示 */
+  const pdfNotice = isPDF ? `<div class="pdf-notice">
+    <span class="pdf-notice-icon">ℹ️</span>
+    <span>已從 PDF 擷取文字內容進行解析。若結果有誤，可切換至底部「原始內容」比對完整文字。掃描影像型 PDF 無法擷取文字，請改用文字版 PDF。</span>
+  </div>` : '';
+
+  /* 正文各段 helper */
+  const section = (titleStr, bodyHtml) => `
+    <div class="doc-section">
+      <div class="doc-section-title">${titleStr}</div>
+      <div class="doc-section-content">${bodyHtml}</div>
+    </div>`;
+
+  /* 主旨 */
+  const subjectHTML = d.subject
+    ? section('主旨', esc(d.subject).replace(/\n/g,'<br>'))
+    : '';
+
+  /* 說明 */
+  const contentHTML = d.content
+    ? section('說明', esc(d.content).replace(/\n/g,'<br>'))
+    : '';
+
+  /* 擬辦 */
+  const proposalHTML = d.proposal
+    ? section('擬辦', esc(d.proposal).replace(/\n/g,'<br>'))
+    : '';
+
+  /* 正文全空時的提示 */
+  const emptyHTML = (!d.subject && !d.content && !d.proposal) ? `
+    <div class="empty-state">
+      <div class="empty-state-icon">📋</div>
+      <div class="empty-state-text">未能從檔案中擷取正文內容<br>請確認格式，或查看底部「原始內容」</div>
+    </div>` : '';
+
+  /* 附件清單 */
+  let attachHTML = '';
+  if (d.attachments?.length) {
+    attachHTML = `<div class="doc-section">
+      <div class="doc-section-title">附件清單</div>
+      <ul class="attachment-list">${d.attachments.map((a, i) => `
+        <li class="attachment-item"><span>📎</span><span>${i + 1}. ${esc(a)}</span></li>`).join('')}
+      </ul></div>`;
+  }
+
+  /* 聯絡資訊 */
+  let contactHTML = '';
+  const cItems = [
+    d.contact ? { l:'聯絡人', v:d.contact } : null,
+    d.phone   ? { l:'聯絡電話', v:d.phone } : null,
+    d.email   ? { l:'Email', v:d.email }   : null,
+  ].filter(Boolean);
+  if (cItems.length) {
+    contactHTML = `<div class="doc-section">
+      <div class="doc-section-title">聯絡資訊</div>
+      <div class="contact-grid">${cItems.map(it => `
+        <div class="contact-item">
+          <div class="contact-item-label">${esc(it.l)}</div>
+          <div class="contact-item-value">${esc(it.v)}</div>
+        </div>`).join('')}
+      </div></div>`;
+  }
+
+  /* 備註 */
+  const remarkHTML = d.remark
+    ? section('備註', esc(d.remark).replace(/\n/g,'<br>'))
+    : '';
+
+  container.innerHTML = `
+  ${fmtTag}
+  ${pdfNotice}
+  <div class="doc-preview">
+    <div class="doc-header-bar">
+      <div class="doc-org-name">${esc(orgName)}</div>
+      <div class="doc-seal">正本<br>機關印</div>
+    </div>
+    <div class="doc-title-area">
+      <div class="doc-doc-type">公　　文</div>
+      <div class="doc-main-title">${esc(docTitle)}</div>
+    </div>
+    <div class="doc-meta-grid">
+      <div class="meta-row"><span class="meta-label">文號</span><span class="meta-value">${esc(d.docNo) || '—'}</span></div>
+      <div class="meta-row"><span class="meta-label">日期</span><span class="meta-value">${esc(d.docDate) || '—'}</span></div>
+      <div class="meta-row"><span class="meta-label">發文機關</span><span class="meta-value">${esc(d.orgName) || '—'}</span></div>
+      <div class="meta-row"><span class="meta-label">收文機關</span><span class="meta-value">${esc(d.receiveOrg) || '—'}</span></div>
+      <div class="meta-row"><span class="meta-label">密等</span><span class="meta-value">${secBadge}</span></div>
+      <div class="meta-row"><span class="meta-label">速別</span><span class="meta-value">${urgBadge}</span></div>
+    </div>
+    <div class="doc-divider"></div>
+    <div class="doc-body">
+      ${subjectHTML}
+      ${contentHTML}
+      ${proposalHTML}
+      ${emptyHTML}
+      ${attachHTML}${contactHTML}${remarkHTML}
+    </div>
+    <div class="raw-toggle-bar">
+      <span class="raw-toggle-label">原始檔案內容</span>
+      <button class="toggle-btn" id="rawBtn" onclick="toggleRaw()">顯示原始內容</button>
+    </div>
+    <div class="raw-content" id="rawContent">
+      <pre class="raw-pre">${esc(raw)}</pre>
+    </div>
+  </div>`;
+}
+
+function toggleRaw() {
+  const raw = document.getElementById('rawContent');
+  const btn = document.getElementById('rawBtn');
+  const on = raw.classList.toggle('visible');
+  btn.classList.toggle('active', on);
+  btn.textContent = on ? '隱藏原始內容' : '顯示原始內容';
+}
+
+function showErr(msg) {
+  errorBox.textContent = msg;
+  errorBox.style.display = 'block';
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
