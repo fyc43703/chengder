@@ -32,7 +32,6 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* 調整容器寬度至螢幕 2/3 (約 70%) */
   .container {
     max-width: 1400px;
     width: 70%;
@@ -401,6 +400,7 @@ btnParse.onclick = async () => {
     btnExport.style.display = "inline-flex";
     parseStatus.textContent = "解析完成 ✓";
   } catch (err) {
+    console.error(err);
     parseStatus.textContent = "解析失敗";
     showError("錯誤回報: " + err.message);
   } finally {
@@ -411,9 +411,6 @@ btnParse.onclick = async () => {
 btnClear.onclick = () => location.reload();
 btnExport.onclick = handleExportRTF;
 
-/**
- * 恢復為穩定的 PDF 文字擷取邏輯（回歸排序法，避免文字遺漏與破碎）
- */
 async function extractPdfText(file) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -424,33 +421,21 @@ async function extractPdfText(file) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
     
-    // 雜訊過濾器：過濾裝訂線、頁碼、條碼文件號、交換章資訊
     const filteredItems = content.items.filter(item => {
       const s = item.str.trim();
       if (!s) return false;
       const pure = s.replace(/\s/g, '');
-
-      // A. 過濾裝訂線與單純點號
       if (/^[‧\.\u2027裝訂線]+$/.test(pure)) return false;
-
-      // B. 徹底過濾頁碼格式 (例如: 第 1 頁，共 2 頁; 42第 2 頁，共 2 頁)
       if (/(?:\d*第\s*\d+\s*頁\s*[,，]?\s*共\s*\d+\s*頁)/.test(s)) return false;
-
-      // C. 過濾條碼上下文字與文件編號 (例如: 捷工管處 1150312; *AXAR1154000704*)
       if (/(?:\*?[A-Z]{2,}\d+\*?|捷工管處\s*\d+|工務管理處\s*\d+)/.test(s)) return false;
-
-      // D. 過濾電子公文交換章、時間戳記與圖中數字 (例如: 2026/03/12 08:59:04)
       if (/(?:電子公文交換章|交\s*換\s*章|\d{4}\/\d{2}\/\d{2}\s*\d{2}:\d{2}:\d{2})/.test(s)) return false;
-
       return true;
     });
 
-    // 使用穩定的 Y 座標排序法 (Sequential Sorting)
     const items = filteredItems.sort((a, b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4]);
     let lastY = -1;
     let pageText = "";
     items.forEach(item => {
-      // 若 Y 座標差異超過 6px 視為換行，確保文字連貫不破碎
       if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 6) pageText += "\n";
       pageText += item.str;
       lastY = item.transform[5];
@@ -475,10 +460,37 @@ function readTextSmart(file) {
   });
 }
 
+/**
+ * 智慧過濾單位列表中的郵遞區號、地址與電子交換雜訊
+ * 修改：僅精準移除「電子+地址」塊，保留單位備註（如：含附件）
+ */
+function cleanOrgList(s) {
+  if (!s) return "";
+  
+  // 1. 預處理分隔符，統一使用「、」
+  let raw = s.replace(/\n/g, '、').replace(/抄本\s*[：:]/g, '、').replace(/[\s,，]+/g, '、');
+  
+  // 2. 仿效 PDF 解析的穩定性：精準過濾電子雜訊
+  // 我們要把「電子」後面的郵遞區號、地址資訊移除，直到遇到下一段或結尾。
+  // 此正則表達式會鎖定「電子」關鍵字後方的長串數字與地址中文字。
+  let cleaned = raw.replace(/電子\s*\d{3,6}\s*[\u4e00-\u9fa5\d\-號樓之]+\s*[A-Z]?/g, '');
+  
+  // 3. 分割單位
+  let orgs = cleaned.split(/[、]+/)
+    .map(item => item.trim())
+    .filter(item => {
+      // 保留有效長度且不為純雜訊的項
+      return item.length >= 2 && !/^\d+$/.test(item);
+    });
+
+  return Array.from(new Set(orgs)).join('、');
+}
+
 function parseXML(text) {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(text, "text/xml");
   const getTagValue = (tagName) => xmlDoc.getElementsByTagName(tagName)[0]?.textContent.trim() || "";
+  
   const recursiveText = (node) => {
     if (!node) return "";
     let res = "";
@@ -493,6 +505,7 @@ function parseXML(text) {
     });
     return res;
   };
+
   const getSec = (tag, attr) => {
     const s = xmlDoc.getElementsByTagName(tag)[0];
     if (s && s.textContent.trim()) return recursiveText(s).trim();
@@ -500,6 +513,38 @@ function parseXML(text) {
     for (let p of ps) if ((p.getAttribute("段名") || "").includes(attr)) return recursiveText(p).trim();
     return "";
   };
+
+  /**
+   * 模仿 PDF 解析的「直覺抓取」：
+   * 在 XML 中，單位名稱通常直接存在於 <單位> 的 <文字> 標籤中。
+   * 直接抓取文字標籤能避免處理包含地址的雜訊。
+   */
+  const getOrgListFromXML = (tagName) => {
+    const nodes = xmlDoc.getElementsByTagName(tagName);
+    if (nodes.length === 0) return "";
+    let results = [];
+    for (let node of nodes) {
+      // DI 檔標準：正副本單位下通常有 <單位> -> <文字>
+      const unitNodes = node.getElementsByTagName("單位");
+      if (unitNodes.length > 0) {
+        for (let un of unitNodes) {
+          const txt = un.getElementsByTagName("文字")[0];
+          if (txt) results.push(txt.textContent.trim());
+          else results.push(cleanOrgList(un.textContent.trim()));
+        }
+      } else {
+        // 如果沒有單位層級，嘗試尋找純文字標籤
+        const textNodes = node.getElementsByTagName("文字");
+        if (textNodes.length > 0) {
+          for (let tn of textNodes) results.push(tn.textContent.trim());
+        } else {
+          results.push(cleanOrgList(node.textContent.trim()));
+        }
+      }
+    }
+    return Array.from(new Set(results)).filter(i => i).join('、');
+  };
+
   const isSign = xmlDoc.documentElement.localName === "簽" || text.includes("簽於");
   const data = {
     orgName: getTagValue("全銜") || getTagValue("發文機關") || getTagValue("簽於"),
@@ -508,12 +553,16 @@ function parseXML(text) {
     docDate: getTagValue("發文日期") || getTagValue("年月日"),
     fileNo: getTagValue("檔號"), keepYear: getTagValue("保存年限"),
     address: getTagValue("地址"), contact: getTagValue("承辦人"),
-    originalCopy: getTagValue("正本"), carbonCopy: getTagValue("副本"),
+    originalCopy: getOrgListFromXML("正本"), 
+    carbonCopy: getOrgListFromXML("副本"),
     phone: "", fax: "", email: "", priority: getTagValue("速別") || "普通件",
     secret: getTagValue("密等及解密條件或保密期限") || "普通",
     subject: getSec("主旨", "主旨"), content: getSec("說明", "說明"),
-    proposal: getSec("擬辦", "擬辦"), attachments: [], receiveOrg: getTagValue("受文者")
+    proposal: getSec("擬辦", "擬辦"), 
+    attachments: [], 
+    receiveOrg: getOrgListFromXML("受文者")
   };
+
   const ct = xmlDoc.getElementsByTagName("聯絡方式")[0];
   if (ct) {
     const s = ct.textContent;
@@ -522,8 +571,14 @@ function parseXML(text) {
     const em = s.match(/電子信箱[：: ]*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
     data.phone = ph ? ph[1] : ""; data.fax = fx ? fx[1] : ""; data.email = em ? em[1] : "";
   }
+
   const atts = xmlDoc.getElementsByTagName("附件");
-  for (let a of atts) data.attachments.push((a.getElementsByTagName("文字")[0] || a).textContent.trim());
+  for (let a of atts) {
+    const textNode = a.getElementsByTagName("文字")[0] || a;
+    data.attachments.push(textNode.textContent.trim());
+  }
+  data.attachments = data.attachments.join('\n').trim();
+  
   return data;
 }
 
@@ -546,7 +601,6 @@ function parseSmart(text) {
     let cur = l.trim(); if (!cur) return;
     let ms = []; 
     lbls.forEach(b => {
-      // 容許標籤文字間含空格，提高對 PDF 文字的識別
       let regex = new RegExp(b.split('').join('\\s*'), 'g');
       let m;
       while ((m = regex.exec(cur)) !== null) {
@@ -578,7 +632,7 @@ function parseSmart(text) {
     { k:'fax', r:/(?:傳\s*真)\s*[：:]\s*(.*)/ },
     { k:'email', r:/(?:電\s*子\s*信\s*箱|Email)\s*[：:]\s*(.*)/i },
     { k:'priority', r:/(?:速\s*別)\s*[：:]\s*(.*)/ },
-    { k:'secret', r:/(?:密\s*等\s*及\s*解\s*密\s*條\s*件\s*或\s*保\s*密\s*期\s*限|密\s*等)\s*[：:]\s*(.*)/ },
+    { k:'secret', r:/(?:密\s*等\s*及\s*解\s*密\s*條\s*條件\s*或\s*保\s*密\s*期\s*限|密\s*等)\s*[：:]\s*(.*)/ },
     { k:'receiveOrg', r:/(?:受\s*文\s*者)\s*[工作]?者?\s*[：:]?\s*(.*)/ },
     { k:'originalCopy', r:/(?:正\s*本)\s*[：:]\s*(.*)/ },
     { k:'carbonCopy', r:/(?:副\s*本)\s*[：:]\s*(.*)/ },
@@ -635,12 +689,11 @@ function parseSmart(text) {
   data.proposal = data.proposal.join('\n').trim();
   data.attachments = data.attachments.join('\n').trim();
   
-  // 修正：掃除正、副本末尾單個字母或數字雜訊
-  const cleanOrgList = (s) => s.replace(/\s*[a-zA-Z0-9]\s*$/, '').trim();
+  // 智慧清洗正副本與受文者列表
   data.originalCopy = cleanOrgList(data.originalCopy);
   data.carbonCopy = cleanOrgList(data.carbonCopy);
+  data.receiveOrg = cleanOrgList(data.receiveOrg);
 
-  // 修正：深度掃除擬辦中的行政與頁底雜訊
   data.proposal = data.proposal
     .replace(/(?:\d*第\s*\d+\s*頁\s*[,，]?\s*共\s*\d+\s*頁)/g, '')
     .replace(/敬陳會辦單位：/g, '')
@@ -651,9 +704,6 @@ function parseSmart(text) {
   return data;
 }
 
-/**
- * 徹底解決 RTF 亂碼的 Unicode 轉換函式
- */
 function toRTFUnicode(str) {
   if (!str) return "";
   let res = "";
@@ -690,8 +740,6 @@ function handleExportRTF() {
   rtf += `${toRTFUnicode("密等條件：" + d.secret)}\\par\n`;
   rtf += `${toRTFUnicode("承辦人：" + (d.contact || "—"))}\\par\n`;
   rtf += `${toRTFUnicode("地址：" + (d.address || "—"))}\\par\n`;
-  
-  // 修正：在 RTF 中也將受文者與附件欄位加入固定位置
   rtf += `${toRTFUnicode("受文者：" + (d.receiveOrg || "—"))}\\par\n`;
   rtf += `${toRTFUnicode("附件：" + (d.attachments || "—"))}\\par\\par\n`;
   
@@ -714,7 +762,7 @@ function handleExportRTF() {
   const u = URL.createObjectURL(b);
   const a = document.createElement('a'); 
   a.href = u; 
-  a.download = `公文稿_${d.docNo.slice(0,10) || "解析"}.rtf`; 
+  a.download = `公文稿_${String(d.docNo).slice(0,10) || "解析"}.rtf`; 
   a.click();
   URL.revokeObjectURL(u);
 }
@@ -722,7 +770,7 @@ function handleExportRTF() {
 function formatParagraphs(text) {
   if (!text) return "";
   const itemR = /^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+、|\([一二三四五六七八九十]+\)|[0-9]+[\.、]|第[一二三四五六七八九十]+[頁步])/;
-  const lines = Array.isArray(text) ? text : text.split('\n');
+  const lines = Array.isArray(text) ? text : String(text).split('\n');
   return lines.map(line => {
     const trimmed = line.trim();
     const isItem = itemR.test(trimmed);
@@ -731,6 +779,10 @@ function formatParagraphs(text) {
 }
 
 function render(d, raw) {
+  const attachmentText = (d.attachments && typeof d.attachments === 'string' && d.attachments.trim() !== "") 
+                         ? d.attachments 
+                         : (Array.isArray(d.attachments) && d.attachments.length > 0) ? d.attachments.join('\n') : "";
+
   const html = `
     <div class="doc-paper">
       <div class="doc-header">
@@ -754,16 +806,14 @@ function render(d, raw) {
         ${d.fileNo ? `<div class="meta-item"><span class="meta-key">檔號</span><span class="meta-val">${esc(d.fileNo)}</span></div>` : ''}
         ${d.keepYear ? `<div class="meta-item"><span class="meta-key">保存年限</span><span class="meta-val">${esc(d.keepYear)}</span></div>` : ''}
         
-        <!-- 固定受文者欄位 -->
         <div class="meta-item" style="grid-column: span 2">
           <span class="meta-key">受文者</span>
           <span class="meta-val" style="font-weight:700">${esc(d.receiveOrg) || '—'}</span>
         </div>
         
-        <!-- 修正：附件欄位固定呈現在受文者下方，且若無資料顯示佔位符 — -->
         <div class="meta-item" style="grid-column: span 2">
           <span class="meta-key">附件</span>
-          <div class="meta-val" style="color:var(--nature-green-main)">${(d.attachments && d.attachments.trim() !== "") ? formatParagraphs(d.attachments) : '—'}</div>
+          <div class="meta-val" style="color:var(--nature-green-main)">${attachmentText ? formatParagraphs(attachmentText) : '—'}</div>
         </div>
       </div>
       <div class="doc-content-area">
@@ -771,13 +821,12 @@ function render(d, raw) {
         ${d.content ? `<div class="section-block"><div class="section-tag">說明</div><div class="section-text">${formatParagraphs(d.content)}</div></div>` : ''}
         ${d.proposal ? `<div class="section-block"><div class="section-tag">擬辦</div><div class="section-text">${formatParagraphs(d.proposal)}</div></div>` : ''}
         
-        <!-- 正本與副本區塊 -->
-        ${d.originalCopy ? `<div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#2D3436; font-size:14px; margin-bottom:5px;">正本</div><div class="section-text" style="line-height:1.4; border-left:none;">${esc(d.originalCopy)}</div></div>` : ''}
-        ${d.carbonCopy ? `<div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#2D3436; font-size:14px; margin-bottom:5px;">副本</div><div class="section-text" style="line-height:1.4; border-left:none;">${esc(d.carbonCopy)}</div></div>` : ''}
+        ${d.originalCopy ? `<div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px;">正本</div><div class="section-text" style="line-height:1.6; border-left:none; font-weight:500;">${esc(d.originalCopy)}</div></div>` : ''}
+        ${d.carbonCopy ? `<div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#2D3436; font-size:14px; margin-bottom:5px;">副本</div><div class="section-text" style="line-height:1.6; border-left:none; font-weight:500;">${esc(d.carbonCopy)}</div></div>` : ''}
       </div>
       <div class="raw-footer">
-        <span class="raw-label">提醒：本文件經系統解析排版處理，仍可能存有誤植或亂碼情形，請詳加核對，以確保內容正確無誤。</span>
-        <button class="raw-toggle" onclick="document.getElementById('rawView').classList.toggle('visible')">請查核匯入檔之原始內容並進行比對</button>
+        <span class="raw-label">提醒：本文件經系統解析排版處理，仍可能存有誤植或亂碼情形，請詳加核對。</span>
+        <button class="raw-toggle" onclick="document.getElementById('rawView').classList.toggle('visible')">查看原始匯入內容</button>
       </div>
       <div id="rawView">${esc(raw)}</div>
     </div>
