@@ -194,7 +194,8 @@
   .doc-header {
     background: var(--nature-green-deep);
     color: white;
-    padding: 30px 48px;
+    /* 已依照需求將原本的 30px 改為 12px，使垂直間距最小化 */
+    padding: 12px 48px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -313,7 +314,8 @@
   </header>
 
   <div class="glass-card">
-    <div class="upload-area">
+    <!-- 新增 id="uploadArea" 讓 JS 可以控制隱藏 -->
+    <div class="upload-area" id="uploadArea">
       <div class="drop-zone" id="dropZone">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/>
@@ -370,6 +372,7 @@ const docContainer = document.getElementById('docContainer');
 const parseStatus = document.getElementById('parseStatus');
 const errorBox = document.getElementById('errorBox');
 const fileInfoArea = document.getElementById('fileInfoArea');
+const uploadArea = document.getElementById('uploadArea'); // 新增：宣告上傳區塊
 
 let currentFile = null;
 let lastParsedData = null;
@@ -417,6 +420,10 @@ btnParse.onclick = async () => {
     previewSection.classList.add('visible');
     btnExport.style.display = "inline-flex"; 
     parseStatus.textContent = "解析完成 ✓";
+    
+    // 解析完成後隱藏上傳區塊
+    uploadArea.style.display = "none";
+    
   } catch (err) {
     console.error(err);
     parseStatus.textContent = "解析失敗";
@@ -426,7 +433,7 @@ btnParse.onclick = async () => {
   }
 };
 
-btnClear.onclick = () => location.reload();
+btnClear.onclick = () => location.reload(); // 重設畫面(重載網頁)，會自動恢復所有區塊顯示
 btnExport.onclick = handleExportRTF;
 
 async function extractPdfText(file) {
@@ -839,7 +846,7 @@ function render(d, raw) {
         ${d.carbonCopy ? `<div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#2D3436; font-size:14px; margin-bottom:5px;">副本</div><div class="section-text" style="line-height:1.6; border-left:none; font-weight:500;">${esc(d.carbonCopy)}</div></div>` : ''}
       </div>
       <div class="raw-footer">
-        <span class="raw-label">※ 提醒：本文件經系統自動解析排版，仍可能有誤植或亂碼情形，請詳加核對。</span>
+        <span class="raw-label">※ 提醒：本文件經系統自動解析，仍可能有排版誤植或亂碼情形，務必詳加核對。</span>
         <button class="raw-toggle" onclick="document.getElementById('rawView').classList.toggle('visible')">→查看原始檔匯入內容</button>
       </div>
       <div id="rawView">${esc(raw)}</div>
