@@ -487,7 +487,9 @@ function readTextSmart(file) {
 
 function cleanOrgList(s) {
   if (!s) return "";
-  let raw = s.replace(/\n/g, '、').replace(/抄本\s*[：:]/g, '、').replace(/[\s,，]+/g, '、');
+  // 修正：偵測機關名稱接連在一起的情況，於結尾關鍵字與下一個機關開頭之間補上「、」
+  let text = s.replace(/(局|處|署|所|司|室|府|部|會|院|中心|公司)(?=[臺台縣市各])/g, '$1、');
+  let raw = text.replace(/\n/g, '、').replace(/抄本\s*[：:]/g, '、').replace(/[\s,，]+/g, '、');
   let cleaned = raw.replace(/電子\s*\d{3,6}\s*[\u4e00-\u9fa5\d\-號樓之]+\s*[A-Z]?/g, '');
   let orgs = cleaned.split(/[、]+/)
     .map(item => item.replace(/\s*(?:第\s*)?\d+(?:\s*頁)?\s*$/, '').trim())
