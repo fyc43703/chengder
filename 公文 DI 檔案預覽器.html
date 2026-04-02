@@ -267,6 +267,7 @@
   }
   .section-tag::before { content: ''; width: 6px; height: 20px; background: var(--seal-red); border-radius: 3px; }
   
+  /* 更新 Section Text，改以區塊控制 */
   .section-text {
     font-size: 18.5px; 
     line-height: 1.8; 
@@ -274,14 +275,22 @@
     text-align: justify;
     padding-left: 18px;
     border-left: 3px solid #F0F3F0;
+    min-height: 1.8em;
+    outline: none; /* 移除點擊時黑框 */
   }
 
-  .paragraph-line { margin-bottom: 4px; }
-  
-  /* Flexbox 完美對齊清單樣式 */
-  .list-item { display: flex; align-items: flex-start; }
-  .list-prefix { flex-shrink: 0; white-space: pre; }
-  .list-content { flex: 1; text-align: justify; }
+  /* ---------------- 新增：段落凸排與延續行對齊樣式 ---------------- */
+  .doc-line-item {
+    padding-left: 2em;   /* 整體向右縮排 2 個字元寬度 */
+    text-indent: -2em;   /* 將首行（即標號一、(一) 等）反向拉回左側 */
+    margin-bottom: 2px;
+  }
+
+  .doc-line-cont {
+    padding-left: 2em;   /* 沒有標號的延續行，直接對齊縮排位置 */
+    margin-bottom: 2px;
+  }
+  /* ---------------------------------------------------------------- */
 
   .raw-footer {
     padding: 15px 50px;
@@ -304,6 +313,35 @@
     overflow-y: auto;
   }
   #rawView.visible { display: block; }
+
+  [contenteditable="true"] {
+    outline: none;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    padding: 2px 6px;
+    margin: -2px -6px;
+    min-width: 20px;
+    display: inline-block;
+  }
+  
+  [contenteditable="true"]:hover {
+    background: rgba(0, 122, 255, 0.08);
+    box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.2);
+  }
+  
+  [contenteditable="true"]:focus {
+    background: #fff;
+    box-shadow: 0 0 0 2px var(--apple-blue);
+    z-index: 10;
+    position: relative;
+  }
+
+  [contenteditable="true"]:empty::before {
+    content: '（點擊輸入）';
+    color: #B0B0B5;
+    pointer-events: none;
+    font-style: italic;
+  }
 
   @media(max-width: 768px) {
     .container { width: 95%; }
@@ -443,7 +481,7 @@ btnParse.onclick = async () => {
     previewSection.classList.add('visible');
     btnExport.style.display = "inline-flex"; 
     btnExportDI.style.display = "inline-flex";
-    parseStatus.textContent = "解析完成 ✓";
+    parseStatus.textContent = "解析完成 ✓ ";
     
     uploadArea.style.display = "none";
     
@@ -459,6 +497,28 @@ btnParse.onclick = async () => {
 btnClear.onclick = () => location.reload();
 btnExport.onclick = handleExportRTF;
 btnExportDI.onclick = handleExportDI;
+
+// 資料雙向綁定與純文字攔截
+docContainer.addEventListener('input', (e) => {
+  const target = e.target;
+  if (target.hasAttribute('contenteditable') && target.hasAttribute('data-key')) {
+    const key = target.getAttribute('data-key');
+    if (key && lastParsedData) {
+      // innerText 能完美處理換行與內部 div 結構，去掉多餘的結尾換行符號
+      lastParsedData[key] = target.innerText.replace(/\n$/, ''); 
+    }
+  }
+});
+
+// 防止使用者貼上帶有 HTML 格式（如粗體、圖片、表格）的內容，強制轉純文字
+docContainer.addEventListener('paste', (e) => {
+  const target = e.target;
+  if (target.hasAttribute('contenteditable')) {
+    e.preventDefault();
+    const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+  }
+});
 
 async function extractPdfText(file) {
   const arrayBuffer = await file.arrayBuffer();
@@ -692,7 +752,6 @@ function parseSmart(text) {
   ];
   
   let curSec = null; 
-  /* 支援全形括號（一）與半形括號(一)的層級判斷 */
   const itemR = /^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+、|[\(（][一二三四五六七八九十]+[\)）]|[0-9]+[\.、]|第[一二三四五六七八九十]+[頁步])/;
   
   procs.forEach(l => {
@@ -840,7 +899,7 @@ function handleExportRTF() {
   rtf += `{\\colortbl ;\\red27\\green67\\blue50;\\red215\\green0\\blue21;}\\viewkind4\\uc1\\lang1028\n`;
   rtf += `\\pard\\qc\\f0\\fs44\\b ${toRTFUnicode(d.orgName)}\\b0\\par\n`;
   rtf += `\\pard\\qc\\f0\\fs22\\cf1 ${toRTFUnicode(d.docType)}\\cf0\\par\n`;
-  rtf += `\\pard\\qc\\f0\\fs34\\b ${toRTFUnicode(d.subject || "標題摘要")}\\b0\\par\\par\n`;
+  rtf += `\\pard\\qc\\f0\\fs34\\b ${toRTFUnicode(d.subjectTitle || d.subject || "標題摘要")}\\b0\\par\\par\n`;
   rtf += `\\pard\\f0\\fs24\\b ${toRTFUnicode("【公文資訊】")}\\b0\\par\n`;
   rtf += `${toRTFUnicode("發文日期：" + (d.docDate || "—"))}\\par\n`;
   rtf += `${toRTFUnicode("發文字號：" + (d.docNo || "—"))}\\par\n`;
@@ -881,73 +940,72 @@ function toRTFUnicode(str) {
   return res;
 }
 
-/* 改為 Flexbox 架構，以精確分離「標號」與「內容」 */
-function formatParagraphs(text) {
+// ----------------- 新增：段落格式化與凸排處理 -----------------
+function formatSectionText(text) {
   if (!text) return "";
-  const itemR = /^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+、|[\(（][一二三四五六七八九十]+[\)）]|[0-9]+[\.、]|第[一二三四五六七八九十]+[頁步])(.*)/;
-  const lines = Array.isArray(text) ? text : String(text).split('\n');
-  
-  return lines.map(line => {
-    const trimmed = line.trim();
-    const match = trimmed.match(itemR);
-    if (match) {
-      // 擷取出 標號(match[1]) 與 剩餘文字(match[2])
-      return `
-        <div class="paragraph-line list-item">
-          <span class="list-prefix">${esc(match[1])}</span>
-          <span class="list-content">${esc(match[2])}</span>
-        </div>`;
+  return text.split('\n').map(line => {
+    let cleanLine = line.trim();
+    if (!cleanLine) return `<div><br></div>`; // 保持空行結構
+    
+    // 匹配公文常見標號：一、 (一) （一） 1. 1、 壹、 等
+    if (/^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+、|[\(（][一二三四五六七八九十]+[\)）]|[0-9]+[\.、])/.test(cleanLine)) {
+      return `<div class="doc-line-item">${esc(cleanLine)}</div>`;
     } else {
-      return `<div class="paragraph-line">${esc(line)}</div>`;
+      // 若無標號（為上一行的接續或純文字），直接做縮排對齊
+      return `<div class="doc-line-cont">${esc(cleanLine)}</div>`;
     }
   }).join('');
 }
+// -----------------------------------------------------------
 
+// 渲染畫面時，加入 contenteditable 與 data-key 來綁定欄位
 function render(d, raw) {
+  // 自動產生第一行當作標題摘要
+  if (!d.subjectTitle) d.subjectTitle = d.subject ? d.subject.split('\n')[0] : '';
+
   const attachmentText = (d.attachments && typeof d.attachments === 'string' && d.attachments.trim() !== "") 
                          ? d.attachments 
                          : (Array.isArray(d.attachments) && d.attachments.length > 0) ? d.attachments.join('\n') : "";
   const html = `
     <div class="doc-paper">
       <div class="doc-header">
-        <div class="doc-org">${esc(d.orgName) || '（機關名稱）'}</div>
+        <div class="doc-org" contenteditable="true" data-key="orgName">${esc(d.orgName)}</div>
         <div class="doc-seal-circle">正本<br>機關印</div>
       </div>
       <div class="doc-title-box">
-        <div class="doc-type-label">公文類別：${esc(d.docType)}</div>
-        <div class="doc-subject-main">${esc(d.subject || '（標題摘要）')}</div>
+        <div class="doc-type-label">公文類別：<span contenteditable="true" data-key="docType" style="letter-spacing:normal;">${esc(d.docType)}</span></div>
+        <div class="doc-subject-main" contenteditable="true" data-key="subjectTitle">${esc(d.subjectTitle)}</div>
       </div>
       <div class="meta-grid">
-        <div class="meta-item"><span class="meta-key">發文日期</span><span class="meta-val">${esc(d.docDate) || '—'}</span></div>
-        <div class="meta-item"><span class="meta-key">發文字號</span><span class="meta-val">${esc(d.docNo) || '—'}</span></div>
-        <div class="meta-item"><span class="meta-key">速別</span><span class="meta-val"><span class="badge-pill badge-blue">${esc(d.priority)}</span></span></div>
-        <div class="meta-item"><span class="meta-key">密等期限</span><span class="meta-val"><span class="badge-pill badge-red">${esc(d.secret)}</span></span></div>
-        <div class="meta-item"><span class="meta-key">承辦人</span><span class="meta-val">${esc(d.contact) || '—'}</span></div>
-        <div class="meta-item"><span class="meta-key">電話</span><span class="meta-val">${esc(d.phone) || '—'}</span></div>
-        <div class="meta-item"><span class="meta-key">傳真</span><span class="meta-val">${esc(d.fax) || '—'}</span></div>
-        <div class="meta-item"><span class="meta-key">電子信箱</span><span class="meta-val">${esc(d.email) || '—'}</span></div>
-        <div class="meta-item" style="grid-column: span 2"><span class="meta-key">地址</span><span class="meta-val">${esc(d.address) || '—'}</span></div>
-        <div class="meta-item"><span class="meta-key">檔號</span><span class="meta-val">${esc(d.fileNo) || '—'}</span></div>
-        <div class="meta-item"><span class="meta-key">保存年限</span><span class="meta-val">10</span></div>
+        <div class="meta-item"><span class="meta-key">發文日期</span><span class="meta-val" contenteditable="true" data-key="docDate">${esc(d.docDate)}</span></div>
+        <div class="meta-item"><span class="meta-key">發文字號</span><span class="meta-val" contenteditable="true" data-key="docNo">${esc(d.docNo)}</span></div>
+        <div class="meta-item"><span class="meta-key">速別</span><span class="meta-val"><span class="badge-pill badge-blue" contenteditable="true" data-key="priority">${esc(d.priority)}</span></span></div>
+        <div class="meta-item"><span class="meta-key">密等期限</span><span class="meta-val"><span class="badge-pill badge-red" contenteditable="true" data-key="secret">${esc(d.secret)}</span></span></div>
+        <div class="meta-item"><span class="meta-key">承辦人</span><span class="meta-val" contenteditable="true" data-key="contact">${esc(d.contact)}</span></div>
+        <div class="meta-item"><span class="meta-key">電話</span><span class="meta-val" contenteditable="true" data-key="phone">${esc(d.phone)}</span></div>
+        <div class="meta-item"><span class="meta-key">傳真</span><span class="meta-val" contenteditable="true" data-key="fax">${esc(d.fax)}</span></div>
+        <div class="meta-item"><span class="meta-key">電子信箱</span><span class="meta-val" contenteditable="true" data-key="email">${esc(d.email)}</span></div>
+        <div class="meta-item" style="grid-column: span 2"><span class="meta-key">地址</span><span class="meta-val" contenteditable="true" data-key="address">${esc(d.address)}</span></div>
+        <div class="meta-item"><span class="meta-key">檔號</span><span class="meta-val" contenteditable="true" data-key="fileNo">${esc(d.fileNo)}</span></div>
+        <div class="meta-item"><span class="meta-key">保存年限</span><span class="meta-val" contenteditable="true" data-key="keepYear">${esc(d.keepYear)}</span></div>
         <div class="meta-item" style="grid-column: span 2">
           <span class="meta-key">受文者</span>
-          <span class="meta-val" style="font-weight:700">${esc(d.receiveOrg) || '—'}</span>
+          <span class="meta-val" style="font-weight:700" contenteditable="true" data-key="receiveOrg">${esc(d.receiveOrg)}</span>
         </div>
         <div class="meta-item" style="grid-column: span 2">
           <span class="meta-key">附件</span>
-          <!-- 移除原先的綠色樣式 (style="color:var(--nature-green-main)")，使其回歸預設黑色 -->
-          <div class="meta-val">${attachmentText ? formatParagraphs(attachmentText) : '—'}</div>
+          <div class="meta-val" contenteditable="true" data-key="attachments">${esc(attachmentText)}</div>
         </div>
       </div>
       <div class="doc-content-area">
-        ${d.subject ? `<div class="section-block"><div class="section-tag">主旨</div><div class="section-text">${formatParagraphs(d.subject)}</div></div>` : ''}
-        ${d.content ? `<div class="section-block"><div class="section-tag">說明</div><div class="section-text">${formatParagraphs(d.content)}</div></div>` : ''}
-        ${d.proposal ? `<div class="section-block"><div class="section-tag">擬辦</div><div class="section-text">${formatParagraphs(d.proposal)}</div></div>` : ''}
-        ${d.originalCopy ? `<div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px;">正本</div><div class="section-text" style="line-height:1.6; border-left:none; font-weight:400;">${esc(d.originalCopy)}</div></div>` : ''}
-        ${d.carbonCopy ? `<div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px;">副本</div><div class="section-text" style="line-height:1.6; border-left:none; font-weight:400;">${esc(d.carbonCopy)}</div></div>` : ''}
+        <div class="section-block"><div class="section-tag">主旨</div><div class="section-text" contenteditable="true" data-key="subject">${formatSectionText(d.subject)}</div></div>
+        <div class="section-block"><div class="section-tag">說明</div><div class="section-text" contenteditable="true" data-key="content">${formatSectionText(d.content)}</div></div>
+        <div class="section-block"><div class="section-tag">擬辦</div><div class="section-text" contenteditable="true" data-key="proposal">${formatSectionText(d.proposal)}</div></div>
+        <div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px;">正本</div><div class="section-text" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="originalCopy">${esc(d.originalCopy)}</div></div>
+        <div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px;">副本</div><div class="section-text" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="carbonCopy">${esc(d.carbonCopy)}</div></div>
       </div>
       <div class="raw-footer">
-        <span class="raw-label">※ 提醒：本文件經系統自動解析，仍可能有排版誤植或亂碼情形，務必詳加核對。</span>
+        <span class="raw-label">※ 提醒：本文件經系統自動解析，仍可能有排版誤植情形，<strong style="color:var(--seal-red);">點擊畫面欄位即可修正</strong>。</span>
         <button class="raw-toggle" onclick="document.getElementById('rawView').classList.toggle('visible')">→查看原始檔匯入內容</button>
       </div>
       <div id="rawView">${esc(raw)}</div>
