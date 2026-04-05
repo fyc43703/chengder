@@ -6,8 +6,9 @@
 <title>電子公文DI檔解析與轉檔平台</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<!-- 引入 Google 的 Diff Match Patch 庫用於文字比對 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
 <style>
   :root {
     --nature-green-deep: #1B4332;
@@ -73,7 +74,20 @@
   .container { max-width: 1400px; width: 70%; margin: 0 auto; animation: slideUpFade 1s cubic-bezier(0.2, 0.8, 0.2, 1); }
   @keyframes slideUpFade { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 
-  .glass-card { background: var(--glass-bg); backdrop-filter: blur(30px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: var(--apple-radius); box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2); }
+  .glass-card { 
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.6)); 
+    backdrop-filter: blur(30px) saturate(180%); 
+    border-top: 1px solid rgba(255, 255, 255, 0.9);
+    border-left: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: var(--apple-radius); 
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1), 0 3px 10px rgba(0, 0, 0, 0.05); 
+  }
+  body.dark-theme .glass-card {
+    background: linear-gradient(145deg, rgba(30, 30, 32, 0.9), rgba(20, 20, 22, 0.8));
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
   .upload-area { padding: 25px 30px; text-align: center; background: rgba(128,128,128,0.05); border-top-left-radius: var(--apple-radius); border-top-right-radius: var(--apple-radius); }
   .drop-zone { border: 2px dashed rgba(45, 106, 79, 0.4); border-radius: 18px; padding: 25px 20px; cursor: pointer; transition: all 0.3s ease; background: rgba(128,128,128,0.05); }
   .drop-zone:hover { border-color: var(--nature-green-main); background: rgba(128,128,128,0.1); transform: scale(1.002); }
@@ -83,42 +97,95 @@
   .file-pill { display: inline-flex; align-items: center; gap: 10px; background: var(--nature-green-main); color: white; padding: 8px 20px; border-radius: 30px; font-size: 14px; font-weight: 600; margin-top: 15px; animation: popIn 0.4s; }
   @keyframes popIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-  .controls { position: sticky; top: 0px; z-index: 100; padding: 8px 45px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; background: var(--glass-bg); backdrop-filter: blur(25px); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+  .controls { 
+    position: sticky; top: 0px; z-index: 100; padding: 12px 45px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; 
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.65)); 
+    backdrop-filter: blur(25px); 
+    border-top: 1px solid rgba(255,255,255,0.8); 
+    border-bottom: 1px solid var(--border-color); 
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06); 
+  }
+  body.dark-theme .controls { background: linear-gradient(to bottom, rgba(44, 44, 46, 0.85), rgba(28, 28, 30, 0.75)); border-top: 1px solid rgba(255,255,255,0.1); }
+  
   .control-left { justify-self: start; display: flex; align-items: center; gap: 10px; }
   .control-center { justify-self: center; }
   .control-right { justify-self: end; display: flex; align-items: center; gap: 12px; }
 
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; min-width: 120px; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; position: relative; top: 0; transition: all 0.1s ease; }
-  .btn:active:not(:disabled) { top: 3px; }
+  .btn { 
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; 
+    height: 40px; min-width: 120px; padding: 0 16px; border-radius: 8px; 
+    font-size: 14px; font-weight: 600; cursor: pointer; position: relative; top: 0; 
+    transition: all 0.1s ease; 
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    border: 1px solid transparent;
+  }
+  .btn:active:not(:disabled) { top: 3px; filter: brightness(0.9); }
   
-  .btn-primary { background: #4B5EA8; color: white; border: none; box-shadow: 0 4px 0 #36447D; }
-  .btn-primary:hover:not(:disabled) { background: #3F5092; }
-  .btn-primary:disabled { background: #A0A9CC; box-shadow: 0 4px 0 #7A85AD; cursor: not-allowed; opacity: 0.7;}
-  .btn-magic { background: #10B981; color: white; border: none; box-shadow: 0 4px 0 #059669; display: none;}
-  .btn-magic:hover:not(:disabled) { background: #0D9488; }
-  .btn-magic.active { background: #059669; box-shadow: 0 0px 0 #047857; top: 3px;}
-  .btn-secondary { background: #E5E5EA; color: #1C1C1E; border: none; box-shadow: 0 4px 0 #D1D1D6;}
-  .btn-secondary:hover { background: #D1D1D6; }
-  body.dark-theme .btn-secondary { background: #3A3A3C; color: #E5E5EA; box-shadow: 0 4px 0 #2C2C2E;}
-  body.dark-theme .btn-secondary:hover { background: #48484A; }
-  .btn-export { background: #8A6046; color: white; border: none; display: none; box-shadow: 0 4px 0 #614331; }
-  .btn-di { background: #F2A138; color: white; border: none; display: none; box-shadow: 0 4px 0 #B87A2A; }
+  .btn-primary { 
+    background: linear-gradient(to bottom, #5B72C8, #4B5EA8); color: white; border-color: #36447D;
+    box-shadow: 0 4px 0 #36447D, inset 0 1px 0 rgba(255,255,255,0.3); 
+  }
+  .btn-primary:active:not(:disabled) { box-shadow: 0 1px 0 #36447D, inset 0 1px 0 rgba(255,255,255,0.1); }
+  .btn-primary:disabled { background: #A0A9CC; box-shadow: 0 4px 0 #7A85AD; cursor: not-allowed; opacity: 0.7; text-shadow:none;}
+  
+  .btn-magic { 
+    background: linear-gradient(to bottom, #34D399, #10B981); color: white; border-color: #059669; display: none;
+    box-shadow: 0 4px 0 #059669, inset 0 1px 0 rgba(255,255,255,0.4); 
+  }
+  .btn-magic:active:not(:disabled) { box-shadow: 0 1px 0 #059669, inset 0 1px 0 rgba(255,255,255,0.1); }
+  .btn-magic.active { background: #059669; box-shadow: 0 0px 0 #047857; top: 3px; inset 0 2px 4px rgba(0,0,0,0.2); }
+  
+  .btn-secondary { 
+    background: linear-gradient(to bottom, #FFFFFF, #E5E5EA); color: #1C1C1E; border-color: #D1D1D6; text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+    box-shadow: 0 4px 0 #D1D1D6, inset 0 1px 0 rgba(255,255,255,1);
+  }
+  .btn-secondary:active { box-shadow: 0 1px 0 #C7C7CC, inset 0 1px 0 rgba(0,0,0,0.05); }
+  body.dark-theme .btn-secondary { 
+    background: linear-gradient(to bottom, #48484A, #3A3A3C); color: #E5E5EA; border-color: #2C2C2E; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 0 #2C2C2E, inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  body.dark-theme .btn-secondary:active { box-shadow: 0 1px 0 #1C1C1E; }
+
+  .btn-apple { 
+    background: linear-gradient(to bottom, #42A5F5, #007AFF); color: white; border-color: #0056B3; display: none; 
+    box-shadow: 0 4px 0 #0056B3, inset 0 1px 0 rgba(255,255,255,0.4); text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+  .btn-apple:active:not(:disabled) { box-shadow: 0 1px 0 #0056B3, inset 0 1px 0 rgba(255,255,255,0.1); top: 3px; }
+
+  .btn-navy { 
+    background: linear-gradient(to bottom, #4A6B9C, #2C4368); color: white; border-color: #1A2B45; 
+    box-shadow: 0 4px 0 #1A2B45, inset 0 1px 0 rgba(255,255,255,0.2); text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .btn-navy:active { box-shadow: 0 1px 0 #1A2B45; top: 3px; }
+
+  .btn-orange {
+    background: linear-gradient(to bottom, #FB923C, #EA580C); color: white; border-color: #C2410C;
+    box-shadow: 0 4px 0 #C2410C, inset 0 1px 0 rgba(255,255,255,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .btn-orange:active { box-shadow: 0 1px 0 #C2410C; top: 3px; }
 
   #parseStatus { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; opacity: 0.9; white-space: nowrap; }
 
-  /* 修改：縮小上方的 padding，減少工具列與公文之間的空白 */
   .preview-section { padding: 15px 45px 45px; display: none; background: rgba(0,0,0,0.02); border-bottom-left-radius: var(--apple-radius); border-bottom-right-radius: var(--apple-radius); }
   .preview-section.visible { display: block; animation: popIn 0.5s; }
 
-  .doc-paper { background: var(--doc-bg); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); border: 1px solid var(--border-color); width: 100%; margin: 0 auto; overflow: hidden; transition: background 0.3s; }
+  .doc-paper { 
+    background: linear-gradient(to bottom, #FFFFFF, #FCFDFD); border-radius: 16px; 
+    box-shadow: 0 25px 70px rgba(0,0,0,0.12), 0 5px 15px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,1), 0 0 0 1px rgba(0,0,0,0.03); 
+    width: 100%; margin: 0 auto; overflow: hidden; transition: background 0.3s; 
+  }
+  body.dark-theme .doc-paper {
+    background: linear-gradient(to bottom, #1C1C1E, #151517);
+    box-shadow: 0 25px 70px rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px rgba(255,255,255,0.05);
+  }
   
-  /* 修改：縮小深綠色標頭的 padding (10px -> 6px) */
-  .doc-header { background: var(--nature-green-deep); color: white; padding: 6px 48px; display: flex; justify-content: space-between; align-items: center; }
+  .doc-header { 
+    background: linear-gradient(to bottom, #225C43, #1B4332); 
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(0,0,0,0.15); 
+    color: white; padding: 6px 48px; display: flex; justify-content: space-between; align-items: center; 
+  }
   
-  /* 修改：縮小發文機關/標頭文字大小 (20px -> 16px) */
   .doc-org { font-family: 'Noto Serif TC', serif; font-size: calc(16px * var(--font-scale)); font-weight: 700; letter-spacing: 0.15em; }
-  
-  /* 修改：縮小圓形印章大小以配合標頭高度 (44px -> 36px，字體 10px -> 9px) */
   .doc-seal-circle { width: 36px; height: 36px; border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; text-align: center; color: rgba(255,255,255,0.95); line-height: 1.1; font-weight: 500; }
   
   .doc-title-box { text-align: center; padding: 10px 50px 10px; border-bottom: 4px solid var(--nature-green-deep); }
@@ -144,8 +211,6 @@
   .doc-line-cont { padding-left: 2em; margin-bottom: 2px; }
 
   .raw-footer { padding: 15px 50px; background: var(--meta-bg); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); }
-  .text-btn { color: var(--apple-blue); cursor: pointer; border: none; background: none; font-weight: 700; font-size: 14px; display:flex; align-items:center; gap:5px; padding: 5px 10px; border-radius: 8px; transition: 0.2s;}
-  .text-btn:hover { background: rgba(0, 122, 255, 0.1); }
   .footer-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
   #rawView { display: none; padding: 30px 50px; background: #FFFFFF; color: #333333; font-family: "SF Mono", Menlo, monospace; font-size: 16px; line-height: 1.8; max-height: 480px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; border-bottom-left-radius: var(--apple-radius); border-bottom-right-radius: var(--apple-radius); }
@@ -158,7 +223,6 @@
   body.dark-theme .magic-highlight { background-color: rgba(255, 215, 0, 0.6); color: #1A1A1A; border-color: #FFB020; }
   .magic-period-warning { background-color: #FFE4E6; color: #E11D48; font-size: 11px; padding: 0px 4px; border-radius: 3px; margin-left: 35px; font-weight: 700; border: 1px solid #FDA4AF; display: inline-block; animation: popIn 0.3s; }
 
-  /* 視窗與動畫 */
   .toast-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
   .toast { background: rgba(0,0,0,0.8); color: white; padding: 12px 24px; border-radius: 30px; font-size: 15px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.2); backdrop-filter: blur(10px); display: flex; align-items: center; gap: 8px; animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
   body.dark-theme .toast { background: rgba(255,255,255,0.9); color: black; }
@@ -181,11 +245,6 @@
   .ai-textarea { width: 100%; height: 400px; padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--meta-bg); color: var(--text-main); font-size: 16.5px; line-height: 1.8; resize: none; outline: none; font-family: inherit; }
   .ai-result-box { width: 100%; height: 400px; padding: 15px; border-radius: 12px; border: 2px dashed var(--apple-gray); background: var(--meta-bg); color: var(--text-main); font-size: 16.5px; line-height: 1.8; overflow-y: auto; text-align: justify; position: relative; }
 
-  /* =========================================
-     新增與優化：可編輯區塊視覺、 Diff 互動提示、列印模式、設定檔
-     ========================================= */
-
-  /* 1. 強化可編輯區塊 (Inline-Edit Visual Cues) */
   [contenteditable="true"] { position: relative; border-radius: 4px; border: 1px dashed transparent; outline: none; transition: 0.2s; padding: 2px 6px; margin: -2px -6px;}
   [contenteditable="true"]:hover { background: rgba(0, 122, 255, 0.08); border-color: rgba(0, 122, 255, 0.4); }
   [contenteditable="true"]:hover::after { content: '✏️'; position: absolute; right: -22px; top: 2px; font-size: 14px; opacity: 0.8; pointer-events: none; animation: popIn 0.2s; }
@@ -195,7 +254,6 @@
   [contenteditable="true"]:empty { border-color: var(--apple-gray); background: rgba(128,128,128,0.05); min-width: 80px; display: inline-block;}
   [contenteditable="true"]:empty::before { content: '（點擊填寫）'; opacity:0.6; pointer-events: none; font-style: italic; color: var(--apple-gray); }
 
-  /* 2. 局部接受/拒絕 AI 修改的浮動選單 (Interactive Diff) */
   .diff-add { background-color: #dcfce7; color: #166534; border-radius: 3px; padding: 0 3px; margin: 0 1px; font-weight: 700; cursor: pointer; border-bottom: 2px dashed currentColor; transition: 0.2s; }
   .diff-del { background-color: #fee2e2; color: #991b1b; text-decoration: line-through; border-radius: 3px; padding: 0 3px; margin: 0 1px; opacity: 0.85; cursor: pointer; border-bottom: 2px dashed currentColor; transition: 0.2s; }
   body.dark-theme .diff-add { background-color: rgba(34, 197, 94, 0.25); color: #86efac; }
@@ -206,9 +264,12 @@
   .diff-btn { background: var(--meta-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; font-weight: 700; display: flex; align-items: center; transition: 0.2s; }
   .diff-btn:hover { background: var(--apple-blue); color: white; }
 
-  /* 3. 設定檔 Modal 的專屬輸入框 */
   .prof-input { flex: 1; padding: 8px 12px; border: 1px solid var(--apple-gray); border-radius: 6px; background: var(--doc-bg); color: var(--text-main); font-size: 15px; outline: none; }
   .prof-input:focus { border-color: var(--apple-blue); box-shadow: 0 0 0 2px rgba(0,122,255,0.2); }
+
+  .diff-upload-box { border: 2px dashed var(--apple-blue); background: rgba(0,122,255,0.05); padding: 20px; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; margin-bottom: 15px; }
+  .diff-upload-box:hover { background: rgba(0,122,255,0.1); }
+  .diff-upload-box svg { width: 32px; height: 32px; color: var(--apple-blue); margin-bottom: 8px; }
 
   @media(max-width: 1024px) {
     .top-bar { flex-direction: column; align-items: center; padding: 30px 15px 0; gap: 15px; }
@@ -222,7 +283,6 @@
     .ai-textarea, .ai-result-box { height: 250px; }
   }
 
-  /* 4. 一鍵匯出 PDF / 列印模式 (Print CSS) */
   @media print {
     body { background: white; color: black; margin: 0; padding: 0; }
     body::before { display: none; }
@@ -232,9 +292,7 @@
     .preview-section { padding: 0; display: block !important; }
     .doc-paper { box-shadow: none; border: none; border-radius: 0; margin: 0; width: 100%;}
     
-    /* 修改：列印模式的深綠色標頭高度也同步縮小 */
     .doc-header { background: transparent; color: black; border-bottom: 3px solid black; padding: 6px 0; }
-    
     .doc-seal-circle { border: 2px solid black; color: black; }
     .doc-title-box { border-bottom: 2px solid black; padding: 15px 0; }
     .meta-grid { background: transparent; border-bottom: 1px solid black; padding: 15px 0; gap: 4px 50px; }
@@ -250,6 +308,50 @@
 <body>
 
 <div class="toast-container" id="toastContainer"></div>
+
+<!-- 雙檔比對 Modal -->
+<div class="modal-overlay" id="versionDiffModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>
+        版本比對與修訂追蹤
+      </h3>
+      <button class="modal-close" onclick="closeDiffModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:14px; margin-bottom:10px;">目前畫面上的公文將作為**「最新版」**。請在下方匯入**「原版（舊版）」**檔案，系統將自動為您標示修改痕跡。</div>
+      
+      <div class="diff-upload-box" onclick="document.getElementById('diffFileInput').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div>點擊匯入「原版 (舊版)」檔案進行比對<br><span style="font-size:12px; opacity:0.7;">支援 .di, .pdf, .txt, .xml</span></div>
+        <input type="file" id="diffFileInput" style="display:none" accept=".di,.txt,.xml,.pdf">
+      </div>
+
+      <div style="font-size:13px; font-weight:600; display:flex; gap:15px; margin-bottom:10px;">
+        <span style="color:var(--apple-gray);">校對圖例：</span>
+        <span class="diff-add">綠色代表最新版新增之文字</span>
+        <span class="diff-del">紅色代表最新版已刪除之原版文字</span>
+      </div>
+
+      <div class="ai-split-view">
+        <div class="ai-panel">
+          <h4>📑 原版內容 (說明與擬辦)</h4>
+          <div class="ai-result-box" id="diffOriginalBox" style="border: 1px solid var(--border-color); white-space: pre-wrap;">等待匯入檔案...</div>
+        </div>
+        <div class="ai-panel">
+          <h4>🔍 差異比對結果</h4>
+          <div class="ai-result-box" id="diffResultBox" style="white-space: pre-wrap;">
+            <div style="text-align:center; padding-top:40%; opacity:0.5; font-weight:600;">匯入原版檔案後將自動顯示比對結果</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeDiffModal()">關閉</button>
+    </div>
+  </div>
+</div>
 
 <!-- AI 潤飾 Modal -->
 <div class="modal-overlay" id="aiModal">
@@ -340,7 +442,7 @@
 <div class="top-bar">
   <header>
     <h1>電子公文 <span class="gold-di">DI</span> 檔解析與轉檔平台</h1>
-    <p>智慧解析 ・ 快速編輯 ・ AI潤稿 ・ 輕鬆匯出</p>
+    <p>智慧解析 ・ 快速編輯 ・ AI潤稿 ・ OCR光學辨識 ・ 輕鬆匯出</p>
   </header>
 
   <div class="top-right-tools">
@@ -367,7 +469,7 @@
         </svg>
         <div class="drop-text">
           <h3>匯入公文電子檔案</h3>
-          <p>請將 .di, .pdf, .txt, .xml 檔案拖曳至此</p>
+          <p>請將 .di, .pdf (支援掃描圖檔), .txt, .xml 檔案拖曳至此</p>
         </div>
         <input type="file" id="fileInput" style="display:none" accept=".di,.txt,.xml,.pdf">
       </div>
@@ -400,16 +502,16 @@
       <div class="control-right">
         <span id="parseStatus">等待檔案匯入...</span>
         
-        <button class="btn btn-secondary" id="btnPrint" onclick="window.print()" style="display:none; color:#333;">
+        <button class="btn btn-apple" id="btnPrint" onclick="window.print()">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
           匯出 PDF
         </button>
 
-        <button class="btn btn-di" id="btnExportDI">
+        <button class="btn btn-apple" id="btnExportDI">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           匯出 DI
         </button>
-        <button class="btn btn-export" id="btnExport">
+        <button class="btn btn-apple" id="btnExport">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           匯出 RTF
         </button>
@@ -424,9 +526,14 @@
 </div>
 
 <script>
+// ==========================================
+// 核心全域工具與初始化
+// ==========================================
 if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
+
+function esc(s) { return !s ? "" : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 function updateTime() {
   const now = new Date();
@@ -550,12 +657,18 @@ btnParse.onclick = async () => {
     previewSection.classList.add('visible');
     btnExport.style.display = "inline-flex"; 
     btnExportDI.style.display = "inline-flex";
-    btnPrint.style.display = "inline-flex"; // 顯示列印按鈕
+    btnPrint.style.display = "inline-flex"; 
     btnMagic.style.display = "inline-flex";
-    parseStatus.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#10B981" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><polyline points="9 12 12 15 16 9"></polyline></svg> <span style="color:var(--text-main);">解析完成</span>`;
+    
+    if(parseStatus.textContent.includes("OCR") || parseStatus.textContent.includes("📸")) {
+      parseStatus.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#10B981" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><polyline points="9 12 12 15 16 9"></polyline></svg> <span style="color:var(--text-main);">OCR 解析完成</span>`;
+      showToast("圖片 OCR 辨識成功！");
+    } else {
+      parseStatus.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#10B981" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><polyline points="9 12 12 15 16 9"></polyline></svg> <span style="color:var(--text-main);">解析完成</span>`;
+      showToast("文件解析成功！");
+    }
     uploadArea.style.display = "none";
     
-    showToast("文件解析成功！");
   } catch (err) {
     console.error(err);
     parseStatus.textContent = "❌ 解析失敗";
@@ -604,10 +717,14 @@ docContainer.addEventListener('paste', (e) => {
   }
 });
 
+// ==========================================
+// 核心：PDF 解析與自動 OCR 光學辨識 (含排版修正)
+// ==========================================
 async function extractPdfText(file) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   let fullText = "";
+  
   for (let i = 1; i <= pdf.numPages; i++) {
     parseStatus.textContent = `掃描文件 第 ${i} / ${pdf.numPages} 頁...`;
     const page = await pdf.getPage(i);
@@ -630,9 +747,73 @@ async function extractPdfText(file) {
     });
     fullText += pageText + "\n";
   }
+
+  // 第二階段：啟動 OCR 與 OCR 文本排版重構
+  if (fullText.trim().length < 50) {
+    if(typeof Tesseract === 'undefined') throw new Error("Tesseract.js 未載入，請確認網路連線。");
+    
+    showToast("🕵️ 偵測到純圖片掃描檔，啟動 OCR 辨識引擎...");
+    parseStatus.innerHTML = `⏳ 正在下載繁體中文語言包 (視網路約需10~20秒)...`;
+    fullText = "";
+
+    try {
+      const worker = await Tesseract.createWorker('chi_tra', 1, {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            parseStatus.innerHTML = `📸 OCR 辨識中：${Math.round(m.progress * 100)}%`;
+          } else if (m.status.includes('loading')) {
+            parseStatus.innerHTML = `⏳ 載入 OCR 引擎中...`;
+          }
+        }
+      });
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        parseStatus.innerHTML = `📸 正在擷取第 ${i} 頁圖片準備辨識...`;
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 1.5 }); 
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+        const { data: { text } } = await worker.recognize(canvas);
+        fullText += text + "\n";
+        
+        canvas.width = 0; canvas.height = 0;
+      }
+      await worker.terminate();
+
+      // 🟢 OCR 文本排版重構與除錯
+      // 1. 清除 OCR 常見的排版雜訊 (例如邊界被辨識成 |)
+      fullText = fullText.replace(/[|｜]/g, '');
+      
+      // 2. 修正關鍵字內部空白
+      fullText = fullText.replace(/主\s+旨/g, '主旨')
+                         .replace(/說\s+明/g, '說明')
+                         .replace(/擬\s+辦/g, '擬辦')
+                         .replace(/正\s+本/g, '正本')
+                         .replace(/副\s+本/g, '副本');
+                         
+      // 3. 強制為主要段落加上換行與標準冒號 (解決文字擠成一團的問題)
+      fullText = fullText.replace(/(發文日期|發文字號|速別|密等及解密條件或保密期限|附件|主旨|說明|擬辦|正本|副本)\s*[:：;.。]?\s*/g, '\n$1：');
+      
+      // 4. 針對段落條列號碼強制換行 (例如把 "查照。一、" 變成 "查照。\n一、")
+      fullText = fullText.replace(/([。；])\s*([一二三四五六七八九十]+[、])/g, '$1\n$2');
+      fullText = fullText.replace(/([。；])\s*([(（]\s*[一二三四五六七八九十]+\s*[)）])/g, '$1\n$2');
+      
+    } catch (ocrErr) {
+      console.error("OCR 錯誤細節:", ocrErr);
+      throw new Error("OCR 引擎載入失敗！可能是公司網路防火牆阻擋了語言包下載，或檔案過大導致記憶體不足。");
+    }
+  }
+
   return fullText;
 }
 
+// ==========================================
+// 核心：純文字與 XML 智慧解析邏輯
+// ==========================================
 function readTextSmart(file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -839,6 +1020,9 @@ function getRocDateStr() {
   return `${now.getFullYear() - 1911}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
 }
 
+// ==========================================
+// 匯出處理邏輯 (DI, RTF)
+// ==========================================
 function handleExportDI() {
   if (!lastParsedData) return;
   const d = lastParsedData;
@@ -927,6 +1111,9 @@ function toRTFUnicode(str) {
   } return res;
 }
 
+// ==========================================
+// 渲染畫面與視覺效果邏輯
+// ==========================================
 function renderText(text) {
   if (!text) return "";
   if (!isMagicMode) return esc(text);
@@ -970,6 +1157,8 @@ function render(d, raw) {
   if (!d.subjectTitle) d.subjectTitle = d.subject ? d.subject.split('\n')[0] : '';
   const attachmentText = (d.attachments && typeof d.attachments === 'string' && d.attachments.trim() !== "") ? d.attachments : (Array.isArray(d.attachments) && d.attachments.length > 0) ? d.attachments.join('\n') : "";
   
+  const secretBadgeClass = (d.secret === '普通' || !d.secret) ? 'badge-blue' : 'badge-red';
+  
   const html = `
     <div class="doc-paper">
       <div class="doc-header">
@@ -984,7 +1173,7 @@ function render(d, raw) {
         <div class="meta-item"><span class="meta-key">發文日期</span><span class="meta-val" contenteditable="true" data-key="docDate">${renderText(d.docDate)}</span></div>
         <div class="meta-item"><span class="meta-key">發文字號</span><span class="meta-val" contenteditable="true" data-key="docNo">${renderText(d.docNo)}</span></div>
         <div class="meta-item"><span class="meta-key">速別</span><span class="meta-val"><span class="badge-pill badge-blue" contenteditable="true" data-key="priority">${renderText(d.priority)}</span></span></div>
-        <div class="meta-item"><span class="meta-key">密等期限</span><span class="meta-val"><span class="badge-pill badge-red" contenteditable="true" data-key="secret">${renderText(d.secret)}</span></span></div>
+        <div class="meta-item"><span class="meta-key">密等期限</span><span class="meta-val"><span class="badge-pill ${secretBadgeClass}" contenteditable="true" data-key="secret">${renderText(d.secret)}</span></span></div>
         <div class="meta-item"><span class="meta-key">承辦人</span><span class="meta-val" contenteditable="true" data-key="contact">${renderText(d.contact)}</span></div>
         <div class="meta-item"><span class="meta-key">電話</span><span class="meta-val" contenteditable="true" data-key="phone">${renderText(d.phone)}</span></div>
         <div class="meta-item"><span class="meta-key">傳真</span><span class="meta-val" contenteditable="true" data-key="fax">${renderText(d.fax)}</span></div>
@@ -1003,22 +1192,28 @@ function render(d, raw) {
         <div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px;">副本</div><div class="section-text" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="carbonCopy">${renderText(d.carbonCopy)}</div></div>
       </div>
       <div class="raw-footer">
-        <span style="font-size:14px; opacity:0.8;">💡 點擊畫面文字即可修改</span>
+        <span style="font-size:14px; opacity:0.8; font-weight: 600;">💡 點擊畫面文字即可修改</span>
         <div class="footer-actions">
-          <button class="text-btn" onclick="openProfileModal()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <button class="btn btn-navy" onclick="openProfileModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             常用聯絡資訊
           </button>
-          <button class="text-btn" onclick="openAIModal()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+          
+          <button class="btn btn-orange" onclick="openDiffModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>
+            雙檔比對
+          </button>
+
+          <button class="btn btn-navy" onclick="openAIModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
             AI 潤飾公文
           </button>
-          <button class="text-btn" onclick="copyContent()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <button class="btn btn-navy" onclick="copyContent()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             一鍵複製
           </button>
-          <button class="text-btn" onclick="document.getElementById('rawView').classList.toggle('visible')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          <button class="btn btn-navy" onclick="document.getElementById('rawView').classList.toggle('visible')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
             檢視原始碼
           </button>
         </div>
@@ -1029,7 +1224,78 @@ function render(d, raw) {
   docContainer.innerHTML = html;
 }
 
-function esc(s) { return !s ? "" : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+// ==========================================
+// 雙檔版本比對與修訂痕跡追蹤 (Version Diff)
+// ==========================================
+function openDiffModal() {
+  if(!lastParsedData) return showToast("請先在主畫面匯入一份公文作為最新版！");
+  document.getElementById('versionDiffModal').classList.add('show');
+  document.getElementById('diffResultBox').innerHTML = '<div style="text-align:center; padding-top:40%; opacity:0.5; font-weight:600;">匯入原版檔案後將自動顯示比對結果</div>';
+  document.getElementById('diffOriginalBox').innerHTML = '等待匯入檔案...';
+}
+
+function closeDiffModal() {
+  document.getElementById('versionDiffModal').classList.remove('show');
+}
+
+document.getElementById('diffFileInput').onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  document.getElementById('diffResultBox').innerHTML = '<div style="text-align:center; padding-top:40%; font-weight:600;">🔄 正在解析原版檔案並進行比對...</div>';
+  
+  try {
+    const ext = file.name.split('.').pop().toLowerCase();
+    let oldText = "";
+    if (ext === 'pdf') {
+      oldText = await extractPdfText(file); 
+    } else {
+      oldText = await readTextSmart(file);
+    }
+
+    if (!oldText || oldText.trim() === "") throw new Error("未能讀取內容。");
+
+    let oldData = oldText.trim().startsWith('<') ? parseXML(oldText) : parseSmart(oldText);
+    
+    const getCompareString = (data) => {
+      let str = "";
+      if(data.subject) str += "【主旨】\n" + data.subject.replace(/<div.*?>/g,'').replace(/<\/div>/g,'\n').replace(/<br>/g,'\n').trim() + "\n\n";
+      if(data.content) str += "【說明】\n" + data.content.replace(/<div.*?>/g,'').replace(/<\/div>/g,'\n').replace(/<br>/g,'\n').trim() + "\n\n";
+      if(data.proposal) str += "【擬辦】\n" + data.proposal.replace(/<div.*?>/g,'').replace(/<\/div>/g,'\n').replace(/<br>/g,'\n').trim();
+      return str.trim();
+    };
+
+    const oldString = getCompareString(oldData);
+    const newString = getCompareString(lastParsedData);
+
+    document.getElementById('diffOriginalBox').innerText = oldString || "（無內容）";
+
+    if (typeof diff_match_patch === 'undefined') {
+      document.getElementById('diffResultBox').innerText = newString;
+      return;
+    }
+
+    const dmp = new diff_match_patch();
+    const diffs = dmp.diff_main(oldString, newString);
+    dmp.diff_cleanupSemantic(diffs);
+
+    let html = "";
+    for (let i = 0; i < diffs.length; i++) {
+      const op = diffs[i][0]; const data = diffs[i][1];
+      const safeData = esc(data).replace(/\n/g, '<br>');
+      if (op === 1) html += `<span class="diff-add" title="最新版新增">${safeData}</span>`;
+      else if (op === -1) html += `<span class="diff-del" title="最新版已刪除">${safeData}</span>`;
+      else html += safeData;
+    }
+
+    document.getElementById('diffResultBox').innerHTML = html;
+    showToast("🔍 版本比對完成！");
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('diffResultBox').innerHTML = `<div style="color:red; padding:20px;">解析失敗：${err.message}</div>`;
+  }
+};
 
 // ==========================================
 // 常用聯絡資訊設定檔 (Profile Auto-fill)
@@ -1157,7 +1423,7 @@ async function startAIPolish() {
     resultBox.innerHTML = generateDiffHtml(originalText, polishedText);
     
     const hint = document.createElement('div');
-    hint.id = "ai-hint-msg"; // 加入ID確保能精準移除
+    hint.id = "ai-hint-msg"; 
     hint.innerHTML = `<div style="font-size:13px; color:var(--apple-blue); margin-bottom:10px; font-weight:bold;">💡 點擊綠字可選擇接受/拒絕；點擊紅字可決定是否恢復原文。</div>`;
     resultBox.insertBefore(hint, resultBox.firstChild);
 
@@ -1172,9 +1438,7 @@ async function startAIPolish() {
   }
 }
 
-// ==========================================
-// 互動式 Diff 與套用邏輯 (已強化防呆機制)
-// ==========================================
+// 互動式 Diff 與套用邏輯
 let currentDiffTarget = null;
 document.getElementById('aiResultBox').addEventListener('click', function(e) {
   if(e.target.classList.contains('diff-add') || e.target.classList.contains('diff-del')) {
@@ -1208,48 +1472,37 @@ function applyAIText() {
   const resultBox = document.getElementById('aiResultBox');
   if(!lastParsedData) return;
 
-  // 複製一份結果區塊來處理，避免影響畫面
   const clone = resultBox.cloneNode(true);
 
-  // 1. 精準移除上方的「💡 提示文字」，避免干擾解析
   const hintMsg = clone.querySelector('#ai-hint-msg');
   if(hintMsg) hintMsg.remove();
 
-  // 2. 移除被 AI 刪除的紅字 (如果有載入 Diff 的話)
   clone.querySelectorAll('.diff-del').forEach(el => el.remove());
 
-  // 3. 【關鍵修復】將所有 <br> 強制轉為 \n 換行符號，防止瀏覽器吃掉斷行
   clone.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
 
-  // 4. 取得純文字
   let polishedText = clone.innerText || clone.textContent;
 
-  // 清除 AI 有時會自動加上的 Markdown 粗體符號
   polishedText = polishedText.replace(/\*\*【說明】\*\*/g, "【說明】");
   polishedText = polishedText.replace(/\*\*【擬辦】\*\*/g, "【擬辦】");
 
   let newContent = ""; 
   let newProposal = "";
 
-  // 5. 拆分「說明」與「擬辦」
   if(polishedText.includes("【擬辦】")) {
     const parts = polishedText.split("【擬辦】");
     newContent = parts[0].replace(/【說明】/g, "").trim();
     newProposal = parts[1].trim();
   } else {
-    // 若沒有擬辦，全部歸類為說明
     newContent = polishedText.replace(/【說明】/g, "").trim();
   }
 
-  // 清除可能殘留的 Markdown 程式碼區塊符號 (```)
   newContent = newContent.replace(/^```\w*\n?/gm, '').replace(/```$/gm, '').trim();
   newProposal = newProposal.replace(/^```\w*\n?/gm, '').replace(/```$/gm, '').trim();
 
-  // 6. 套用至底層公文資料 (只要有內容就套用)
   if(newContent) lastParsedData.content = newContent;
   if(newProposal) lastParsedData.proposal = newProposal;
   
-  // 7. 重新渲染主畫面並關閉視窗
   render(lastParsedData, lastRawText);
   closeAIModal();
   showToast("✅ 已成功將 AI 潤飾結果套用至公文！");
