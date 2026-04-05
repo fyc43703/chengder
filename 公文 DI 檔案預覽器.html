@@ -373,10 +373,24 @@
         
         <span style="font-weight:700; font-size:14px; color:var(--text-main);">🎭 語氣：</span>
         <select id="aiToneSelect" style="flex:2; min-width: 200px; padding: 8px 15px; border-radius: 8px; border: 1px solid var(--apple-gray); background: var(--doc-bg); color: var(--text-main); outline: none; font-size: 14px; font-weight:600;">
-            <option value="standard">標準公文 (簡淺明確、中性陳述)</option>
-            <option value="polite">上行文 (婉轉謙和、懇請鑒核)</option>
-            <option value="strict">下行文/催辦 (嚴謹指令、限期辦理)</option>
-            <option value="citizen">民眾回覆 (白話親切、避免艱澀)</option>
+            <optgroup label="📂 基礎公文語氣">
+              <option value="standard">標準公文 (簡淺明確、中性陳述)</option>
+              <option value="polite">上行文 (婉轉謙和、懇請鑒核)</option>
+              <option value="strict">下行文/催辦 (嚴謹指令、限期辦理)</option>
+              <option value="citizen">民眾回覆 (白話親切、避免艱澀)</option>
+            </optgroup>
+            <optgroup label="🚀 進階專業情境">
+              <option value="polish">深度潤飾優化 (通順精鍊、專業質感)</option>
+              <option value="proofread">專業校對與審查 (表格化建議、邏輯檢視)</option>
+              <option value="legal">法律合規改寫 (客觀嚴密、精準術語)</option>
+              <option value="social">社群高流量文案 (親切對話、吸睛破題)</option>
+              <option value="news">新聞報導稿 (客觀中立、倒金字塔架構)</option>
+              <option value="concise">極簡精煉濃縮 (直指核心、字字珠璣)</option>
+              <option value="dorts_30">結構化議題摘要 (30項議題、背景與結論)</option>
+              <option value="dorts_seo">專業評選精華報告 (SEO吸睛標題、捷運術語)</option>
+              <option value="minutes_full">完整正式會議紀錄 (全貌重現、詳細分項)</option>
+              <option value="strategy">全方位戰略解析 (批判性辯證、深度論證)</option>
+            </optgroup>
         </select>
       </div>
       
@@ -1001,17 +1015,32 @@ function parseSmart(text) {
       if (l.startsWith("簽於")) data.orgName = l.replace("簽於","").trim(); 
     }
   });
-  
-  data.subject = scrubRedundantText(data.subject.join('\n')); 
-  data.content = scrubRedundantText(data.content.join('\n')); 
-  data.proposal = scrubRedundantText(data.proposal.join('\n'));
-  data.attachments = scrubRedundantText(data.attachments.join('\n'));
-  data.originalCopy = cleanOrgList(data.originalCopy);
-  data.carbonCopy = cleanOrgList(data.carbonCopy);
-  data.receiveOrg = cleanOrgList(data.receiveOrg);
+
+  // --- 新增：針對 OCR 產生的版面雜訊(開頭冒號、字間空白)進行最終淨化 ---
+  const cleanOcrArtifacts = (str) => {
+    if (!str) return "";
+    // 1. 刪除所有水平空白字元 (半形空白、全形空白、Tab)，強制擠壓字距，但保留換行 \n
+    let s = str.replace(/[ \t\u3000]+/g, '');
+    
+    // 2. 刪除每一段落開頭的冒號 (包含半形 :、全形 ：、以及特殊小冒號 ﹕)
+    s = s.split('\n').map(line => line.replace(/^[:：﹕]+/, '')).join('\n');
+    
+    return s.trim();
+  };
+
+  // 套用淨化函數到各個主要版面欄位
+  data.subject = cleanOcrArtifacts(scrubRedundantText(data.subject.join('\n'))); 
+  data.content = cleanOcrArtifacts(scrubRedundantText(data.content.join('\n'))); 
+  data.proposal = cleanOcrArtifacts(scrubRedundantText(data.proposal.join('\n')));
+  data.attachments = cleanOcrArtifacts(scrubRedundantText(data.attachments.join('\n')));
+  data.originalCopy = cleanOcrArtifacts(cleanOrgList(data.originalCopy));
+  data.carbonCopy = cleanOcrArtifacts(cleanOrgList(data.carbonCopy));
+  data.receiveOrg = cleanOcrArtifacts(cleanOrgList(data.receiveOrg));
+
   data.proposal = data.proposal.replace(/(?:\d*第\s*\d+\s*頁\s*[,，]?\s*共\s*\d+\s*頁)/g, '').trim();
   if (!data.orgName) data.orgName = procs.find(l => l.length > 5 && l.length < 25 && !l.includes(':')) || "";
   data.keepYear = "10";
+  
   return data;
 }
 
@@ -1342,10 +1371,23 @@ function saveAndApplyProfile() {
 // Groq AI 潤飾與文字比對功能
 // ==========================================
 const tonePrompts = {
+  // 基礎公文語氣
   standard: "請扮演資深中文寫作顧問，將內容改寫為正式公文。秉持「簡、淺、明、確」原則，調整語氣至莊重得體，精準替換平淡詞彙，剔除冗長贅字，確保輸出一份用字洗鍊、符合行政機關標準的專業文本。",
   polite: "請扮演資深中文寫作顧問，將內容改寫為正式公文。特別注意：此為上行文，語氣必須婉轉謙和，多使用「懇請鑒核」、「請鑒察」等敬語，確保輸出一份用字得體的專業文本。",
   strict: "請扮演資深中文寫作顧問，將內容改寫為正式公文。特別注意：此為下行文或催辦文，語氣必須嚴謹、明確指令，針對逾期或需改善事項可採稍強硬之態度，並要求限期辦理。",
-  citizen: "請將以下公文改寫為回覆民眾的書函。要求：語氣親切有禮、口語化且易懂，避免使用艱澀難懂的古文與文言文公文用語，請用現代白話文清楚說明行政單位的立場與作法。"
+  citizen: "請將以下公文改寫為回覆民眾的書函。要求：語氣親切有禮、口語化且易懂，避免使用艱澀難懂的古文與文言文公文用語，請用現代白話文清楚說明行政單位的立場與作法。",
+  
+  // 進階專業情境
+  polish: "請扮演具備深厚文學底蘊與豐富編輯實務經驗的資深中文寫作顧問。任務是針對提供的文字進行深度潤飾與優化，精準替換平淡詞彙，剔除冗長贅字與語法瑕疵。語氣須具備專業質感，並強化段落邏輯連貫性與語感韻律美。請在確保完整保留原始語意與核心訊息的前提下，輸出一份通順、精鍊的優質文本。",
+  proofread: "請扮演嚴謹的專業中文校對專家，依據標準作業流程進行正式文件審查。任務是全面檢查錯別字、標點及語法，同時深度檢視文件內部或文件間是否存在邏輯矛盾、觀點衝突或事實不符。語氣須客觀、精確且具建設性。請將發現的問題、具體修正建議與修改原因，以「表格化」方式完整呈現，並在文末提供優先處理項目清單與專業總結。",
+  legal: "請扮演精通我國法制體系與契約撰擬的資深法律顧問。任務是依據『法律明確性原則』進行文字改寫，精準運用法學術語（如：應、得、視為、推定、善意第三人等），明確界定構成要件與權利義務關係，徹底消除文字歧義。語氣必須絕對客觀、邏輯縝密且不帶情緒。請在保留原始規範意旨下，輸出一份具備法律拘束力的正式法制文本。",
+  social: "請扮演深諳粉絲互動心理及社群平台特性的頂尖文案小編。任務是將枯燥的資訊轉化為極具傳播力的社群貼文，運用引人入勝的『破題』與明確的『行動呼籲 (CTA)』。語氣須採親切自然的『對話式』口吻，並巧妙穿插表情符號 (Emojis) 、流行梗與感性訴求。請在保留核心資訊的前提下，輸出一篇能引發按讚、留言與分享的高流量文案。",
+  news: "請扮演具備高度新聞專業素養與採訪經驗的資深記者。任務是將素材改寫為符合出版標準的正式新聞稿。請依循『倒金字塔』寫作原則與 5W1H 架構重組資訊邏輯，精準運用新聞專業用語（如：指出、表示、強調）。語氣必須保持客觀、中立、平衡，採用第三人稱旁觀視角，徹底剝離主觀情緒與非必要形容詞，輸出一份敘事簡練且具公信力的報導。",
+  concise: "請扮演崇尚極簡主義的資深文字精煉專家。任務是對內容進行高強度的濃縮與簡化，大刀闊斧地刪除所有無實質意義的贅字、虛詞、重複敘述與過度修飾。語氣須直截了當、俐落明快。請在嚴格保留原始核心意涵與關鍵資訊的前提下，將冗長段落提煉為最直接的短句或摘要，達成『字字珠璣、一語中的』的高效溝通文本。",
+  dorts_30: "請扮演臺北市政府捷運工程局資深會議紀錄承辦人員。任務是將逐字稿轉化為結構化摘要報告，具體萃取出 30 項核心議題。語氣須嚴謹、條理分明、具公務機關專業度。文體要求為條列式報告，每項議題需加註序號，並明確包含『議題標題、背景說明、重要結論（至少摘錄3項）』，每項議題總字數約 300 字，確保資訊層次分明。",
+  dorts_seo: "請扮演臺北市捷運工程局資深會議專家兼文案優化師。任務是深度萃取逐字稿為 30 項涵蓋脈絡與決議的關鍵精華，以驚艷評審委員並展現執行成果。語氣須具備高度專業說服力，精準運用臺灣捷運工程術語（如：潛盾、土建、機電整合）與公務表達。格式要求每項說明詳盡扎實且不少於 200 字，並自訂具備『SEO 敏感度、高度吸睛與影響力』的專屬標題。",
+  minutes_full: "請扮演極度細心且熟稔公務體系的專業會議紀錄員。任務是將內容重組為最完整詳細的正式紀錄，精確歸納出基本資訊、報告事項、討論事項、專案議題與臨時動議。語氣必須正式、客觀、詳實。格式須高度結構化，針對討論事項必須明確列出：完整說明、發言者意見、技術規範引用、決議結論、負責單位及完成期限，並依工安、防汛等類別確實分項記載。",
+  strategy: "請扮演具備深厚學術背景的戰略分析師。任務是以『批判性辯證』為核心，跨領域統合解析各利害關係人，溯源結構性根因，針對議題展開 60 項全方位解析。語氣須極度客觀中立、嚴守邏輯實證主義，排除認知偏誤。文體要求產出 60 項獨立重點，每項標題加粗且內文逾 200 字；每項論述必須具備『核心命題、數據理論支撐、實例佐證、交互影響評估』的完整論證閉環。"
 };
 
 function openAIModal() {
@@ -1412,7 +1454,7 @@ async function startAIPolish() {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
-        messages: [{ role: "system", content: currentSystemPrompt }, { role: "user", content: "以下是需要潤飾的公文內容：\n\n" + originalText }],
+        messages: [{ role: "system", content: currentSystemPrompt }, { role: "user", content: "以下是需要潤飾的內容：\n\n" + originalText }],
         temperature: 0.3
       })
     });
