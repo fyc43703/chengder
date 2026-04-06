@@ -271,6 +271,55 @@
   .diff-upload-box:hover { background: rgba(0,122,255,0.1); }
   .diff-upload-box svg { width: 32px; height: 32px; color: var(--apple-blue); margin-bottom: 8px; }
 
+  /* === 新增：教育訓練教材超連結樣式 (毛玻璃按鈕設計，解決背景吃色) === */
+  .tutorial-wrapper {
+    text-align: center;
+    margin-top: 30px;
+    padding-bottom: 20px;
+    animation: slideUpFade 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  
+  .tutorial-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.45); 
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px); 
+    color: #0056B3; 
+    padding: 14px 30px;
+    border-radius: 40px;
+    font-size: 18px;
+    font-weight: 800;
+    font-family: 'Noto Serif TC', serif;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    text-shadow: 0 1px 3px rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+  }
+  
+  .tutorial-link:hover {
+    background: rgba(255, 255, 255, 0.65);
+    color: #004494;
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* 配合深色模式 */
+  body.dark-theme .tutorial-link {
+    background: rgba(30, 30, 32, 0.5); 
+    color: #64D2FF;
+    border-color: rgba(255, 255, 255, 0.1);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  }
+  body.dark-theme .tutorial-link:hover {
+    background: rgba(50, 50, 55, 0.7);
+    color: #FFFFFF;
+  }
+  /* ============================================================== */
+
   @media(max-width: 1024px) {
     .top-bar { flex-direction: column; align-items: center; padding: 30px 15px 0; gap: 15px; }
     .top-right-tools { position: relative; top: 0; right: 0; width: max-content; }
@@ -281,12 +330,13 @@
     .doc-content-area, .doc-header, .doc-title-box, .meta-grid, .raw-footer { padding-left: 20px; padding-right: 20px; }
     .ai-split-view { grid-template-columns: 1fr; }
     .ai-textarea, .ai-result-box { height: 250px; }
+    .tutorial-link { font-size: 15px; padding: 10px 20px; } /* 手機版縮小字體 */
   }
 
   @media print {
     body { background: white; color: black; margin: 0; padding: 0; }
     body::before { display: none; }
-    .top-bar, .controls, .upload-area, .raw-footer, #rawView, .toast-container, .modal-overlay, .top-right-tools { display: none !important; }
+    .top-bar, .controls, .upload-area, .raw-footer, #rawView, .toast-container, .modal-overlay, .top-right-tools, .tutorial-wrapper { display: none !important; }
     .container { width: 100%; max-width: none; margin: 0; animation: none; }
     .glass-card { background: none; border: none; box-shadow: none; }
     .preview-section { padding: 0; display: block !important; }
@@ -450,7 +500,7 @@
   </div>
 </div>
 
-<!-- Diff 點擊浮動選單 (已加入ID以利動態更改文字) -->
+<!-- Diff 點擊浮動選單 -->
 <div class="diff-tooltip" id="diffTooltip">
   <button class="diff-btn" id="btnAcceptDiff" onclick="resolveDiff('accept')">✅ 接受</button>
   <button class="diff-btn" id="btnRejectDiff" onclick="resolveDiff('reject')">❌ 拒絕</button>
@@ -540,6 +590,16 @@
       <div id="docContainer"></div>
     </div>
   </div>
+  
+  <!-- ▼▼▼ 新增：教育訓練教材超連結 (置中於白色區塊外層) ▼▼▼ -->
+  <div class="tutorial-wrapper" id="tutorialWrapper">
+    <a href="https://docs.google.com/document/d/1Tho1OHua_AGaBbEawFev2A4o2ZO0Ipk3zUWua-fZ4iM/edit?usp=sharing" target="_blank" class="tutorial-link">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+      《電子公文 DI 檔解析與轉檔平台》實務教育訓練教材
+    </a>
+  </div>
+  <!-- ▲▲▲ 新增結束 ▲▲▲ -->
+
 </div>
 
 <script>
@@ -684,7 +744,12 @@ btnParse.onclick = async () => {
       parseStatus.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#10B981" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><polyline points="9 12 12 15 16 9"></polyline></svg> <span style="color:var(--text-main);">解析完成</span>`;
       showToast("文件解析成功！");
     }
+    
+    // --- 讓開始作業後，原本的區塊收合保持版面乾淨 ---
     uploadArea.style.display = "none";
+    if(document.getElementById('tutorialWrapper')) {
+      document.getElementById('tutorialWrapper').style.display = "none";
+    }
     
   } catch (err) {
     console.error(err);
