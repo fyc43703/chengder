@@ -612,6 +612,14 @@ if (typeof pdfjsLib !== 'undefined') {
 
 function esc(s) { return !s ? "" : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+function getRocDateStr() {
+  const now = new Date();
+  const rocYear = now.getFullYear() - 1911;
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const date = String(now.getDate()).padStart(2, '0');
+  return `${rocYear}${month}${date}`;
+}
+
 function updateTime() {
   const now = new Date();
   const rocYear = now.getFullYear() - 1911;
@@ -817,11 +825,18 @@ async function extractPdfText(file) {
       const pure = s.replace(/\s/g, '');
       if (/^[‧\.\u2027裝訂線]+$/.test(pure)) return false;
       if (/(?:\d*第\s*\d+\s*頁\s*[,，]?\s*共\s*\d+\s*頁)/.test(s)) return false;
-      if (/(?:\*?[A-Z]{2,}\d+\*?|捷工管處\s*\d+|工務管理處\s*\d+)/.test(s)) return false;
       if (/(?:電子公文交換章|交\s*換\s*章|\d{4}\/\d{2}\/\d{2}\s*\d{2}:\d{2}:\d{2})/.test(s)) return false;
       return true;
     });
-    const items = filteredItems.sort((a, b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4]);
+
+    // 💡 核心修復：改良 PDF 排序演算法。允許 6 像素的 Y 軸高度容差，
+    // 防止凸排的「二、」掉到下一行的「運」旁邊。
+    const items = filteredItems.sort((a, b) => {
+      const yDiff = b.transform[5] - a.transform[5];
+      if (Math.abs(yDiff) < 6) return a.transform[4] - b.transform[4]; 
+      return yDiff; 
+    });
+
     let lastY = -1; let pageText = "";
     items.forEach(item => {
       if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 6) pageText += "\n";
@@ -830,25 +845,19 @@ async function extractPdfText(file) {
     fullText += pageText + "\n";
   }
 
-  // 第二階段：啟動 OCR 與 OCR 文本排版重構
+  // OCR 區塊保持不變
   if (fullText.trim().length < 50) {
     if(typeof Tesseract === 'undefined') throw new Error("Tesseract.js 未載入，請確認網路連線。");
-    
     showToast("🕵️ 偵測到純圖片掃描檔，啟動 OCR 辨識引擎...");
     parseStatus.innerHTML = `⏳ 正在下載繁體中文語言包 (視網路約需10~20秒)...`;
     fullText = "";
-
     try {
       const worker = await Tesseract.createWorker('chi_tra', 1, {
         logger: m => {
-          if (m.status === 'recognizing text') {
-            parseStatus.innerHTML = `📸 OCR 辨識中：${Math.round(m.progress * 100)}%`;
-          } else if (m.status.includes('loading')) {
-            parseStatus.innerHTML = `⏳ 載入 OCR 引擎中...`;
-          }
+          if (m.status === 'recognizing text') parseStatus.innerHTML = `📸 OCR 辨識中：${Math.round(m.progress * 100)}%`;
+          else if (m.status.includes('loading')) parseStatus.innerHTML = `⏳ 載入 OCR 引擎中...`;
         }
       });
-
       for (let i = 1; i <= pdf.numPages; i++) {
         parseStatus.innerHTML = `📸 正在擷取第 ${i} 頁圖片準備辨識...`;
         const page = await pdf.getPage(i);
@@ -858,38 +867,20 @@ async function extractPdfText(file) {
         canvas.height = viewport.height;
         canvas.width = viewport.width;
         await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
         const { data: { text } } = await worker.recognize(canvas);
         fullText += text + "\n";
-        
         canvas.width = 0; canvas.height = 0;
       }
       await worker.terminate();
-
-      // 🟢 OCR 文本排版重構與除錯
-      // 1. 清除 OCR 常見的排版雜訊 (例如邊界被辨識成 |)
-      fullText = fullText.replace(/[|｜]/g, '');
-      
-      // 2. 修正關鍵字內部空白
-      fullText = fullText.replace(/主\s+旨/g, '主旨')
-                         .replace(/說\s+明/g, '說明')
-                         .replace(/擬\s+辦/g, '擬辦')
-                         .replace(/正\s+本/g, '正本')
-                         .replace(/副\s+本/g, '副本');
-                         
-      // 3. 強制為主要段落加上換行與標準冒號 (解決文字擠成一團的問題)
+      fullText = fullText.replace(/[|｜]/g, '').replace(/主\s+旨/g, '主旨').replace(/說\s+明/g, '說明').replace(/擬\s+辦/g, '擬辦').replace(/正\s+本/g, '正本').replace(/副\s+本/g, '副本');
       fullText = fullText.replace(/(發文日期|發文字號|速別|密等及解密條件或保密期限|附件|主旨|說明|擬辦|正本|副本)\s*[:：;.。]?\s*/g, '\n$1：');
-      
-      // 4. 針對段落條列號碼強制換行 (例如把 "查照。一、" 變成 "查照。\n一、")
       fullText = fullText.replace(/([。；])\s*([一二三四五六七八九十]+[、])/g, '$1\n$2');
       fullText = fullText.replace(/([。；])\s*([(（]\s*[一二三四五六七八九十]+\s*[)）])/g, '$1\n$2');
-      
     } catch (ocrErr) {
       console.error("OCR 錯誤細節:", ocrErr);
       throw new Error("OCR 引擎載入失敗！可能是公司網路防火牆阻擋了語言包下載，或檔案過大導致記憶體不足。");
     }
   }
-
   return fullText;
 }
 
@@ -1000,14 +991,32 @@ function parseXML(text) {
 
 function parseSmart(text) {
   const data = { orgName: "", docType: "函", docNo: "", docDate: "", fileNo: "", keepYear: "10", address: "", contact: "", phone: "", fax: "", email: "", priority: "普通件", secret: "普通", originalCopy: "", carbonCopy: "", subject: [], content: [], proposal: [], attachments: [], receiveOrg: "" };
-  let clean = text.replace(/[‧\.\u2027\s]*[裝訂線][‧\.\u2027\s]*/g, '');
+
+  // 💡 核心修復：在一切開始前，強力抹除所有水平空白與隱形字元
+  // 這能瞬間解決 "依 東 森" 和 "w w w ." 被切斷的問題！
+  let clean = text.replace(/[ \t\u3000\xA0]+/g, '');
+
+  clean = clean.split('\n').map(l => {
+    let line = l.trim();
+    if (/^第\s*\d+\s*頁\s*共\s*\d+\s*頁$/.test(line)) return '';
+    if (/^[A-Za-z0-9]{10,25}$/.test(line)) return ''; 
+    if (/^[‧\.\u2027]*[裝訂線]?[‧\.\u2027]*$/.test(line)) return '';
+    if (/^[‧\.\u2027]*[裝訂線]/.test(line)) return line.replace(/^[‧\.\u2027]*[裝訂線]/, '');
+    return line; 
+  }).filter(l => l !== '').join('\n'); 
+
+  // 強制斷行保護：如果標號黏在句號後面，強制把它們切斷
+  clean = clean.replace(/([。；：」）])([(（][一二三四五六七八九十]+[\)）]|[一二三四五六七八九十]+、|[0-9\uFF10-\uFF19]+[\.、．])/g, '$1\n$2');
+
+  clean = clean.replace(/下說明[：:]/g, '下_保_護_：').replace(/揭說明/g, '揭_保_護_');
+
   let lines = clean.split('\n');
 
   const agencyRegex = /([\u4e00-\u9fa5]{3,20}\s*(?:函|簽|書函|公告|令|函\s*\(稿\)))$/;
   lines = lines.flatMap(l => {
-    if (/^(?:檔\s*號|保\s*存\s*年\s*限)\s*[：:]/.test(l)) {
+    if (/^(?:檔號|保存年限)[：:]/.test(l)) {
       const match = l.match(agencyRegex);
-      if (match) { return [l.replace(match[0], '').trim(), match[0].trim()]; }
+      if (match) return [l.replace(match[0], '').trim(), match[0].trim()];
     } return l;
   });
 
@@ -1034,22 +1043,22 @@ function parseSmart(text) {
   });
   
   const fMap = [
-    { k:'orgName', r:/(?:發\s*文\s*機\s*關|機\s*關\s*名\s*稱|全\s*銜|簽\s*於)\s*[：:]?\s*(.*)/ },
-    { k:'docNo', r:/(?:發\s*文\s*字\s*號|文\s*號|字\s*號)\s*[：:]\s*(.*?)(?=\s*(?:電子信箱|傳真|地址|承辦人|$))/ },
-    { k:'docDate', r:/(?:發\s*文\s*日\s*期|日\s*期)\s*[：:]\s*(.*)/ },
-    { k:'fileNo', r:/(?:檔\s*號)\s*[：:]\s*(.*)/ }, { k:'keepYear', r:/(?:保\s*存\s*年\s*限)\s*[：:]\s*(.*)/ },
-    { k:'address', r:/(?:地\s*址)\s*[：:]\s*(.*)/ }, { k:'contact', r:/(?:承\s*辦\s*人|聯\s*絡\s*人)\s*[：:]\s*(.*)/ },
-    { k:'phone', r:/(?:電\s*話)\s*[：:]\s*(.*)/ }, { k:'fax', r:/(?:傳\s*真)\s*[：:]\s*(.*)/ },
-    { k:'email', r:/(?:電\s*子\s*信\s*箱|Email)\s*[：:]\s*(.*)/i },
-    { k:'priority', r:/(?:速\s*別)\s*[：:]\s*(.*)/ }, { k:'secret', r:/(?:密\s*等\s*及\s*解\s*密\s*條\s*條件\s*或\s*保\s*密\s*期\s*限|密\s*等)\s*[：:]\s*(.*)/ },
-    { k:'receiveOrg', r:/(?:受\s*文\s*者)\s*[工作]?者?\s*[：:]?\s*(.*)/ },
-    { k:'originalCopy', r:/(?:正\s*本)\s*[：:]\s*(.*)/ }, { k:'carbonCopy', r:/(?:副\s*本)\s*[：:]\s*(.*)/ },
-    { k:'subject', r:/主\s*旨\s*[：:]\s*(.*)/ }, { k:'content', r:/說\s*明\s*[：:]\s*(.*)/ },
-    { k:'proposal', r:/擬\s*辦\s*[：:]\s*(.*)/ }, { k:'attachments', r:/附\s*件\s*[：:\s]\s*(.*)/ }
+    { k:'orgName', r:/(?:發文機關|機關名稱|全銜|簽於)[：:]?(.*)/ },
+    { k:'docNo', r:/(?:發文字號|文號|字號)[：:](.*?)(?=(?:電子信箱|傳真|地址|承辦人|$))/ },
+    { k:'docDate', r:/(?:發文日期|日期)[：:](.*)/ },
+    { k:'fileNo', r:/(?:檔號)[：:](.*)/ }, { k:'keepYear', r:/(?:保存年限)[：:](.*)/ },
+    { k:'address', r:/(?:地址)[：:](.*)/ }, { k:'contact', r:/(?:承辦人|聯絡人)[：:](.*)/ },
+    { k:'phone', r:/(?:電話)[：:](.*)/ }, { k:'fax', r:/(?:傳真)[：:](.*)/ },
+    { k:'email', r:/(?:電子信箱|Email)[：:](.*)/i },
+    { k:'priority', r:/(?:速別)[：:](.*)/ }, { k:'secret', r:/(?:密等及解密條件或保密期限|密等)[：:](.*)/ },
+    { k:'receiveOrg', r:/(?:受文者)[工作]?者?[：:]?(.*)/ },
+    { k:'originalCopy', r:/(?:正本)[：:](.*)/ }, { k:'carbonCopy', r:/(?:副本)[：:](.*)/ },
+    { k:'subject', r:/主旨[：:](.*)/ }, { k:'content', r:/說明[：:](.*)/ },
+    { k:'proposal', r:/擬辦[：:](.*)/ }, { k:'attachments', r:/附件[：:](.*)/ }
   ];
   
   let curSec = null; 
-  const itemR = /^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+、|[\(（][一二三四五六七八九十]+[\)）]|[0-9]+[\.、]|第[一二三四五六七八九十]+[頁步])/;
+  const itemR = /^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+、|[\(（][一二三四五六七八九十]+[\)）]|[0-9\uFF10-\uFF19]+[\.、．])/;
   
   procs.forEach(l => {
     let mF = false; 
@@ -1065,58 +1074,48 @@ function parseSmart(text) {
       }
     }
     if (!mF) {
-      const dM = l.match(/^(\d{2,3}年\s*\d{1,2}月\s*\d{1,2}日)$/); 
+      const dM = l.match(/^(\d{2,3}年\d{1,2}月\d{1,2}日)$/); 
       if (dM && !data.docDate) data.docDate = dM[1];
       else if (curSec) {
         if (fMap.some(f => l.match(f.r)) || itemR.test(l)) {
-          if (itemR.test(l) && Array.isArray(data[curSec])) data[curSec].push(l); else curSec = null;
+          if (itemR.test(l) && Array.isArray(data[curSec])) {
+            data[curSec].push(l); 
+          } else curSec = null;
         } else {
           if (Array.isArray(data[curSec])) { 
-            let idx = data[curSec].length-1; 
-            if (idx >= 0) data[curSec][idx] += l; else data[curSec].push(l); 
+            let idx = data[curSec].length - 1;
+            if (idx >= 0) { data[curSec][idx] += l; } else { data[curSec].push(l); }
           } else data[curSec] += l;
         }
       }
     }
-    if (l.match(/^(函|簽|函\s*\(稿\)|簽\s*於.*)$/)) { 
+    if (l.match(/^(函|簽|函\(稿\)|簽於.*)$/)) { 
       data.docType = l.includes("簽") ? "簽" : "函"; 
       if (l.startsWith("簽於")) data.orgName = l.replace("簽於","").trim(); 
     }
   });
 
-  // --- 新增：針對 OCR 產生的版面雜訊(開頭冒號、字間空白)進行最終淨化 ---
-  const cleanOcrArtifacts = (str) => {
-    if (!str) return "";
-    // 1. 刪除所有水平空白字元 (半形空白、全形空白、Tab)，強制擠壓字距，但保留換行 \n
-    let s = str.replace(/[ \t\u3000]+/g, '');
-    
-    // 2. 刪除每一段落開頭的冒號 (包含半形 :、全形 ：、以及特殊小冒號 ﹕)
-    s = s.split('\n').map(line => line.replace(/^[:：﹕]+/, '')).join('\n');
-    
-    return s.trim();
+  const restoreText = (arr) => {
+    if (!arr || arr.length === 0) return "";
+    let str = Array.isArray(arr) ? arr.join('\n') : arr;
+    str = str.replace(/下_保_護_：/g, '下說明：').replace(/揭_保_護_/g, '揭說明');
+    str = str.split('\n').map(line => line.replace(/^[:：﹕]+/, '')).join('\n');
+    return str.trim();
   };
 
-  // 套用淨化函數到各個主要版面欄位
-  data.subject = cleanOcrArtifacts(scrubRedundantText(data.subject.join('\n'))); 
-  data.content = cleanOcrArtifacts(scrubRedundantText(data.content.join('\n'))); 
-  data.proposal = cleanOcrArtifacts(scrubRedundantText(data.proposal.join('\n')));
-  data.attachments = cleanOcrArtifacts(scrubRedundantText(data.attachments.join('\n')));
-  data.originalCopy = cleanOcrArtifacts(cleanOrgList(data.originalCopy));
-  data.carbonCopy = cleanOcrArtifacts(cleanOrgList(data.carbonCopy));
-  data.receiveOrg = cleanOcrArtifacts(cleanOrgList(data.receiveOrg));
+  data.subject = restoreText(data.subject); 
+  data.content = restoreText(data.content); 
+  data.proposal = restoreText(data.proposal);
+  data.attachments = restoreText(data.attachments);
+  data.originalCopy = cleanOrgList(restoreText(data.originalCopy));
+  data.carbonCopy = cleanOrgList(restoreText(data.carbonCopy));
+  data.receiveOrg = cleanOrgList(restoreText(data.receiveOrg));
 
-  data.proposal = data.proposal.replace(/(?:\d*第\s*\d+\s*頁\s*[,，]?\s*共\s*\d+\s*頁)/g, '').trim();
   if (!data.orgName) data.orgName = procs.find(l => l.length > 5 && l.length < 25 && !l.includes(':')) || "";
   data.keepYear = "10";
   
   return data;
 }
-
-function getRocDateStr() {
-  const now = new Date();
-  return `${now.getFullYear() - 1911}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-}
-
 // ==========================================
 // 匯出處理邏輯 (DI, RTF)
 // ==========================================
@@ -1194,7 +1193,9 @@ function handleExportRTF() {
   
   const b = new Blob([rtf], { type: 'application/rtf' });
   const a = document.createElement('a'); 
-  a.href = URL.createObjectURL(b); a.download = `公文稿_${String(d.docNo).slice(0,10) || "解析"}.rtf`; 
+  a.href = URL.createObjectURL(b); 
+  // 改成與 DI 相同的命名方式：原檔名_1121025.rtf
+  a.download = `${currentFile.name.split('.').slice(0, -1).join('.')}_${getRocDateStr()}.rtf`; 
   a.click();
   showToast("RTF 檔案已成功匯出！📝");
 }
@@ -1230,13 +1231,51 @@ function formatSectionText(text, key) {
   return text.split('\n').map(line => {
     let cleanLine = line.trim();
     if (!cleanLine) return `<div><br></div>`;
+    
     let warningHtml = "";
     if (isMagicMode && key === 'content') {
       if (!cleanLine.endsWith('。') && !cleanLine.endsWith('：')) warningHtml = `<span class="magic-period-warning" contenteditable="false" title="段落結尾應為全形句號">⚠️缺 「。」</span>`;
     }
-    if (/^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+、|[\(（][一二三四五六七八九十]+[\)）]|[0-9]+[\.、])/.test(cleanLine)) {
-      return `<div class="doc-line-item">${renderText(cleanLine)}${warningHtml}</div>`;
-    } else return `<div class="doc-line-cont">${renderText(cleanLine)}${warningHtml}</div>`;
+
+    let pad = "2em";    // 預設無標號時：左側縮排2字
+    let indent = "0em"; 
+
+    // 捕捉標籤與內文 (完全無視 OCR 亂加的空白)
+    let m1 = cleanLine.match(/^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+)\s*[、.]\s*(.*)/);
+    let m2 = cleanLine.match(/^[\(（]\s*([一二三四五六七八九十]+)\s*[\)）]\s*(.*)/);
+    let m3 = cleanLine.match(/^([0-9\uFF10-\uFF19]+)\s*[、.．]\s*(.*)/);
+
+    if (m1) {
+      // 第一層：一、 (文字從第 4 字元開始)
+      let prefix = `${m1[1]}、`;
+      cleanLine = prefix + m1[2];
+      let len = m1[1].length + 1; // 計算標號總字數
+      pad = `${2 + len}em`;
+      indent = `-${len}em`;
+      
+    } else if (m2) {
+      // 第二層：(一) (依據公文標準，改回半形括號，文字從第 6 字元開始)
+      let prefix = `(${m2[1]})`;
+      cleanLine = prefix + m2[2];
+      // 半形括號 '(' 佔 0.5字寬, ')' 佔 0.5字寬，相加剛好是 1 字寬
+      let len = m2[1].length + 1; 
+      pad = `${4 + len}em`;
+      indent = `-${len}em`;
+      
+    } else if (m3) {
+      // 第三層：１、 (強制轉全形數字，文字從第 8 字元開始)
+      let num = m3[1].split('').map(c => {
+         let code = c.charCodeAt(0);
+         return (code >= 48 && code <= 57) ? String.fromCharCode(code + 65248) : c;
+      }).join('');
+      let prefix = `${num}、`;
+      cleanLine = prefix + m3[2];
+      let len = num.length + 1; 
+      pad = `${6 + len}em`;
+      indent = `-${len}em`;
+    }
+
+    return `<div style="padding-left: ${pad}; text-indent: ${indent}; margin-bottom: 4px; text-align: justify; line-height: 1.8;">${renderText(cleanLine)}${warningHtml}</div>`;
   }).join('');
 }
 
