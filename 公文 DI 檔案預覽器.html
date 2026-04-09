@@ -1246,7 +1246,7 @@ function formatSectionText(text, key) {
     let m3 = cleanLine.match(/^([0-9\uFF10-\uFF19]+)\s*[、.．]\s*(.*)/);
 
     if (m1) {
-      // 第一層：一、 (文字從第 4 字元開始)
+      // 第一層：一、 
       let prefix = `${m1[1]}、`;
       cleanLine = prefix + m1[2];
       let len = m1[1].length + 1; // 計算標號總字數
@@ -1254,16 +1254,18 @@ function formatSectionText(text, key) {
       indent = `-${len}em`;
       
     } else if (m2) {
-      // 第二層：(一) (依據公文標準，改回半形括號，文字從第 6 字元開始)
+      // 第二層：(一) 
       let prefix = `(${m2[1]})`;
       cleanLine = prefix + m2[2];
       // 半形括號 '(' 佔 0.5字寬, ')' 佔 0.5字寬，相加剛好是 1 字寬
       let len = m2[1].length + 1; 
-      pad = `${4 + len}em`;
+      
+      // ★ 修改處：將原本的 4 改成 3，讓 (一) 整體往左移一個字寬 (1em)
+      pad = `${3 + len}em`;
       indent = `-${len}em`;
       
     } else if (m3) {
-      // 第三層：１、 (強制轉全形數字，文字從第 8 字元開始)
+      // 第三層：１、 
       let num = m3[1].split('').map(c => {
          let code = c.charCodeAt(0);
          return (code >= 48 && code <= 57) ? String.fromCharCode(code + 65248) : c;
@@ -1271,7 +1273,9 @@ function formatSectionText(text, key) {
       let prefix = `${num}、`;
       cleanLine = prefix + m3[2];
       let len = num.length + 1; 
-      pad = `${6 + len}em`;
+      
+      // ★ 修改處：同步將第三層原本的 6 改成 4，維持優美的階梯縮排比例
+      pad = `${4 + len}em`;
       indent = `-${len}em`;
     }
 
