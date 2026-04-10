@@ -903,9 +903,24 @@ function readTextSmart(file) {
 }
 
 function scrubRedundantText(s) {
-  if (!s) return "";
+    if (!s) return "";
+  // 1. 移除基本公文雜訊
   let res = s.replace(/會辦單位|承辦單位|核稿|決行/g, '');
-  return res.replace(/第\s*\d+\s*頁\s*共/g, '').trim();
+  res = res.replace(/AXAR|AXAA|捷工管處/g, '');
+  
+  // 2. 強化分頁雜訊掃除：匹配 第x頁、共x頁、第x頁共x頁 及其各種殘缺組合
+  // 新增針對 [、：:] 後方跟著「共」或「頁」的處理
+  res = res.replace(/[、：:]*(?:第\s*\d+\s*頁?|共\s*\d+\s*頁?|第\s*\d+\s*頁?\s*[,，]?\s*共\s*\d+\s*頁?)/g, '');
+  
+  // 3. 針對 OCR 殘留的單獨 「共」或「頁」字 (通常出現在行尾或標點後)
+  res = res.replace(/[，,、：:]+\s*[共頁]\s*$/gm, ''); // 標點後的殘留
+  res = res.replace(/\s*[共頁]\s*$/gm, '');         // 行尾的殘留
+
+  // 4. 移除年度文號雜訊
+  res = res.replace(/11[3-7]\*+/g, '');
+  res = res.replace(/11[3-7]\d{4,10}/g, ''); 
+  
+  return res.trim();
 }
 
 function cleanOrgList(s) {
@@ -998,12 +1013,15 @@ function parseSmart(text) {
 
   clean = clean.split('\n').map(l => {
     let line = l.trim();
-    if (/^第\s*\d+\s*頁\s*共\s*\d+\s*頁$/.test(line)) return '';
-    if (/^[A-Za-z0-9]{10,25}$/.test(line)) return ''; 
-    if (/^[‧\.\u2027]*[裝訂線]?[‧\.\u2027]*$/.test(line)) return '';
-    if (/^[‧\.\u2027]*[裝訂線]/.test(line)) return line.replace(/^[‧\.\u2027]*[裝訂線]/, '');
-    return line; 
-  }).filter(l => l !== '').join('\n'); 
+  // 增加對分頁與特定雜訊的排除
+  if (/第\s*\d+\s*頁\s*[，,]\s*共\s*\d+\s*頁/.test(line)) return '';
+  if (/AXAR|AXAA|捷工管處/.test(line)) return '';
+  if (/11[3-7]\*+/.test(line)) return '';
+  
+  if (/^[A-Za-z0-9]{10,25}$/.test(line)) return ''; 
+  if (/^[‧\.\u2027]*[裝訂線]?[‧\.\u2027]*$/.test(line)) return '';
+  return line; 
+}).filter(l => l !== '').join('\n');
 
   // 強制斷行保護：如果標號黏在句號後面，強制把它們切斷
   clean = clean.replace(/([。；：」）])([(（][一二三四五六七八九十]+[\)）]|[一二三四五六七八九十]+、|[0-9\uFF10-\uFF19]+[\.、．])/g, '$1\n$2');
@@ -1215,19 +1233,61 @@ function toRTFUnicode(str) {
 function renderText(text) {
   if (!text) return "";
   if (!isMagicMode) return esc(text);
-  const regex = /(^[？；，、。：.,/*\-+]+|[ \t\u3000]+|[\(\),]|(?:([，。、？！；：「」『』（）《》〈〉【】—～…])\2+)|安慰|記錄|捷局|、。|。、|：、|、：|。，|，。)/g;
-  let lastIndex = 0; let result = ""; let match;
+
+  // 修正後的 Regex：
+  // 1. 偵測異常標點、重複符號
+  // 2. 偵測特定雜訊：AXAR, AXAA, 捷工管處, 捷局...
+  // 3. 偵測分頁與年度文號雜訊 (加入「共*頁」)
+  // 4. 偵測：AAAA 以及 * (星號)
+  // 5. 偵測：表單殘留文字與公文易混淆用語
+  const regex = /(^[？；，、。：.,/*\-+]+|[ \t\u3000]+|[\(\),]|(?:([，。、？！；：「」『』（）《》〈〉【】—～…])\2+)|安慰|記錄|捷局|、。|。、|：、|、：|。，|，。|AXAR|AXAA|捷工管處|第\s*\d+\s*頁|共\s*\d+\s*頁|11[3-7]\*+|11[3-7]\d{4,10}|AAAA|\*+|審核決行|會辦單位[：:]?|計劃|貫澈|公佈|部份|佔有|僱主|聘雇|規畫|策畫|盡量|徹底|聲請|給與|複核|複查|復驗)/g;
+  
+  let lastIndex = 0;
+  let result = "";
+  let match;
+
   while ((match = regex.exec(text)) !== null) {
     result += esc(text.substring(lastIndex, match.index));
-    result += `<span class="magic-highlight" title="偵測到異常格式">${esc(match[0])}</span>`;
+    
+    // 匹配到的部分將套用 magic-highlight 樣式（黃色背景）
+    let titleMsg = "偵測到異常格式或關鍵字";
+    if (match[0].includes("AAAA")) {
+      titleMsg = "偵測到測試字串 AAAA";
+    } else if (match[0].includes("*")) {
+      titleMsg = "偵測到星號雜訊";
+    } else if (/第\s*\d+\s*頁|共\s*\d+\s*頁/.test(match[0])) {
+      titleMsg = "偵測到分頁雜訊";
+    } else if (/會辦單位|審核決行/.test(match[0])) {
+      titleMsg = "偵測到公文表單殘留文字";
+    } else if (/計劃|貫澈|公佈|部份|佔有|僱主|聘雇|規畫|策畫|盡量|徹底|聲請|給與|複核|複查|復驗/.test(match[0])) {
+      titleMsg = "公文用語建議檢查（例：計畫/計劃、公布/公佈等）";
+    }
+    
+    result += `<span class="magic-highlight" title="${titleMsg}">${esc(match[0])}</span>`;
     lastIndex = regex.lastIndex;
   }
   result += esc(text.substring(lastIndex));
   return result;
 }
 
+// 新增：中文數字轉整數輔助函式 (支援到九十九)
+function zhToInt(zhStr) {
+  const map = { '一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8, '九':9, '十':10, '壹':1, '貳':2, '參':3, '肆':4, '伍':5, '陸':6, '柒':7, '捌':8, '玖':9, '拾':10 };
+  if (map[zhStr]) return map[zhStr];
+  if (zhStr.startsWith('十') || zhStr.startsWith('拾')) return 10 + (map[zhStr[1]] || 0);
+  if (zhStr.length >= 2 && (zhStr[1] === '十' || zhStr[1] === '拾')) return map[zhStr[0]] * 10 + (map[zhStr[2]] ? map[zhStr[2]] : 0);
+  return 0;
+}
+
+// 修改：支援動態追蹤與警示公文序號的排版函式
 function formatSectionText(text, key) {
   if (!text) return "";
+
+  // 建立序號追蹤器
+  let expectL1 = 1; // 第一階層：一、二、三...
+  let expectL2 = 1; // 第二階層：(一)、(二)...
+  let expectL3 = 1; // 第三階層：1、2、3...
+
   return text.split('\n').map(line => {
     let cleanLine = line.trim();
     if (!cleanLine) return `<div><br></div>`;
@@ -1240,46 +1300,176 @@ function formatSectionText(text, key) {
     let pad = "2em";    // 預設無標號時：左側縮排2字
     let indent = "0em"; 
 
-    // 捕捉標籤與內文 (完全無視 OCR 亂加的空白)
+    // 捕捉標籤與內文
     let m1 = cleanLine.match(/^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+)\s*[、.]\s*(.*)/);
     let m2 = cleanLine.match(/^[\(（]\s*([一二三四五六七八九十]+)\s*[\)）]\s*(.*)/);
     let m3 = cleanLine.match(/^([0-9\uFF10-\uFF19]+)\s*[、.．]\s*(.*)/);
 
+    let finalHtml = "";
+
     if (m1) {
       // 第一層：一、 
-      let prefix = `${m1[1]}、`;
-      cleanLine = prefix + m1[2];
-      let len = m1[1].length + 1; // 計算標號總字數
+      let numStr = m1[1];
+      let val = zhToInt(numStr);
+      let rawPrefix = `${numStr}、`;
+      let prefixHtml = renderText(rawPrefix);
+
+      // 檢查序號是否連續
+      if (isMagicMode && val > 0 && val !== expectL1) {
+        prefixHtml = `<span class="magic-highlight" title="序號不連續警示 (預期: 第${expectL1}項，實際: 第${val}項)">${esc(rawPrefix)}</span>`;
+      }
+      // 更新預期值，並將次級標號重置
+      if (val > 0) expectL1 = val + 1; 
+      expectL2 = 1; 
+      expectL3 = 1;
+
+      let len = numStr.length + 1; // 計算標號總字數
       pad = `${2 + len}em`;
       indent = `-${len}em`;
+      finalHtml = prefixHtml + renderText(m1[2]);
       
     } else if (m2) {
       // 第二層：(一) 
-      let prefix = `(${m2[1]})`;
-      cleanLine = prefix + m2[2];
-      // 半形括號 '(' 佔 0.5字寬, ')' 佔 0.5字寬，相加剛好是 1 字寬
-      let len = m2[1].length + 1; 
-      
-      // ★ 修改處：將原本的 4 改成 3，讓 (一) 整體往左移一個字寬 (1em)
+      let numStr = m2[1];
+      let val = zhToInt(numStr);
+      let rawPrefix = `(${numStr})`;
+      let prefixHtml = renderText(rawPrefix);
+
+      if (isMagicMode && val > 0 && val !== expectL2) {
+        prefixHtml = `<span class="magic-highlight" title="序號不連續警示 (預期: 第${expectL2}項，實際: 第${val}項)">${esc(rawPrefix)}</span>`;
+      }
+      if (val > 0) expectL2 = val + 1;
+      expectL3 = 1; // 重置下一級
+
+      let len = numStr.length + 1; 
       pad = `${3 + len}em`;
       indent = `-${len}em`;
+      finalHtml = prefixHtml + renderText(m2[2]);
       
     } else if (m3) {
       // 第三層：１、 
-      let num = m3[1].split('').map(c => {
+      let numRawStr = m3[1];
+      let numStr = numRawStr.split('').map(c => {
          let code = c.charCodeAt(0);
-         return (code >= 48 && code <= 57) ? String.fromCharCode(code + 65248) : c;
+         return (code >= 48 && code <= 57) ? c : String.fromCharCode(code - 65248); // 轉為半形以利計算
       }).join('');
-      let prefix = `${num}、`;
-      cleanLine = prefix + m3[2];
-      let len = num.length + 1; 
-      
-      // ★ 修改處：同步將第三層原本的 6 改成 4，維持優美的階梯縮排比例
+      let val = parseInt(numStr, 10);
+      let rawPrefix = `${numRawStr}、`;
+      let prefixHtml = renderText(rawPrefix);
+
+      if (isMagicMode && !isNaN(val) && val !== expectL3) {
+        prefixHtml = `<span class="magic-highlight" title="序號不連續警示 (預期: 第${expectL3}項，實際: 第${val}項)">${esc(rawPrefix)}</span>`;
+      }
+      if (!isNaN(val)) expectL3 = val + 1;
+
+      let len = numStr.length + 1; 
       pad = `${4 + len}em`;
       indent = `-${len}em`;
+      finalHtml = prefixHtml + renderText(m3[2]);
+      
+    } else {
+      // 一般無標號內文
+      finalHtml = renderText(cleanLine);
     }
 
-    return `<div style="padding-left: ${pad}; text-indent: ${indent}; margin-bottom: 4px; text-align: justify; line-height: 1.8;">${renderText(cleanLine)}${warningHtml}</div>`;
+    return `<div style="padding-left: ${pad}; text-indent: ${indent}; margin-bottom: 4px; text-align: justify; line-height: 1.8;">${finalHtml}${warningHtml}</div>`;
+  }).join('');
+}
+
+// 修改：支援動態追蹤與警示公文序號的排版函式
+function formatSectionText(text, key) {
+  if (!text) return "";
+
+  // 建立序號追蹤器
+  let expectL1 = 1; // 第一階層：一、二、三...
+  let expectL2 = 1; // 第二階層：(一)、(二)...
+  let expectL3 = 1; // 第三階層：1、2、3...
+
+  return text.split('\n').map(line => {
+    let cleanLine = line.trim();
+    if (!cleanLine) return `<div><br></div>`;
+    
+    let warningHtml = "";
+    if (isMagicMode && key === 'content') {
+      if (!cleanLine.endsWith('。') && !cleanLine.endsWith('：')) warningHtml = `<span class="magic-period-warning" contenteditable="false" title="段落結尾應為全形句號">⚠️缺 「。」</span>`;
+    }
+
+    let pad = "2em";    // 預設無標號時：左側縮排2字
+    let indent = "0em"; 
+
+    // 捕捉標籤與內文
+    let m1 = cleanLine.match(/^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+)\s*[、.]\s*(.*)/);
+    let m2 = cleanLine.match(/^[\(（]\s*([一二三四五六七八九十]+)\s*[\)）]\s*(.*)/);
+    let m3 = cleanLine.match(/^([0-9\uFF10-\uFF19]+)\s*[、.．]\s*(.*)/);
+
+    let finalHtml = "";
+
+    if (m1) {
+      // 第一層：一、 
+      let numStr = m1[1];
+      let val = zhToInt(numStr);
+      let rawPrefix = `${numStr}、`;
+      let prefixHtml = renderText(rawPrefix);
+
+      // 檢查序號是否連續
+      if (isMagicMode && val > 0 && val !== expectL1) {
+        prefixHtml = `<span class="magic-highlight" title="序號不連續警示 (預期: 第${expectL1}項，實際: 第${val}項)">${esc(rawPrefix)}</span>`;
+      }
+      // 更新預期值，並將次級標號重置
+      if (val > 0) expectL1 = val + 1; 
+      expectL2 = 1; 
+      expectL3 = 1;
+
+      let len = numStr.length + 1; // 計算標號總字數
+      pad = `${2 + len}em`;
+      indent = `-${len}em`;
+      finalHtml = prefixHtml + renderText(m1[2]);
+      
+    } else if (m2) {
+      // 第二層：(一) 
+      let numStr = m2[1];
+      let val = zhToInt(numStr);
+      let rawPrefix = `(${numStr})`;
+      let prefixHtml = renderText(rawPrefix);
+
+      if (isMagicMode && val > 0 && val !== expectL2) {
+        prefixHtml = `<span class="magic-highlight" title="序號不連續警示 (預期: 第${expectL2}項，實際: 第${val}項)">${esc(rawPrefix)}</span>`;
+      }
+      if (val > 0) expectL2 = val + 1;
+      expectL3 = 1; // 重置下一級
+
+      let len = numStr.length + 1; 
+      pad = `${3 + len}em`;
+      indent = `-${len}em`;
+      finalHtml = prefixHtml + renderText(m2[2]);
+      
+    } else if (m3) {
+      // 第三層：１、 
+      let numRawStr = m3[1];
+      let numStr = numRawStr.split('').map(c => {
+         let code = c.charCodeAt(0);
+         return (code >= 48 && code <= 57) ? c : String.fromCharCode(code - 65248); // 轉為半形以利計算
+      }).join('');
+      let val = parseInt(numStr, 10);
+      let rawPrefix = `${numRawStr}、`;
+      let prefixHtml = renderText(rawPrefix);
+
+      if (isMagicMode && !isNaN(val) && val !== expectL3) {
+        prefixHtml = `<span class="magic-highlight" title="序號不連續警示 (預期: 第${expectL3}項，實際: 第${val}項)">${esc(rawPrefix)}</span>`;
+      }
+      if (!isNaN(val)) expectL3 = val + 1;
+
+      let len = numStr.length + 1; 
+      pad = `${4 + len}em`;
+      indent = `-${len}em`;
+      finalHtml = prefixHtml + renderText(m3[2]);
+      
+    } else {
+      // 一般無標號內文
+      finalHtml = renderText(cleanLine);
+    }
+
+    return `<div style="padding-left: ${pad}; text-indent: ${indent}; margin-bottom: 4px; text-align: justify; line-height: 1.8;">${finalHtml}${warningHtml}</div>`;
   }).join('');
 }
 
