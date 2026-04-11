@@ -1398,7 +1398,34 @@ function renderText(text) {
   if (!text) return "";
   if (!isMagicMode) return esc(text);
 
-  const regex = /(^[？；，、。：.,/*\-+]+|[ \t\u3000]+|[\(\),]|(?:([，。、？！；：「」『』（）《》〈〉【】—～…])\2+)|安慰|記錄|捷局|、。|。、|：、|、：|。，|，。|AXAR|AXAA|捷工管處|第\s*\d+\s*頁|共\s*\d+\s*頁|11[3-7]\*+|11[3-7]\d{4,10}|AAAA|\*+|審核決行|會辦單位[：:]?|計劃|貫澈|公佈|部份|佔有|僱主|聘雇|規畫|策畫|盡量|徹底|聲請|給與|複核|複查|復驗)/g;
+  // 定義公文常見錯別字與提示說明的字典
+  const officialWordDict = {
+    "計劃": { correct: "計畫", desc: "公文統一使用「計畫」" },
+    "公佈": { correct: "公布", desc: "公文統一使用「公布」" },
+    "身份": { correct: "身分", desc: "公文統一使用「身分」" },
+    "部份": { correct: "部分", desc: "公文統一使用「部分」" },
+    "僱主": { correct: "雇主", desc: "公文統一使用「雇主」" },
+    "僱員": { correct: "雇員", desc: "公文統一使用「雇員」" },
+    "規畫": { correct: "規劃", desc: "公文統一使用「規劃」" },
+    "計劃": { correct: "計畫", desc: "公文統一使用「計畫」" },
+    "徹底": { correct: "澈底", desc: "公文統一使用「澈底」" },
+    "給與": { correct: "給予", desc: "動詞請用「給予」" },
+    "盡量": { correct: "儘量", desc: "公文統一使用「儘量」" },
+    "貫澈": { correct: "貫徹", desc: "公文統一使用「貫徹」" },
+    "策畫": { correct: "策劃", desc: "公文統一使用「策劃」" },
+    "獨佔": { correct: "獨占", desc: "公文統一使用「獨占」" },
+    "佔有": { correct: "占有", desc: "公文統一使用「占有」" },
+    "抵觸": { correct: "牴觸", desc: "公文統一使用「牴觸」" },
+    "抵觸": { correct: "牴觸", desc: "公文統一使用「牴觸」" },
+    "聘雇": { correct: "聘僱", desc: "公文統一使用「聘僱」" },
+    "聲請": { correct: "申請", desc: "對行政機關用「申請」" },
+    "複核": { correct: "覆核", desc: "公文統一使用「覆核」" },
+    "複查": { correct: "覆查", desc: "公文統一使用「覆查」" },
+    "復驗": { correct: "複驗", desc: "公文統一使用「複驗」" }
+  };
+
+  // 正則表達式中加入了「身份」
+  const regex = /(^[？；，、。：.,/*\-+]+|[ \t\u3000]+|[\(\),]|(?:([，。、？！；：「」『』（）《》〈〉【】—～…])\2+)|安慰|記錄|捷局|、。|。、|：、|、：|。，|，。|AXAR|AXAA|捷工管處|第\s*\d+\s*頁|共\s*\d+\s*頁|11[3-7]\*+|11[3-7]\d{4,10}|AAAA|\*+|審核決行|會辦單位[：:]?|計劃|貫澈|公佈|身份|部份|佔有|僱主|聘雇|規畫|策畫|盡量|徹底|聲請|給與|複核|複查|復驗)/g;
   
   let lastIndex = 0;
   let result = "";
@@ -1407,20 +1434,26 @@ function renderText(text) {
   while ((match = regex.exec(text)) !== null) {
     result += esc(text.substring(lastIndex, match.index));
     
+    let matchedWord = match[0];
     let titleMsg = "偵測到異常格式或關鍵字";
-    if (match[0].includes("AAAA")) {
+    
+    // 判斷是否為公文易錯字
+    if (officialWordDict[matchedWord]) {
+      const info = officialWordDict[matchedWord];
+      titleMsg = `💡 建議修正為「${info.correct}」\n說明：${info.desc}`;
+    } 
+    // 其他原有的雜訊判斷
+    else if (matchedWord.includes("AAAA")) {
       titleMsg = "偵測到測試字串 AAAA";
-    } else if (match[0].includes("*")) {
+    } else if (matchedWord.includes("*")) {
       titleMsg = "偵測到星號雜訊";
-    } else if (/第\s*\d+\s*頁|共\s*\d+\s*頁/.test(match[0])) {
+    } else if (/第\s*\d+\s*頁|共\s*\d+\s*頁/.test(matchedWord)) {
       titleMsg = "偵測到分頁雜訊";
-    } else if (/會辦單位|審核決行/.test(match[0])) {
+    } else if (/會辦單位|審核決行/.test(matchedWord)) {
       titleMsg = "偵測到公文表單殘留文字";
-    } else if (/計劃|貫澈|公佈|部份|佔有|僱主|聘雇|規畫|策畫|盡量|徹底|聲請|給與|複核|複查|復驗/.test(match[0])) {
-      titleMsg = "公文用語建議檢查（例：計畫/計劃、公布/公佈等）";
     }
     
-    result += `<span class="magic-highlight" title="${titleMsg}">${esc(match[0])}</span>`;
+    result += `<span class="magic-highlight" title="${titleMsg}">${esc(matchedWord)}</span>`;
     lastIndex = regex.lastIndex;
   }
   result += esc(text.substring(lastIndex));
