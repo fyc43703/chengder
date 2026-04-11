@@ -707,65 +707,100 @@ dropZone.onclick = () => fileInput.click();
 fileInput.onchange = (e) => handleFile(e.target.files[0]);
 
 function handleFile(file) {
-  if (!file) return;
-  currentFile = file;
-  fileInfoArea.innerHTML = `<div class="file-pill">🌿 ${file.name}</div>`;
-  btnParse.disabled = false;
-  btnExport.style.display = "none";
-  btnExportDI.style.display = "none";
-  btnPrint.style.display = "none";
-  btnMagic.style.display = "none";
-  isMagicMode = false;
-  btnMagic.classList.remove('active');
-  parseStatus.textContent = "檔案準備就緒";
-  errorBox.style.display = "none";
+    if (!file) return;
+
+const allowedTypes = ['di', 'txt', 'xml', 'pdf'];
+const ext = file.name.split('.').pop().toLowerCase();
+
+if (!allowedTypes.includes(ext)) {
+  showError("❌ 不支援的檔案格式");
+  return;
+}
+
+currentFile = file;
+
+fileInfoArea.innerHTML = `<div class="file-pill">🌿 ${file.name}</div>`;
+
+btnParse.disabled = false;
+parseStatus.textContent = "✅ 檔案已載入，請點擊解析";
+
+errorBox.style.display = "none";
+
+showToast("檔案匯入成功 📂");
 }
 
 btnParse.onclick = async () => {
-  parseStatus.textContent = "⏳ 正在掃除雜訊與解析...";
+    if (!currentFile) {
+    showError("請先匯入檔案");
+    return;
+  }
+
+  parseStatus.textContent = "⏳ 解析中...";
   btnParse.disabled = true;
-  errorBox.style.display = "none";
-  
+
   try {
     const ext = currentFile.name.split('.').pop().toLowerCase();
     let text = "";
-    if (ext === 'pdf') text = await extractPdfText(currentFile);
-    else text = await readTextSmart(currentFile);
-    
-    if (!text || text.trim() === "") throw new Error("未能讀取內容，請確認是否為文字型檔案。");
 
-    let data = text.trim().startsWith('<') ? parseXML(text) : parseSmart(text);
+    if (ext === 'pdf') {
+      try {
+        text = await extractPdfText(currentFile);
+      } catch (err) {
+        console.error(err);
+        showError("❌ PDF 解析失敗（可能為掃描檔或格式不支援）");
+        btnParse.disabled = false;
+        return;
+      }
+    } else {
+      text = await readTextSmart(currentFile);
+    }
+
+    if (!text || text.trim() === "") {
+      showError("❌ 檔案沒有可讀內容");
+      btnParse.disabled = false;
+      return;
+    }
+
+    // ✅ 雜訊清洗（你新增的）
+    text = cleanNoise(text);
+
+    let data = text.trim().startsWith('<')
+      ? parseXML(text)
+      : parseSmart(text);
+
+// ==========================================
+// ⭐ 欄位級精準清洗（避免誤刪正文）
+// ==========================================
+if (data.proposal) {
+  data.proposal = cleanProposalField(data.proposal);
+}
+
+if (data.phone) {
+  data.phone = cleanPhoneField(data.phone);
+}
+
+
+
     lastParsedData = data;
     lastRawText = text;
+
     render(data, text);
-    
+
     previewSection.classList.add('visible');
-    btnExport.style.display = "inline-flex"; 
+
+    btnExport.style.display = "inline-flex";
     btnExportDI.style.display = "inline-flex";
-    btnPrint.style.display = "inline-flex"; 
+    btnPrint.style.display = "inline-flex";
     btnMagic.style.display = "inline-flex";
-    
-    if(parseStatus.textContent.includes("OCR") || parseStatus.textContent.includes("📸")) {
-      parseStatus.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#10B981" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><polyline points="9 12 12 15 16 9"></polyline></svg> <span style="color:var(--text-main);">OCR 解析完成</span>`;
-      showToast("圖片 OCR 辨識成功！");
-    } else {
-      parseStatus.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#10B981" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><polyline points="9 12 12 15 16 9"></polyline></svg> <span style="color:var(--text-main);">解析完成</span>`;
-      showToast("文件解析成功！");
-    }
-    
-    // --- 讓開始作業後，原本的區塊收合保持版面乾淨 ---
-    uploadArea.style.display = "none";
-    if(document.getElementById('tutorialWrapper')) {
-      document.getElementById('tutorialWrapper').style.display = "none"; // 隱藏下方按鈕
-    }
-    
+
+    parseStatus.textContent = "✅ 解析完成";
+
   } catch (err) {
     console.error(err);
-    parseStatus.textContent = "❌ 解析失敗";
-    showError("錯誤回報: " + err.message);
-  } finally {
-    btnParse.disabled = false;
+    showError("❌ 解析失敗：" + err.message);
   }
+
+  btnParse.disabled = false;
 };
 
 btnMagic.onclick = () => {
@@ -1041,14 +1076,35 @@ function parseSmart(text) {
   const lbls = ["地址", "承辦人", "電話", "傳真", "電子信箱", "發文日期", "發文字號", "速別", "密等及解密條件或保密期限", "檔號", "保存年限", "受文者", "主旨", "說明", "擬辦", "附件", "正本", "副本"];
   const procs = [];
   
+  // 🌟 新增：追蹤是否已經進入公文正文區
+  let inBodyBlock = false; 
+  
   lines.forEach(l => {
     let cur = l.trim(); if (!cur) return;
+    
+    // 判斷是否已經進入正文區 (看到主旨、說明、擬辦等大段落)
+    if (/^(主旨|說明|擬辦|正本|副本)[：:]/.test(cur)) {
+      inBodyBlock = true;
+    }
+
     let ms = []; 
     lbls.forEach(b => {
       let regex = new RegExp(b.split('').join('\\s*'), 'g'); let m;
       while ((m = regex.exec(cur)) !== null) {
         let idx = m.index;
-        if ([':','：',' '].includes(cur.charAt(idx + m[0].length)) || idx + m[0].length === cur.length) ms.push({ b, pos: idx, len: m[0].length });
+        if ([':','：',' '].includes(cur.charAt(idx + m[0].length)) || idx + m[0].length === cur.length) {
+          
+          // 💡 核心修復：防止在「說明」內文中將「承辦人：」、「電話：」誤認為表頭欄位
+          const isMajorSection = ["主旨", "說明", "擬辦", "附件", "正本", "副本"].includes(b);
+          if (inBodyBlock) {
+             // 如果在正文區，不是大段落標籤絕對不切斷 (避開"送本局承辦人："的情況)
+             if (!isMajorSection) continue;
+             // 如果是大段落標籤，但不在行首附近，也不切斷 (避開內文提到"如主旨："的情況)
+             if (idx > 5) continue; 
+          }
+
+          ms.push({ b, pos: idx, len: m[0].length });
+        }
       }
     });
     ms.sort((a,b) => a.pos - b.pos);
@@ -1060,19 +1116,20 @@ function parseSmart(text) {
     } else procs.push(cur);
   });
   
+  // 🌟 修復 2：為所有 fMap 加上字首 ^ 錨點，防止行內誤判
   const fMap = [
-    { k:'orgName', r:/(?:發文機關|機關名稱|全銜|簽於)[：:]?(.*)/ },
-    { k:'docNo', r:/(?:發文字號|文號|字號)[：:](.*?)(?=(?:電子信箱|傳真|地址|承辦人|$))/ },
-    { k:'docDate', r:/(?:發文日期|日期)[：:](.*)/ },
-    { k:'fileNo', r:/(?:檔號)[：:](.*)/ }, { k:'keepYear', r:/(?:保存年限)[：:](.*)/ },
-    { k:'address', r:/(?:地址)[：:](.*)/ }, { k:'contact', r:/(?:承辦人|聯絡人)[：:](.*)/ },
-    { k:'phone', r:/(?:電話)[：:](.*)/ }, { k:'fax', r:/(?:傳真)[：:](.*)/ },
-    { k:'email', r:/(?:電子信箱|Email)[：:](.*)/i },
-    { k:'priority', r:/(?:速別)[：:](.*)/ }, { k:'secret', r:/(?:密等及解密條件或保密期限|密等)[：:](.*)/ },
-    { k:'receiveOrg', r:/(?:受文者)[工作]?者?[：:]?(.*)/ },
-    { k:'originalCopy', r:/(?:正本)[：:](.*)/ }, { k:'carbonCopy', r:/(?:副本)[：:](.*)/ },
-    { k:'subject', r:/主旨[：:](.*)/ }, { k:'content', r:/說明[：:](.*)/ },
-    { k:'proposal', r:/擬辦[：:](.*)/ }, { k:'attachments', r:/附件[：:](.*)/ }
+    { k:'orgName', r:/^(?:發文機關|機關名稱|全銜|簽於)[：:]?(.*)/ },
+    { k:'docNo', r:/^(?:發文字號|文號|字號)[：:](.*?)(?=(?:電子信箱|傳真|地址|承辦人|$))/ },
+    { k:'docDate', r:/^(?:發文日期|日期)[：:](.*)/ },
+    { k:'fileNo', r:/^(?:檔號)[：:](.*)/ }, { k:'keepYear', r:/^(?:保存年限)[：:](.*)/ },
+    { k:'address', r:/^(?:地址)[：:](.*)/ }, { k:'contact', r:/^(?:承辦人|聯絡人)[：:](.*)/ },
+    { k:'phone', r:/^(?:電話)[：:](.*)/ }, { k:'fax', r:/^(?:傳真)[：:](.*)/ },
+    { k:'email', r:/^(?:電子信箱|Email)[：:](.*)/i },
+    { k:'priority', r:/^(?:速別)[：:](.*)/ }, { k:'secret', r:/^(?:密等及解密條件或保密期限|密等)[：:](.*)/ },
+    { k:'receiveOrg', r:/^(?:受文者)[工作]?者?[：:]?(.*)/ },
+    { k:'originalCopy', r:/^(?:正本)[：:](.*)/ }, { k:'carbonCopy', r:/^(?:副本)[：:](.*)/ },
+    { k:'subject', r:/^主旨[：:](.*)/ }, { k:'content', r:/^說明[：:](.*)/ },
+    { k:'proposal', r:/^擬辦[：:](.*)/ }, { k:'attachments', r:/^附件[：:](.*)/ }
   ];
   
   let curSec = null; 
@@ -1092,21 +1149,31 @@ function parseSmart(text) {
       }
     }
     if (!mF) {
-      const dM = l.match(/^(\d{2,3}年\d{1,2}月\d{1,2}日)$/); 
-      if (dM && !data.docDate) data.docDate = dM[1];
-      else if (curSec) {
-        if (fMap.some(f => l.match(f.r)) || itemR.test(l)) {
-          if (itemR.test(l) && Array.isArray(data[curSec])) {
-            data[curSec].push(l); 
-          } else curSec = null;
-        } else {
-          if (Array.isArray(data[curSec])) { 
-            let idx = data[curSec].length - 1;
-            if (idx >= 0) { data[curSec][idx] += l; } else { data[curSec].push(l); }
-          } else data[curSec] += l;
-        }
-      }
+  const dM = l.match(/^(\d{2,3}年\d{1,2}月\d{1,2}日)$/); 
+  if (dM && !data.docDate) data.docDate = dM[1];
+  else if (curSec) {
+    // 只有當該行「真的是新欄位開頭」（格式為：欄位名稱＋冒號）才切換 curSec
+    // 單純包含欄位關鍵字的正文（例如說明六提到「電話」「附件」）不應中斷
+    const isNewField = fMap.some(f => {
+      const m2 = l.match(f.r);
+      if (!m2) return false;
+      // 確認是欄位行：關鍵字緊接著 ：或: 出現，且位於行首附近
+      return /^[\u4e00-\u9fa5A-Za-z]{1,15}[：:]/.test(l);
+    });
+    if (isNewField) {
+      curSec = null;  // 真正的新欄位才中斷
+    } else if (itemR.test(l)) {
+      if (Array.isArray(data[curSec])) {
+        data[curSec].push(l);   // 條列項目（一）（二）繼續累積
+      } else curSec = null;
+    } else {
+      if (Array.isArray(data[curSec])) { 
+        let idx = data[curSec].length - 1;
+        if (idx >= 0) { data[curSec][idx] += l; } else { data[curSec].push(l); }
+      } else data[curSec] += l;
     }
+  }
+}
     if (l.match(/^(函|簽|函\(稿\)|簽於.*)$/)) { 
       data.docType = l.includes("簽") ? "簽" : "函"; 
       if (l.startsWith("簽於")) data.orgName = l.replace("簽於","").trim(); 
@@ -1134,6 +1201,58 @@ function parseSmart(text) {
   
   return data;
 }
+
+function cleanProposalField(text) {
+  if (!text) return text;
+
+  return text
+    // 移除「會辦單位：」
+    .replace(/會辦單位：?/g, '')
+
+    // 移除「承辦單位 核稿 決行（含任意空白）」
+    .replace(/承辦單位\s*核稿\s*決行/g, '')
+
+    // 移除整行只有這些關鍵字的情況
+    .replace(/^\s*(承辦單位|核稿|決行)\s*$/gm, '')
+
+    // 清理多餘空白
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+}
+
+function cleanPhoneField(text) {
+  if (!text) return text;
+
+  return text
+    // 移除「審核決行」
+    .replace(/審核決行/g, '')
+
+    // 只保留電話格式（可選強化）
+    .replace(/[^\d\-()#分機轉 ]/g, '')
+
+    .trim();
+}
+
+
+function cleanNoise(text) {
+  return text
+    // 機關名稱
+    .replace(/捷工管處/g, '')
+
+    // 頁碼
+    .replace(/第\s*\d+\s*頁\s*(?:\/|共)?\s*\d*\s*頁?/g, '')
+
+    // ✅ 修正：只刪「有冒號的流程欄位」
+    .replace(/^(承辦|經辦|主辦|會辦|協辦|審核|覆核|決行|核定)\s*[：:]\s*\S+.*$/gm, '')
+
+    // 簽核區塊（保守版）
+    .replace(/(承辦\s*[：:].*?\n){1,5}/g, '')
+
+    // 空白整理
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+}
+
 // ==========================================
 // 匯出處理邏輯 (DI, RTF)
 // ==========================================
