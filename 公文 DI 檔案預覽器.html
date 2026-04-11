@@ -89,13 +89,44 @@
   }
 
   .upload-area { padding: 25px 30px; text-align: center; background: rgba(128,128,128,0.05); border-top-left-radius: var(--apple-radius); border-top-right-radius: var(--apple-radius); }
-  .drop-zone { border: 2px dashed rgba(45, 106, 79, 0.4); border-radius: 18px; padding: 25px 20px; cursor: pointer; transition: all 0.3s ease; background: rgba(128,128,128,0.05); }
+  
+  /* 加入 position: relative 讓圖片有定位基準點 */
+  .drop-zone { position: relative; border: 2px dashed rgba(45, 106, 79, 0.4); border-radius: 18px; padding: 25px 20px; cursor: pointer; transition: all 0.3s ease; background: rgba(128,128,128,0.05); }
   .drop-zone:hover { border-color: var(--nature-green-main); background: rgba(128,128,128,0.1); transform: scale(1.002); }
   .drop-zone svg { width: 46px; height: 46px; color: var(--nature-green-main); margin-bottom: 6px; }
   .drop-text h3 { font-size: 19px; color: var(--nature-green-main); margin-bottom: 4px; font-weight: 700; }
   .drop-text p { font-size: 14px; opacity: 0.7; font-weight: 500; }
   .file-pill { display: inline-flex; align-items: center; gap: 10px; background: var(--nature-green-main); color: white; padding: 8px 20px; border-radius: 30px; font-size: 14px; font-weight: 600; margin-top: 15px; animation: popIn 0.4s; }
   @keyframes popIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  /* === 新增：左右半透明浮凸圖片樣式 === */
+  .floating-img {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 140px;
+    height: 140px;
+    object-fit: contain;
+    opacity: 0.85;
+    border-radius: 12px;
+    box-shadow: 
+        4px 4px 10px rgba(0, 0, 0, 0.15),
+        -2px -2px 8px rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    z-index: 10;
+    pointer-events: none; /* 讓滑鼠穿透不影響拖曳上傳 */
+  }
+  .left-img { left: 8%; }
+  .right-img { right: 8%; }
+
+  /* 深色模式下的圖片陰影調整 */
+  body.dark-theme .floating-img {
+    box-shadow: 
+        4px 4px 10px rgba(0, 0, 0, 0.4),
+        -2px -2px 8px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  /* ===================================== */
 
   .controls { 
     position: sticky; top: 0px; z-index: 100; padding: 12px 45px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; 
@@ -135,6 +166,19 @@
   .btn-magic:active:not(:disabled) { box-shadow: 0 1px 0 #059669, inset 0 1px 0 rgba(255,255,255,0.1); }
   .btn-magic.active { background: #059669; box-shadow: 0 0px 0 #047857; top: 3px; inset 0 2px 4px rgba(0,0,0,0.2); }
   
+  /* ▼▼▼ 請將新的動畫 CSS 貼在這裡 ▼▼▼ */
+  @keyframes attentionShake {
+    0%, 100% { transform: translateX(0); filter: brightness(1); }
+    10%, 30%, 50% { transform: translateX(-4px) scale(1.03); }
+    20%, 40%, 60% { transform: translateX(4px) scale(1.03); filter: brightness(1.2) drop-shadow(0 0 8px rgba(52, 211, 153, 0.6)); }
+    70% { transform: translateX(0) scale(1); filter: brightness(1); }
+  }
+
+  .btn-attention {
+    animation: attentionShake 2.5s cubic-bezier(.36,.07,.19,.97) infinite;
+    z-index: 105;
+  }
+
   .btn-secondary { 
     background: linear-gradient(to bottom, #FFFFFF, #E5E5EA); color: #1C1C1E; border-color: #D1D1D6; text-shadow: 0 1px 0 rgba(255,255,255,0.8);
     box-shadow: 0 4px 0 #D1D1D6, inset 0 1px 0 rgba(255,255,255,1);
@@ -224,8 +268,27 @@
   .magic-period-warning { background-color: #FFE4E6; color: #E11D48; font-size: 11px; padding: 0px 4px; border-radius: 3px; margin-left: 35px; font-weight: 700; border: 1px solid #FDA4AF; display: inline-block; animation: popIn 0.3s; }
 
   .toast-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-  .toast { background: rgba(0,0,0,0.8); color: white; padding: 12px 24px; border-radius: 30px; font-size: 15px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.2); backdrop-filter: blur(10px); display: flex; align-items: center; gap: 8px; animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-  body.dark-theme .toast { background: rgba(255,255,255,0.9); color: black; }
+  .toast {     background: rgba(255, 255, 255, 0.95);
+    color: var(--apple-blue);
+    border: 1px solid rgba(0, 122, 255, 0.2);
+    padding: 12px 24px; 
+    border-radius: 30px; 
+    font-size: 15px; 
+    font-weight: 700; 
+    box-shadow: 0 10px 30px rgba(0, 122, 255, 0.15);
+    backdrop-filter: blur(15px); 
+    -webkit-backdrop-filter: blur(15px);
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+  }
+  body.dark-theme .toast { 
+    background: rgba(30, 30, 32, 0.95);
+    color: #0A84FF;
+    border: 1px solid rgba(10, 132, 255, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
   @keyframes toastIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
   .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 2000; opacity: 0; transition: opacity 0.3s ease; }
@@ -271,12 +334,11 @@
   .diff-upload-box:hover { background: rgba(0,122,255,0.1); }
   .diff-upload-box svg { width: 32px; height: 32px; color: var(--apple-blue); margin-bottom: 8px; }
 
-  /* === 新增：教育訓練教材超連結樣式 (毛玻璃按鈕設計，解決背景吃色) === */
   .tutorial-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;            /* 設定兩個按鈕之間的間距 */
+    gap: 12px;
     margin-top: 30px;
     padding-bottom: 20px;
     animation: slideUpFade 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -285,19 +347,19 @@
   .tutorial-link {
     display: inline-flex;
     align-items: center;
-    gap: 8px;             /* 從 12px 縮小為 8px */
+    gap: 8px;
     background: rgba(255, 255, 255, 0.45); 
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px); 
     color: #0056B3; 
-    padding: 9px 20px;    /* 從 14px 30px 縮小為 9px 20px */
+    padding: 9px 20px;
     border-radius: 30px;
-    font-size: 13.5px;    /* 從 18px 縮小為 13.5px */
+    font-size: 13.5px;
     font-weight: 800;
     font-family: 'Noto Serif TC', serif;
     letter-spacing: 0.05em;
     text-decoration: none;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); /* 陰影稍微縮小 */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.4);
     text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
     transition: all 0.3s ease;
@@ -310,7 +372,6 @@
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
   }
   
-  /* 配合深色模式 */
   body.dark-theme .tutorial-link {
     background: rgba(30, 30, 32, 0.85);
     color: #64D2FF;
@@ -320,7 +381,6 @@
     background: rgba(50, 50, 55, 0.95);
     color: #FFFFFF;
   }
-  /* ============================================================== */
 
   @media(max-width: 1024px) {
     .top-bar { flex-direction: column; align-items: center; padding: 30px 15px 0; gap: 15px; }
@@ -332,7 +392,12 @@
     .doc-content-area, .doc-header, .doc-title-box, .meta-grid, .raw-footer { padding-left: 20px; padding-right: 20px; }
     .ai-split-view { grid-template-columns: 1fr; }
     .ai-textarea, .ai-result-box { height: 250px; }
-    .tutorial-link { font-size: 12px; padding: 8px 16px; } /* 手機版縮小字體 */
+    .tutorial-link { font-size: 12px; padding: 8px 16px; }
+  }
+
+  /* 小螢幕隱藏左右裝飾圖，避免排版擁擠 */
+  @media(max-width: 768px) {
+    .floating-img { display: none; }
   }
 
   @media print {
@@ -533,6 +598,11 @@
   <div class="glass-card">
     <div class="upload-area" id="uploadArea">
       <div class="drop-zone" id="dropZone">
+        <!-- ▼▼▼ 新增：左右兩側浮凸裝飾圖片 ▼▼▼ -->
+        <img src="https://lh3.googleusercontent.com/d/1ylIA71H3kKiYvT4uLDo149M40DMOHV3m" crossorigin="anonymous" class="floating-img left-img" alt="Left Decor">
+        <img src="https://lh3.googleusercontent.com/d/1gwWxK_EtLdOAAeZNJtJVm4T5pEnmX-0b" crossorigin="anonymous" class="floating-img right-img" alt="Right Decor">
+        <!-- ▲▲▲ 新增結束 ▲▲▲ -->
+        
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/>
         </svg>
@@ -593,7 +663,6 @@
     </div>
   </div>
   
-  <!-- ▼▼▼ 新增：教育訓練教材超連結 (置中於白色區塊外層) ▼▼▼ -->
   <div class="tutorial-wrapper" id="tutorialWrapper">
     <a href="https://docs.google.com/document/d/1Tho1OHua_AGaBbEawFev2A4o2ZO0Ipk3zUWua-fZ4iM/edit?usp=sharing" target="_blank" class="tutorial-link">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
@@ -605,7 +674,6 @@
       國家文官學院《公文撰作解析》電子工具書
     </a>
   </div>
-  <!-- ▲▲▲ 新增結束 ▲▲▲ -->
 
 <script>
 // ==========================================
@@ -667,12 +735,19 @@ function changeFontSize(step) {
 }
 
 function showToast(message) {
-  const container = document.getElementById('toastContainer');
+    const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> ${message}`;
   container.appendChild(toast);
-  setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(-20px)'; toast.style.transition = 'all 0.3s ease'; setTimeout(() => toast.remove(), 300); }, 3500);
+  
+  // ▼ 這裡將原本的 3500 改為 2000 (代表 2 秒後就會消失)
+  setTimeout(() => { 
+    toast.style.opacity = '0'; 
+    toast.style.transform = 'translateY(-20px)'; 
+    toast.style.transition = 'all 0.3s ease'; 
+    setTimeout(() => toast.remove(), 300); 
+  }, 2000); 
 }
 
 function copyContent() {
@@ -766,16 +841,12 @@ btnParse.onclick = async () => {
       return;
     }
 
-    // ✅ 雜訊清洗（你新增的）
     text = cleanNoise(text);
 
     let data = text.trim().startsWith('<')
       ? parseXML(text)
       : parseSmart(text);
 
-// ==========================================
-// ⭐ 欄位級精準清洗（避免誤刪正文）
-// ==========================================
 if (data.proposal) {
   data.proposal = cleanProposalField(data.proposal);
 }
@@ -793,17 +864,18 @@ lastParsedData = data;
 
     previewSection.classList.add('visible');
 
-    // ▼▼▼ 新增這幾行：解析完成後隱藏上傳區塊，並將圓角補給控制列 ▼▼▼
     uploadArea.style.display = 'none';
     const controlsBar = document.getElementById('controlsBar');
     controlsBar.style.borderTopLeftRadius = 'var(--apple-radius)';
     controlsBar.style.borderTopRightRadius = 'var(--apple-radius)';
-    // ▲▲▲ 新增結束 ▲▲▲
 
     btnExport.style.display = "inline-flex";
     btnExportDI.style.display = "inline-flex";
     btnPrint.style.display = "inline-flex";
     btnMagic.style.display = "inline-flex";
+
+    // ▼▼▼ 新增這行：替按鈕掛上抖動動畫類別 ▼▼▼
+    btnMagic.classList.add('btn-attention');
 
     parseStatus.textContent = "✅ 解析完成";
 
@@ -816,6 +888,9 @@ lastParsedData = data;
 };
 
 btnMagic.onclick = () => {
+  // ▼▼▼ 新增這行：點擊後移除抖動動畫 ▼▼▼
+  btnMagic.classList.remove('btn-attention');
+
   isMagicMode = !isMagicMode;
   if (isMagicMode) {
     btnMagic.classList.add('active');
@@ -876,8 +951,6 @@ async function extractPdfText(file) {
       return true;
     });
 
-    // 💡 核心修復：改良 PDF 排序演算法。允許 6 像素的 Y 軸高度容差，
-    // 防止凸排的「二、」掉到下一行的「運」旁邊。
     const items = filteredItems.sort((a, b) => {
       const yDiff = b.transform[5] - a.transform[5];
       if (Math.abs(yDiff) < 6) return a.transform[4] - b.transform[4]; 
@@ -892,7 +965,6 @@ async function extractPdfText(file) {
     fullText += pageText + "\n";
   }
 
-  // OCR 區塊保持不變
   if (fullText.trim().length < 50) {
     if(typeof Tesseract === 'undefined') throw new Error("Tesseract.js 未載入，請確認網路連線。");
     showToast("🕵️ 偵測到純圖片掃描檔，啟動 OCR 辨識引擎...");
@@ -951,19 +1023,14 @@ function readTextSmart(file) {
 
 function scrubRedundantText(s) {
     if (!s) return "";
-  // 1. 移除基本公文雜訊
   let res = s.replace(/會辦單位|承辦單位|核稿|決行/g, '');
   res = res.replace(/AXAR|AXAA|捷工管處/g, '');
   
-  // 2. 強化分頁雜訊掃除：匹配 第x頁、共x頁、第x頁共x頁 及其各種殘缺組合
-  // 新增針對 [、：:] 後方跟著「共」或「頁」的處理
   res = res.replace(/[、：:]*(?:第\s*\d+\s*頁?|共\s*\d+\s*頁?|第\s*\d+\s*頁?\s*[,，]?\s*共\s*\d+\s*頁?)/g, '');
   
-  // 3. 針對 OCR 殘留的單獨 「共」或「頁」字 (通常出現在行尾或標點後)
-  res = res.replace(/[，,、：:]+\s*[共頁]\s*$/gm, ''); // 標點後的殘留
-  res = res.replace(/\s*[共頁]\s*$/gm, '');         // 行尾的殘留
+  res = res.replace(/[，,、：:]+\s*[共頁]\s*$/gm, ''); 
+  res = res.replace(/\s*[共頁]\s*$/gm, '');         
 
-  // 4. 移除年度文號雜訊
   res = res.replace(/11[3-7]\*+/g, '');
   res = res.replace(/11[3-7]\d{4,10}/g, ''); 
   
@@ -1054,13 +1121,10 @@ function parseXML(text) {
 function parseSmart(text) {
   const data = { orgName: "", docType: "函", docNo: "", docDate: "", fileNo: "", keepYear: "10", address: "", contact: "", phone: "", fax: "", email: "", priority: "普通件", secret: "普通", originalCopy: "", carbonCopy: "", subject: [], content: [], proposal: [], attachments: [], receiveOrg: "" };
 
-  // 💡 核心修復：在一切開始前，強力抹除所有水平空白與隱形字元
-  // 這能瞬間解決 "依 東 森" 和 "w w w ." 被切斷的問題！
   let clean = text.replace(/[ \t\u3000\xA0]+/g, '');
 
   clean = clean.split('\n').map(l => {
     let line = l.trim();
-  // 增加對分頁與特定雜訊的排除
   if (/第\s*\d+\s*頁\s*[，,]\s*共\s*\d+\s*頁/.test(line)) return '';
   if (/AXAR|AXAA|捷工管處/.test(line)) return '';
   if (/11[3-7]\*+/.test(line)) return '';
@@ -1070,7 +1134,6 @@ function parseSmart(text) {
   return line; 
 }).filter(l => l !== '').join('\n');
 
-  // 強制斷行保護：如果標號黏在句號後面，強制把它們切斷
   clean = clean.replace(/([。；：」）])([(（][一二三四五六七八九十]+[\)）]|[一二三四五六七八九十]+、|[0-9\uFF10-\uFF19]+[\.、．])/g, '$1\n$2');
 
   clean = clean.replace(/下說明[：:]/g, '下_保_護_：').replace(/揭說明/g, '揭_保_護_');
@@ -1088,13 +1151,11 @@ function parseSmart(text) {
   const lbls = ["地址", "承辦人", "電話", "傳真", "電子信箱", "發文日期", "發文字號", "速別", "密等及解密條件或保密期限", "檔號", "保存年限", "受文者", "主旨", "說明", "擬辦", "附件", "正本", "副本"];
   const procs = [];
   
-  // 🌟 新增：追蹤是否已經進入公文正文區
   let inBodyBlock = false; 
   
   lines.forEach(l => {
     let cur = l.trim(); if (!cur) return;
     
-    // 判斷是否已經進入正文區 (看到主旨、說明、擬辦等大段落)
     if (/^(主旨|說明|擬辦|正本|副本)[：:]/.test(cur)) {
       inBodyBlock = true;
     }
@@ -1106,12 +1167,9 @@ function parseSmart(text) {
         let idx = m.index;
         if ([':','：',' '].includes(cur.charAt(idx + m[0].length)) || idx + m[0].length === cur.length) {
           
-          // 💡 核心修復：防止在「說明」內文中將「承辦人：」、「電話：」誤認為表頭欄位
           const isMajorSection = ["主旨", "說明", "擬辦", "附件", "正本", "副本"].includes(b);
           if (inBodyBlock) {
-             // 如果在正文區，不是大段落標籤絕對不切斷 (避開"送本局承辦人："的情況)
              if (!isMajorSection) continue;
-             // 如果是大段落標籤，但不在行首附近，也不切斷 (避開內文提到"如主旨："的情況)
              if (idx > 5) continue; 
           }
 
@@ -1128,7 +1186,6 @@ function parseSmart(text) {
     } else procs.push(cur);
   });
   
-  // 🌟 修復 2：為所有 fMap 加上字首 ^ 錨點，防止行內誤判
   const fMap = [
     { k:'orgName', r:/^(?:發文機關|機關名稱|全銜|簽於)[：:]?(.*)/ },
     { k:'docNo', r:/^(?:發文字號|文號|字號)[：:](.*?)(?=(?:電子信箱|傳真|地址|承辦人|$))/ },
@@ -1164,19 +1221,16 @@ function parseSmart(text) {
   const dM = l.match(/^(\d{2,3}年\d{1,2}月\d{1,2}日)$/); 
   if (dM && !data.docDate) data.docDate = dM[1];
   else if (curSec) {
-    // 只有當該行「真的是新欄位開頭」（格式為：欄位名稱＋冒號）才切換 curSec
-    // 單純包含欄位關鍵字的正文（例如說明六提到「電話」「附件」）不應中斷
     const isNewField = fMap.some(f => {
       const m2 = l.match(f.r);
       if (!m2) return false;
-      // 確認是欄位行：關鍵字緊接著 ：或: 出現，且位於行首附近
       return /^[\u4e00-\u9fa5A-Za-z]{1,15}[：:]/.test(l);
     });
     if (isNewField) {
-      curSec = null;  // 真正的新欄位才中斷
+      curSec = null;  
     } else if (itemR.test(l)) {
       if (Array.isArray(data[curSec])) {
-        data[curSec].push(l);   // 條列項目（一）（二）繼續累積
+        data[curSec].push(l);   
       } else curSec = null;
     } else {
       if (Array.isArray(data[curSec])) { 
@@ -1218,16 +1272,9 @@ function cleanProposalField(text) {
   if (!text) return text;
 
   return text
-    // 移除「會辦單位：」
     .replace(/會辦單位：?/g, '')
-
-    // 移除「承辦單位 核稿 決行（含任意空白）」
     .replace(/承辦單位\s*核稿\s*決行/g, '')
-
-    // 移除整行只有這些關鍵字的情況
     .replace(/^\s*(承辦單位|核稿|決行)\s*$/gm, '')
-
-    // 清理多餘空白
     .replace(/\n{2,}/g, '\n')
     .trim();
 }
@@ -1236,31 +1283,18 @@ function cleanPhoneField(text) {
   if (!text) return text;
 
   return text
-    // 移除「審核決行」
     .replace(/審核決行/g, '')
-
-    // 只保留電話格式（可選強化）
     .replace(/[^\d\-()#分機轉 ]/g, '')
-
     .trim();
 }
 
 
 function cleanNoise(text) {
   return text
-    // 機關名稱
     .replace(/捷工管處/g, '')
-
-    // 頁碼
     .replace(/第\s*\d+\s*頁\s*(?:\/|共)?\s*\d*\s*頁?/g, '')
-
-    // ✅ 修正：只刪「有冒號的流程欄位」
     .replace(/^(承辦|經辦|主辦|會辦|協辦|審核|覆核|決行|核定)\s*[：:]\s*\S+.*$/gm, '')
-
-    // 簽核區塊（保守版）
     .replace(/(承辦\s*[：:].*?\n){1,5}/g, '')
-
-    // 空白整理
     .replace(/\n{2,}/g, '\n')
     .trim();
 }
@@ -1343,7 +1377,6 @@ function handleExportRTF() {
   const b = new Blob([rtf], { type: 'application/rtf' });
   const a = document.createElement('a'); 
   a.href = URL.createObjectURL(b); 
-  // 改成與 DI 相同的命名方式：原檔名_1121025.rtf
   a.download = `${currentFile.name.split('.').slice(0, -1).join('.')}_${getRocDateStr()}.rtf`; 
   a.click();
   showToast("RTF 檔案已成功匯出！📝");
@@ -1365,12 +1398,6 @@ function renderText(text) {
   if (!text) return "";
   if (!isMagicMode) return esc(text);
 
-  // 修正後的 Regex：
-  // 1. 偵測異常標點、重複符號
-  // 2. 偵測特定雜訊：AXAR, AXAA, 捷工管處, 捷局...
-  // 3. 偵測分頁與年度文號雜訊 (加入「共*頁」)
-  // 4. 偵測：AAAA 以及 * (星號)
-  // 5. 偵測：表單殘留文字與公文易混淆用語
   const regex = /(^[？；，、。：.,/*\-+]+|[ \t\u3000]+|[\(\),]|(?:([，。、？！；：「」『』（）《》〈〉【】—～…])\2+)|安慰|記錄|捷局|、。|。、|：、|、：|。，|，。|AXAR|AXAA|捷工管處|第\s*\d+\s*頁|共\s*\d+\s*頁|11[3-7]\*+|11[3-7]\d{4,10}|AAAA|\*+|審核決行|會辦單位[：:]?|計劃|貫澈|公佈|部份|佔有|僱主|聘雇|規畫|策畫|盡量|徹底|聲請|給與|複核|複查|復驗)/g;
   
   let lastIndex = 0;
@@ -1380,7 +1407,6 @@ function renderText(text) {
   while ((match = regex.exec(text)) !== null) {
     result += esc(text.substring(lastIndex, match.index));
     
-    // 匹配到的部分將套用 magic-highlight 樣式（黃色背景）
     let titleMsg = "偵測到異常格式或關鍵字";
     if (match[0].includes("AAAA")) {
       titleMsg = "偵測到測試字串 AAAA";
@@ -1401,7 +1427,6 @@ function renderText(text) {
   return result;
 }
 
-// 新增：中文數字轉整數輔助函式 (支援到九十九)
 function zhToInt(zhStr) {
   const map = { '一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8, '九':9, '十':10, '壹':1, '貳':2, '參':3, '肆':4, '伍':5, '陸':6, '柒':7, '捌':8, '玖':9, '拾':10 };
   if (map[zhStr]) return map[zhStr];
@@ -1410,14 +1435,12 @@ function zhToInt(zhStr) {
   return 0;
 }
 
-// 修改：支援動態追蹤與警示公文序號的排版函式
 function formatSectionText(text, key) {
   if (!text) return "";
 
-  // 建立序號追蹤器
-  let expectL1 = 1; // 第一階層：一、二、三...
-  let expectL2 = 1; // 第二階層：(一)、(二)...
-  let expectL3 = 1; // 第三階層：1、2、3...
+  let expectL1 = 1; 
+  let expectL2 = 1; 
+  let expectL3 = 1; 
 
   return text.split('\n').map(line => {
     let cleanLine = line.trim();
@@ -1428,10 +1451,9 @@ function formatSectionText(text, key) {
       if (!cleanLine.endsWith('。') && !cleanLine.endsWith('：')) warningHtml = `<span class="magic-period-warning" contenteditable="false" title="段落結尾應為全形句號">⚠️缺 「。」</span>`;
     }
 
-    let pad = "2em";    // 預設無標號時：左側縮排2字
+    let pad = "2em";    
     let indent = "0em"; 
 
-    // 捕捉標籤與內文
     let m1 = cleanLine.match(/^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+)\s*[、.]\s*(.*)/);
     let m2 = cleanLine.match(/^[\(（]\s*([一二三四五六七八九十]+)\s*[\)）]\s*(.*)/);
     let m3 = cleanLine.match(/^([0-9\uFF10-\uFF19]+)\s*[、.．]\s*(.*)/);
@@ -1439,28 +1461,24 @@ function formatSectionText(text, key) {
     let finalHtml = "";
 
     if (m1) {
-      // 第一層：一、 
       let numStr = m1[1];
       let val = zhToInt(numStr);
       let rawPrefix = `${numStr}、`;
       let prefixHtml = renderText(rawPrefix);
 
-      // 檢查序號是否連續
       if (isMagicMode && val > 0 && val !== expectL1) {
         prefixHtml = `<span class="magic-highlight" title="序號不連續警示 (預期: 第${expectL1}項，實際: 第${val}項)">${esc(rawPrefix)}</span>`;
       }
-      // 更新預期值，並將次級標號重置
       if (val > 0) expectL1 = val + 1; 
       expectL2 = 1; 
       expectL3 = 1;
 
-      let len = numStr.length + 1; // 計算標號總字數
+      let len = numStr.length + 1; 
       pad = `${2 + len}em`;
       indent = `-${len}em`;
       finalHtml = prefixHtml + renderText(m1[2]);
       
     } else if (m2) {
-      // 第二層：(一) 
       let numStr = m2[1];
       let val = zhToInt(numStr);
       let rawPrefix = `(${numStr})`;
@@ -1470,7 +1488,7 @@ function formatSectionText(text, key) {
         prefixHtml = `<span class="magic-highlight" title="序號不連續警示 (預期: 第${expectL2}項，實際: 第${val}項)">${esc(rawPrefix)}</span>`;
       }
       if (val > 0) expectL2 = val + 1;
-      expectL3 = 1; // 重置下一級
+      expectL3 = 1; 
 
       let len = numStr.length + 1; 
       pad = `${3 + len}em`;
@@ -1478,11 +1496,10 @@ function formatSectionText(text, key) {
       finalHtml = prefixHtml + renderText(m2[2]);
       
     } else if (m3) {
-      // 第三層：１、 
       let numRawStr = m3[1];
       let numStr = numRawStr.split('').map(c => {
          let code = c.charCodeAt(0);
-         return (code >= 48 && code <= 57) ? c : String.fromCharCode(code - 65248); // 轉為半形以利計算
+         return (code >= 48 && code <= 57) ? c : String.fromCharCode(code - 65248); 
       }).join('');
       let val = parseInt(numStr, 10);
       let rawPrefix = `${numRawStr}、`;
@@ -1499,104 +1516,6 @@ function formatSectionText(text, key) {
       finalHtml = prefixHtml + renderText(m3[2]);
       
     } else {
-      // 一般無標號內文
-      finalHtml = renderText(cleanLine);
-    }
-
-    return `<div style="padding-left: ${pad}; text-indent: ${indent}; margin-bottom: 4px; text-align: justify; line-height: 1.8;">${finalHtml}${warningHtml}</div>`;
-  }).join('');
-}
-
-// 修改：支援動態追蹤與警示公文序號的排版函式
-function formatSectionText(text, key) {
-  if (!text) return "";
-
-  // 建立序號追蹤器
-  let expectL1 = 1; // 第一階層：一、二、三...
-  let expectL2 = 1; // 第二階層：(一)、(二)...
-  let expectL3 = 1; // 第三階層：1、2、3...
-
-  return text.split('\n').map(line => {
-    let cleanLine = line.trim();
-    if (!cleanLine) return `<div><br></div>`;
-    
-    let warningHtml = "";
-    if (isMagicMode && key === 'content') {
-      if (!cleanLine.endsWith('。') && !cleanLine.endsWith('：')) warningHtml = `<span class="magic-period-warning" contenteditable="false" title="段落結尾應為全形句號">⚠️缺 「。」</span>`;
-    }
-
-    let pad = "2em";    // 預設無標號時：左側縮排2字
-    let indent = "0em"; 
-
-    // 捕捉標籤與內文
-    let m1 = cleanLine.match(/^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+)\s*[、.]\s*(.*)/);
-    let m2 = cleanLine.match(/^[\(（]\s*([一二三四五六七八九十]+)\s*[\)）]\s*(.*)/);
-    let m3 = cleanLine.match(/^([0-9\uFF10-\uFF19]+)\s*[、.．]\s*(.*)/);
-
-    let finalHtml = "";
-
-    if (m1) {
-      // 第一層：一、 
-      let numStr = m1[1];
-      let val = zhToInt(numStr);
-      let rawPrefix = `${numStr}、`;
-      let prefixHtml = renderText(rawPrefix);
-
-      // 檢查序號是否連續
-      if (isMagicMode && val > 0 && val !== expectL1) {
-        prefixHtml = `<span class="magic-highlight" title="序號不連續警示 (預期: 第${expectL1}項，實際: 第${val}項)">${esc(rawPrefix)}</span>`;
-      }
-      // 更新預期值，並將次級標號重置
-      if (val > 0) expectL1 = val + 1; 
-      expectL2 = 1; 
-      expectL3 = 1;
-
-      let len = numStr.length + 1; // 計算標號總字數
-      pad = `${2 + len}em`;
-      indent = `-${len}em`;
-      finalHtml = prefixHtml + renderText(m1[2]);
-      
-    } else if (m2) {
-      // 第二層：(一) 
-      let numStr = m2[1];
-      let val = zhToInt(numStr);
-      let rawPrefix = `(${numStr})`;
-      let prefixHtml = renderText(rawPrefix);
-
-      if (isMagicMode && val > 0 && val !== expectL2) {
-        prefixHtml = `<span class="magic-highlight" title="序號不連續警示 (預期: 第${expectL2}項，實際: 第${val}項)">${esc(rawPrefix)}</span>`;
-      }
-      if (val > 0) expectL2 = val + 1;
-      expectL3 = 1; // 重置下一級
-
-      let len = numStr.length + 1; 
-      pad = `${3 + len}em`;
-      indent = `-${len}em`;
-      finalHtml = prefixHtml + renderText(m2[2]);
-      
-    } else if (m3) {
-      // 第三層：１、 
-      let numRawStr = m3[1];
-      let numStr = numRawStr.split('').map(c => {
-         let code = c.charCodeAt(0);
-         return (code >= 48 && code <= 57) ? c : String.fromCharCode(code - 65248); // 轉為半形以利計算
-      }).join('');
-      let val = parseInt(numStr, 10);
-      let rawPrefix = `${numRawStr}、`;
-      let prefixHtml = renderText(rawPrefix);
-
-      if (isMagicMode && !isNaN(val) && val !== expectL3) {
-        prefixHtml = `<span class="magic-highlight" title="序號不連續警示 (預期: 第${expectL3}項，實際: 第${val}項)">${esc(rawPrefix)}</span>`;
-      }
-      if (!isNaN(val)) expectL3 = val + 1;
-
-      let len = numStr.length + 1; 
-      pad = `${4 + len}em`;
-      indent = `-${len}em`;
-      finalHtml = prefixHtml + renderText(m3[2]);
-      
-    } else {
-      // 一般無標號內文
       finalHtml = renderText(cleanLine);
     }
 
@@ -1803,13 +1722,10 @@ function saveAndApplyProfile() {
 // Groq AI 潤飾與文字比對功能
 // ==========================================
 const tonePrompts = {
-  // 基礎公文語氣
   standard: "請扮演資深中文寫作顧問，將內容改寫為正式公文。秉持「簡、淺、明、確」原則，調整語氣至莊重得體，精準替換平淡詞彙，剔除冗長贅字，確保輸出一份用字洗鍊、符合行政機關標準的專業文本。",
   polite: "請扮演資深中文寫作顧問，將內容改寫為正式公文。特別注意：此為上行文，語氣必須婉轉謙和，多使用「懇請鑒核」、「請鑒察」等敬語，確保輸出一份用字得體的專業文本。",
   strict: "請扮演資深中文寫作顧問，將內容改寫為正式公文。特別注意：此為下行文或催辦文，語氣必須嚴謹、明確指令，針對逾期或需改善事項可採稍強硬之態度，並要求限期辦理。",
   citizen: "請將以下公文改寫為回覆民眾的書函。要求：語氣親切有禮、口語化且易懂，避免使用艱澀難懂的古文與文言文公文用語，請用現代白話文清楚說明行政單位的立場與作法。",
-  
-  // 進階專業情境
   polish: "請扮演具備深厚文學底蘊與豐富編輯實務經驗的資深中文寫作顧問。任務是針對提供的文字進行深度潤飾與優化，精準替換平淡詞彙，剔除冗長贅字與語法瑕疵。語氣須具備專業質感，並強化段落邏輯連貫性與語感韻律美。請在確保完整保留原始語意與核心訊息的前提下，輸出一份通順、精鍊的優質文本。",
   proofread: "請扮演嚴謹的專業中文校對專家，依據標準作業流程進行正式文件審查。任務是全面檢查錯別字、標點及語法，同時深度檢視文件內部或文件間是否存在邏輯矛盾、觀點衝突或事實不符。語氣須客觀、精確且具建設性。請將發現的問題、具體修正建議與修改原因，並在文末提供優先處理項目清單與專業總結。",
   legal: "請扮演精通我國法制體系與契約撰擬的資深法律顧問。任務是依據『法律明確性原則』進行文字改寫，精準運用法學術語（如：應、得、視為、推定、善意第三人等），明確界定構成要件與權利義務關係，徹底消除文字歧義。語氣必須絕對客觀、邏輯縝密且不帶情緒。請在保留原始規範意旨下，輸出一份具備法律拘束力的正式法制文本。",
@@ -1912,7 +1828,6 @@ async function startAIPolish() {
   }
 }
 
-// 互動式 Diff 與套用邏輯 (動態更改按鈕文字與邏輯)
 let currentDiffTarget = null;
 document.getElementById('aiResultBox').addEventListener('click', function(e) {
   if(e.target.classList.contains('diff-add') || e.target.classList.contains('diff-del')) {
@@ -1921,7 +1836,6 @@ document.getElementById('aiResultBox').addEventListener('click', function(e) {
     const btnAccept = document.getElementById('btnAcceptDiff');
     const btnReject = document.getElementById('btnRejectDiff');
 
-    // 動態根據點擊的顏色改變按鈕提示文字
     if(e.target.classList.contains('diff-add')) {
       btnAccept.innerHTML = "✅ 接受新增/修正";
       btnReject.innerHTML = "❌ 拒絕新增/修正";
@@ -1950,18 +1864,14 @@ function resolveDiff(action) {
   
   if (action === 'accept') {
     if (isAdd) { 
-      // ✅ 接受新增：去除綠色外框，保留裡面的文字
       currentDiffTarget.outerHTML = currentDiffTarget.innerHTML; 
     } else { 
-      // ✅ 接受刪除：將該紅色的字徹底移除
       currentDiffTarget.remove(); 
     }
   } else if (action === 'reject') {
     if (isAdd) { 
-      // ❌ 拒絕新增：將綠色的字徹底移除（不採用 AI 新增的字）
       currentDiffTarget.remove(); 
     } else { 
-      // ❌ 拒絕刪除：去除紅色外框，把原文保留下來
       currentDiffTarget.outerHTML = currentDiffTarget.innerHTML; 
     }
   }
