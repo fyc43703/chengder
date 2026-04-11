@@ -89,13 +89,63 @@
   }
 
   .upload-area { padding: 25px 30px; text-align: center; background: rgba(128,128,128,0.05); border-top-left-radius: var(--apple-radius); border-top-right-radius: var(--apple-radius); }
-  .drop-zone { border: 2px dashed rgba(45, 106, 79, 0.4); border-radius: 18px; padding: 25px 20px; cursor: pointer; transition: all 0.3s ease; background: rgba(128,128,128,0.05); }
+  .drop-zone { 
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* 讓內容散佈在左右與中間 */
+    border: 2px dashed rgba(45, 106, 79, 0.4); 
+    border-radius: 18px; 
+    padding: 20px 40px; /* 增加左右 padding 讓圖片不要貼齊邊線 */
+    cursor: pointer; 
+    transition: all 0.3s ease; 
+    background: rgba(128,128,128,0.05); 
+    min-height: 180px; /* 確保框框有足夠高度容納圖片 */
+  }
   .drop-zone:hover { border-color: var(--nature-green-main); background: rgba(128,128,128,0.1); transform: scale(1.002); }
-  .drop-zone svg { width: 46px; height: 46px; color: var(--nature-green-main); margin-bottom: 6px; }
+  
+  /* 新增：中間文字與圖示的容器 */
+  .drop-content-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+  .drop-content-center svg { width: 46px; height: 46px; color: var(--nature-green-main); margin-bottom: 6px; }
+  
+  /* 新增：左右裝飾圖片的容器 */
+  .drop-img-side {
+    width: 150px; /* 控制圖片寬度 */
+    height: 150px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.85; /* 稍微半透明，視覺上較為柔和 */
+    transition: all 0.3s ease;
+  }
+  .drop-zone:hover .drop-img-side {
+    opacity: 1;
+    transform: scale(1.05); /* 滑鼠移入時圖片微微放大 */
+  }
+  .drop-img-side img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.1)); /* 增加陰影提升質感 */
+  }
+
   .drop-text h3 { font-size: 19px; color: var(--nature-green-main); margin-bottom: 4px; font-weight: 700; }
   .drop-text p { font-size: 14px; opacity: 0.7; font-weight: 500; }
   .file-pill { display: inline-flex; align-items: center; gap: 10px; background: var(--nature-green-main); color: white; padding: 8px 20px; border-radius: 30px; font-size: 14px; font-weight: 600; margin-top: 15px; animation: popIn 0.4s; }
   @keyframes popIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  /* 新增：當螢幕太小(平板/手機)時隱藏圖片，避免擠壓文字 */
+  @media(max-width: 768px) {
+    .drop-img-side { display: none; }
+    .drop-zone { padding: 25px 20px; }
+  }
 
   .controls { 
     position: sticky; top: 0px; z-index: 100; padding: 12px 45px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; 
@@ -273,7 +323,10 @@
 
   /* === 新增：教育訓練教材超連結樣式 (毛玻璃按鈕設計，解決背景吃色) === */
   .tutorial-wrapper {
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;            /* 設定兩個按鈕之間的間距 */
     margin-top: 30px;
     padding-bottom: 20px;
     animation: slideUpFade 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -530,17 +583,29 @@
   <div class="glass-card">
     <div class="upload-area" id="uploadArea">
       <div class="drop-zone" id="dropZone">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/>
-        </svg>
-        <div class="drop-text">
-          <h3>匯入公文電子檔案</h3>
-          <p>請將 .di, .pdf (支援掃描圖檔), .txt, .xml 檔案匯入</p>
+        <!-- 左側裝飾圖片 -->
+        <div class="drop-img-side">
+            <img src="https://drive.google.com/uc?export=view&id=1ylIA71H3kKiYvT4uLDo149M40DMOHV3m" alt="公文圖示左">
+          </div>
+  
+          <!-- 原本置中的圖示與文字 -->
+          <div class="drop-content-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+            </svg>
+            <div class="drop-text">
+              <h3>匯入公文電子檔案</h3>
+              <p>請將 .di, .pdf (支援掃描圖檔), .txt, .xml 檔案匯入</p>
+            </div>
+          </div>
+  
+          <!-- 右側裝飾圖片 -->
+          <div class="drop-img-side">
+            <img src="https://drive.google.com/uc?export=view&id=1gwWxK_EtLdOAAeZNJtJVm4T5pEnmX-0b" alt="公文圖示右">
+          </div>
+  
+          <input type="file" id="fileInput" style="display:none" accept=".di,.txt,.xml,.pdf">
         </div>
-        <input type="file" id="fileInput" style="display:none" accept=".di,.txt,.xml,.pdf">
-      </div>
-      <div id="fileInfoArea"></div>
-    </div>
 
     <div class="controls" id="controlsBar">
       <div class="control-left">
@@ -593,14 +658,16 @@
   <!-- ▼▼▼ 新增：教育訓練教材超連結 (置中於白色區塊外層) ▼▼▼ -->
   <div class="tutorial-wrapper" id="tutorialWrapper">
     <a href="https://docs.google.com/document/d/1Tho1OHua_AGaBbEawFev2A4o2ZO0Ipk3zUWua-fZ4iM/edit?usp=sharing" target="_blank" class="tutorial-link">
-      <!-- 這裡的 width 與 height 從 22 改為 15 -->
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
       《電子公文 DI 檔解析與轉檔平台》實務教育訓練教材
     </a>
+    
+    <a href="https://ws.csptc.gov.tw/001/upload/ebook/%E5%85%AC%E6%96%87%E6%92%B0%E4%BD%9C%E8%A7%A3%E6%9E%90/odbook/index.html" target="_blank" class="tutorial-link">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+      國家文官學院《公文撰作解析》電子工具書
+    </a>
   </div>
   <!-- ▲▲▲ 新增結束 ▲▲▲ -->
-
-</div>
 
 <script>
 // ==========================================
