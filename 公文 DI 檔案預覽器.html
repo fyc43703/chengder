@@ -400,6 +400,37 @@
     .floating-img { display: none; }
   }
 
+/* === 新增：正副本單位挑選器樣式 === */
+.unit-select-btn {
+    font-size: 13px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: rgba(0, 122, 255, 0.08);
+    color: var(--apple-blue);
+    border: 1px solid rgba(0, 122, 255, 0.3);
+    cursor: pointer;
+    margin-left: 12px;
+    font-weight: 700;
+    transition: 0.2s;
+    font-family: inherit;
+  }
+  .unit-select-btn:hover { background: var(--apple-blue); color: white; transform: scale(1.05); }
+  body.dark-theme .unit-select-btn { background: rgba(10, 132, 255, 0.15); color: #64D2FF; border-color: rgba(10, 132, 255, 0.4); }
+  body.dark-theme .unit-select-btn:hover { background: #0A84FF; color: white; }
+
+  .unit-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; margin: 4px;
+    background: var(--doc-bg); border: 1px solid var(--apple-gray);
+    border-radius: 20px; font-size: 14px; cursor: pointer; transition: all 0.2s;
+    color: var(--text-main); font-weight: 500;
+  }
+  .unit-chip:hover { border-color: var(--apple-blue); color: var(--apple-blue); background: rgba(0, 122, 255, 0.05); }
+  .unit-chip.custom { border-color: var(--nature-gold); background: rgba(212, 175, 55, 0.05); }
+  .unit-chip-del { color: var(--seal-red); font-weight: bold; padding: 0 4px; border-radius: 50%; }
+  .unit-chip-del:hover { background: var(--seal-red); color: white; }
+  /* ================================= */
+
   @media print {
     body { background: white; color: black; margin: 0; padding: 0; }
     body::before { display: none; }
@@ -563,6 +594,37 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeProfileModal()">取消</button>
       <button class="btn btn-primary" onclick="saveAndApplyProfile()">儲存並套用</button>
+    </div>
+  </div>
+</div>
+
+<!-- 單位選擇 Modal -->
+<div class="modal-overlay" id="unitModal">
+  <div class="modal-content" style="max-width: 650px;">
+    <div class="modal-header">
+      <h3 id="unitModalTitle" style="display:flex; align-items:center; gap:8px;">🏢 挑選/新增單位</h3>
+      <button class="modal-close" onclick="closeUnitModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom: 15px;">
+        <label style="font-size: 14px; font-weight: 700; color: var(--apple-blue);">目前內容 (可直接編輯)：</label>
+        <textarea id="unitPreview" class="ai-textarea" style="height: 100px; margin-top: 8px; border-color: var(--apple-blue);"></textarea>
+      </div>
+      <div style="display: flex; gap: 8px; margin-bottom: 15px; align-items: center;">
+        <input type="text" id="customUnitInput" class="prof-input" placeholder="輸入自訂單位名稱..." style="flex: 1;">
+        <button class="btn btn-primary" onclick="addCustomUnit()">儲存並加入清單</button>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-main);">📌 內建與自訂單位 (點擊加入，點 × 可刪除)：</div>
+        <button onclick="resetDefaultUnits()" style="background:none; border:none; color:var(--apple-blue); font-size:13px; cursor:pointer; font-weight:700; padding:2px 8px; border-radius:4px; transition:0.2s;" onmouseover="this.style.background='rgba(0,122,255,0.1)'" onmouseout="this.style.background='none'">🔄 恢復預設名單</button>
+      </div>
+      <div id="unitChipsContainer" style="max-height: 250px; overflow-y: auto; padding: 10px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--meta-bg);">
+        <!-- 按鈕將由此處生成 -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeUnitModal()">取消</button>
+      <button class="btn btn-primary" onclick="applyUnits()">確認套用</button>
     </div>
   </div>
 </div>
@@ -1601,8 +1663,18 @@ function render(d, raw) {
         <div class="section-block"><div class="section-tag">主旨</div><div class="section-text" contenteditable="true" data-key="subject">${formatSectionText(d.subject, 'subject')}</div></div>
         <div class="section-block"><div class="section-tag">說明</div><div class="section-text" contenteditable="true" data-key="content">${formatSectionText(d.content, 'content')}</div></div>
         <div class="section-block"><div class="section-tag">擬辦</div><div class="section-text" contenteditable="true" data-key="proposal">${formatSectionText(d.proposal, 'proposal')}</div></div>
-        <div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px;">正本</div><div class="section-text" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="originalCopy">${renderText(d.originalCopy)}</div></div>
-        <div class="section-block" style="margin-bottom:10px;"><div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px;">副本</div><div class="section-text" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="carbonCopy">${renderText(d.carbonCopy)}</div></div>
+<div class="section-block" style="margin-bottom:10px;">
+          <div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px; align-items:center;">
+            正本 <button class="unit-select-btn" contenteditable="false" onclick="openUnitModal('originalCopy')">✏️ 挑選/新增單位</button>
+          </div>
+          <div class="section-text" id="doc-originalCopy" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="originalCopy">${renderText(d.originalCopy)}</div>
+        </div>
+        <div class="section-block" style="margin-bottom:10px;">
+          <div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px; align-items:center;">
+            副本 <button class="unit-select-btn" contenteditable="false" onclick="openUnitModal('carbonCopy')">✏️ 挑選/新增單位</button>
+          </div>
+          <div class="section-text" id="doc-carbonCopy" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="carbonCopy">${renderText(d.carbonCopy)}</div>
+        </div>
       </div>
       <div class="raw-footer">
         <span style="font-size:14px; opacity:0.8; font-weight: 600;">💡 點擊畫面文字即可修改</span>
@@ -1952,6 +2024,159 @@ function applyAIText() {
   closeAIModal();
   showToast("✅ 已成功將 AI 潤飾結果套用至公文！");
 }
+
+// ==========================================
+// 正副本單位挑選、自訂儲存與刪除功能 (進階版)
+// ==========================================
+const BASE_DEFAULT_UNITS = {
+  originalCopy: [
+    "臺北市政府捷運工程局第一區工程處", "臺北市政府捷運工程局第二區工程處", "臺北市政府捷運工程局機電系統工程處", 
+    "臺北市政府捷運工程局所屬各工程處", "臺北市政府捷運工程局工務管理處", "臺北市政府捷運工程局聯合開發處", 
+    "臺北市政府捷運工程局綜合規劃處", "臺北市政府捷運工程局土木建築設計處", "臺北市政府捷運工程局機電系統設計處", 
+    "臺北市政府捷運工程局技術發展處", "臺北市政府捷運工程局資產及財務管理室", "臺北市政府捷運工程局秘書室", 
+    "臺北市政府捷運工程局會計室", "臺北市政府捷運工程局人事室", "臺北市政府捷運工程局政風室", 
+    "臺北市政府消防局", "臺北市政府研究發展考核委員會", "臺北市政府勞動局", "臺北市政府勞動局勞動檢查處", 
+    "臺北市政府工務局", "臺北市政府工務局水利工程處", "臺北市政府交通局", "臺北市政府環境保護局"
+  ],
+  carbonCopy: [
+    "臺北市政府捷運工程局工務管理處", "臺北市政府捷運工程局第一區工程處", "臺北市政府捷運工程局第二區工程處", 
+    "臺北市政府捷運工程局機電系統工程處", "臺北市政府捷運工程局所屬各工程處", "臺北市政府捷運工程局秘書室", 
+    "臺北市政府捷運工程局會計室", "臺北市政府捷運工程局人事室", "臺北市政府捷運工程局政風室", 
+    "臺北市政府捷運工程局技術發展處", "臺北市政府消防局"
+  ]
+};
+
+let currentUnitType = ""; 
+
+// 取得整合後的清單（如果沒有則進行初始化）
+function getSavedUnits(type) {
+  let saved = localStorage.getItem(`di_active_units_${type}`);
+  if (!saved) {
+    // 第一次使用新機制：載入內建清單
+    let initialList = [...BASE_DEFAULT_UNITS[type]];
+    
+    // 檢查是否有舊版的自訂單位，一併合併進來
+    let legacyCustoms = JSON.parse(localStorage.getItem(`di_custom_units_${type}`) || '[]');
+    legacyCustoms.forEach(u => {
+      if (!initialList.includes(u)) initialList.push(u);
+    });
+    
+    saved = JSON.stringify(initialList);
+    localStorage.setItem(`di_active_units_${type}`, saved);
+  }
+  return JSON.parse(saved);
+}
+
+// 儲存新單位
+function saveNewUnit(type, unit) {
+  const units = getSavedUnits(type);
+  if (!units.includes(unit)) {
+    units.push(unit);
+    localStorage.setItem(`di_active_units_${type}`, JSON.stringify(units));
+  }
+}
+
+// 刪除單位（無論是內建還是自訂）
+function deleteUnit(type, unit, event) {
+  event.stopPropagation(); // 阻止點擊觸發加入預覽框的事件
+  let units = getSavedUnits(type);
+  units = units.filter(u => u !== unit);
+  localStorage.setItem(`di_active_units_${type}`, JSON.stringify(units));
+  renderUnitChips(); 
+}
+
+// 恢復內建預設名單
+function resetDefaultUnits() {
+  if (confirm("確定要恢復內建的預設單位嗎？\n（您自訂新增的單位將會保留，但被刪除的內建單位會重新出現）")) {
+    let current = getSavedUnits(currentUnitType);
+    BASE_DEFAULT_UNITS[currentUnitType].forEach(u => {
+      if (!current.includes(u)) current.push(u);
+    });
+    localStorage.setItem(`di_active_units_${currentUnitType}`, JSON.stringify(current));
+    renderUnitChips();
+    showToast("🔄 已恢復預設單位清單！");
+  }
+}
+
+function openUnitModal(type) {
+  currentUnitType = type;
+  const titleName = type === 'originalCopy' ? '正本' : '副本';
+  document.getElementById('unitModalTitle').innerHTML = `🏢 挑選/新增 ${titleName} 單位`;
+  
+  const currentDiv = document.getElementById(`doc-${type}`);
+  document.getElementById('unitPreview').value = currentDiv ? currentDiv.innerText.trim() : (lastParsedData[type] || "");
+  
+  document.getElementById('customUnitInput').value = "";
+  renderUnitChips();
+  document.getElementById('unitModal').classList.add('show');
+}
+
+function closeUnitModal() {
+  document.getElementById('unitModal').classList.remove('show');
+}
+
+// 渲染所有標籤按鈕
+function renderUnitChips() {
+  const container = document.getElementById('unitChipsContainer');
+  container.innerHTML = "";
+  
+  const units = getSavedUnits(currentUnitType);
+
+  units.forEach(unit => {
+    // 判斷是否為內建預設單位（為了樣式區分，自訂的顯示金色邊框）
+    const isBase = BASE_DEFAULT_UNITS[currentUnitType].includes(unit);
+    
+    const chip = document.createElement('div');
+    chip.className = isBase ? 'unit-chip' : 'unit-chip custom';
+    
+    // 所有按鈕都賦予 刪除(×) 功能
+    chip.innerHTML = `${esc(unit)} <span class="unit-chip-del" title="刪除此單位" onclick="deleteUnit('${currentUnitType}', '${esc(unit)}', event)">×</span>`;
+    chip.onclick = () => appendUnitToPreview(unit);
+    container.appendChild(chip);
+  });
+}
+
+function appendUnitToPreview(unit) {
+  const preview = document.getElementById('unitPreview');
+  let currentText = preview.value.trim();
+  
+  if (currentText && !currentText.endsWith('、')) {
+    const unitsArr = currentText.split('、').map(u => u.trim());
+    if (!unitsArr.includes(unit)) {
+      preview.value = currentText + "、" + unit;
+    } else {
+      showToast("此單位已經在欄位中了！");
+    }
+  } else {
+    preview.value = currentText + unit;
+  }
+}
+
+function addCustomUnit() {
+  const input = document.getElementById('customUnitInput');
+  const newUnit = input.value.trim();
+  if (newUnit) {
+    saveNewUnit(currentUnitType, newUnit);
+    appendUnitToPreview(newUnit);
+    input.value = "";
+    renderUnitChips();
+    showToast("✅ 新單位已儲存，並加入至內容中！");
+  } else {
+    showToast("請輸入單位名稱！");
+  }
+}
+
+function applyUnits() {
+  const finalValue = document.getElementById('unitPreview').value.trim();
+  if (lastParsedData) {
+    lastParsedData[currentUnitType] = finalValue;
+    const div = document.getElementById(`doc-${currentUnitType}`);
+    if(div) div.innerHTML = renderText(finalValue);
+  }
+  closeUnitModal();
+  showToast(`✅ ${currentUnitType === 'originalCopy' ? '正本' : '副本'} 單位已成功更新！`);
+}
+
 </script>
 </body>
 </html>
