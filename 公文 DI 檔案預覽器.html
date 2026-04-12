@@ -1,4 +1,15 @@
-<!DOCTYPE html>
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>電子公文DI檔解析與轉檔平台</title>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
+      <style>
+      html, body { margin: 0; padding: 24px; background: #FFFFFF; color: #1d1d1f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; font-size: 15px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+      h1, h2, h3, h4, h5, h6, b, strong { font-weight: 600; } h1 { font-weight: 700; }
+      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; } ul { list-style-type: disc; } ol { list-style-type: decimal; } li { display: list-item; }
+      .hljs-container { padding: 1.5rem; border-radius: .75rem; overflow-x: auto; background: #fcfcfd; border: 1px solid #d2d2d7; }
+      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
+      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
+      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
+    </style></head><body><div style="max-width:1200px;margin:0 auto"><!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -517,6 +528,38 @@ body.font-kai .doc-paper [contenteditable="true"],
     [contenteditable="true"]:empty::before { display: none; }
     @page { margin: 1.5cm; }
   }
+
+/* === 新增：聯絡資訊選單與按鈕樣式 === */
+.prof-input-group {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  align-items: center;
+}
+.btn-icon-del {
+  background: var(--meta-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--seal-red);
+  cursor: pointer;
+  height: 100%;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-icon-del:hover {
+  background: var(--seal-red);
+  color: white;
+  border-color: var(--seal-red);
+}
+body.dark-theme .btn-icon-del {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 </style>
 </head>
 <body>
@@ -674,20 +717,72 @@ body.font-kai .doc-paper [contenteditable="true"],
 
 <!-- 個人設定檔 Modal -->
 <div class="modal-overlay" id="profileModal">
-  <div class="modal-content" style="max-width: 500px;">
+  <div class="modal-content" style="max-width: 550px;">
     <div class="modal-header">
       <h3 style="display:flex; align-items:center; gap:8px;">👤 預填聯絡資訊設定</h3>
       <button class="modal-close" onclick="closeProfileModal()">×</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:13px; color:var(--apple-gray); margin-bottom:10px;">儲存後，未來只需一鍵即可將此資訊套用於公文欄位中。</p>
-      <div class="meta-item"><span class="meta-key">發文機關</span><input type="text" id="profOrg" class="prof-input"></div>
-      <div class="meta-item"><span class="meta-key">承辦人</span><input type="text" id="profContact" class="prof-input"></div>
-      <div class="meta-item"><span class="meta-key">電話</span><input type="text" id="profPhone" class="prof-input"></div>
-      <div class="meta-item"><span class="meta-key">傳真</span><input type="text" id="profFax" class="prof-input"></div>
-      <div class="meta-item"><span class="meta-key">電子信箱</span><input type="text" id="profEmail" class="prof-input"></div>
-      <div class="meta-item"><span class="meta-key">地址</span><input type="text" id="profAddress" class="prof-input"></div>
-    </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <p style="font-size:13px; color:var(--apple-gray); margin:0;">📝 雙擊輸入框可拉出選單。輸入新值按儲存即自動加入清單。</p>
+            <button onclick="restoreDefaultProfiles()" style="background:none; border:none; color:var(--apple-blue); font-size:13px; cursor:pointer; font-weight:700; padding:4px 8px; border-radius:6px; transition:0.2s;" onmouseover="this.style.background='rgba(0,122,255,0.1)'" onmouseout="this.style.background='none'">🔄 恢復內建選項</button>
+          </div>
+        
+          <div class="meta-item">
+            <span class="meta-key">發文機關</span>
+            <div class="prof-input-group">
+              <input type="text" id="profOrg" class="prof-input" list="dl-profOrg" placeholder="請選擇或輸入機關...">
+              <datalist id="dl-profOrg"></datalist>
+              <button class="btn-icon-del" onclick="deleteProfileOption('orgName', 'profOrg')" title="從清單中刪除目前輸入的值">×</button>
+            </div>
+          </div>
+          
+          <div class="meta-item">
+            <span class="meta-key">承辦人</span>
+            <div class="prof-input-group">
+              <input type="text" id="profContact" class="prof-input" list="dl-profContact" placeholder="請選擇或輸入承辦人...">
+              <datalist id="dl-profContact"></datalist>
+              <button class="btn-icon-del" onclick="deleteProfileOption('contact', 'profContact')" title="從清單中刪除目前輸入的值">×</button>
+            </div>
+          </div>
+          
+          <div class="meta-item">
+            <span class="meta-key">電話</span>
+            <div class="prof-input-group">
+              <input type="text" id="profPhone" class="prof-input" list="dl-profPhone" placeholder="請選擇或輸入電話...">
+              <datalist id="dl-profPhone"></datalist>
+              <button class="btn-icon-del" onclick="deleteProfileOption('phone', 'profPhone')" title="從清單中刪除目前輸入的值">×</button>
+            </div>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-key">傳真</span>
+            <div class="prof-input-group">
+              <input type="text" id="profFax" class="prof-input" list="dl-profFax" placeholder="請選擇或輸入傳真...">
+              <datalist id="dl-profFax"></datalist>
+              <button class="btn-icon-del" onclick="deleteProfileOption('fax', 'profFax')" title="從清單中刪除目前輸入的值">×</button>
+            </div>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-key">電子信箱</span>
+            <div class="prof-input-group">
+              <input type="text" id="profEmail" class="prof-input" list="dl-profEmail" placeholder="請選擇或輸入信箱...">
+              <datalist id="dl-profEmail"></datalist>
+              <button class="btn-icon-del" onclick="deleteProfileOption('email', 'profEmail')" title="從清單中刪除目前輸入的值">×</button>
+            </div>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-key">地址</span>
+            <div class="prof-input-group">
+              <input type="text" id="profAddress" class="prof-input" list="dl-profAddress" placeholder="請選擇或輸入地址...">
+              <datalist id="dl-profAddress"></datalist>
+              <button class="btn-icon-del" onclick="deleteProfileOption('address', 'profAddress')" title="從清單中刪除目前輸入的值">×</button>
+            </div>
+          </div>
+
+        </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeProfileModal()">取消</button>
       <button class="btn btn-primary" onclick="saveAndApplyProfile()">儲存並套用</button>
@@ -1912,9 +2007,73 @@ document.getElementById('diffFileInput').onchange = async (e) => {
 };
 
 // ==========================================
-// 常用聯絡資訊設定檔 (Profile Auto-fill)
+// 常用聯絡資訊設定檔 (Profile Auto-fill & Dropdown)
 // ==========================================
+const DEFAULT_PROFILE_OPTIONS = {
+  orgName: ["臺北市政府捷運工程局工務管理處"],
+  contact: ["陳政德"],
+  phone: ["02-25215550轉8499"],
+  fax: ["02-25218419"],
+  email: ["11283@gov.taipei"],
+  address: ["104216臺北市中山區中山北路2段48巷7號13樓"]
+};
+
+// 取得當前儲存的選項清單（沒有則載入預設）
+function getSavedProfileOptions() {
+  const saved = localStorage.getItem('di_profile_options');
+  return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_PROFILE_OPTIONS));
+}
+
+// 渲染 Datalist 下拉選單內容
+function renderProfileDatalists() {
+  const options = getSavedProfileOptions();
+  const map = {
+    'orgName': 'dl-profOrg', 'contact': 'dl-profContact',
+    'phone': 'dl-profPhone', 'fax': 'dl-profFax',
+    'email': 'dl-profEmail', 'address': 'dl-profAddress'
+  };
+  for (let key in map) {
+    const dl = document.getElementById(map[key]);
+    if (dl) {
+      dl.innerHTML = (options[key] || []).map(val => `<option value="${esc(val)}"></option>`).join('');
+    }
+  }
+}
+
+// 刪除目前輸入框內顯示的選項
+function deleteProfileOption(key, inputId) {
+  const input = document.getElementById(inputId);
+  const valToRemove = input.value.trim();
+  if (!valToRemove) return showToast("輸入框為空，無需刪除！");
+
+  let options = getSavedProfileOptions();
+  if (options[key] && options[key].includes(valToRemove)) {
+    options[key] = options[key].filter(v => v !== valToRemove);
+    localStorage.setItem('di_profile_options', JSON.stringify(options));
+    input.value = ''; // 刪除後清空輸入框
+    renderProfileDatalists();
+    showToast("🗑️ 已從下拉選單中刪除該選項！");
+  } else {
+    showToast("清單中沒有這個選項喔！");
+  }
+}
+
+// 一鍵恢復內建選項
+function restoreDefaultProfiles() {
+  if (confirm("確定要恢復內建的預設選項嗎？\n（您之前手動新增的選項將被清除）")) {
+    localStorage.setItem('di_profile_options', JSON.stringify(DEFAULT_PROFILE_OPTIONS));
+    renderProfileDatalists();
+    
+    ['profOrg','profContact','profPhone','profFax','profEmail','profAddress'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    showToast("🔄 已恢復內建聯絡資訊選項！");
+  }
+}
+
 function openProfileModal() {
+  renderProfileDatalists();
+  
   const savedProfile = JSON.parse(localStorage.getItem('di_user_profile') || '{}');
   document.getElementById('profOrg').value = savedProfile.orgName || '';
   document.getElementById('profContact').value = savedProfile.contact || '';
@@ -1922,9 +2081,13 @@ function openProfileModal() {
   document.getElementById('profFax').value = savedProfile.fax || '';
   document.getElementById('profEmail').value = savedProfile.email || '';
   document.getElementById('profAddress').value = savedProfile.address || '';
+  
   document.getElementById('profileModal').classList.add('show');
 }
-function closeProfileModal() { document.getElementById('profileModal').classList.remove('show'); }
+
+function closeProfileModal() { 
+  document.getElementById('profileModal').classList.remove('show'); 
+}
 
 function saveAndApplyProfile() {
   const profile = {
@@ -1935,8 +2098,25 @@ function saveAndApplyProfile() {
     email: document.getElementById('profEmail').value.trim(),
     address: document.getElementById('profAddress').value.trim()
   };
+  
   localStorage.setItem('di_user_profile', JSON.stringify(profile));
   
+  let options = getSavedProfileOptions();
+  let hasNewOption = false;
+  
+  Object.keys(profile).forEach(key => {
+    const val = profile[key];
+    if (val && (!options[key] || !options[key].includes(val))) {
+      if(!options[key]) options[key] = [];
+      options[key].unshift(val); 
+      hasNewOption = true;
+    }
+  });
+  
+  if(hasNewOption) {
+    localStorage.setItem('di_profile_options', JSON.stringify(options));
+  }
+
   if (lastParsedData) {
     if(profile.orgName) lastParsedData.orgName = profile.orgName;
     if(profile.contact) lastParsedData.contact = profile.contact;
@@ -1944,6 +2124,7 @@ function saveAndApplyProfile() {
     if(profile.fax) lastParsedData.fax = profile.fax;
     if(profile.email) lastParsedData.email = profile.email;
     if(profile.address) lastParsedData.address = profile.address;
+    
     render(lastParsedData, lastRawText);
     showToast("✅ 個人設定已儲存並自動套用至公文！");
   } else {
@@ -2519,4 +2700,4 @@ function insertSnippet(idx) {
 
 </script>
 </body>
-</html>
+</html></div></body></html>
