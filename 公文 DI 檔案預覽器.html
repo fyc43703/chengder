@@ -431,6 +431,60 @@
   .unit-chip-del:hover { background: var(--seal-red); color: white; }
   /* ================================= */
 
+/* === 1. 模擬公文標準字體 (楷體) === */
+body.font-kai .doc-paper [contenteditable="true"],
+  body.font-kai .doc-paper .doc-org,
+  body.font-kai .doc-paper .doc-subject-main,
+  body.font-kai .doc-paper .section-text {
+    font-family: "標楷體", "BiauKai", "DFKai-SB", serif !important;
+  }
+
+  /* === 2. 沉浸式專注寫作模式 === */
+  body.zen-mode .top-bar, 
+  body.zen-mode .controls, 
+  body.zen-mode .upload-area, 
+  body.zen-mode .raw-footer, 
+  body.zen-mode .tutorial-wrapper,
+  body.zen-mode .floating-img {
+    display: none !important;
+  }
+  body.zen-mode .container { width: 90%; max-width: 1000px; margin-top: 20px; animation: slideUpFade 0.5s; }
+  body.zen-mode .preview-section { background: transparent; padding: 0; }
+  
+  .zen-exit-btn {
+    display: none; position: fixed; bottom: 30px; right: 30px; z-index: 9999;
+    background: rgba(30,30,32,0.8); color: white; border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px); padding: 10px 20px; border-radius: 30px;
+    font-weight: 700; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.3); transition: 0.3s;
+  }
+  .zen-exit-btn:hover { background: #000; transform: scale(1.05); }
+  body.zen-mode .zen-exit-btn { display: flex; align-items: center; gap: 8px; }
+
+  /* === 3. 個人公文儀表板 (History Dashboard) === */
+  .history-dashboard { margin-top: 20px; text-align: left; animation: slideUpFade 0.8s; }
+  .history-title { font-size: 14px; font-weight: 700; color: var(--apple-gray); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .history-cards { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 15px; scrollbar-width: none; }
+  .history-cards::-webkit-scrollbar { display: none; }
+  .history-card {
+    background: rgba(255, 255, 255, 0.5); border: 1px solid var(--border-color);
+    padding: 12px 16px; border-radius: 12px; min-width: 220px; max-width: 260px;
+    cursor: pointer; transition: 0.2s; flex-shrink: 0;
+  }
+  .history-card:hover { background: var(--doc-bg); border-color: var(--apple-blue); transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+  body.dark-theme .history-card { background: rgba(0,0,0,0.2); }
+  body.dark-theme .history-card:hover { background: var(--doc-bg); }
+  .hc-date { font-size: 12px; color: var(--apple-blue); font-weight: 700; margin-bottom: 4px; }
+  .hc-title { font-size: 14px; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* === 4. 罐頭語錄 (Snippet Manager) === */
+  .snippet-item {
+    display: flex; justify-content: space-between; align-items: center; padding: 12px 15px;
+    border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px;
+    background: var(--meta-bg); cursor: pointer; transition: 0.2s;
+  }
+  .snippet-item:hover { border-color: var(--apple-blue); background: rgba(0,122,255,0.05); }
+  .snippet-text { flex: 1; font-size: 14px; color: var(--text-main); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
   @media print {
     body { background: white; color: black; margin: 0; padding: 0; }
     body::before { display: none; }
@@ -456,6 +510,37 @@
 <body>
 
 <div class="toast-container" id="toastContainer"></div>
+
+<!-- 新增：離開專注模式按鈕 -->
+<button class="zen-exit-btn" id="btnExitZen" onclick="toggleZenMode()">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
+  退出專注寫作
+</button>
+
+<!-- 新增：罐頭語錄 Modal -->
+<div class="modal-overlay" id="snippetModal">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 style="display:flex; align-items:center; gap:8px;">📦 常用公文語錄庫</h3>
+      <button class="modal-close" onclick="closeSnippetModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px; color:var(--apple-blue); margin-bottom:10px; font-weight:700;">
+        💡 點擊語塊即可將文字自動插入至您「最後點擊的段落（如說明或擬辦）」。
+      </div>
+      <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+        <input type="text" id="newSnippetInput" class="prof-input" placeholder="輸入新的常用語塊內容...">
+        <button class="btn btn-primary" onclick="addSnippet()">新增</button>
+      </div>
+      <div id="snippetListContainer" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+        <!-- 語錄由 JS 生成 -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSnippetModal()">關閉</button>
+    </div>
+  </div>
+</div>
 
 <!-- 雙檔比對 Modal -->
 <div class="modal-overlay" id="versionDiffModal">
@@ -649,6 +734,7 @@
       </svg>
     </button>
     <div class="font-size-group">
+      <button class="font-btn" onclick="toggleKaiti()" title="切換為列印標準楷體" style="color:var(--apple-blue);">楷</button>
       <button class="font-btn" onclick="changeFontSize(-0.1)" title="縮小字體" style="font-size:12px;">A-</button>
       <button class="font-btn" onclick="changeFontSize(0)" title="預設大小" style="font-size:14px;">A</button>
       <button class="font-btn" onclick="changeFontSize(0.1)" title="放大字體" style="font-size:16px;">A+</button>
@@ -675,7 +761,12 @@
         <input type="file" id="fileInput" style="display:none" accept=".di,.txt,.xml,.pdf">
       </div>
       <div id="fileInfoArea"></div>
-    </div>
+          <!-- 新增：歷史紀錄儀表板 -->
+          <div class="history-dashboard" id="historyDashboard" style="display: none;">
+            <div class="history-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 最近編輯的公文 (點擊接續編輯)</div>
+            <div class="history-cards" id="historyCardsContainer"></div>
+          </div>
+        </div>
 
     <div class="controls" id="controlsBar">
       <div class="control-left">
@@ -1685,9 +1776,19 @@ function render(d, raw) {
           </button>
           
 <button class="btn btn-navy" onclick="openDiffModal()">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>
-  雙檔比對
-</button>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>
+          雙檔比對
+        </button>
+        <!-- 新增：罐頭語錄 -->
+        <button class="btn btn-navy" onclick="openSnippetModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          罐頭語錄庫
+        </button>
+        <!-- 新增：專注模式 -->
+        <button class="btn btn-secondary" onclick="toggleZenMode()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+          專注模式
+        </button>
 
 <button class="btn btn-orange" onclick="openAIModal()">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
@@ -2175,6 +2276,216 @@ function applyUnits() {
   }
   closeUnitModal();
   showToast(`✅ ${currentUnitType === 'originalCopy' ? '正本' : '副本'} 單位已成功更新！`);
+}
+
+// ==========================================
+// 🚀 新增功能：1. 模擬公文標準字體 (楷體切換)
+// ==========================================
+let isKaiti = localStorage.getItem('di_font_kai') === 'true';
+if (isKaiti) document.body.classList.add('font-kai');
+
+function toggleKaiti() {
+  isKaiti = !isKaiti;
+  localStorage.setItem('di_font_kai', isKaiti);
+  if (isKaiti) {
+    document.body.classList.add('font-kai');
+    showToast("🖋️ 已切換為公文列印標準字體 (楷體)");
+  } else {
+    document.body.classList.remove('font-kai');
+    showToast("📱 已切換為現代易讀字體 (黑體)");
+  }
+}
+
+// ==========================================
+// 🚀 新增功能：2. 沉浸式專注寫作模式 (Zen Mode)
+// ==========================================
+let isZenMode = false;
+function toggleZenMode() {
+  isZenMode = !isZenMode;
+  if (isZenMode) {
+    document.body.classList.add('zen-mode');
+    showToast("🧘 進入專注寫作模式，按 ESC 或右下角可退出");
+  } else {
+    document.body.classList.remove('zen-mode');
+    showToast("離開專注模式");
+  }
+}
+// 監聽 ESC 鍵退出專注模式
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && isZenMode) toggleZenMode();
+});
+
+// ==========================================
+// 🚀 新增功能：3. 個人公文歷史儀表板
+// ==========================================
+function saveToHistory(data, rawText) {
+  let history = JSON.parse(localStorage.getItem('di_doc_history') || '[]');
+  const docEntry = {
+    id: Date.now(),
+    date: new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit' }),
+    title: data.subjectTitle || data.subject || "未命名公文",
+    data: data,
+    rawText: rawText
+  };
+  
+  // 避免重複儲存相同的公文，以字號判斷
+  history = history.filter(h => h.data.docNo !== data.docNo);
+  history.unshift(docEntry);
+  if (history.length > 5) history = history.slice(0, 5); // 最多保留 5 筆
+  
+  localStorage.setItem('di_doc_history', JSON.stringify(history));
+  renderHistoryDashboard();
+}
+
+function renderHistoryDashboard() {
+  const history = JSON.parse(localStorage.getItem('di_doc_history') || '[]');
+  const container = document.getElementById('historyCardsContainer');
+  const dashboard = document.getElementById('historyDashboard');
+  
+  if (history.length === 0) {
+    dashboard.style.display = 'none';
+    return;
+  }
+  
+  dashboard.style.display = 'block';
+  container.innerHTML = history.map((doc, index) => `
+    <div class="history-card" onclick="restoreFromHistory(${index})">
+      <div class="hc-date">🕒 ${doc.date}</div>
+      <div class="hc-title">${esc(doc.title)}</div>
+    </div>
+  `).join('');
+}
+
+function restoreFromHistory(index) {
+  const history = JSON.parse(localStorage.getItem('di_doc_history') || '[]');
+  if (history[index]) {
+    lastParsedData = history[index].data;
+    lastRawText = history[index].rawText;
+    render(lastParsedData, lastRawText);
+    document.getElementById('uploadArea').style.display = 'none';
+    document.getElementById('previewSection').classList.add('visible');
+    
+    // 顯示按鈕
+    document.getElementById('btnExport').style.display = "inline-flex";
+    document.getElementById('btnExportDI').style.display = "inline-flex";
+    document.getElementById('btnPrint').style.display = "inline-flex";
+    document.getElementById('btnMagic').style.display = "inline-flex";
+    
+    document.getElementById('parseStatus').textContent = "✅ 已載入歷史紀錄";
+    showToast("📂 已恢復先前編輯的公文！");
+  }
+}
+
+// 頁面載入時初始化儀表板
+document.addEventListener('DOMContentLoaded', renderHistoryDashboard);
+
+// ❗️ 必須綁定：在解析完成後存入紀錄 (尋找 btnParse.onclick)
+// 為了不影響原有代碼，我們在此處攔截解析成功後的狀態：
+const originalRender = render;
+render = function(d, raw) {
+  originalRender(d, raw);
+  // 只有當這是一份全新的上傳解析，才存入歷史 (避免編輯時無限觸發)
+  if (!d._isRestored) {
+    saveToHistory(d, raw);
+    d._isRestored = true; 
+  }
+};
+
+// ==========================================
+// 🚀 新增功能：4. 罐頭語錄庫 (Snippet Manager)
+// ==========================================
+let lastFocusedEditable = null;
+
+// 監聽所有編輯區的點擊，記錄最後一個被選取的欄位
+document.addEventListener('focusin', (e) => {
+  if (e.target.hasAttribute('contenteditable') && e.target.getAttribute('data-key')) {
+    lastFocusedEditable = e.target.getAttribute('data-key');
+  }
+});
+
+const DEFAULT_SNIPPETS = [
+  "主旨：檢送「〇〇專案會議紀錄」乙份，請查照。",
+  "主旨：有關〇〇〇〇案，請核示。",
+  "主旨：函轉〇〇〇〇，請查照。",
+  "主旨：檢送〇〇〇〇1份，請查照。",
+  "說明：復貴局〇〇年〇〇月〇〇日〇〇字第〇〇號函。",
+  "說明：依據本府〇〇年〇〇月〇〇日〇〇字第〇〇號函辦理。",
+  "說明：請貴處督導所轄施工標確實改善上述缺失，並將缺失改善結果回報工務所備查。",
+  "說明：請貴處督辦下列事項：",
+  "擬辦：奉核後，續辦下列事項：\n一、〇〇〇〇〇〇。\n二、〇〇〇〇〇〇。\n三、文陳閱後存查。",
+  "擬辦：一、奉核後，依說明○辦理。\n二、文陳閱後存查。"
+];
+
+function getSnippets() {
+  let saved = localStorage.getItem('di_snippets');
+  return saved ? JSON.parse(saved) : DEFAULT_SNIPPETS;
+}
+
+function renderSnippetList() {
+  const container = document.getElementById('snippetListContainer');
+  const snippets = getSnippets();
+  
+  container.innerHTML = snippets.map((snip, idx) => `
+    <div class="snippet-item">
+      <div class="snippet-text" onclick="insertSnippet(${idx})">${esc(snip).replace(/\n/g, '<br>')}</div>
+      <button class="unit-chip-del" style="background:none; border:none; cursor:pointer;" onclick="deleteSnippet(${idx})" title="刪除">❌</button>
+    </div>
+  `).join('');
+}
+
+function openSnippetModal() {
+  if (!lastParsedData) return showToast("請先載入公文再使用語錄功能！");
+  if (!lastFocusedEditable) lastFocusedEditable = 'content'; // 預設插入到「說明」
+  
+  const keyNameMap = { 'subject': '主旨', 'content': '說明', 'proposal': '擬辦' };
+  const targetName = keyNameMap[lastFocusedEditable] || lastFocusedEditable;
+  
+  showToast(`準備將語錄插入至：「${targetName}」`);
+  renderSnippetList();
+  document.getElementById('snippetModal').classList.add('show');
+}
+
+function closeSnippetModal() {
+  document.getElementById('snippetModal').classList.remove('show');
+}
+
+function addSnippet() {
+  const input = document.getElementById('newSnippetInput');
+  const text = input.value.trim();
+  if (text) {
+    let snippets = getSnippets();
+    snippets.unshift(text);
+    localStorage.setItem('di_snippets', JSON.stringify(snippets));
+    input.value = "";
+    renderSnippetList();
+    showToast("✅ 新語錄已加入知識庫！");
+  }
+}
+
+function deleteSnippet(idx) {
+  let snippets = getSnippets();
+  snippets.splice(idx, 1);
+  localStorage.setItem('di_snippets', JSON.stringify(snippets));
+  renderSnippetList();
+}
+
+function insertSnippet(idx) {
+  const snippets = getSnippets();
+  const textToInsert = snippets[idx];
+  
+  if (lastParsedData && lastFocusedEditable) {
+    let currentText = lastParsedData[lastFocusedEditable] || "";
+    // 若原欄位已有文字，加上換行符號
+    if (currentText.trim() !== "") currentText += "\n";
+    currentText += textToInsert;
+    
+    lastParsedData[lastFocusedEditable] = currentText;
+    
+    // 重新渲染畫面並更新 raw 文字
+    render(lastParsedData, lastRawText);
+    closeSnippetModal();
+    showToast("🪄 語塊已成功插入！");
+  }
 }
 
 </script>
