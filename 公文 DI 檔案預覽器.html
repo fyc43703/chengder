@@ -537,9 +537,14 @@ body.font-kai .doc-paper [contenteditable="true"],
       <button class="modal-close" onclick="closeSnippetModal()">×</button>
     </div>
     <div class="modal-body">
-      <div style="font-size:13px; color:var(--apple-blue); margin-bottom:10px; font-weight:700;">
-        💡 點擊語塊即可將文字自動插入至您「最後點擊的段落（如說明或擬辦）」。
+      <!-- 🌟 修改這裡：將提示文字與按鈕並排 -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+        <div style="font-size:13px; color:var(--apple-blue); font-weight:700; line-height: 1.6;">
+          💡 點擊語塊即可將文字自動插入至您「最後點擊的段落（如說明或擬辦）」。
+        </div>
+        <button onclick="restoreDefaultSnippets()" style="background:none; border:none; color:var(--apple-blue); font-size:13px; cursor:pointer; font-weight:700; padding:4px 8px; border-radius:4px; transition:0.2s; white-space:nowrap;" onmouseover="this.style.background='rgba(0,122,255,0.1)'" onmouseout="this.style.background='none'">🔄 恢復內建</button>
       </div>
+      
       <div style="display: flex; gap: 8px; margin-bottom: 15px;">
         <input type="text" id="newSnippetInput" class="prof-input" placeholder="輸入新的常用語塊內容...">
         <button class="btn btn-primary" onclick="addSnippet()">新增</button>
@@ -674,26 +679,81 @@ body.font-kai .doc-paper [contenteditable="true"],
 
 <!-- 個人設定檔 Modal -->
 <div class="modal-overlay" id="profileModal">
-  <div class="modal-content" style="max-width: 500px;">
-    <div class="modal-header">
-      <h3 style="display:flex; align-items:center; gap:8px;">👤 預填聯絡資訊設定</h3>
-      <button class="modal-close" onclick="closeProfileModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:13px; color:var(--apple-gray); margin-bottom:10px;">儲存後，未來只需一鍵即可將此資訊套用於公文欄位中。</p>
-      <div class="meta-item"><span class="meta-key">發文機關</span><input type="text" id="profOrg" class="prof-input"></div>
-      <div class="meta-item"><span class="meta-key">承辦人</span><input type="text" id="profContact" class="prof-input"></div>
-      <div class="meta-item"><span class="meta-key">電話</span><input type="text" id="profPhone" class="prof-input"></div>
-      <div class="meta-item"><span class="meta-key">傳真</span><input type="text" id="profFax" class="prof-input"></div>
-      <div class="meta-item"><span class="meta-key">電子信箱</span><input type="text" id="profEmail" class="prof-input"></div>
-      <div class="meta-item"><span class="meta-key">地址</span><input type="text" id="profAddress" class="prof-input"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeProfileModal()">取消</button>
-      <button class="btn btn-primary" onclick="saveAndApplyProfile()">儲存並套用</button>
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 style="display:flex; align-items:center; gap:8px;">👤 預填聯絡資訊設定</h3>
+        <button class="modal-close" onclick="closeProfileModal()">×</button>
+      </div>
+      <div class="modal-body" style="gap: 15px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:5px;">
+          <p style="font-size:13px; color:var(--apple-gray); margin:0; line-height: 1.6;">
+            💡 <b>操作說明：</b>點擊下方各欄位的選項即可快速帶入輸入框；<br>若要刪除不再使用的選項，請直接點擊選項旁邊的 ❌。<br>
+            (手動輸入新內容並儲存後，系統會自動加入選項清單中)
+          </p>
+          <button onclick="restoreDefaultProfiles()" style="background:none; border:none; color:var(--apple-blue); font-size:13px; cursor:pointer; font-weight:700; padding:4px 8px; border-radius:4px; transition:0.2s; white-space:nowrap;" onmouseover="this.style.background='rgba(0,122,255,0.1)'" onmouseout="this.style.background='none'">🔄 恢復內建</button>
+        </div>
+  
+        <!-- 發文機關 -->
+        <div class="meta-item" style="align-items: flex-start;">
+          <span class="meta-key" style="margin-top: 8px;">發文機關</span>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+            <input type="text" id="profOrg" class="prof-input" placeholder="請輸入發文機關...">
+            <div id="chips-profOrg" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px;"></div>
+          </div>
+        </div>
+        
+        <!-- 承辦人 -->
+        <div class="meta-item" style="align-items: flex-start;">
+          <span class="meta-key" style="margin-top: 8px;">承辦人</span>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+            <input type="text" id="profContact" class="prof-input" placeholder="請輸入承辦人姓名...">
+            <div id="chips-profContact" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px;"></div>
+          </div>
+        </div>
+        
+        <!-- 電話 -->
+        <div class="meta-item" style="align-items: flex-start;">
+          <span class="meta-key" style="margin-top: 8px;">電話</span>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+            <input type="text" id="profPhone" class="prof-input" placeholder="請輸入聯絡電話...">
+            <div id="chips-profPhone" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px;"></div>
+          </div>
+        </div>
+        
+        <!-- 傳真 -->
+        <div class="meta-item" style="align-items: flex-start;">
+          <span class="meta-key" style="margin-top: 8px;">傳真</span>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+            <input type="text" id="profFax" class="prof-input" placeholder="請輸入傳真號碼...">
+            <div id="chips-profFax" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px;"></div>
+          </div>
+        </div>
+        
+        <!-- 電子信箱 -->
+        <div class="meta-item" style="align-items: flex-start;">
+          <span class="meta-key" style="margin-top: 8px;">電子信箱</span>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+            <input type="text" id="profEmail" class="prof-input" placeholder="請輸入Email...">
+            <div id="chips-profEmail" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px;"></div>
+          </div>
+        </div>
+        
+        <!-- 地址 -->
+        <div class="meta-item" style="align-items: flex-start;">
+          <span class="meta-key" style="margin-top: 8px;">地址</span>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+            <input type="text" id="profAddress" class="prof-input" placeholder="請輸入機關地址...">
+            <div id="chips-profAddress" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px;"></div>
+          </div>
+        </div>
+  
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeProfileModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveAndApplyProfile()">儲存並套用</button>
+      </div>
     </div>
   </div>
-</div>
 
 <!-- 單位選擇 Modal -->
 <div class="modal-overlay" id="unitModal">
@@ -1524,7 +1584,11 @@ function handleExportDI() {
   const blob = new Blob([xml], { type: 'text/xml' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${currentFile.name.split('.').slice(0, -1).join('.')}_${getRocDateStr()}.di`;
+  
+  // 🌟 修正處：如果 currentFile 不存在(如從歷史紀錄載入)，則使用發文字號或預設名稱
+  const baseName = currentFile ? currentFile.name.split('.').slice(0, -1).join('.') : (d.docNo ? d.docNo.replace(/\//g, '-') : "歷史公文");
+  a.download = `${baseName}_${getRocDateStr()}.di`;
+  
   a.click();
   showToast("DI 檔案已成功匯出！📁");
 }
@@ -1552,7 +1616,11 @@ function handleExportRTF() {
   const b = new Blob([rtf], { type: 'application/rtf' });
   const a = document.createElement('a'); 
   a.href = URL.createObjectURL(b); 
-  a.download = `${currentFile.name.split('.').slice(0, -1).join('.')}_${getRocDateStr()}.rtf`; 
+  
+  // 🌟 修正處：如果 currentFile 不存在(如從歷史紀錄載入)，則使用發文字號或預設名稱
+  const baseName = currentFile ? currentFile.name.split('.').slice(0, -1).join('.') : (d.docNo ? d.docNo.replace(/\//g, '-') : "歷史公文");
+  a.download = `${baseName}_${getRocDateStr()}.rtf`; 
+  
   a.click();
   showToast("RTF 檔案已成功匯出！📝");
 }
@@ -1929,37 +1997,45 @@ function getSavedProfileOptions() {
   return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_PROFILE_OPTIONS));
 }
 
-// 渲染 Datalist 下拉選單內容
-function renderProfileDatalists() {
+// 渲染按鈕式選項 (Chips) 取代舊的 Datalist
+function renderProfileOptions() {
   const options = getSavedProfileOptions();
   const map = {
-    'orgName': 'dl-profOrg', 'contact': 'dl-profContact',
-    'phone': 'dl-profPhone', 'fax': 'dl-profFax',
-    'email': 'dl-profEmail', 'address': 'dl-profAddress'
+    'orgName': 'profOrg', 
+    'contact': 'profContact',
+    'phone': 'profPhone', 
+    'fax': 'profFax',
+    'email': 'profEmail', 
+    'address': 'profAddress'
   };
+
   for (let key in map) {
-    const dl = document.getElementById(map[key]);
-    if (dl) {
-      dl.innerHTML = (options[key] || []).map(val => `<option value="${esc(val)}"></option>`).join('');
+    const inputId = map[key];
+    const container = document.getElementById('chips-' + inputId);
+    if (!container) continue;
+
+    if (!options[key] || options[key].length === 0) {
+      container.innerHTML = '<span style="font-size:12px; color:var(--apple-gray); font-style:italic;">暫無儲存選項</span>';
+      continue;
     }
+
+    container.innerHTML = options[key].map(val => `
+      <div class="unit-chip" style="font-size: 13px; padding: 4px 10px; margin: 0; display: inline-flex; align-items: center; gap: 4px;">
+        <span style="cursor: pointer;" onclick="document.getElementById('${inputId}').value='${esc(val)}'" title="點擊帶入輸入框">${esc(val)}</span>
+        <span class="unit-chip-del" onclick="deleteProfileOptionDirect('${key}', '${esc(val)}')" title="刪除此選項">×</span>
+      </div>
+    `).join('');
   }
 }
 
-// 刪除目前輸入框內顯示的選項
-function deleteProfileOption(key, inputId) {
-  const input = document.getElementById(inputId);
-  const valToRemove = input.value.trim();
-  if (!valToRemove) return showToast("輸入框為空，無需刪除！");
-
+// 直接刪除指定的選項 (不需放進輸入框)
+function deleteProfileOptionDirect(key, valToRemove) {
   let options = getSavedProfileOptions();
-  if (options[key] && options[key].includes(valToRemove)) {
+  if (options[key]) {
     options[key] = options[key].filter(v => v !== valToRemove);
     localStorage.setItem('di_profile_options', JSON.stringify(options));
-    input.value = ''; // 刪除後清空輸入框
-    renderProfileDatalists();
-    showToast("🗑️ 已從下拉選單中刪除該選項！");
-  } else {
-    showToast("清單中沒有這個選項喔！");
+    renderProfileOptions(); // 重新渲染畫面
+    showToast("🗑️ 已移除該選項！");
   }
 }
 
@@ -1967,7 +2043,7 @@ function deleteProfileOption(key, inputId) {
 function restoreDefaultProfiles() {
   if (confirm("確定要恢復內建的預設選項嗎？\n（您之前手動新增的選項將被清除）")) {
     localStorage.setItem('di_profile_options', JSON.stringify(DEFAULT_PROFILE_OPTIONS));
-    renderProfileDatalists();
+    renderProfileOptions();
     
     ['profOrg','profContact','profPhone','profFax','profEmail','profAddress'].forEach(id => {
       document.getElementById(id).value = '';
@@ -1976,9 +2052,9 @@ function restoreDefaultProfiles() {
   }
 }
 
+// 開啟視窗
 function openProfileModal() {
-  renderProfileDatalists();
-  
+  renderProfileOptions(); 
   const savedProfile = JSON.parse(localStorage.getItem('di_user_profile') || '{}');
   document.getElementById('profOrg').value = savedProfile.orgName || '';
   document.getElementById('profContact').value = savedProfile.contact || '';
@@ -1986,14 +2062,15 @@ function openProfileModal() {
   document.getElementById('profFax').value = savedProfile.fax || '';
   document.getElementById('profEmail').value = savedProfile.email || '';
   document.getElementById('profAddress').value = savedProfile.address || '';
-  
   document.getElementById('profileModal').classList.add('show');
 }
 
+// 關閉視窗 (這個就是剛才遺失導致按鈕失效的關鍵)
 function closeProfileModal() { 
   document.getElementById('profileModal').classList.remove('show'); 
 }
 
+// 儲存並套用
 function saveAndApplyProfile() {
   const profile = {
     orgName: document.getElementById('profOrg').value.trim(),
@@ -2530,6 +2607,15 @@ const DEFAULT_SNIPPETS = [
 function getSnippets() {
   let saved = localStorage.getItem('di_snippets');
   return saved ? JSON.parse(saved) : DEFAULT_SNIPPETS;
+}
+
+// 🌟 新增：一鍵恢復內建語錄函數
+function restoreDefaultSnippets() {
+  if (confirm("確定要恢復內建的預設語錄嗎？\n（您自訂新增的語錄將會被清除）")) {
+    localStorage.setItem('di_snippets', JSON.stringify(DEFAULT_SNIPPETS));
+    renderSnippetList(); // 重新渲染畫面
+    showToast("🔄 已恢復內建罐頭語錄！");
+  }
 }
 
 function renderSnippetList() {
