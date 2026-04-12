@@ -254,8 +254,20 @@
   .doc-line-item { padding-left: 2em; text-indent: -2em; margin-bottom: 2px; }
   .doc-line-cont { padding-left: 2em; margin-bottom: 2px; }
 
-  .raw-footer { padding: 15px 50px; background: var(--meta-bg); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); }
-  .footer-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .raw-footer { padding: 15px 20px; background: var(--meta-bg); display: flex; justify-content: center; align-items: center; border-top: 1px solid var(--border-color); overflow-x: auto; }
+  .footer-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+  
+  /* 新增：專門針對底部的 7 個按鈕進行縮放與防跑版設定 */
+  .footer-actions .btn {
+    min-width: auto; /* 取消原本 120px 的最小寬度限制 */
+    padding: 0 10px; /* 縮小按鈕左右留白 */
+    font-size: 13px; /* 稍微縮小字體 */
+    gap: 5px; /* 縮小圖示與文字的間距 */
+    white-space: nowrap; /* 強制文字絕對不換行 */
+  }
+  .footer-actions .btn svg {
+    width: 15px; height: 15px; /* 稍微縮小圖示比例 */
+  }
 
   #rawView { display: none; padding: 30px 50px; background: #FFFFFF; color: #333333; font-family: "SF Mono", Menlo, monospace; font-size: 16px; line-height: 1.8; max-height: 480px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; border-bottom-left-radius: var(--apple-radius); border-bottom-right-radius: var(--apple-radius); }
   #rawView.visible { display: block; }
@@ -768,13 +780,19 @@ body.font-kai .doc-paper [contenteditable="true"],
           </div>
         </div>
 
-    <div class="controls" id="controlsBar">
-      <div class="control-left">
-        <button class="btn btn-primary" id="btnParse" disabled>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          啟動智慧解析
-        </button>
-        <button class="btn btn-magic" id="btnMagic">
+        <div class="controls" id="controlsBar">
+          <div class="control-left">
+            <!-- 加入 title -->
+            <button class="btn btn-primary" id="btnParse" disabled title="點擊開始解析匯入的檔案，自動萃取公文各項欄位內容">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              啟動智慧解析
+            </button>
+<!-- 加入 title (包含條列式換行) -->
+<button class="btn btn-magic" id="btnMagic" title="啟動公文格式與用字智慧檢查：
+1. 缺漏標點：自動偵測「說明」段落結尾遺漏之全形句號。
+2. 序號錯誤：檢查公文項目編號（一、 (一) 1.）是否中斷或不連續。
+3. 易錯用字：標示公文常見錯別字並提供修正建議（如：計劃→計畫、身份→身分）。
+4. 殘留雜訊：揪出檔案轉檔時殘留之無效資訊（如頁碼、會辦單位等表單文字）。">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
             <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
@@ -782,33 +800,37 @@ body.font-kai .doc-paper [contenteditable="true"],
           </svg>
           標點偵測
         </button>
-      </div>
-      
-      <div class="control-center">
-        <button class="btn btn-secondary" id="btnClear">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-          重新匯入
-        </button>
-      </div>
-
-      <div class="control-right">
-        <span id="parseStatus">等待檔案匯入...</span>
-        
-        <button class="btn btn-apple" id="btnPrint" onclick="window.print()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-          匯出 PDF
-        </button>
-
-        <button class="btn btn-apple" id="btnExportDI">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          匯出 DI
-        </button>
-        <button class="btn btn-apple" id="btnExport">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          匯出 RTF
-        </button>
-      </div>
-    </div>
+          </div>
+          
+          <div class="control-center">
+            <!-- 加入 title -->
+            <button class="btn btn-secondary" id="btnClear" title="清除目前畫面與資料，準備上傳新的公文檔案">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+              重新匯入
+            </button>
+          </div>
+    
+          <div class="control-right">
+            <span id="parseStatus">等待檔案匯入...</span>
+            
+            <!-- 加入 title -->
+            <button class="btn btn-apple" id="btnPrint" onclick="window.print()" title="將目前畫面呈現的公文內容列印或存檔為 PDF 格式">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              匯出 PDF
+            </button>
+    
+            <!-- 加入 title -->
+            <button class="btn btn-apple" id="btnExportDI" title="匯出符合政府電子公文交換標準的 .di 檔案，可直接匯入公文系統">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              匯出 DI
+            </button>
+            <!-- 加入 title -->
+            <button class="btn btn-apple" id="btnExport" title="匯出保留排版格式的 RTF 文書檔，可使用 Word 進行進階編輯">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              匯出 RTF
+            </button>
+          </div>
+        </div>
 
     <div class="preview-section" id="previewSection">
       <div id="errorBox" style="background:#E63946; color:white; padding:15px; border-radius:12px; margin-bottom:30px; display:none; font-weight:600; box-shadow: 0 4px 15px rgba(230, 57, 70, 0.2);"></div>
@@ -1756,51 +1778,57 @@ function render(d, raw) {
         <div class="section-block"><div class="section-tag">擬辦</div><div class="section-text" contenteditable="true" data-key="proposal">${formatSectionText(d.proposal, 'proposal')}</div></div>
 <div class="section-block" style="margin-bottom:10px;">
           <div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px; align-items:center;">
-            正本 <button class="unit-select-btn" contenteditable="false" onclick="openUnitModal('originalCopy')">✏️ 挑選/新增單位</button>
+            正本 <button class="unit-select-btn" contenteditable="false" onclick="openUnitModal('originalCopy')" title="點擊開啟清單，可快速挑選或自訂新增正本收受機關">✏️ 挑選/新增單位</button>
           </div>
           <div class="section-text" id="doc-originalCopy" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="originalCopy">${renderText(d.originalCopy)}</div>
         </div>
         <div class="section-block" style="margin-bottom:10px;">
           <div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px; align-items:center;">
-            副本 <button class="unit-select-btn" contenteditable="false" onclick="openUnitModal('carbonCopy')">✏️ 挑選/新增單位</button>
+            副本 <button class="unit-select-btn" contenteditable="false" onclick="openUnitModal('carbonCopy')" title="點擊開啟清單，可快速挑選或自訂新增副本收受機關">✏️ 挑選/新增單位</button>
           </div>
           <div class="section-text" id="doc-carbonCopy" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="carbonCopy">${renderText(d.carbonCopy)}</div>
         </div>
       </div>
-      <div class="raw-footer">
-        <span style="font-size:14px; opacity:0.8; font-weight: 600;">💡 點擊畫面文字即可修改</span>
+<div class="raw-footer">
         <div class="footer-actions">
-          <button class="btn btn-navy" onclick="openProfileModal()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            常用聯絡資訊
+          <!-- 1. 專注模式 -->
+          <button class="btn btn-navy" onclick="toggleZenMode()" title="隱藏周邊介面，進入無干擾的純文字專注編輯模式">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+            專注模式
           </button>
-          
-<button class="btn btn-navy" onclick="openDiffModal()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>
-          雙檔比對
-        </button>
-        <!-- 新增：罐頭語錄 -->
-        <button class="btn btn-navy" onclick="openSnippetModal()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          罐頭語錄庫
-        </button>
-        <!-- 新增：專注模式 -->
-        <button class="btn btn-secondary" onclick="toggleZenMode()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-          專注模式
-        </button>
-
-<button class="btn btn-orange" onclick="openAIModal()">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
-  AI 潤飾公文
-</button>
-          <button class="btn btn-navy" onclick="copyContent()">
+          <!-- 2. 一鍵複製 -->
+          <button class="btn btn-navy" onclick="copyContent()" title="將整份公文內容複製到剪貼簿，方便直接貼上至公文系統">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             一鍵複製
           </button>
-          <button class="btn btn-navy" onclick="document.getElementById('rawView').classList.toggle('visible')">
+          <!-- 3. 檢視原始碼 -->
+          <button class="btn btn-navy" onclick="document.getElementById('rawView').classList.toggle('visible')" title="檢視解析前的公文原始文字，方便對照與除錯">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
             檢視原始碼
+          </button>
+          <!-- 4. 常用聯絡資訊 -->
+          <button class="btn btn-navy" onclick="openProfileModal()" title="預先設定您的機關與聯絡方式，一鍵自動填入公文各欄位">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            常用聯絡資訊
+          </button>
+          <!-- 5. 罐頭語錄庫 -->
+          <button class="btn btn-navy" onclick="openSnippetModal()" title="建立並快速插入常用的公文段落或專業詞彙，提升撰寫效率">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            罐頭語錄庫
+          </button>
+          <!-- 6. 雙檔比對 -->
+          <button class="btn btn-navy" onclick="openDiffModal()" title="匯入舊版公文進行比對，系統將為您自動標示新增與刪除的修訂痕跡">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>
+            雙檔比對
+          </button>
+<!-- 7. AI 潤飾公文 -->
+          <button class="btn btn-orange" onclick="openAIModal()" title="啟動 Groq AI 智慧公文潤飾引擎：
+1. 多元情境改寫：提供上行文(婉轉)、下行文(嚴謹)、民眾回覆(白話)等超過 10 種專業語氣轉換。
+2. 深度精煉校對：自動揪出錯漏字及語法瑕疵，剔除冗長贅字，強化段落邏輯與公文專業質感。
+3. 修訂痕跡對照：自動比對原文與 AI 修改結果，以「綠字新增、紅字刪除」清楚標示差異。
+4. 局部採納與套用：可點擊有顏色的文字「局部接受/拒絕」特定修改，並一鍵無縫套用回公文區。">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+            AI 潤飾公文
           </button>
         </div>
       </div>
