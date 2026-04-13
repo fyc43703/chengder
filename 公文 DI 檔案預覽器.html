@@ -632,7 +632,19 @@ body.font-kai .doc-paper [contenteditable="true"],
     background: var(--meta-bg); cursor: pointer; transition: 0.2s;
   }
   .snippet-item:hover { border-color: var(--apple-blue); background: rgba(0,122,255,0.05); }
-  .snippet-text { flex: 1; font-size: 14px; color: var(--text-main); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+   .snippet-text { flex: 1; font-size: 14px; color: var(--text-main); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+ 
+  /* === 5. 長官視角模式 (Boss View) === */
+  .boss-summary-box { background: rgba(0, 122, 255, 0.05); border: 2px solid var(--apple-blue); border-radius: 12px; padding: 20px; font-size: 16px; line-height: 1.8; color: var(--text-main); margin-bottom: 20px; }
+  .boss-summary-box ul { padding-left: 20px; margin-top: 10px; }
+  .boss-summary-box li { margin-bottom: 8px; font-weight: 600; }
+  .mic-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #D70015; color: white; border: none; padding: 12px 24px; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(215, 0, 21, 0.3); }
+  .mic-btn.recording { animation: pulseRed 1.5s infinite; background: #FF3B30; }
+  @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 59, 48, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); } }
+  .boss-dictation-box { width: 100%; height: 200px; padding: 15px; border-radius: 12px; border: 2px dashed #D70015; background: rgba(215, 0, 21, 0.05); color: var(--text-main); font-size: 16px; line-height: 1.6; resize: vertical; outline: none; margin-top: 15px; }
+
+   @media print {
+     body { background: white; color: black; margin: 0; padding: 0; }
 
   @media print {
     body { background: white; color: black; margin: 0; padding: 0; }
@@ -887,33 +899,39 @@ body.font-kai .doc-paper [contenteditable="true"],
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeProfileModal()">取消</button>
-        <button class="btn btn-primary" onclick="saveAndApplyProfile()">儲存並套用</button>
-      </div>
-    </div>
-  </div>
-
-<!-- 單位選擇 Modal -->
+        <button class="btn btn-primary" onclick="saveAndApplyProfile()">確認套用</button>
+       </div>
+     </div>
+   </div>
+ 
+<!-- 新增：正副本單位挑選與新增 Modal -->
 <div class="modal-overlay" id="unitModal">
-  <div class="modal-content" style="max-width: 650px;">
+  <div class="modal-content" style="max-width: 700px;">
     <div class="modal-header">
       <h3 id="unitModalTitle" style="display:flex; align-items:center; gap:8px;">🏢 挑選/新增單位</h3>
       <button class="modal-close" onclick="closeUnitModal()">×</button>
     </div>
     <div class="modal-body">
-      <div style="margin-bottom: 15px;">
-        <label style="font-size: 14px; font-weight: 700; color: var(--apple-blue);">目前內容 (可直接編輯)：</label>
-        <textarea id="unitPreview" class="ai-textarea" style="height: 100px; margin-top: 8px; border-color: var(--apple-blue);"></textarea>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+        <p style="font-size:13px; color:var(--apple-gray); margin:0; line-height: 1.6;">
+          💡 <b>操作說明：</b>點擊下方單位標籤可快速加入清單，也可手動輸入並新增自訂單位。<br>
+          若要移除標籤，請直接點擊標籤旁的 ❌。
+        </p>
+        <button onclick="resetDefaultUnits()" style="background:none; border:none; color:var(--apple-blue); font-size:13px; cursor:pointer; font-weight:700; padding:4px 8px; border-radius:4px; transition:0.2s; white-space:nowrap;" onmouseover="this.style.background='rgba(0,122,255,0.1)'" onmouseout="this.style.background='none'">🔄 恢復預設清單</button>
       </div>
-      <div style="display: flex; gap: 8px; margin-bottom: 15px; align-items: center;">
-        <input type="text" id="customUnitInput" class="prof-input" placeholder="輸入自訂單位名稱..." style="flex: 1;">
-        <button class="btn btn-primary" onclick="addCustomUnit()">儲存並加入清單</button>
+      
+      <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+        <input type="text" id="customUnitInput" class="prof-input" placeholder="手動輸入新單位名稱，例如：臺北市政府教育局...">
+        <button class="btn btn-primary" onclick="addCustomUnit()">加入標籤庫</button>
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-        <div style="font-size: 14px; font-weight: 700; color: var(--text-main);">📌 內建與自訂單位 (點擊加入，點 × 可刪除)：</div>
-        <button onclick="resetDefaultUnits()" style="background:none; border:none; color:var(--apple-blue); font-size:13px; cursor:pointer; font-weight:700; padding:2px 8px; border-radius:4px; transition:0.2s;" onmouseover="this.style.background='rgba(0,122,255,0.1)'" onmouseout="this.style.background='none'">🔄 恢復預設名單</button>
+      
+      <div id="unitChipsContainer" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 220px; overflow-y: auto; padding: 12px; background: rgba(0,0,0,0.02); border-radius: 8px; border: 1px solid var(--border-color);">
+        <!-- 單位標籤由 JavaScript 自動生成 -->
       </div>
-      <div id="unitChipsContainer" style="max-height: 250px; overflow-y: auto; padding: 10px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--meta-bg);">
-        <!-- 按鈕將由此處生成 -->
+
+      <div style="margin-top: 15px;">
+        <div style="font-size:14px; font-weight:700; color:var(--nature-green-deep); margin-bottom:8px;">👀 即將套用至公文的內容：</div>
+        <textarea id="unitPreview" class="prof-input" style="height: 90px; resize: vertical; width: 100%; font-size: 15px; line-height: 1.6;" placeholder="您點擊的單位會顯示於此，也可直接在此手動編排文字..."></textarea>
       </div>
     </div>
     <div class="modal-footer">
@@ -923,8 +941,73 @@ body.font-kai .doc-paper [contenteditable="true"],
   </div>
 </div>
 
-<!-- Diff 點擊浮動選單 -->
-<div class="diff-tooltip" id="diffTooltip">
+<!-- 新增：長官視角 Modal -->
+<div class="modal-overlay" id="bossViewModal">
+  <div class="modal-content" style="max-width: 800px;">
+    <div class="modal-header" style="background: #1A2B45;">
+      <h3 style="display:flex; align-items:center; gap:8px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12h3l3 -9l5 18l3 -9h5"></path></svg>
+        長官視角模式：快速簡報與智慧批閱
+      </h3>
+      <button class="modal-close" onclick="closeBossViewModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+        <h4 style="color: var(--apple-blue); font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px;">
+          📋 系統自動萃取簡報
+        </h4>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <input type="password" id="bossApiKeyInput" placeholder="輸入 Groq 金鑰" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--apple-gray); outline: none; background: var(--doc-bg); color: var(--text-main); font-size: 13px; width: 120px;" title="此金鑰與 AI 潤飾功能共用">
+          <button class="btn btn-magic" onclick="generateBossSummaryAI()" id="btnBossAI" style="display:inline-flex; padding: 0 10px; min-width: auto; background: linear-gradient(to bottom, #8B5CF6, #6D28D9); border-color: #5B21B6; box-shadow: 0 4px 0 #5B21B6;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+            AI 摘要
+          </button>
+          
+          <div style="width: 1px; height: 20px; background: var(--border-color); margin: 0 4px;"></div>
+          
+          <select id="voiceRateSelect" style="padding: 6px; border-radius: 6px; border: 1px solid var(--apple-gray); background: var(--doc-bg); color: var(--text-main); font-size: 13px; font-weight: 700; outline: none; cursor: pointer;" title="設定語音播放速度">
+            <option value="0.8">0.8x 慢速</option>
+            <option value="1.0">1.0x 正常</option>
+            <option value="1.2" selected>1.2x 微快</option>
+            <option value="1.5">1.5x 快速</option>
+            <option value="2.0">2.0x 極快</option>
+            <option value="2.5">2.5x 飛快</option>
+            <option value="3.0">3.0x 極速</option>
+          </select>
+          
+          <button class="btn btn-apple" onclick="playVoiceSummary()" id="btnPlayVoice" style="display:inline-flex; padding: 0 12px; min-width: auto;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            播放
+          </button>
+          <button class="btn btn-secondary" onclick="stopVoiceSummary()" id="btnStopVoice" style="display:inline-flex; padding: 0 12px; min-width: auto;" title="停止播放">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect></svg>
+            停止
+          </button>
+        </div>
+      </div>
+      <div class="boss-summary-box" id="bossSummaryContent">
+        正在生成摘要中...
+      </div>
+      
+      <h4 style="color: #D70015; font-size: 18px; margin: 20px 0 10px 0; border-top: 1px solid var(--border-color); padding-top: 20px;">🎤 語音智慧批示</h4>
+      <p style="font-size: 14px; color: var(--apple-gray); margin-bottom: 10px;">點擊麥克風開始說話，系統將自動將您的語音轉為文字並排版為批示格式。</p>
+      <div style="text-align: center;">
+        <button class="mic-btn" id="btnDictation" onclick="toggleDictation()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+          按住或點擊開始說話
+        </button>
+      </div>
+      <textarea class="boss-dictation-box" id="bossDictationResult" placeholder="您的語音批示將顯示於此..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeBossViewModal()">關閉</button>
+      <button class="btn btn-primary" onclick="applyBossDictation()">將批示加入擬辦並匯出</button>
+    </div>
+  </div>
+</div>
+
+ <!-- Diff 點擊浮動選單 -->
+ <div class="diff-tooltip" id="diffTooltip">
   <button class="diff-btn" id="btnAcceptDiff" onclick="resolveDiff('accept')">✅ 接受</button>
   <button class="diff-btn" id="btnRejectDiff" onclick="resolveDiff('reject')">❌ 拒絕</button>
 </div>
@@ -1282,21 +1365,21 @@ btnMagic.onclick = () => {
 };
 
 btnClear.onclick = () => location.reload();
-btnExport.onclick = handleExportRTF;
-btnExportDI.onclick = handleExportDI;
-
-docContainer.addEventListener('input', (e) => {
-  const target = e.target;
-  if (target.hasAttribute('contenteditable') && target.hasAttribute('data-key')) {
-    const key = target.getAttribute('data-key');
-    if (key && lastParsedData) lastParsedData[key] = target.innerText.replace(/\n$/, ''); 
-  }
-});
-
-docContainer.addEventListener('paste', (e) => {
-  const target = e.target;
-  if (target.hasAttribute('contenteditable')) {
-    e.preventDefault();
+ btnExport.onclick = handleExportRTF;
+ btnExportDI.onclick = handleExportDI;
+ 
+ docContainer.addEventListener('input', (e) => {
+   const target = e.target;
+   if (target.hasAttribute('contenteditable') && target.hasAttribute('data-key')) {
+     const key = target.getAttribute('data-key');
+     if (key && lastParsedData) lastParsedData[key] = target.innerText.replace(/\n$/, ''); 
+   }
+ });
+ 
+ docContainer.addEventListener('paste', (e) => {
+   const target = e.target;
+   if (target.hasAttribute('contenteditable')) {
+     e.preventDefault();
     const text = (e.originalEvent || e).clipboardData.getData('text/plain');
     document.execCommand('insertText', false, text);
   }
@@ -2018,40 +2101,51 @@ function render(d, raw) {
           <div class="section-text" id="doc-carbonCopy" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="carbonCopy">${renderText(d.carbonCopy)}</div>
         </div>
       </div>
-<div class="raw-footer">
-        <div class="footer-actions">
-          <!-- 1. 專注模式 -->
-          <button class="btn btn-navy" onclick="toggleZenMode()" title="隱藏周邊介面，進入無干擾的純文字專注編輯模式">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-            專注模式
+ <div class="raw-footer">
+         <div class="footer-actions">
+           <!-- 1. 專注模式 -->
+           <button class="btn btn-navy" onclick="toggleZenMode()" title="隱藏周邊介面，進入無干擾的純文字專注編輯模式">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+             專注模式
+           </button>
+           <!-- 2. 一鍵複製 -->
+           <button class="btn btn-navy" onclick="copyContent()" title="將整份公文內容複製到剪貼簿，方便直接貼上至公文系統">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+             一鍵複製
+           </button>
+           <!-- 3. 檢視原始碼 -->
+           <button class="btn btn-navy" onclick="document.getElementById('rawView').classList.toggle('visible')" title="檢視解析前的公文原始文字，方便對照與除錯">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+             檢視原始碼
+           </button>
+           <!-- 4. 常用聯絡資訊 -->
+           <button class="btn btn-navy" onclick="openProfileModal()" title="預先設定您的機關與聯絡方式，一鍵自動填入公文各欄位">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+             常用聯絡資訊
+           </button>
+           <!-- 5. 罐頭語錄庫 -->
+           <button class="btn btn-navy" onclick="openSnippetModal()" title="建立並快速插入常用的公文段落或專業詞彙，提升撰寫效率">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+             罐頭語錄庫
+           </button>
+           <!-- 6. 雙檔比對 -->
+           <button class="btn btn-navy" onclick="openDiffModal()" title="匯入舊版公文進行比對，系統將為您自動標示新增與刪除的修訂痕跡">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>
+             雙檔比對
+           </button>
+          <!-- 新增：排版強迫症救星 -->
+          <button class="btn btn-navy" onclick="autoFormatOCD()" title="一鍵全半形校正、自動縮排對齊、清除多餘空白，滿足排版強迫症！">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>
+            一鍵淨化排版
           </button>
-          <!-- 2. 一鍵複製 -->
-          <button class="btn btn-navy" onclick="copyContent()" title="將整份公文內容複製到剪貼簿，方便直接貼上至公文系統">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-            一鍵複製
+
+          <!-- 新增：長官視角 -->
+          <button class="btn btn-orange" onclick="openBossViewModal()" style="background: linear-gradient(to bottom, #1A2B45, #0B172A); border-color: #000;" title="切換為長官專用模式：自動產生摘要簡報、語音朗讀，並支援麥克風語音智慧批示">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12h3l3 -9l5 18l3 -9h5"></path></svg>
+            長官視角
           </button>
-          <!-- 3. 檢視原始碼 -->
-          <button class="btn btn-navy" onclick="document.getElementById('rawView').classList.toggle('visible')" title="檢視解析前的公文原始文字，方便對照與除錯">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-            檢視原始碼
-          </button>
-          <!-- 4. 常用聯絡資訊 -->
-          <button class="btn btn-navy" onclick="openProfileModal()" title="預先設定您的機關與聯絡方式，一鍵自動填入公文各欄位">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            常用聯絡資訊
-          </button>
-          <!-- 5. 罐頭語錄庫 -->
-          <button class="btn btn-navy" onclick="openSnippetModal()" title="建立並快速插入常用的公文段落或專業詞彙，提升撰寫效率">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            罐頭語錄庫
-          </button>
-          <!-- 6. 雙檔比對 -->
-          <button class="btn btn-navy" onclick="openDiffModal()" title="匯入舊版公文進行比對，系統將為您自動標示新增與刪除的修訂痕跡">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>
-            雙檔比對
-          </button>
-<!-- 7. AI 潤飾公文 -->
-          <button class="btn btn-orange" onclick="openAIModal()" title="啟動 Groq AI 智慧公文潤飾引擎：
+ <!-- 7. AI 潤飾公文 -->
+           <button class="btn btn-orange" onclick="openAIModal()" title="啟動 Groq AI 智慧公文潤飾引擎：
 1. 多元情境改寫：提供上行文(婉轉)、下行文(嚴謹)、民眾回覆(白話)等超過 10 種專業語氣轉換。
 2. 深度精煉校對：自動揪出錯漏字及語法瑕疵，剔除冗長贅字，強化段落邏輯與公文專業質感。
 3. 修訂痕跡對照：自動比對原文與 AI 修改結果，以「綠字新增、紅字刪除」清楚標示差異。
@@ -2231,7 +2325,7 @@ function closeProfileModal() {
   document.getElementById('profileModal').classList.remove('show'); 
 }
 
-// 儲存並套用
+// 2. 儲存並套用的函數
 function saveAndApplyProfile() {
   const profile = {
     orgName: document.getElementById('profOrg').value.trim(),
@@ -2260,6 +2354,7 @@ function saveAndApplyProfile() {
     localStorage.setItem('di_profile_options', JSON.stringify(options));
   }
 
+  // 套用至主畫面並關閉視窗
   if (lastParsedData) {
     if(profile.orgName) lastParsedData.orgName = profile.orgName;
     if(profile.contact) lastParsedData.contact = profile.contact;
@@ -2840,12 +2935,264 @@ function insertSnippet(idx) {
     lastParsedData[lastFocusedEditable] = currentText;
     
     // 重新渲染畫面並更新 raw 文字
-    render(lastParsedData, lastRawText);
-    closeSnippetModal();
-    showToast("🪄 語塊已成功插入！");
+     render(lastParsedData, lastRawText);
+     closeSnippetModal();
+     showToast("🪄 語塊已成功插入！");
+   }
+ }
+ 
+/* ==========================================
+ * 🚀 新增功能：5. 一鍵排版強迫症救星與全半形校正
+ * ========================================== */
+function autoFormatOCD() {
+  if (!lastParsedData) return showToast("請先載入公文！");
+  
+  // 全半形轉換核心邏輯：英文數字轉半形，中文標點轉全形
+  const normalizeText = (text) => {
+    if (!text) return "";
+    let str = text.replace(/[\uff01-\uff5e]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xfee0); }); // 全形英數轉半形
+    str = str.replace(/ /g, ""); // 移除多餘半形空白
+    str = str.replace(/,/g, "，").replace(/\./g, "。").replace(/;/g, "；").replace(/:/g, "：").replace(/\(/g, "（").replace(/\)/g, "）"); // 標點轉全形
+    str = str.replace(/([一二三四五六七八九十]+)（/g, "$1、\n（"); // 自動斷行處理
+    str = str.replace(/\n{2,}/g, "\n"); // 清除多餘空行
+    return str.trim();
+  };
+
+  ['subject', 'content', 'proposal'].forEach(key => {
+    if (lastParsedData[key]) {
+      lastParsedData[key] = normalizeText(lastParsedData[key]);
+    }
+  });
+  
+  render(lastParsedData, lastRawText);
+  showToast("✨ 魔法施展完畢！全半形已校正，排版已完美對齊。");
+}
+
+/* ==========================================
+ * 🚀 新增功能：7. 👁️‍🗨️ 長官視角模式 (語音簡報與智慧批閱)
+ * ========================================== */
+let synth = window.speechSynthesis;
+let recognition = null;
+let isDictating = false;
+let summaryTextForSpeech = "";
+
+// 初始化語音辨識 (STT)
+if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'zh-TW';
+  
+  recognition.onresult = function(event) {
+    let finalTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + '。';
+    }
+    if (finalTranscript) {
+      const dictBox = document.getElementById('bossDictationResult');
+      dictBox.value += finalTranscript;
+    }
+  };
+  recognition.onerror = function(event) { showToast("語音辨識錯誤：" + event.error); toggleDictation(true); };
+}
+
+function openBossViewModal() {
+  if (!lastParsedData) return showToast("請先載入公文！");
+  
+  // 萃取摘要邏輯 (抓取主旨與說明第一段)
+  const subject = lastParsedData.subject ? lastParsedData.subject.split('\n')[0].replace(/<[^>]*>/g, '') : "無主旨";
+  const contentLines = lastParsedData.content ? lastParsedData.content.split('\n').filter(l => l.trim().length > 5) : [];
+  const keyContent = contentLines.length > 0 ? contentLines[0].replace(/^[一二三四五六七八九十]+、/, '').replace(/<[^>]*>/g, '') : "無詳細說明";
+  const org = lastParsedData.orgName || "機關";
+
+  const summaryHtml = `
+    <ul>
+      <li><strong>發文單位：</strong>${esc(org)}</li>
+      <li><strong>核心主旨：</strong>${esc(subject)}</li>
+      <li><strong>案件重點：</strong>${esc(keyContent)}</li>
+    </ul>
+  `;
+  
+  summaryTextForSpeech = `報告長官，本案由${org}提出。核心主旨為：${subject}。重點說明：${keyContent}。請長官裁示。`;
+  
+  document.getElementById('bossSummaryContent').innerHTML = summaryHtml;
+  document.getElementById('bossDictationResult').value = "";
+  
+  // 自動載入儲存的 API Key
+  const savedKey = localStorage.getItem('di_groq_key');
+  if(savedKey) document.getElementById('bossApiKeyInput').value = savedKey;
+  
+  document.getElementById('bossViewModal').classList.add('show');
+}
+
+async function generateBossSummaryAI() {
+  const apiKey = document.getElementById('bossApiKeyInput').value.trim() || localStorage.getItem('di_groq_key');
+  if(!apiKey) { 
+    showToast("請輸入 Groq API Key！"); 
+    document.getElementById('bossApiKeyInput').focus(); 
+    return; 
+  }
+  
+  // 同步儲存 Key，確保主畫面的 AI 潤飾功能也能共用
+  localStorage.setItem('di_groq_key', apiKey);
+
+  const subject = lastParsedData.subject ? lastParsedData.subject.replace(/<[^>]*>/g, '').trim() : "";
+  const content = lastParsedData.content ? lastParsedData.content.replace(/<[^>]*>/g, '').trim() : "";
+  
+  if (!subject && !content) return showToast("公文內容為空，無法產生摘要！");
+
+  const promptText = `【主旨】\n${subject}\n\n【說明】\n${content}`;
+  const systemPrompt = "你是一位專業的公務機關高階幕僚。請閱讀以下公文內容，以極度精簡、專業、清晰的語氣，為長官整理成「3到6點的條列式重點摘要」。\n請不要加入任何問候語或結語，直接輸出重點，並在開頭使用「報告長官，本案重點如下：」作為破題。";
+
+  const summaryBox = document.getElementById('bossSummaryContent');
+  const btnAI = document.getElementById('btnBossAI');
+  
+  summaryBox.innerHTML = '<div style="text-align:center; padding: 20px; font-weight:700; color:var(--nature-green-main);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="2s" repeatCount="indefinite"/></path></svg><br>AI 幕僚正在速讀公文，為長官整理摘要中...</div>';
+  btnAI.disabled = true;
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt }, 
+          { role: "user", content: promptText }
+        ],
+        temperature: 0.2
+      })
+    });
+    
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error?.message || `API 請求失敗 (狀態碼: ${response.status})`);
+    
+    let aiSummary = data.choices[0].message.content.trim();
+    
+    // 更新「播放語音簡報」的朗讀底稿 (保留原始未加工的純文字供語音合成)
+    summaryTextForSpeech = aiSummary + "。請長官裁示。";
+    
+    // 將純文字轉為 HTML 有序列表顯示 (確保帶有數字序號)
+    const lines = aiSummary.split('\n').filter(line => line.trim().length > 0);
+    let introText = "";
+    let listItemsHtml = "";
+
+    lines.forEach(line => {
+      let cleanLine = line.replace(/\*/g, '').trim();
+      
+      // 擷取開頭的破題文字 (獨立顯示，不加入數字列表)
+      if (cleanLine.includes("報告長官")) {
+        introText = `<div style="font-weight: 700; margin-bottom: 12px; color: var(--apple-blue); font-size: 16px;">${esc(cleanLine)}</div>`;
+      } else {
+        // 智慧過濾 AI 產生的原始標記 (如 1.、-、一、)，交由 <ol> 統一自動產生完美的數字序號
+        cleanLine = cleanLine.replace(/^([-\*\d]+[\.\s、]+|[一二三四五六七八九十]+[、\s]+)/, '').trim();
+        if (cleanLine) {
+          listItemsHtml += `<li style="margin-bottom: 10px; line-height: 1.6;">${esc(cleanLine)}</li>`;
+        }
+      }
+    });
+
+    // 輸出帶有標準數字的有序列表 (<ol>)
+    summaryBox.innerHTML = `${introText}<ol style="padding-left: 24px; margin: 0; font-weight: 600;">${listItemsHtml}</ol>`;
+    showToast("✨ AI 智慧摘要產生完成！");
+
+  } catch (err) {
+    summaryBox.innerHTML = `<div style="color:var(--seal-red); padding:15px; font-weight:600;">❌ 摘要生成失敗：<br>${err.message}</div>`;
+  } finally {
+    btnAI.disabled = false;
   }
 }
 
-</script>
-</body>
-</html>
+function closeBossViewModal() {
+  synth.cancel(); // 停止朗讀
+  if (isDictating) toggleDictation(true); // 停止收音
+  document.getElementById('bossViewModal').classList.remove('show');
+}
+
+function playVoiceSummary() {
+  synth.cancel(); // 播放前先清除佇列
+  if (summaryTextForSpeech) {
+    const utterThis = new SpeechSynthesisUtterance(summaryTextForSpeech);
+    utterThis.lang = 'zh-TW';
+    
+    // 取得使用者選擇的播放速度
+    const rateSelect = document.getElementById('voiceRateSelect');
+    utterThis.rate = parseFloat(rateSelect.value) || 1.2;
+    
+    // 改變按鈕 UI 狀態，提示正在朗讀
+    const btnPlay = document.getElementById('btnPlayVoice');
+    btnPlay.innerHTML = `🔊 朗讀中...`;
+    btnPlay.style.background = "linear-gradient(to bottom, #FF9500, #E68A00)";
+    btnPlay.style.borderColor = "#CC7A00";
+    btnPlay.style.boxShadow = "0 4px 0 #CC7A00";
+
+    // 當朗讀結束時，自動還原按鈕狀態
+    utterThis.onend = function() {
+      resetPlayButtonUI();
+    };
+
+    synth.speak(utterThis);
+    showToast(`🔊 正在以 ${utterThis.rate}x 語速為您朗讀簡報...`);
+  } else {
+    showToast("⚠️ 目前沒有可朗讀的摘要內容！");
+  }
+}
+
+function stopVoiceSummary() {
+  synth.cancel(); // 強制停止所有朗讀
+  resetPlayButtonUI();
+  showToast("⏹️ 語音朗讀已停止。");
+}
+
+function resetPlayButtonUI() {
+  const btnPlay = document.getElementById('btnPlayVoice');
+  if (btnPlay) {
+    btnPlay.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg> 播放`;
+    btnPlay.style.background = "";
+    btnPlay.style.borderColor = "";
+    btnPlay.style.boxShadow = "";
+  }
+}
+
+function toggleDictation(forceStop = false) {
+  if (!recognition) return showToast("您的瀏覽器不支援語音辨識功能！請使用 Chrome。");
+  
+  const btn = document.getElementById('btnDictation');
+  if (isDictating || forceStop) {
+    recognition.stop();
+    isDictating = false;
+    btn.classList.remove('recording');
+    btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg> 按住或點擊開始說話`;
+  } else {
+    synth.cancel(); // 收音前先停止朗讀，避免干擾
+    recognition.start();
+    isDictating = true;
+    btn.classList.add('recording');
+    btn.innerHTML = `🛑 正在聆聽...點擊停止`;
+    showToast("🎤 請開始說出您的批示意見...");
+  }
+}
+
+function applyBossDictation() {
+  const dictText = document.getElementById('bossDictationResult').value.trim();
+  if (!dictText) return showToast("批示內容為空！");
+  
+  // 將語音轉化為正式的擬辦格式
+  let currentProposal = lastParsedData.proposal || "";
+  const newBossOrder = `奉長官裁示：${dictText}`;
+  
+  if (currentProposal) {
+    lastParsedData.proposal = newBossOrder + "\n\n原擬辦：\n" + currentProposal;
+  } else {
+    lastParsedData.proposal = newBossOrder;
+  }
+  
+  render(lastParsedData, lastRawText);
+  closeBossViewModal();
+  showToast("✅ 長官批示已成功寫入「擬辦」區塊！");
+}
+
+ </script>
+ </body>
+ </html>
