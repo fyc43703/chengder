@@ -2136,16 +2136,11 @@ function render(d, raw) {
              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
              罐頭語錄庫
            </button>
-           <!-- 6. 雙檔比對 -->
+<!-- 6. 雙檔比對 -->
            <button class="btn btn-navy" onclick="openDiffModal()" title="匯入舊版公文進行比對，系統將為您自動標示新增與刪除的修訂痕跡">
              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>
              雙檔比對
            </button>
-          <!-- 新增：排版強迫症救星 -->
-          <button class="btn btn-navy" onclick="autoFormatOCD()" title="一鍵全半形校正、自動縮排對齊、清除多餘空白，滿足排版強迫症！">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>
-            一鍵淨化排版
-          </button>
 
           <!-- 新增：長官視角 -->
           <button class="btn btn-orange" onclick="openBossViewModal()" style="background: linear-gradient(to bottom, #1A2B45, #0B172A); border-color: #000;" title="切換為長官專用模式：自動產生摘要簡報、語音朗讀，並支援麥克風語音智慧批示">
@@ -2949,33 +2944,6 @@ function insertSnippet(idx) {
    }
  }
  
-/* ==========================================
- * 🚀 新增功能：5. 一鍵排版強迫症救星與全半形校正
- * ========================================== */
-function autoFormatOCD() {
-  if (!lastParsedData) return showToast("請先載入公文！");
-  
-  // 全半形轉換核心邏輯：英文數字轉半形，中文標點轉全形
-  const normalizeText = (text) => {
-    if (!text) return "";
-    let str = text.replace(/[\uff01-\uff5e]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xfee0); }); // 全形英數轉半形
-    str = str.replace(/ /g, ""); // 移除多餘半形空白
-    str = str.replace(/,/g, "，").replace(/\./g, "。").replace(/;/g, "；").replace(/:/g, "：").replace(/\(/g, "（").replace(/\)/g, "）"); // 標點轉全形
-    str = str.replace(/([一二三四五六七八九十]+)（/g, "$1、\n（"); // 自動斷行處理
-    str = str.replace(/\n{2,}/g, "\n"); // 清除多餘空行
-    return str.trim();
-  };
-
-  ['subject', 'content', 'proposal'].forEach(key => {
-    if (lastParsedData[key]) {
-      lastParsedData[key] = normalizeText(lastParsedData[key]);
-    }
-  });
-  
-  render(lastParsedData, lastRawText);
-  showToast("✨ 魔法施展完畢！全半形已校正，排版已完美對齊。");
-}
-
 /* ==========================================
  * 🚀 新增功能：7. 👁️‍🗨️ 長官視角模式 (語音簡報與智慧批閱)
  * ========================================== */
