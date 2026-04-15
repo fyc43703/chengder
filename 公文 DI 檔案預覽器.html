@@ -247,6 +247,31 @@
   }
   .btn-orange:active { box-shadow: 0 1px 0 #C2410C; top: 3px; }
 
+/* 新增：AI 起稿專屬紫色按鈕樣式 */
+.btn-draft { 
+    background: linear-gradient(to bottom, #8B5CF6, #6D28D9); 
+    color: white; 
+    border-color: #5B21B6;
+    box-shadow: 0 4px 0 #5B21B6, inset 0 1px 0 rgba(255,255,255,0.3); 
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .btn-draft:active { box-shadow: 0 1px 0 #5B21B6; top: 3px; }
+  
+  /* 圖示微小的靈感閃爍/旋轉動畫 */
+  .btn-draft svg { filter: drop-shadow(0 0 2px rgba(255,255,255,0.5)); }
+  .btn-draft:hover svg { animation: spinOnce 0.6s ease-in-out; }
+  @keyframes spinOnce { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* 新增：AI 智慧諮詢藍色按鈕樣式 */
+  .btn-chat {
+    background: linear-gradient(to bottom, #3B82F6, #1D4ED8);
+    color: white;
+    border-color: #1E40AF;
+    box-shadow: 0 4px 0 #1E40AF, inset 0 1px 0 rgba(255,255,255,0.3);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .btn-chat:active { box-shadow: 0 1px 0 #1E40AF; top: 3px; }
+
   #parseStatus { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; opacity: 0.9; white-space: nowrap; }
 
   .preview-section { padding: 15px 45px 45px; display: none; background: rgba(0,0,0,0.02); border-bottom-left-radius: var(--apple-radius); border-bottom-right-radius: var(--apple-radius); }
@@ -1111,7 +1136,7 @@ body.font-kai .doc-paper [contenteditable="true"],
       <div class="ai-split-view">
         <div class="ai-panel">
           <h4 style="color: #6D28D9;">📝 案件情境與關鍵字描述</h4>
-          <textarea class="ai-textarea" id="draftPromptInput" placeholder="請描述您的公文重點，例如：&#10;「收到消防局來函要求本局派員參加臺北市智慧災害應變雲端協作平臺研習，請工管處推派兩人參加，並將名單於下週五前回報消防局。」&#10;&#10;AI 將自動為您擴寫並排版為標準的：&#10;【主旨】&#10;【說明】&#10;【擬辦】"></textarea>
+          <textarea class="ai-textarea" id="draftPromptInput" placeholder="💡 請描述您的公文重點，例如：&#10;「收到本府消防局來函，要求本局派員參加「臺北市智慧災害應變雲端協作平臺」研習，請工管處推派兩人參加（林○○副工程司及張○○副工程司），並將參訓名單於115年○月○日前email回報消防局（或google表單報名）。」&#10;&#10;😊 AI 將自動為您擴寫並排版為標準的：&#10;【主旨】&#10;【說明】&#10;【擬辦】"></textarea>
         </div>
         <div class="ai-panel">
           <h4 style="color: #6D28D9;">✨ AI 起稿結果</h4>
@@ -1126,6 +1151,46 @@ body.font-kai .doc-paper [contenteditable="true"],
       <button class="btn btn-magic" id="btnApplyDraft" onclick="applyDraftToDoc()" style="display:none; background: #6D28D9; border-color: #4C1D95; box-shadow: 0 4px 0 #4C1D95;">
         將草稿載入編輯區
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ✨ 新增：AI 智慧諮詢對話視窗 (不限公文範圍) -->
+<div class="modal-overlay" id="chatModal">
+  <div class="modal-content" style="max-width: 900px;">
+    <div class="modal-header" style="background: linear-gradient(to right, #1D4ED8, #3B82F6);">
+      <h3 style="display:flex; align-items:center; gap:8px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        AI 智慧諮詢助手 (Llama 3.3)
+      </h3>
+      <button class="modal-close" onclick="closeChatModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background: var(--meta-bg); padding: 12px 20px; border-radius: 12px; border: 1px solid var(--border-color); display:flex; align-items:center; gap:10px; margin-bottom: 15px;">
+        <span style="font-weight:700; font-size:14px; color:var(--text-main);">🔑 金鑰狀態：</span>
+        <div id="chatApiKeyStatus" style="font-size:14px; color:var(--apple-blue); font-weight:700;">已載入主系統金鑰</div>
+        <div style="font-size:12px; color:var(--apple-gray); margin-left:auto;">💡 本功能為通用諮詢，不限制公文格式。</div>
+      </div>
+      
+      <div id="chatDisplay" class="ai-result-box" style="height: 450px; border-color: #3B82F6; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding: 20px; background: white;">
+        <div style="align-self: flex-start; background: #F3F4F6; padding: 12px 18px; border-radius: 18px 18px 18px 0; max-width: 80%; font-size: 15px; color: #1F2937;">
+         <span style="font-size: 14px; margin-left: 12px; font-weight: 500;">
+        😊 您好！<a href="https://console.groq.com/home" target="_blank" rel="noopener noreferrer" style="color: var(--nature-gold); text-decoration: none; border-bottom: 1px solid var(--nature-gold); padding-bottom: 2px; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">點此申請免費 Groq API Key</a>，不論是任何日常問題，我都能為您解答。
+         </span><br>
+        💡 我無法記住之前的對話內容，每次的對話都是新的開始。<br>💡 請問今天有什麼可以幫您的？
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <textarea id="chatInput" class="prof-input" style="height: 60px; resize: none; border-radius: 15px;" placeholder="在此輸入您的問題..."></textarea>
+        <button class="btn btn-chat" id="btnSendChat" onclick="sendChatMessage()" style="height: 60px; min-width: 80px; border-radius: 15px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="clearChat()">清空對話</button>
+      <button class="btn btn-secondary" onclick="closeChatModal()">關閉</button>
     </div>
   </div>
 </div>
@@ -1207,11 +1272,23 @@ body.font-kai .doc-paper [contenteditable="true"],
         </button>
           </div>
           
-          <div class="control-center">
+          <div class="control-center" style="display: flex; gap: 12px;">
             <!-- 加入 title -->
             <button class="btn btn-secondary" id="btnClear" title="清除目前畫面與資料，準備上傳新的公文檔案">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
               重新匯入
+            </button>
+            
+            <!-- 新增：首頁 AI 起稿按鈕，對齊附圖位置 -->
+            <button class="btn btn-draft" id="btnHomeDraft" onclick="openDraftModal()" title="無須匯入檔案，直接輸入情境由 AI 幫您撰寫公文草稿">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+              AI 起稿
+            </button>
+
+            <!-- 🚀 新增：AI 智慧諮詢按鈕 -->
+            <button class="btn btn-chat" id="btnHomeChat" onclick="openChatModal()" title="詢問 AI 任何問題，不限公文範圍（如法規解析、文字翻譯、行程建議）">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              AI 智慧諮詢
             </button>
           </div>
     
@@ -3737,6 +3814,86 @@ function applyDraftToDoc() {
   closeDraftModal();
   showToast("✅ 已成功載入 AI 草稿！您可以繼續進行編輯。");
 }
+
+/* 🌐 新增功能：AI 智慧諮詢邏輯 */
+function openChatModal() {
+  const savedKey = localStorage.getItem('di_groq_key');
+  if(!savedKey) {
+    showToast("⚠️ 請先在『AI 潤飾』或『AI 起稿』中設定 Groq API Key！");
+    return;
+  }
+  document.getElementById('chatModal').classList.add('show');
+  document.getElementById('chatInput').focus();
+}
+
+function closeChatModal() { document.getElementById('chatModal').classList.remove('show'); }
+
+function clearChat() {
+  document.getElementById('chatDisplay').innerHTML = `
+    <div style="align-self: flex-start; background: #F3F4F6; padding: 12px 18px; border-radius: 18px 18px 18px 0; max-width: 80%; font-size: 15px; color: #1F2937;">
+      對話已清空。請問還有什麼我可以幫您的？
+    </div>
+  `;
+}
+
+async function sendChatMessage() {
+  const inputEl = document.getElementById('chatInput');
+  const chatDisplay = document.getElementById('chatDisplay');
+  const userText = inputEl.value.trim();
+  const apiKey = localStorage.getItem('di_groq_key');
+
+  if(!userText) return;
+  
+  // 顯示使用者訊息
+  chatDisplay.innerHTML += `
+    <div style="align-self: flex-end; background: #3B82F6; color: white; padding: 12px 18px; border-radius: 18px 18px 0 18px; max-width: 80%; font-size: 15px;">
+      ${esc(userText).replace(/\n/g, '<br>')}
+    </div>
+  `;
+  
+  inputEl.value = "";
+  const loadingId = "ai-loading-" + Date.now();
+  chatDisplay.innerHTML += `<div id="${loadingId}" style="align-self: flex-start; background: #F3F4F6; padding: 12px 18px; border-radius: 18px 18px 18px 0; font-size: 15px; color: #6B7280;">AI 正在思考中...</div>`;
+  chatDisplay.scrollTop = chatDisplay.scrollHeight;
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: "你是一位精通各領域的智慧助手。請以台灣繁體中文回覆，語氣專業且親切。不限於公文範圍，可以回答任何百科常識、法規、翻譯或寫作建議。" }, 
+          { role: "user", content: userText }
+        ],
+        temperature: 0.7
+      })
+    });
+    const data = await response.json();
+    document.getElementById(loadingId).remove();
+
+    if(!response.ok) throw new Error(data.error?.message || "請求失敗");
+    
+    const aiResponse = data.choices[0].message.content;
+    chatDisplay.innerHTML += `
+      <div style="align-self: flex-start; background: #F3F4F6; padding: 12px 18px; border-radius: 18px 18px 18px 0; max-width: 80%; font-size: 15px; color: #1F2937; border: 1px solid #E5E7EB;">
+        ${esc(aiResponse).replace(/\n/g, '<br>')}
+      </div>
+    `;
+    chatDisplay.scrollTop = chatDisplay.scrollHeight;
+
+  } catch (err) {
+    document.getElementById(loadingId).innerHTML = `<span style="color:var(--seal-red);">發生錯誤：${err.message}</span>`;
+  }
+}
+
+// 支援 Enter 傳送 (Shift+Enter 換行)
+document.getElementById('chatInput')?.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
+  }
+});
 
 // 預先載入語音庫以確保在按下按鈕時清單已經準備好 (瀏覽器非同步機制)
 if (speechSynthesis.onvoiceschanged !== undefined) {
