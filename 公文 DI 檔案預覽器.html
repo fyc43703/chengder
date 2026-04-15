@@ -2740,30 +2740,27 @@ async function startAIPolish() {
   resultBox.innerHTML = '<div style="text-align:center; padding-top:40%; font-weight:700; color:var(--nature-green-main);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="2s" repeatCount="indefinite"/></path></svg><br><br>AI 專家正在依據您的情境思考中，請稍候...</div>';
   btnStart.disabled = true;
 
-  try {
+try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
-        messages: [{ role: "system", content: currentSystemPrompt }, { role: "user", content: "以下是需要潤飾的內容：\n\n" + originalText }],
-        temperature: 0.3
+        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: originalText }],
+        temperature: 0.1
       })
     });
     const data = await response.json();
     if(!response.ok) throw new Error(data.error?.message || `API 請求失敗 (狀態碼: ${response.status})`);
     
-    let polishedText = data.choices[0].message.content;
-    resultBox.innerHTML = generateDiffHtml(originalText, polishedText);
+    let translatedText = data.choices[0].message.content;
     
-    const hint = document.createElement('div');
-    hint.id = "ai-hint-msg"; 
-    hint.innerHTML = `<div style="font-size:13px; color:var(--apple-blue); margin-bottom:10px; font-weight:bold;">💡 點擊綠字或紅字，可局部選擇接受或拒絕修改。</div>`;
-    resultBox.insertBefore(hint, resultBox.firstChild);
-
-    resultBox.style.borderStyle = "solid"; resultBox.style.borderColor = "var(--nature-green-main)";
-    document.getElementById('btnApplyAI').style.display = "inline-flex";
-    showToast("✨ 潤飾完成！可點擊文字進行局部微調。");
+    // ✨ 修正重點 2：取得新翻譯後，立刻覆蓋語音變數，避免播放到上一輪的語言
+    transOriginalSpeechText = translatedText; 
+    
+    // 安全轉譯並加上換行符號
+    resultBox.innerHTML = esc(translatedText).replace(/\n/g, '<br>');
+    showToast(`🌍 翻譯完成 (${targetLang})！`);
 
   } catch (err) {
     resultBox.innerHTML = `<div style="color:var(--seal-red); padding-top:20px; font-weight:600;">發生錯誤：<br>${err.message}</div>`;
@@ -3470,7 +3467,7 @@ function applyBossDictation() {
 /* ==========================================
  * 🌐 新增功能：8. AI 多語系翻譯邏輯
  * ========================================== */
-function openTranslateModal() {
+ function openTranslateModal() {
   if(!lastParsedData) return showToast("請先載入公文！");
   
   let fullDocText = `【發文單位】${lastParsedData.orgName || ""}\n【受文者】${lastParsedData.receiveOrg || ""}\n`;
@@ -3480,6 +3477,9 @@ function openTranslateModal() {
   
   document.getElementById('transOriginalText').value = fullDocText.trim();
   document.getElementById('transResultBox').innerHTML = '<div style="text-align:center; padding-top:40%; opacity:0.5; font-weight:600;">點擊「開始翻譯」由 AI 進行全篇翻譯</div>';
+  
+  // ✨ 新增：強制清空上一份公文或上一次播放殘留的語音快取
+  transOriginalSpeechText = "";
   
   // 共用 Groq API 金鑰
   const savedKey = localStorage.getItem('di_groq_key');
@@ -3505,6 +3505,9 @@ async function startTranslation() {
   const resultBox = document.getElementById('transResultBox');
   const btnStart = document.getElementById('btnStartTranslate');
   
+  // ✨ 新增：點擊翻譯的瞬間，強制清除舊語言快取
+  transOriginalSpeechText = "";
+  
   resultBox.innerHTML = '<div style="text-align:center; padding-top:40%; font-weight:700; color:var(--nature-green-main);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="2s" repeatCount="indefinite"/></path></svg><br><br>AI 翻譯引擎運作中，請稍候...</div>';
   btnStart.disabled = true;
 
@@ -3524,6 +3527,9 @@ async function startTranslation() {
     if(!response.ok) throw new Error(data.error?.message || `API 請求失敗 (狀態碼: ${response.status})`);
     
     let translatedText = data.choices[0].message.content;
+    
+    // ✨ 新增：強制寫入唯一的、乾淨的最新翻譯結果
+    transOriginalSpeechText = translatedText;
     
     // 安全轉譯並加上換行符號
     resultBox.innerHTML = esc(translatedText).replace(/\n/g, '<br>');
@@ -3553,10 +3559,8 @@ let transOriginalSpeechText = "";
 function playTranslation() {
   const resultBox = document.getElementById('transResultBox');
   
-  // 1. 取得並保存原始文字
-  if (!transOriginalSpeechText) {
-    transOriginalSpeechText = resultBox.innerText.trim();
-  }
+  // ✨ 修正重點：徹底移除從 resultBox 抓取文字的危險邏輯！
+  // 直接使用 startTranslation 存入的、絕對乾淨的 API 原生文字資料。
   const textToPlay = transOriginalSpeechText;
   
   if (!textToPlay || textToPlay.includes("點擊「開始翻譯」")) {
