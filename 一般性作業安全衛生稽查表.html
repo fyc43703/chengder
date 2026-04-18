@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>一般性作業安全衛生稽查表</title>
+    <title>安衛稽查表電子表單</title>
+    <!-- 引入更柔和的現代字體 Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
     <style>
         /* ========================================================= */
         /* 原有基本樣式與排版設定 */
@@ -11,7 +13,7 @@
         *, *::before, *::after { box-sizing: border-box; }
         html { width: 100%; overflow-x: hidden; }
         body { 
-            font-family: "微軟正黑體", "Microsoft JhengHei", sans-serif; 
+            font-family: 'Noto Sans TC', "微軟正黑體", "Microsoft JhengHei", sans-serif; 
             margin: 0; 
             padding: 30px 20px; 
             background-color: #eef2f5; 
@@ -51,7 +53,7 @@
         }
 
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: auto; }
-        th, td { border: 1px solid #222; padding: 10px; line-height: 1.5; outline: none; word-break: break-word; }
+        th, td { border: 1px solid #666; padding: 10px; line-height: 1.5; outline: none; word-break: break-word; }
         th { background-color: #ffffcc; font-weight: bold; text-align: center; } 
         
         .info-table th { width: 18%; }
@@ -67,9 +69,15 @@
         .checklist-table th.col-fail { width: 10%; min-width: 80px; }
         .checklist-table th.col-remark { width: 30%; }
 
-        /* ========================================================= */
-        /* (全選) 與 (取消) 的排版樣式 */
-        /* ========================================================= */
+        /* 語音輸入按鈕樣式 */
+        .mic-btn { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: #f0f0f0; border-radius: 50%; font-size: 14px; margin-left: 5px; transition: 0.2s; user-select: none; }
+        .mic-btn:hover { background: #e0e0e0; transform: scale(1.1); }
+        .mic-btn.recording { background: #ffcccc; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
+
+        /* 防呆錯誤標示動畫 */
+        .error-highlight { border: 2px solid #dc3545 !important; box-shadow: 0 0 8px rgba(220, 53, 69, 0.6) !important; background-color: #fff8f8; transition: 0.3s; }
+
         .header-actions { display: flex; justify-content: center; gap: 10px; margin-top: 5px; }
         .btn-select-all, .btn-cancel-all { font-size: 13px; text-decoration: underline; cursor: pointer; font-weight: normal; }
         .btn-select-all { color: #007bff; }
@@ -80,7 +88,6 @@
         .vertical-text { text-align: center; vertical-align: middle; line-height: 1.2; letter-spacing: 3px; font-weight: bold; }
 
         .radio-cell { padding: 0 !important; text-align: center; vertical-align: middle; }
-        /* 加入過渡動畫讓鎖定狀態更滑順 */
         .radio-cell label { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-height: 50px; cursor: pointer; margin: 0; transition: opacity 0.2s; }
         .radio-cell input[type="radio"] { display: none; }
         .custom-radio { width: 24px; height: 24px; border: 2px solid #aaa; border-radius: 50%; display: inline-block; position: relative; background: #fff; }
@@ -105,15 +112,9 @@
         .btn-draft { background-color: #fd7e14; }
         .btn-system { background-color: #28a745; }
 
-        /* ========================================================= */
-        /* 圖示常時動態旋轉樣式設定 */
-        /* ========================================================= */
         @keyframes spin-anim { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .spin-icon { display: inline-block; animation: spin-anim 2s linear infinite; margin-right: 8px; font-size: 20px; }
 
-        /* ========================================================= */
-        /* 不合格照片上傳區塊樣式 */
-        /* ========================================================= */
         #photo-report-section { display: none; margin-top: 40px; padding-top: 20px; border-top: 3px double #333; }
         #photo-report-section h2 { text-align: center; font-size: 22px; font-weight: bold; color: #dc3545; margin-bottom: 20px; }
         table.photo-table th { background-color: #f8f9fa; }
@@ -123,21 +124,17 @@
         table.photo-table td { text-align: center; vertical-align: middle; }
         .upload-btn-ui { display: inline-block; background-color: #000080; color: #fff; padding: 8px 16px; font-size: 16px; font-weight: bold; cursor: pointer; letter-spacing: 2px; }
         .upload-btn-ui:active { transform: scale(0.95); }
-        .uploaded-img-preview { max-width: 100%; max-height: 200px; object-fit: contain; display: block; margin: 0 auto; }
+        .uploaded-img-preview { max-width: 100%; max-height: 200px; object-fit: contain; display: block; margin: 0 auto; cursor: crosshair; border: 1px solid #ddd; }
         .reupload-text { display: inline-block; margin-top: 8px; font-size: 13px; color: #0056b3; text-decoration: underline; cursor: pointer; }
 
-        /* ========================================================= */
-        /* 系統確認登錄 - 彈跳視窗樣式 */
-        /* ========================================================= */
-        #system-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.65); z-index: 10000; align-items: center; justify-content: center; }
-        .sys-container { background: #fff; width: 90%; max-width: 480px; border-radius: 12px; padding: 30px 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); text-align: center; font-family: "微軟正黑體", sans-serif; max-height: 90vh; overflow-y: auto; }
+        /* Modal 共用毛玻璃背景 */
+        .custom-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px); z-index: 10000; align-items: center; justify-content: center; }
+        
+        .sys-container { background: #fff; width: 90%; max-width: 480px; border-radius: 12px; padding: 30px 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); text-align: center; max-height: 90vh; overflow-y: auto; }
         .sys-title { color: #0056b3; font-size: 22px; font-weight: bold; margin-bottom: 20px; margin-top: 0; }
         .sys-details { background: #f4f7fa; border: 1px solid #dce4ec; border-radius: 8px; padding: 15px; text-align: left; font-size: 16px; line-height: 1.8; color: #333; margin-bottom: 15px; }
         .sys-details strong { color: #555; display: inline-block; width: 90px; }
-        
-        /* 新增：提醒文字樣式 */
         .sys-reminder { color: #0056b3; font-size: 15px; font-weight: bold; text-align: left; line-height: 1.5; margin-bottom: 20px; padding: 0 5px; }
-        
         .sys-warning { color: #d9534f; font-size: 16px; font-weight: bold; margin-bottom: 30px; text-align: center; line-height: 1.6; }
         .sys-actions { display: flex; justify-content: space-around; align-items: center; }
         .sys-btn-group { display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.1s; }
@@ -148,25 +145,33 @@
         .sys-label { font-size: 18px; font-weight: bold; color: #333; letter-spacing: 2px; }
 
         /* ========================================================= */
-        /* 電子簽章專用 Modal 樣式 */
+        /* 美化版自訂 Alert 彈跳視窗 (完美還原附圖樣式) */
         /* ========================================================= */
-        #sig-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 9999; align-items: center; justify-content: center; }
-        .sig-container { width: 90%; max-width: 800px; height: 80vh; max-height: 500px; background: #111; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; box-shadow: 0 5px 25px rgba(0,0,0,0.5); }
+        #beauty-alert-modal { z-index: 10005; }
+        .beauty-alert-box { background: #fff; width: 85%; max-width: 420px; border-radius: 12px; padding: 25px 30px; box-shadow: 0 15px 40px rgba(0,0,0,0.25); text-align: left; position: relative; font-family: "微軟正黑體", sans-serif; }
+        .beauty-alert-title { font-size: 18px; color: #333; margin-bottom: 15px; font-weight: bold; }
+        .beauty-alert-content { font-size: 16px; color: #444; line-height: 1.6; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 30px; }
+        .beauty-alert-icon { font-size: 22px; flex-shrink: 0; line-height: 1; }
+        .beauty-alert-actions { text-align: right; }
+        .beauty-alert-btn { background-color: #0b5ed7; color: white; border: 2px solid #fff; outline: 2px solid #0b5ed7; border-radius: 25px; padding: 8px 30px; font-size: 16px; cursor: pointer; transition: 0.1s; display: inline-block; font-weight: bold; }
+        .beauty-alert-btn:active { transform: scale(0.95); background-color: #0a58ca; }
+
+        /* 電子簽章與照片標記容器 */
+        .sig-container { width: 90%; max-width: 800px; height: 80vh; max-height: 500px; background: #222; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; box-shadow: 0 5px 25px rgba(0,0,0,0.5); }
         .sig-header { display: flex; justify-content: space-between; align-items: center; color: #fff; padding: 5px 15px 15px 15px; font-size: 18px; font-weight: bold; }
         .sig-header-btn { color: #ccc; font-size: 16px; cursor: pointer; }
-        .sig-body { display: flex; flex: 1; gap: 10px; background: #fff; border-radius: 5px; padding: 10px; }
-        .sig-canvas-wrapper { flex: 1; border: 1px solid #ccc; background: #fff; touch-action: none; }
-        canvas#sig-canvas { width: 100%; height: 100%; cursor: crosshair; display: block; }
+        .sig-body { display: flex; flex: 1; gap: 10px; background: #fff; border-radius: 5px; padding: 10px; position: relative; }
+        .sig-canvas-wrapper { flex: 1; border: 1px solid #ccc; background: #fff; touch-action: none; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        .sig-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: rgba(0,0,0,0.05); font-weight: bold; pointer-events: none; white-space: nowrap; }
+        canvas.drawing-canvas { position: absolute; cursor: crosshair; display: block; z-index: 2; touch-action: none; }
         .sig-controls { width: 80px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
-        .sig-btn { flex: 1; border: none; border-radius: 5px; color: #333; font-weight: bold; font-size: 14px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f0f0f0; border: 1px solid #ddd; transition: 0.2s; }
+        .sig-btn { flex: 1; border: none; border-radius: 5px; color: #333; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f0f0f0; border: 1px solid #ddd; transition: 0.2s; }
         .sig-btn:active { transform: scale(0.95); }
-        .sig-btn .icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; margin-bottom: 5px; font-weight: bold; }
+        .sig-btn .icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; margin-bottom: 5px; font-weight: bold; }
         .sig-btn-confirm .icon { background-color: #28a745; }
+        .sig-btn-undo .icon { background-color: #ffc107; color: #333; }
         .sig-btn-clear .icon { background-color: #dc3545; }
 
-        /* ========================================================= */
-        /* 手機模式修正專區 (RWD) */
-        /* ========================================================= */
         @media (max-width: 768px) {
             html, body { width: 100%; margin: 0; padding: 0; background-color: #fff; overflow-x: hidden; }
             .container { width: 100%; max-width: 100%; margin: 0; padding: 12px 10px; box-shadow: none; border-radius: 0; }
@@ -184,6 +189,8 @@
             table.checklist-table th, table.checklist-table td { padding: 7px 6px; }
             .bottom-actions { flex-direction: column; gap: 10px; margin-top: 20px; padding-top: 20px; }
             .btn-3d { width: 100%; padding: 13px; font-size: 15px; }
+            .sig-controls { width: 60px; }
+            .sig-btn { font-size: 12px; }
         }
 
         @media print {
@@ -200,7 +207,7 @@
     <div id="app"></div>
 
     <div id="photo-report-section">
-        <h2>📷 稽查缺失照片紀錄</h2>
+        <h2>📷 稽查缺失照片紀錄 <span style="font-size: 14px; font-weight: normal; color:#666;">(點擊照片可進行畫筆標記)</span></h2>
         <table class="photo-table" id="photo-table">
             <thead><tr><th>檢查項目</th><th>不合格缺失說明</th><th>照片</th></tr></thead>
             <tbody id="photo-table-body"></tbody>
@@ -210,14 +217,68 @@
     <!-- 底部功能按鈕 -->
     <div class="bottom-actions" id="action-buttons">
         <button class="btn-3d btn-photo" onclick="generatePhotoReport()"><span class="spin-icon">📸</span> 傳送照片</button>
-        <button class="btn-3d btn-draft" onclick="exportXML()"><span class="spin-icon">💾</span> 暫存</button>
-        <button class="btn-3d btn-pdf" onclick="exportHTML()"><span class="spin-icon">📄</span> 預覽匯出</button>
+        <button class="btn-3d btn-draft" onclick="openDraftModal()"><span class="spin-icon">💾</span> 暫存</button>
+        <button class="btn-3d btn-pdf" onclick="openExportFormatModal()"><span class="spin-icon">📄</span> 預覽匯出</button>
         <button class="btn-3d btn-system" onclick="openSystemModal()"><span class="spin-icon">🚀</span> 系統確認登錄</button>
     </div>
 </div>
 
+<!-- 自訂美化 Alert Modal -->
+<div id="beauty-alert-modal" class="custom-modal">
+    <div class="beauty-alert-box">
+        <div class="beauty-alert-title">這個網頁顯示</div>
+        <div class="beauty-alert-content">
+            <span class="beauty-alert-icon">⚠️</span>
+            <span id="beauty-alert-text"></span>
+        </div>
+        <div class="beauty-alert-actions">
+            <button class="beauty-alert-btn" onclick="closeCustomAlert()">確定</button>
+        </div>
+    </div>
+</div>
+
+<!-- 暫存管理 (匯出/匯入) Modal -->
+<div id="draft-format-modal" class="custom-modal">
+    <div class="sys-container">
+        <h2 class="sys-title">暫存資料管理</h2>
+        <p style="color:#555; margin-bottom:25px;">請選擇匯出暫存檔或匯入已有的暫存資料。</p>
+        <div class="sys-actions">
+            <div class="sys-btn-group" onclick="executeExportXML()">
+                <div class="sys-icon" style="background-color: #fd7e14;">💾</div>
+                <div class="sys-label" style="font-size: 15px;">匯出 (儲存)</div>
+            </div>
+            <div class="sys-btn-group" onclick="document.getElementById('xml-upload-input').click()">
+                <div class="sys-icon" style="background-color: #20c997;">📂</div>
+                <div class="sys-label" style="font-size: 15px;">匯入 (讀取)</div>
+            </div>
+        </div>
+        <div style="margin-top:25px; color:#666; font-size:14px; text-decoration:underline; cursor:pointer;" onclick="closeDraftModal()">取消</div>
+    </div>
+</div>
+<!-- 隱藏的檔案上傳元素 -->
+<input type="file" id="xml-upload-input" accept=".xml" style="display:none;" onchange="handleXMLImport(event)">
+
+<!-- 匯出格式選擇 Modal -->
+<div id="export-format-modal" class="custom-modal">
+    <div class="sys-container">
+        <h2 class="sys-title">選擇匯出格式</h2>
+        <p style="color:#555; margin-bottom:25px;">請選擇您要將稽查表匯出為圖片或文件。</p>
+        <div class="sys-actions">
+            <div class="sys-btn-group" onclick="executeExportPNG()">
+                <div class="sys-icon" style="background-color: #17a2b8;">🖼️</div>
+                <div class="sys-label" style="font-size: 15px;">長圖片 (PNG)</div>
+            </div>
+            <div class="sys-btn-group" onclick="executeExportPDF()">
+                <div class="sys-icon" style="background-color: #dc3545;">📄</div>
+                <div class="sys-label" style="font-size: 15px;">分頁文件 (PDF)</div>
+            </div>
+        </div>
+        <div style="margin-top:25px; color:#666; font-size:14px; text-decoration:underline; cursor:pointer;" onclick="closeExportFormatModal()">取消</div>
+    </div>
+</div>
+
 <!-- 系統確認 Modal -->
-<div id="system-modal">
+<div id="system-modal" class="custom-modal">
     <div class="sys-container">
         <h2 class="sys-title">系統登錄確認</h2>
         <div class="sys-details">
@@ -228,12 +289,7 @@
             <div><strong>檢查地點：</strong> <span id="sys-loc"></span></div>
             <div><strong>檢查位置：</strong> <span id="sys-pos"></span></div>
         </div>
-        
-        <!-- 新增的提醒文字 -->
-        <div class="sys-reminder">
-            提醒：請先開啟 GlobalProtect App，確認 VPN 已成功連線至本局後，再進行稽查紀錄上傳作業。
-        </div>
-
+        <div class="sys-reminder">提醒：請先開啟 GlobalProtect App，確認 VPN 已成功連線至本局後，再進行稽查紀錄上傳作業。</div>
         <div class="sys-warning">確認後傳送<br>臺北市政府捷運工程局<br>安全衛生稽查管理系統</div>
         <div class="sys-actions">
             <div class="sys-btn-group" onclick="closeSystemModal()"><div class="sys-icon red">✖</div><div class="sys-label">清除</div></div>
@@ -243,22 +299,61 @@
 </div>
 
 <!-- 簽章 Modal -->
-<div id="sig-modal">
+<div id="sig-modal" class="custom-modal">
     <div class="sig-container">
         <div class="sig-header"><span class="sig-header-btn" onclick="closeSignaturePad()">❮ 返回</span>請簽名<span style="width: 50px;"></span></div>
         <div class="sig-body">
-            <div class="sig-canvas-wrapper" id="canvas-wrapper"><canvas id="sig-canvas"></canvas></div>
+            <div class="sig-canvas-wrapper" id="canvas-wrapper">
+                <div class="sig-watermark">請在此簽名</div>
+                <canvas id="sig-canvas" class="drawing-canvas"></canvas>
+            </div>
             <div class="sig-controls">
                 <button class="sig-btn sig-btn-confirm" onclick="saveSignature()"><div class="icon">✔</div>確認</button>
+                <button class="sig-btn sig-btn-undo" onclick="undoCanvas()"><div class="icon">↺</div>上一步</button>
                 <button class="sig-btn sig-btn-clear" onclick="clearCanvas()"><div class="icon">✖</div>清除</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- 照片標記 Modal -->
+<div id="anno-modal" class="custom-modal">
+    <div class="sig-container">
+        <div class="sig-header"><span class="sig-header-btn" onclick="closeAnnoPad()">❮ 返回</span>照片標記 (紅筆)<span style="width: 50px;"></span></div>
+        <div class="sig-body">
+            <div class="sig-canvas-wrapper" id="anno-wrapper" style="background:#000;">
+                <canvas id="anno-canvas" class="drawing-canvas"></canvas>
+            </div>
+            <div class="sig-controls">
+                <button class="sig-btn sig-btn-confirm" onclick="saveAnnotation()"><div class="icon">✔</div>完成</button>
+                <button class="sig-btn sig-btn-undo" onclick="undoAnnoCanvas()"><div class="icon">↺</div>上一步</button>
+                <button class="sig-btn sig-btn-clear" onclick="clearAnnoCanvas()"><div class="icon">✖</div>重置</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-    // 匯出暫存 XML
-    window.exportXML = function() {
+    // =========================================================
+    // 自訂美化版 Alert 控制邏輯
+    // =========================================================
+    window.showCustomAlert = function(message) {
+        document.getElementById('beauty-alert-text').innerHTML = message;
+        document.getElementById('beauty-alert-modal').style.display = 'flex';
+    };
+    window.closeCustomAlert = function() {
+        document.getElementById('beauty-alert-modal').style.display = 'none';
+    };
+
+    // =========================================================
+    // 暫存資料管理 (匯出/匯入 XML)
+    // =========================================================
+    window.openDraftModal = function() { document.getElementById('draft-format-modal').style.display = 'flex'; };
+    window.closeDraftModal = function() { document.getElementById('draft-format-modal').style.display = 'none'; };
+
+    // 匯出暫存 XML (原 exportXML 功能)
+    window.executeExportXML = function() {
+        closeDraftModal();
         const year = document.querySelector('.date-year').value;
         const month = document.querySelector('.date-month').value;
         const day = document.querySelector('.date-day').value;
@@ -306,8 +401,110 @@
         document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
     };
 
-    // 系統登錄功能
+    // 匯入暫存 XML 
+    window.handleXMLImport = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(text, "text/xml");
+            
+            const getNodeText = (tag) => { const node = xmlDoc.getElementsByTagName(tag)[0]; return node ? node.textContent : ""; };
+
+            // 1. 還原日期
+            const year = getNodeText("年"); const month = getNodeText("月"); const day = getNodeText("日");
+            if(year) syncDate('year', year); 
+            if(month) syncDate('month', parseInt(month).toString()); 
+            if(day) syncDate('day', parseInt(day).toString());
+
+            // 2. 還原工程名稱
+            const proj = getNodeText("工程名稱");
+            if (proj && proj !== "未選擇") {
+                document.querySelectorAll('.proj-sel').forEach(el => el.value = proj);
+                updateProjectInfo(proj); 
+            }
+
+            // 3. 還原檢查地點與位置
+            const loc = getNodeText("檢查地點"); const pos = getNodeText("檢查位置");
+            if(loc && loc !== "未填寫") document.querySelectorAll('.sync-loc').forEach(el => el.textContent = loc);
+            if(pos && pos !== "未填寫") document.querySelectorAll('.sync-pos').forEach(el => el.textContent = pos);
+
+            // 4. 還原缺失項目 (先清除所有現有勾選)
+            for(let i=0; i<=2; i++) uncheckAllPass(i);
+            const items = xmlDoc.getElementsByTagName("檢查項目");
+            const defects = xmlDoc.getElementsByTagName("缺失情形／改善期限");
+
+            for (let i = 0; i < items.length; i++) {
+                const itemName = items[i].textContent;
+                const defectDesc = defects[i].textContent;
+                if (!itemName) continue;
+
+                document.querySelectorAll('.col-desc').forEach(descCell => {
+                    if (descCell.textContent.includes(itemName)) {
+                        const tr = descCell.closest('tr');
+                        const failRadio = tr.querySelector('.fail-radio');
+                        const defectInput = tr.querySelector('.defect-desc-input');
+                        
+                        failRadio.checked = true;
+                        if(defectDesc && defectDesc !== "未填寫說明") {
+                            defectInput.textContent = defectDesc;
+                        }
+                        
+                        // 觸發防呆鎖定與計數更新
+                        const match = failRadio.className.match(/fail-radio-f(\d+)/);
+                        if (match) handleDefectInput(defectInput, match[1]);
+                    }
+                });
+            }
+
+            closeDraftModal();
+            event.target.value = ""; // 清空 input file
+            showCustomAlert("暫存檔匯入成功！");
+        };
+        reader.readAsText(file);
+    };
+
+    // =========================================================
+    // 送出前防呆檢核 (Validation) 
+    // =========================================================
     window.openSystemModal = function() {
+        document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight'));
+        let errors = [];
+
+        let loc = document.querySelector('.sync-loc');
+        if(!loc.textContent.trim()) errors.push(loc);
+
+        document.querySelectorAll('.sign-box').forEach(box => {
+            if(!box.querySelector('img')) errors.push(box);
+        });
+
+        let hasFailures = false;
+        let missingPhotos = [];
+        document.querySelectorAll('.fail-radio:checked').forEach(radio => {
+            hasFailures = true;
+            let code = radio.closest('tr').querySelector('.item-id-code').textContent.trim();
+            if(!uploadedPhotosDB[code]) missingPhotos.push(code);
+        });
+
+        if(hasFailures && missingPhotos.length > 0) {
+            generatePhotoReport(); 
+            missingPhotos.forEach(code => {
+                let cell = document.getElementById(`photo-cell-${code}`);
+                if(cell) errors.push(cell);
+            });
+        }
+
+        if(errors.length > 0) {
+            errors.forEach(el => el.classList.add('error-highlight'));
+            errors[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // 替換為自訂 Alert
+            showCustomAlert("請完成所有必填項目（請見紅框標示處：包含檢查地點、缺失照片或簽章）");
+            return;
+        }
+
         const now = new Date();
         const rocYear = now.getFullYear() - 1911;
         const formattedDate = rocYear + '-' + (now.getMonth() + 1) + '-' + now.getDate() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
@@ -320,9 +517,8 @@
         document.getElementById('system-modal').style.display = 'flex';
     };
     window.closeSystemModal = function() { document.getElementById('system-modal').style.display = 'none'; };
-    window.submitSystemData = function() { alert("已將稽查紀錄傳送臺北市政府捷運工程局 安全衛生稽查管理系統"); closeSystemModal(); };
-    window.addEventListener('click', function(event) { if (event.target == document.getElementById('system-modal')) closeSystemModal(); });
-
+    window.submitSystemData = function() { showCustomAlert("已將稽查紀錄傳送臺北市政府捷運工程局 安全衛生稽查管理系統"); closeSystemModal(); };
+    
     // 表單資料同步功能
     const projectData = {
         "環狀線北環段CF680B": { main: "第一區工程處", super: "土木第一工務所", pm: "台灣世曦工程顧問", contractor: "皇昌營造" },
@@ -338,72 +534,63 @@
         document.querySelectorAll('.org-contractor').forEach(el => el.textContent = data.contractor);
     };
     window.syncDate = function(type, val) { document.querySelectorAll('.date-' + type).forEach(el => el.value = val); };
-    window.syncField = function(className, sourceElement) { const val = sourceElement.textContent; document.querySelectorAll('.' + className).forEach(el => { if (el !== sourceElement) el.textContent = val; }); };
+    window.syncField = function(className, sourceElement) { 
+        sourceElement.classList.remove('error-highlight');
+        const val = sourceElement.textContent; 
+        document.querySelectorAll('.' + className).forEach(el => { if (el !== sourceElement) el.textContent = val; }); 
+    };
 
-    // =========================================================
-    // 缺失情形輸入防呆鎖定機制
-    // =========================================================
     window.handleDefectInput = function(cell, fIndex) {
         const text = cell.textContent.trim();
         const tr = cell.closest('tr');
         const failRadio = tr.querySelector('.fail-radio');
         const passRadio = tr.querySelector('.pass-radio');
-        const passLabel = passRadio.closest('label'); // 取得點擊區域的標籤
+        const passLabel = passRadio.closest('label'); 
         
         if (text !== '') {
-            // 如果有文字，強制勾選不合格
-            failRadio.checked = true;
-            // 鎖定「合格」使其無法點擊
-            passRadio.disabled = true;
-            passLabel.style.pointerEvents = 'none';
-            passLabel.style.opacity = '0.3'; // 變淡表示不可用
+            failRadio.checked = true; passRadio.disabled = true;
+            passLabel.style.pointerEvents = 'none'; passLabel.style.opacity = '0.3'; 
         } else {
-            // 如果文字清空了，解除鎖定
-            passRadio.disabled = false;
-            passLabel.style.pointerEvents = 'auto';
-            passLabel.style.opacity = '1';
+            passRadio.disabled = false; passLabel.style.pointerEvents = 'auto'; passLabel.style.opacity = '1';
         }
-        
-        // 重新計算不合格數量
         calcFailCount(fIndex);
     };
 
-    // =========================================================
-    // 全選與取消全選功能 (配合防呆機制)
-    // =========================================================
-    window.checkAllPass = function(fIndex) {
-        document.querySelectorAll(`.pass-radio-f${fIndex}`).forEach(radio => { 
-            // 只有未被鎖定的「合格」按鈕才會被全選勾選
-            if (!radio.disabled) {
-                radio.checked = true; 
-            }
-        });
-        calcFailCount(fIndex); 
-    };
-    
-    window.uncheckAllPass = function(fIndex) {
-        // 清除該表格所有的勾選狀態 (合格與不合格皆清除)
-        document.querySelectorAll(`.pass-radio-f${fIndex}, .fail-radio-f${fIndex}`).forEach(radio => { radio.checked = false; });
-        calcFailCount(fIndex); 
-    };
-    
-    window.calcFailCount = function(fIndex) {
-        const failCount = document.querySelectorAll(`.fail-radio-f${fIndex}:checked`).length;
-        document.getElementById(`fail_count_${fIndex}`).textContent = failCount;
+    window.startSpeechToText = function(btn, fIndex) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) { showCustomAlert("您的瀏覽器不支援語音輸入功能。"); return; }
+        const targetDiv = btn.previousElementSibling; const recognition = new SpeechRecognition();
+        recognition.lang = 'zh-TW'; recognition.interimResults = false; recognition.maxAlternatives = 1;
+        btn.classList.add('recording'); btn.innerHTML = '🔴';
+        recognition.onresult = function(event) { targetDiv.textContent += (targetDiv.textContent ? '，' : '') + event.results[0][0].transcript; handleDefectInput(targetDiv, fIndex); };
+        recognition.onerror = function(event) { showCustomAlert("語音辨識錯誤：" + event.error); };
+        recognition.onend = function() { btn.classList.remove('recording'); btn.innerHTML = '🎤'; };
+        recognition.start();
     };
 
-    // 匯出截圖
-    window.exportHTML = async function() {
-        const btn = document.querySelector('.btn-pdf');
-        const actions = document.getElementById('action-buttons');
-        if (!window.html2canvas) {
-            await new Promise((resolve, reject) => {
-                const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-                s.onload = resolve; s.onerror = () => reject(new Error('html2canvas 載入失敗')); document.head.appendChild(s);
-            });
-        }
-        const origHTML = btn.innerHTML; btn.innerHTML = '<span class="spin-icon">⏳</span> 截圖中…'; btn.disabled = true; actions.style.display = 'none'; 
+    window.checkAllPass = function(fIndex) { document.querySelectorAll(`.pass-radio-f${fIndex}`).forEach(radio => { if (!radio.disabled) radio.checked = true; }); calcFailCount(fIndex); };
+    window.uncheckAllPass = function(fIndex) { document.querySelectorAll(`.pass-radio-f${fIndex}, .fail-radio-f${fIndex}`).forEach(radio => { radio.checked = false; }); calcFailCount(fIndex); };
+    window.calcFailCount = function(fIndex) { document.getElementById(`fail_count_${fIndex}`).textContent = document.querySelectorAll(`.fail-radio-f${fIndex}:checked`).length; };
+
+    // =========================================================
+    // 預覽匯出功能 (PNG & PDF 雙軌)
+    // =========================================================
+    window.openExportFormatModal = function() { document.getElementById('export-format-modal').style.display = 'flex'; };
+    window.closeExportFormatModal = function() { document.getElementById('export-format-modal').style.display = 'none'; };
+
+    const loadScript = (src) => new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) return resolve();
+        const s = document.createElement('script'); s.src = src; s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+    });
+
+    window.executeExportPNG = async function() {
+        closeExportFormatModal();
+        const btn = document.querySelector('.btn-pdf'); const actions = document.getElementById('action-buttons');
+        const origHTML = btn.innerHTML; btn.innerHTML = '<span class="spin-icon">⏳</span> PNG產生中…'; btn.disabled = true; actions.style.display = 'none'; 
+        document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight')); 
+        
         try {
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
             const target = document.querySelector('.container');
             const canvas = await html2canvas(target, {
                 scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: target.scrollWidth, width: target.scrollWidth, height: target.scrollHeight,
@@ -411,7 +598,42 @@
             });
             const filename = `稽查表_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.png`;
             const link = document.createElement('a'); link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
-        } catch(err) { alert('匯出失敗：' + err.message); } finally { actions.style.display = ''; btn.innerHTML = origHTML; btn.disabled = false; }
+        } catch(err) { showCustomAlert('匯出失敗：' + err.message); } finally { actions.style.display = ''; btn.innerHTML = origHTML; btn.disabled = false; }
+    };
+
+    window.executeExportPDF = async function() {
+        closeExportFormatModal();
+        const btn = document.querySelector('.btn-pdf'); const actions = document.getElementById('action-buttons');
+        const origHTML = btn.innerHTML; btn.innerHTML = '<span class="spin-icon">⏳</span> PDF產生中…'; btn.disabled = true; actions.style.display = 'none'; 
+        document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight')); 
+
+        try {
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+            
+            const { jsPDF } = window.jspdf;
+            const target = document.querySelector('.container');
+            const canvas = await html2canvas(target, {
+                scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: target.scrollWidth, width: target.scrollWidth, height: target.scrollHeight,
+                onclone: (doc) => { doc.querySelectorAll('.table-responsive').forEach(el => { el.style.overflow = 'visible'; el.style.maxHeight = 'none'; }); const c = doc.querySelector('.container'); if (c) c.style.boxShadow = 'none'; }
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+            const pdfWidth = 210; const pdfHeight = 297; 
+            const contentHeight = (canvas.height * pdfWidth) / canvas.width;
+            let heightLeft = contentHeight; let position = 0; let pdf = new jsPDF('p', 'mm', 'a4');
+
+            pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, contentHeight); heightLeft -= pdfHeight;
+            while (heightLeft > 0) { position = heightLeft - contentHeight; pdf.addPage(); pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, contentHeight); heightLeft -= pdfHeight; }
+
+            const filename = `稽查表_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.pdf`;
+            pdf.save(filename);
+
+        } catch(err) { 
+            showCustomAlert('PDF匯出失敗：' + err.message); 
+        } finally { 
+            actions.style.display = ''; btn.innerHTML = origHTML; btn.disabled = false; 
+        }
     };
 
     const formsData = [
@@ -460,8 +682,7 @@
             const verticalName = cat.name.split('').join('<br>');
             cat.items.forEach((item, iIndex) => {
                 const uniqueName = `radio_${fIndex}_${item.id}`;
-                // 加入 oninput 監聽打字事件，觸發防呆鎖定
-                htmlContent += `<tr>${iIndex === 0 ? `<td rowspan="${cat.items.length}" class="col-cat vertical-text">${verticalName}</td>` : ''}<td class="col-desc"><strong class="item-id-code">${item.id}</strong> ${item.desc}</td><td class="radio-cell"><label><input type="radio" class="pass-radio pass-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})"><span class="custom-radio"></span></label></td><td class="radio-cell"><label><input type="radio" class="fail-radio fail-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})"><span class="custom-radio"></span></label></td><td contenteditable="true" class="defect-desc-input" oninput="handleDefectInput(this, ${fIndex})"></td></tr>`;
+                htmlContent += `<tr>${iIndex === 0 ? `<td rowspan="${cat.items.length}" class="col-cat vertical-text">${verticalName}</td>` : ''}<td class="col-desc"><strong class="item-id-code">${item.id}</strong> ${item.desc}</td><td class="radio-cell"><label><input type="radio" class="pass-radio pass-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})"><span class="custom-radio"></span></label></td><td class="radio-cell"><label><input type="radio" class="fail-radio fail-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})"><span class="custom-radio"></span></label></td><td class="col-remark"><div style="display:flex; align-items:flex-start;"><div contenteditable="true" class="defect-desc-input" style="flex:1; min-height:1.5em; outline:none;" oninput="handleDefectInput(this, ${fIndex})"></div><span class="mic-btn" title="語音輸入" onclick="startSpeechToText(this, ${fIndex})">🎤</span></div></td></tr>`;
             });
         });
         htmlContent += `</tbody></table></div><div style="background:#f9f9f9; padding:15px; border:1px solid #ddd; font-size:14px; margin-bottom:20px;">${form.notes}</div>
@@ -478,41 +699,75 @@
         const failRadios = document.querySelectorAll('.fail-radio:checked');
         const reportSection = document.getElementById('photo-report-section');
         const tbody = document.getElementById('photo-table-body');
-        if (failRadios.length === 0) { alert('目前沒有勾選任何「不合格」項目，無須上傳照片！'); reportSection.style.display = 'none'; return; }
+        if (failRadios.length === 0) { showCustomAlert('目前沒有勾選任何「不合格」項目，無須上傳照片！'); reportSection.style.display = 'none'; return; }
         let tableHTML = '';
         failRadios.forEach(radio => {
             const tr = radio.closest('tr'); const itemCode = tr.querySelector('.item-id-code').textContent.trim();
             let defectText = tr.querySelector('.defect-desc-input').textContent.trim(); if(!defectText) defectText = '<span style="color:#aaa;">(未填寫說明)</span>';
-            let photoContent = uploadedPhotosDB[itemCode] ? `<img src="${uploadedPhotosDB[itemCode]}" class="uploaded-img-preview" alt="缺失照片"><label class="reupload-text">重新上傳<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>` : `<label class="upload-btn-ui">上傳照片<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>`;
+            let photoContent = uploadedPhotosDB[itemCode] ? `<img src="${uploadedPhotosDB[itemCode]}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片"><label class="reupload-text">重新上傳<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>` : `<label class="upload-btn-ui">上傳照片<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>`;
             tableHTML += `<tr><td style="font-size: 18px; font-weight: bold;">${itemCode}</td><td style="text-align: left;">${defectText}</td><td id="photo-cell-${itemCode}">${photoContent}</td></tr>`;
         });
-        tbody.innerHTML = tableHTML; reportSection.style.display = 'block'; reportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        tbody.innerHTML = tableHTML; reportSection.style.display = 'block'; 
+        if(!event || event.type !== 'click') return; 
+        reportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
     window.handleImageFile = function(inputElement, itemCode) {
         const file = inputElement.files[0];
         if (file) {
+            const cell = document.getElementById(`photo-cell-${itemCode}`);
+            cell.classList.remove('error-highlight'); 
             const reader = new FileReader();
             reader.onload = function(e) {
                 uploadedPhotosDB[itemCode] = e.target.result;
-                document.getElementById(`photo-cell-${itemCode}`).innerHTML = `<img src="${e.target.result}" class="uploaded-img-preview" alt="缺失照片"><label class="reupload-text">重新上傳<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>`;
+                cell.innerHTML = `<img src="${e.target.result}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片"><label class="reupload-text">重新上傳<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>`;
             }; reader.readAsDataURL(file);
         }
     };
 
-    const modal = document.getElementById("sig-modal"); const canvas = document.getElementById("sig-canvas"); const ctx = canvas.getContext("2d"); const wrapper = document.getElementById("canvas-wrapper");
-    let isDrawing = false; let currentSignBox = null; 
-    function getCoordinates(event) { const rect = canvas.getBoundingClientRect(); let clientX = event.clientX; let clientY = event.clientY; if (event.touches && event.touches.length > 0) { clientX = event.touches[0].clientX; clientY = event.touches[0].clientY; } return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) }; }
-    function startDrawing(e) { e.preventDefault(); isDrawing = true; const coords = getCoordinates(e); ctx.beginPath(); ctx.moveTo(coords.x, coords.y); }
-    function draw(e) { if (!isDrawing) return; e.preventDefault(); const coords = getCoordinates(e); ctx.lineTo(coords.x, coords.y); ctx.strokeStyle = "#000000"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(); }
-    function stopDrawing() { if(isDrawing) { ctx.closePath(); isDrawing = false; } }
-    canvas.addEventListener("mousedown", startDrawing); canvas.addEventListener("mousemove", draw); canvas.addEventListener("mouseup", stopDrawing); canvas.addEventListener("mouseout", stopDrawing);
-    canvas.addEventListener("touchstart", startDrawing, { passive: false }); canvas.addEventListener("touchmove", draw, { passive: false }); canvas.addEventListener("touchend", stopDrawing);
-    window.openSignaturePad = function(element) { currentSignBox = element; modal.style.display = "flex"; canvas.width = wrapper.clientWidth; canvas.height = wrapper.clientHeight; clearCanvas(); };
-    window.closeSignaturePad = function() { modal.style.display = "none"; currentSignBox = null; };
-    window.clearCanvas = function() { ctx.clearRect(0, 0, canvas.width, canvas.height); };
-    window.saveSignature = function() { if (currentSignBox) { currentSignBox.innerHTML = `<img src="${canvas.toDataURL("image/png")}" alt="電子簽名">`; currentSignBox.style.backgroundColor = "transparent"; currentSignBox.style.border = "none"; } closeSignaturePad(); };
-    window.addEventListener('click', function(event) { if (event.target == modal) { closeSignaturePad(); } });
+    function setupCanvas(canvasId, wrapperId, isPenRed = false) {
+        const canvas = document.getElementById(canvasId); const wrapper = document.getElementById(wrapperId); const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        let isDrawing = false; let undoStack = [];
+        function getCoordinates(event) { const rect = canvas.getBoundingClientRect(); let clientX = event.clientX; let clientY = event.clientY; if (event.touches && event.touches.length > 0) { clientX = event.touches[0].clientX; clientY = event.touches[0].clientY; } return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) }; }
+        function saveState() { undoStack.push(canvas.toDataURL()); }
+        function start(e) { e.preventDefault(); isDrawing = true; saveState(); const coords = getCoordinates(e); ctx.beginPath(); ctx.moveTo(coords.x, coords.y); }
+        function draw(e) { if (!isDrawing) return; e.preventDefault(); const coords = getCoordinates(e); ctx.lineTo(coords.x, coords.y); ctx.strokeStyle = isPenRed ? "#dc3545" : "#000000"; ctx.lineWidth = isPenRed ? 4 : 3; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(); }
+        function stop() { if(isDrawing) { ctx.closePath(); isDrawing = false; } }
+        canvas.addEventListener("mousedown", start); canvas.addEventListener("mousemove", draw); window.addEventListener("mouseup", stop);
+        canvas.addEventListener("touchstart", start, { passive: false }); canvas.addEventListener("touchmove", draw, { passive: false }); window.addEventListener("touchend", stop);
+        return { canvas, ctx, wrapper, getUndoStack: () => undoStack };
+    }
+
+    const sigMod = document.getElementById("sig-modal"); const sig = setupCanvas("sig-canvas", "canvas-wrapper", false); let currentSignBox = null; 
+    window.openSignaturePad = function(element) { currentSignBox = element; currentSignBox.classList.remove('error-highlight'); sigMod.style.display = "flex"; sig.canvas.width = sig.wrapper.clientWidth; sig.canvas.height = sig.wrapper.clientHeight; clearCanvas(); };
+    window.closeSignaturePad = function() { sigMod.style.display = "none"; currentSignBox = null; };
+    window.clearCanvas = function() { sig.ctx.clearRect(0, 0, sig.canvas.width, sig.canvas.height); sig.getUndoStack().length = 0; };
+    window.undoCanvas = function() { const stack = sig.getUndoStack(); if (stack.length > 0) { let imgData = stack.pop(); let img = new Image(); img.src = imgData; img.onload = () => { sig.ctx.clearRect(0, 0, sig.canvas.width, sig.canvas.height); sig.ctx.drawImage(img, 0, 0); }; } else { clearCanvas(); } };
+    window.saveSignature = function() { if (currentSignBox) { currentSignBox.innerHTML = `<img src="${sig.canvas.toDataURL("image/png")}" alt="電子簽名">`; currentSignBox.style.backgroundColor = "transparent"; currentSignBox.style.border = "none"; } closeSignaturePad(); };
+
+    const annoMod = document.getElementById("anno-modal"); const anno = setupCanvas("anno-canvas", "anno-wrapper", true); let currentAnnoItemCode = null; let baseImgData = null;
+    window.openAnnoPad = function(itemCode) {
+        currentAnnoItemCode = itemCode; annoMod.style.display = "flex"; const img = new Image(); img.src = uploadedPhotosDB[itemCode];
+        img.onload = () => {
+            anno.canvas.width = anno.wrapper.clientWidth; anno.canvas.height = anno.wrapper.clientHeight; anno.ctx.clearRect(0, 0, anno.canvas.width, anno.canvas.height);
+            let hRatio = anno.canvas.width / img.width; let vRatio = anno.canvas.height / img.height; let ratio = Math.min(hRatio, vRatio);
+            let centerShift_x = (anno.canvas.width - img.width * ratio) / 2; let centerShift_y = (anno.canvas.height - img.height * ratio) / 2;
+            anno.ctx.drawImage(img, 0, 0, img.width, img.height, centerShift_x, centerShift_y, img.width * ratio, img.height * ratio);
+            baseImgData = anno.canvas.toDataURL(); anno.getUndoStack().length = 0;
+        };
+    };
+    window.closeAnnoPad = function() { annoMod.style.display = "none"; currentAnnoItemCode = null; };
+    window.clearAnnoCanvas = function() { if(baseImgData){ let img = new Image(); img.src = baseImgData; img.onload = () => { anno.ctx.clearRect(0,0,anno.canvas.width,anno.canvas.height); anno.ctx.drawImage(img,0,0); }; anno.getUndoStack().length = 0; } };
+    window.undoAnnoCanvas = function() { const stack = anno.getUndoStack(); if (stack.length > 0) { let imgData = stack.pop(); let img = new Image(); img.src = imgData; img.onload = () => { anno.ctx.clearRect(0, 0, anno.canvas.width, anno.canvas.height); anno.ctx.drawImage(img, 0, 0); }; } else { clearAnnoCanvas(); } };
+    window.saveAnnotation = function() { if(currentAnnoItemCode) { uploadedPhotosDB[currentAnnoItemCode] = anno.canvas.toDataURL("image/png"); document.querySelector(`#photo-cell-${currentAnnoItemCode} img`).src = uploadedPhotosDB[currentAnnoItemCode]; } closeAnnoPad(); };
+
+    window.addEventListener('click', function(event) { 
+        if (event.target == sigMod) closeSignaturePad(); 
+        if (event.target == annoMod) closeAnnoPad(); 
+        if (event.target == document.getElementById('export-format-modal')) closeExportFormatModal();
+        if (event.target == document.getElementById('draft-format-modal')) closeDraftModal();
+        if (event.target == document.getElementById('beauty-alert-modal')) closeCustomAlert();
+    });
 </script>
 
 </body>
