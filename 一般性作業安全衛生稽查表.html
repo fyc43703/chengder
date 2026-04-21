@@ -237,9 +237,8 @@
     <button class="btn-3d btn-pdf" onclick="openExportFormatModal()"><span class="spin-icon">📄</span> 預覽匯出</button>
     <button class="btn-3d btn-system" onclick="openSystemModal()"><span class="spin-icon">🚀</span> 系統確認登錄</button>
     
-    <!-- AI 稽查缺失匯入按鈕與隱藏的檔案上傳元件 -->
-    <button class="btn-3d btn-ai" onclick="document.getElementById('ai-import-input').click()"><span class="spin-icon">🤖</span> AI 稽查缺失匯入</button>
-    <input type="file" id="ai-import-input" accept=".js,.txt" style="display:none;" onchange="handleAIImport(event)">
+<!-- AI 稽查缺失匯入按鈕 (改為呼叫貼上視窗) -->
+<button class="btn-3d btn-ai" onclick="openAIPasteModal()"><span class="spin-icon">🤖</span> AI 稽查缺失匯入</button>
 </div>
 </div>
 
@@ -256,7 +255,24 @@
         </div>
     </div>
 </div>
-
+<!-- AI 稽查缺失匯入 (貼上程式碼) Modal -->
+<div id="ai-paste-modal" class="custom-modal">
+    <div class="sys-container" style="max-width: 600px;">
+        <h2 class="sys-title" style="color: #6f42c1;">🤖 AI 稽查缺失匯入</h2>
+        <p style="color:#555; margin-bottom:15px; text-align:left; font-weight:bold;">請將 AI 產出的 JavaScript 陣列程式碼直接貼在下方：</p>
+        <textarea id="ai-paste-textarea" rows="12" style="width: 100%; padding: 12px; border: 2px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 15px; resize: vertical; outline: none; background: #fdfdfd;" placeholder="const issues = [&#10;  { id: '010101', note: '缺失說明...' }&#10;];"></textarea>
+        <div class="sys-actions" style="margin-top: 25px;">
+            <div class="sys-btn-group" onclick="closeAIPasteModal()">
+                <div class="sys-icon red" style="width:55px; height:55px; font-size:24px;">✖</div>
+                <div class="sys-label" style="font-size: 15px;">取消</div>
+            </div>
+            <div class="sys-btn-group" onclick="processAIPastedCode()">
+                <div class="sys-icon green" style="width:55px; height:55px; font-size:24px; background-color: #6f42c1;">✔</div>
+                <div class="sys-label" style="font-size: 15px;">確認匯入</div>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- 暫存管理 (匯出/匯入) Modal -->
 <div id="draft-format-modal" class="custom-modal">
     <div class="sys-container">
@@ -1113,62 +1129,70 @@ window.currentAnnoTool = 'pen';
     window.undoAnnoCanvas = function() { const stack = anno.getUndoStack(); if (stack.length > 0) { let imgData = stack.pop(); let img = new Image(); img.src = imgData; img.onload = () => { anno.ctx.clearRect(0, 0, anno.canvas.width, anno.canvas.height); anno.ctx.drawImage(img, 0, 0); }; } else { clearAnnoCanvas(); } };
     window.saveAnnotation = function() { if(currentAnnoItemCode) { uploadedPhotosDB[currentAnnoItemCode] = anno.canvas.toDataURL("image/png"); document.querySelector(`#photo-cell-${currentAnnoItemCode} img`).src = uploadedPhotosDB[currentAnnoItemCode]; } closeAnnoPad(); };
 
-    // 👇 新增：AI 稽查缺失匯入處理邏輯
-    window.handleAIImport = function(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+// =========================================================
+    // AI 稽查缺失匯入 (貼上 JS 程式碼)
+    // =========================================================
+    window.openAIPasteModal = function() {
+        document.getElementById('ai-paste-textarea').value = ''; // 開啟時先清空文字框
+        document.getElementById('ai-paste-modal').style.display = 'flex';
+    };
+    
+    window.closeAIPasteModal = function() {
+        document.getElementById('ai-paste-modal').style.display = 'none';
+    };
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const text = e.target.result;
-                const startIdx = text.indexOf('[');
-                const endIdx = text.lastIndexOf(']');
-                
-                if (startIdx === -1 || endIdx === -1) {
-                    throw new Error("找不到陣列格式資料 [...]");
-                }
+    window.processAIPastedCode = function() {
+        const text = document.getElementById('ai-paste-textarea').value.trim();
+        if (!text) {
+            showCustomAlert("請先貼上程式碼！");
+            return;
+        }
 
-                const arrayStr = text.substring(startIdx, endIdx + 1);
-                // 安全解析 AI 產出的非標準 JSON (純 JS 物件)
-                const issues = new Function("return " + arrayStr)();
-
-                if (!Array.isArray(issues)) throw new Error("解析結果不是陣列格式");
-
-                let matchCount = 0;
-
-                document.querySelectorAll('.col-desc').forEach(descCell => {
-                    const idEl = descCell.querySelector('.item-id-code');
-                    if (!idEl) return;
-                    
-                    const itemId = idEl.textContent.trim();
-                    const issue = issues.find(i => i.id === itemId);
-
-                    if (issue && issue.note) {
-                        const tr = descCell.closest('tr');
-                        const defectInput = tr.querySelector('.defect-desc-input');
-                        
-                        defectInput.textContent = issue.note; // 填入缺失說明
-                        
-                        const failRadio = tr.querySelector('.fail-radio');
-                        const match = failRadio.className.match(/fail-radio-f(\d+)/);
-                        if (match) {
-                            // 呼叫原系統邏輯：自動勾選不合格並更新計數
-                            handleDefectInput(defectInput, match[1]);
-                            matchCount++;
-                        }
-                    }
-                });
-
-                event.target.value = ""; // 清空，允許重複上傳同檔案
-                showCustomAlert(`🤖 AI 缺失匯入成功！<br>共自動填入 <b>${matchCount}</b> 筆缺失資料。`);
-
-            } catch (err) {
-                event.target.value = ""; 
-                showCustomAlert("⚠️ 檔案解析失敗，請確認內容格式是否為有效的 JS 陣列。<br><br>錯誤訊息: " + err.message);
+        try {
+            const startIdx = text.indexOf('[');
+            const endIdx = text.lastIndexOf(']');
+            
+            if (startIdx === -1 || endIdx === -1) {
+                throw new Error("找不到陣列格式資料 [...]");
             }
-        };
-        reader.readAsText(file);
+
+            const arrayStr = text.substring(startIdx, endIdx + 1);
+            // 安全解析 AI 產出的非標準 JSON (純 JS 物件)
+            const issues = new Function("return " + arrayStr)();
+
+            if (!Array.isArray(issues)) throw new Error("解析結果不是陣列格式");
+
+            let matchCount = 0;
+
+            document.querySelectorAll('.col-desc').forEach(descCell => {
+                const idEl = descCell.querySelector('.item-id-code');
+                if (!idEl) return;
+                
+                const itemId = idEl.textContent.trim();
+                const issue = issues.find(i => i.id === itemId);
+
+                if (issue && issue.note) {
+                    const tr = descCell.closest('tr');
+                    const defectInput = tr.querySelector('.defect-desc-input');
+                    
+                    defectInput.textContent = issue.note; // 填入缺失說明
+                    
+                    const failRadio = tr.querySelector('.fail-radio');
+                    const match = failRadio.className.match(/fail-radio-f(\d+)/);
+                    if (match) {
+                        // 呼叫原系統邏輯：自動勾選不合格並更新計數
+                        handleDefectInput(defectInput, match[1]);
+                        matchCount++;
+                    }
+                }
+            });
+
+            closeAIPasteModal(); // 匯入成功後自動關閉視窗
+            showCustomAlert(`🤖 AI 缺失匯入成功！<br>共自動填入 <b>${matchCount}</b> 筆缺失資料。`);
+
+        } catch (err) {
+            showCustomAlert("⚠️ 程式碼解析失敗，請確認內容格式是否為有效的 JS 陣列。<br><br>錯誤訊息: " + err.message);
+        }
     };
     // 👆 新增結束
 
@@ -1178,6 +1202,8 @@ window.currentAnnoTool = 'pen';
         if (event.target == document.getElementById('export-format-modal')) closeExportFormatModal();
         if (event.target == document.getElementById('draft-format-modal')) closeDraftModal();
         if (event.target == document.getElementById('beauty-alert-modal')) closeCustomAlert();
+        // 👇 新增這行：點擊背景關閉 AI 貼上視窗
+        if (event.target == document.getElementById('ai-paste-modal')) closeAIPasteModal();
     });
 </script>
 
