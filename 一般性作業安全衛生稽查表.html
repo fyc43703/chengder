@@ -107,33 +107,16 @@
 
 /* 在 .bottom-actions 加上 position: relative; */
 .bottom-actions { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 40px; padding-top: 30px; border-top: 1px dashed #ccc; position: relative; }
-        .btn-3d { padding: 15px 30px; font-size: 18px; font-weight: bold; color: #fff; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.btn-3d { padding: 15px 30px; font-size: 18px; font-weight: bold; color: #fff; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         
-        /* 新增操作手冊按鈕專屬樣式 */
-        .btn-manual {
-            position: absolute;
-            right: 0;
-            top: 30px; /* 配合上方 padding-top 齊平對齊 */
-            padding: 13px 25px;
-            font-size: 16px;
-            font-weight: bold;
-            color: #0056b3;
-            background-color: transparent;
-            border: 2px solid #0056b3;
-            text-decoration: none;
-            transition: 0.2s;
-            letter-spacing: 2px;
-        }
-        .btn-manual:hover {
-            background-color: #0056b3;
-            color: #fff;
-        }
         .btn-pdf { background-color: #007bff; }
-        .btn-photo { background-color: #17a2b8; }
-        .btn-draft { background-color: #fd7e14; }
-        .btn-system { background-color: #28a745; }
+.btn-photo { background-color: #17a2b8; }
+.btn-draft { background-color: #fd7e14; }
+.btn-system { background-color: #28a745; }
+/* 👇 新增 AI 匯入按鈕專屬樣式 */
+.btn-ai { background-color: #6f42c1; }
 
-        @keyframes spin-anim { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes spin-anim { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .spin-icon { display: inline-block; animation: spin-anim 2s linear infinite; margin-right: 8px; font-size: 20px; }
 
         #photo-report-section { display: none; margin-top: 40px; padding-top: 20px; border-top: 3px double #333; }
@@ -192,22 +175,38 @@
         .sig-btn-confirm .icon { background-color: #28a745; }
         .sig-btn-undo .icon { background-color: #ffc107; color: #333; }
         .sig-btn-clear .icon { background-color: #dc3545; }
+        /* 👇 新增：照片標記工具列樣式 */
+        .anno-toolbar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #f8f9fa; padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; gap: 10px; overflow-x: auto;
+        }
+        .tool-group, .color-group { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; }
+        .tool-btn {
+            background: #fff; border: 1px solid #ccc; padding: 6px 12px; border-radius: 4px;
+            cursor: pointer; font-size: 14px; font-weight: bold; color: #444; transition: 0.1s; white-space: nowrap;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .tool-btn.active, .tool-btn:hover { background: #e2e6ea; border-color: #adb5bd; }
+        .tool-btn.active { box-shadow: inset 0 2px 4px rgba(0,0,0,0.15); color: #000; }
+        
+        .color-btn {
+            width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc;
+            cursor: pointer; transition: 0.2s; padding: 0;
+        }
+        .color-btn.active { box-shadow: 0 0 0 2px #333; transform: scale(1.15); }
 
+        @media (max-width: 768px) {
+            .anno-toolbar { flex-direction: column; align-items: stretch; }
+            .tool-group { justify-content: space-between; overflow-x: auto; padding-bottom: 5px; }
+            .color-group { justify-content: center; }
+        }
+        /* 👆 新增結束 */
         @media (max-width: 768px) {
             /* ... (前面省略) ... */
             .bottom-actions { flex-direction: column; gap: 10px; margin-top: 20px; padding-top: 20px; }
             .btn-3d { width: 100%; padding: 13px; font-size: 15px; }
             .sig-controls { width: 60px; }
             .sig-btn { font-size: 12px; }
-            
-            /* 新增手機版操作手冊按鈕設定，防止在小螢幕時破版重疊 */
-            .btn-manual {
-                position: static; /* 關閉絕對定位，改為隨列往下排 */
-                width: 100%;
-                text-align: center;
-                padding: 13px;
-                margin-top: 5px;
-            }
         }
 
         @media print {
@@ -238,8 +237,9 @@
     <button class="btn-3d btn-pdf" onclick="openExportFormatModal()"><span class="spin-icon">📄</span> 預覽匯出</button>
     <button class="btn-3d btn-system" onclick="openSystemModal()"><span class="spin-icon">🚀</span> 系統確認登錄</button>
     
-    <!-- 新增操作手冊按鈕 -->
-    <a href="https://drive.google.com/file/d/1XPLHWQivvRPTupsa2Dqv7l6NFCV-NlBZ/view?usp=sharing" target="_blank" class="btn-manual">操作手冊</a>
+    <!-- AI 稽查缺失匯入按鈕與隱藏的檔案上傳元件 -->
+    <button class="btn-3d btn-ai" onclick="document.getElementById('ai-import-input').click()"><span class="spin-icon">🤖</span> AI 稽查缺失匯入</button>
+    <input type="file" id="ai-import-input" accept=".js,.txt" style="display:none;" onchange="handleAIImport(event)">
 </div>
 </div>
 
@@ -339,7 +339,29 @@
 <!-- 照片標記 Modal -->
 <div id="anno-modal" class="custom-modal">
     <div class="sig-container">
-        <div class="sig-header"><span class="sig-header-btn" onclick="closeAnnoPad()">❮ 返回</span>照片標記 (紅筆)<span style="width: 50px;"></span></div>
+        <div class="sig-header">
+            <span class="sig-header-btn" onclick="closeAnnoPad()">❮ 返回</span>
+            照片標記
+            <span style="width: 50px;"></span>
+        </div>
+        
+        <!-- 新增：標記工具列 (包含形狀與顏色) -->
+        <div class="anno-toolbar" id="anno-toolbar">
+            <div class="tool-group">
+                <button class="tool-btn active" onclick="setAnnoTool('pen', this)">✏️ 手繪</button>
+                <button class="tool-btn" onclick="setAnnoTool('rect', this)">⬜ 矩形</button>
+                <button class="tool-btn" onclick="setAnnoTool('circle', this)">◯ 圓形</button>
+                <button class="tool-btn" onclick="setAnnoTool('line', this)">／ 直線</button>
+                <button class="tool-btn" onclick="setAnnoTool('arrow', this)">➔ 箭頭</button>
+            </div>
+            <div class="color-group">
+                <button class="color-btn active" style="background:#dc3545;" onclick="setAnnoColor('#dc3545', this)" title="紅色"></button>
+                <button class="color-btn" style="background:#ffc107;" onclick="setAnnoColor('#ffc107', this)" title="黃色"></button>
+                <button class="color-btn" style="background:#fd7e14;" onclick="setAnnoColor('#fd7e14', this)" title="橘色"></button>
+                <button class="color-btn" style="background:#0d6efd;" onclick="setAnnoColor('#0d6efd', this)" title="藍色"></button>
+            </div>
+        </div>
+
         <div class="sig-body">
             <div class="sig-canvas-wrapper" id="anno-wrapper" style="background:#000;">
                 <canvas id="anno-canvas" class="drawing-canvas"></canvas>
@@ -658,19 +680,238 @@
 
     const formsData = [
         {
-            formCode: "FP23-EMA2-50-B-R00", title: "一般性作業安全衛生稽查表（一）", subtitle: "（勞工有立即發生危險之虞檢查事項）",
+            formCode: "FP23-EMA2-50-B-R00", 
+            title: "一般性作業安全衛生稽查表（一）", 
+            subtitle: "（勞工有立即發生危險之虞檢查事項）",
             categories: [
-                { name: "有立即發生墜落危險之虞", items: [ { id: "010101", desc: "於高差 2 公尺以上之工作場所邊緣及開口部分，設置符合規定之護欄、護蓋、安全網或配掛安全帶之防墜設施。" }, { id: "010102", desc: "於高差 2 公尺以上之處所進行作業時，使用高空工作車，或以架設施工架等方法設置工作臺。" }, { id: "010103", desc: "於石綿板、鐵皮板、瓦、木板等易踏穿材料構築之屋頂，設置防止踏穿踏板。" }, { id: "010104", desc: "於高差超過 1.5 公尺以上之場所作業，設置符合規定之安全上下設備。" }, { id: "010105", desc: "高差超過二層樓或7.5 公尺以上之鋼構建築，張設安全網。" }, { id: "010106", desc: "使用移動式起重機吊掛平台作業，採取防止墜落設施。" } ] },
-                { name: "有立即發生感電危險之虞", items: [ { id: "010201", desc: "對電氣機具之帶電部分，設防止感電之護圍或絕緣被覆。" }, { id: "010202", desc: "使用移動式電動機具或臨時用電設備，設置漏電斷路器。" } ] }
-            ], notes: "說明：1.本表供機關及監造單位定期稽查使用。2.重複缺失每次扣罰 25,000 元。"
+                { 
+                    name: "有立即發生墜落危險之虞", 
+                    items: [ 
+                        { id: "010101", desc: "於高差 2 公尺以上之工作場所邊緣及開口部分，設置符合規定之護欄、護蓋、安全網或配掛安全帶之防墜設施。" }, 
+                        { id: "010102", desc: "於高差 2 公尺以上之處所進行作業時，使用高空工作車，或以架設施工架等方法設置工作臺；設置工作臺有困難時，採取張掛安全網或配掛安全帶之設施。" }, 
+                        { id: "010103", desc: "於石綿板、鐵皮板、瓦、木板、茅草、塑膠等易踏穿材料構築之屋頂及雨遮，或於以礦纖板、石膏板等易踏穿材料構築之夾層天花板從事作業時，於屋架上設置防止踏穿及寬度 30 公分以上之踏板、裝設安全網或配掛安全帶。" }, 
+                        { id: "010104", desc: "於高差超過 1.5 公尺以上之場所作業，設置符合規定之安全上下設備。" }, 
+                        { id: "010105", desc: "高差超過二層樓或 7.5 公尺以上之鋼構建築，張設安全網，且其下方具有足夠淨空及工作面與安全網間未具有障礙物。" }, 
+                        { id: "010106", desc: "使用移動式起重機吊掛平台從事貨物、機械等之吊升，鋼索於負荷狀態且非不得已情形下，使人員進入高度 2 公尺以上平台運搬貨物或駕駛車輛機械，平台採取設置圍欄、人員使用安全母索、安全帶等足以防止墜落之設施。" } 
+                    ] 
+                },
+                { 
+                    name: "有立即發生感電危險之虞", 
+                    items: [ 
+                        { id: "010201", desc: "對電氣機具之帶電部分，於作業進行中或通行時，有因接觸（含經由導電體而接觸者）或接近致發生感電之虞者，設防止感電之護圍或絕緣被覆。" }, 
+                        { id: "010202", desc: "使用對地電壓在 150 伏特以上移動式或攜帶式電動機具，或於含水或被其他導電度高之液體濕潤之潮濕場所、金屬板上或鋼架上等導電性良好場所使用移動式或攜帶式電動機具，或於建築或工程作業使用之臨時用電設備，於各該電動機具之連接電路上設置適合其規格，具有高敏感度、高速型，能確實動作之防止感電用漏電斷路器。" },
+                        { id: "010203", desc: "於良導體機器設備內之狹小空間，或於鋼架等有觸及高導電性接地物之虞之場所，作業時所使用之交流電焊機(不含自動式焊接者），裝設自動電擊防止裝置。" },
+                        { id: "010204", desc: "於架空電線或電氣機具電路之接近場所從事工作物之裝設、解體、檢查、修理、油漆等作業及其附屬性作業或使用車輛系營建機械、移動式起重機、高空工作車及其他有關作業時，該作業使用之機械、車輛或勞工於作業中或通行之際，有因接觸或接近該電路引起感電之虞者，使勞工與帶電體保持規定之接近界線距離，設置護圍或於該電路四周裝置絕緣用防護裝備或採取移開該電路之措施。" },
+                        { id: "010205", desc: "從事電路之檢查、修理等活線作業時，使該作業勞工戴用絕緣用防護具，或使用活線作業用器具或其他類似之器具，對高壓電路使用絕緣工作台及其他裝備，或未使勞工之身體、其使用中之工具、材料等導電體接觸或接近有使勞工感電之虞之電路或帶電體。" }
+                    ] 
+                },
+                {
+                    name: "有立即發生倒塌、崩塌危險之虞",
+                    items: [
+                        { id: "010301", desc: "施工架之垂直方向 5.5 公尺、水平方向 7.5 公尺內，與穩定構造物妥實連接。" },
+                        { id: "010302", desc: "露天開挖場所開挖深度在 1.5 公尺以上，或有地面崩塌、土石飛落之虞時，設擋土支撐、反循環樁、連續壁、邊坡保護或張設防護網之設施。" },
+                        { id: "010303", desc: "隧道、坑道作業有落磐或土石崩塌之虞，設置支撐、岩栓或噴凝土之支持構造及清除浮石；隧道、坑道進出口附近表土有崩塌或土石飛落，設置擋土支撐、張設防護網、清除浮石或邊坡保護之措施，進出口之地質惡劣時，採鋼筋混凝土從事洞口之防護。" },
+                        { id: "010304", desc: "模板支撐支柱基礎之周邊易積水，導致地盤軟弱，或軟弱地盤應強化承載力。" }
+                    ]
+                },
+                {
+                    name: "有立即發生火災、爆炸危險之虞",
+                    items: [
+                        { id: "010401", desc: "對於有危險物或有油類、可燃性粉塵等其他危險物存在之配管、儲槽、油桶等容器，從事熔接、熔斷或使用明火之作業或有發生火花之虞之作業，事先清除該等物質，並確認安全無虞。" },
+                        { id: "010402", desc: "對於存有易燃液體之蒸氣或有可燃性氣體滯留，而有火災、爆炸之作業場所，於作業前測定前述蒸氣、氣體之濃度；或其濃度爆炸下限值之 30%以上時，即刻使勞工退避至安全場所，並停止使用煙火及其他點火源之機具。" },
+                        { id: "010403", desc: "對於存有易燃液體之蒸氣、可燃性氣體或可燃性粉塵，致有引起火災、爆炸之工作場所，有通風、換氣、除塵、去除靜電等必要設施。" },
+                        { id: "010404", desc: "對於化學設備及其附屬設備之改善、修理、清掃、拆卸等作業，有危險物洩漏致危害作業勞工之虞，指定專人依規定將閥或旋塞設置雙重關閉或設置盲板。" },
+                        { id: "010405", desc: "對於設置熔融高熱物處理設備之建築物及處理、廢棄高熱礦渣之場所，設有良好排水設備及其他足以防止蒸氣爆炸之必要措施。" },
+                        { id: "010406", desc: "局限空間作業場所，不得使用純氧換氣。" }
+                    ]
+                },
+                {
+                    name: "有立即發生中毒、缺氧危險之虞",
+                    items: [
+                        { id: "010501", desc: "於曾裝儲有機溶劑或其混合物之儲槽內部、通風不充分之室內作業場所，或在未設有密閉設備、局部排氣裝置或整體換氣裝置之儲槽等之作業場所，供給作業勞工輸氣管面罩，並使其確實佩戴使用。" },
+                        { id: "010502", desc: "製造、處置或使用特定化學物質危害預防標準所稱之丙類第一種或丁類物質之特定化學管理設備時，設置適當之溫度、壓力及流量之計測裝置及發生異常之自動警報裝置。" },
+                        { id: "010503", desc: "製造、處置或使用特定化學物質危害預防標準所稱之丙類第一種及丁類物質之特定化學管理設備，設遮斷原料、材料、物料之供輸、設卸放製品之裝置、設冷卻用水之裝置，或供輸惰性氣體。" },
+                        { id: "010504", desc: "處置或使用特定化學物質危害預防標準所稱之丙類第一種或丁類物質時，設洩漏時能立即警報之器具及除卻危害必要藥劑容器之設施。" },
+                        { id: "010505", desc: "在人孔、下水道、溝渠、污(蓄)水池、坑道、隧道、水井、集水(液)井、沈箱、儲槽、反應器、蒸餾塔、生(消)化槽、穀倉、船艙、逆打工法之地下層、筏基坑、溫泉業之硫磺儲水桶及其他自然換氣不充分之工作場所有下列情形之一時：<br>(一) 空氣中氧氣濃度未滿 18%、硫化氫濃度超過10PPM 或一氧化碳濃度超過 35PPM 時，應確實佩戴空氣呼吸器等呼吸防護具、安全帶及安全索。<br>(二) 確實佩戴空氣呼吸器等呼吸防護具時，置備通風設備予以適當換氣，或置備空氣中氧氣、硫化氫、一氧化碳濃度之測定儀器，並隨時測定保持氧氣濃度在 18%以上、硫化氫濃度在 10PPM 以下及一氧化碳濃度在 35PPM以下。" }
+                    ]
+                }
+            ], 
+            notes: `<div style="text-align:left; line-height:1.8; color:#444;">
+                <strong>說明：</strong><br>
+                1、本表供機關及監造單位定期稽查使用，由稽查人員及相關單位會同人員簽認，並作為安全衛生費用扣罰之依據；廠商之相關檢查表內容可參考本表格訂定。<br>
+                2、本表係依勞動部 94 年 6 月 10 日勞檢 4 字第 0940028724 號令第 1 次修正發布之「勞動檢查法第二十八條所定勞工有立即發生危險之虞認定標準」訂定，廠商有前述缺失時，應要求作業人員暫停作業至改善完成，該稽（檢）查缺失應併入當次稽（檢）查缺失數量計算扣罰。<br>
+                3、廠商於同一區域重複發生本表之缺失者，除應限期改善並要求作業人員暫停作業至改善完成外，每次扣罰新臺幣 25,000 元整，並得連續扣罰至改善完成，惟重複發生之缺失不再併入當次稽（檢）查缺失數量重複扣罰。<br>
+                4、稽查缺失應由監造單位列管追蹤至改善完成，非經監造單位複驗合格，廠商不得進行後續施工，缺失經複驗合格後，應檢附改善資料送機關備查。<br>
+                5、本表得依中央主管機關公告指定其他有立即發生危險之虞情事予以修訂。
+            </div>`
         },
         {
-            formCode: "FP23-EMA2-50-B-R00", title: "一般性作業安全衛生稽查表（二）", subtitle: "（施工安全衛生須知第 5 點檢查事項）",
-            categories: [ { name: "施工安全規範", items: [ { id: "020101", desc: "邊緣及開口部分或高處作業有墜落危險之虞者，應設置護欄、護蓋或安全網。" }, { id: "020102", desc: "垂直高度 20 公尺以下高處作業，不得使用搭乘設備搭載吊升人員。" } ] } ], notes: "說明：未立即停工或未於規定期限改善完成者，每次扣罰新臺幣 25,000 元。"
+            formCode: "FP23-EMA2-50-B-R00", 
+            title: "一般性作業安全衛生稽查表（二）", 
+            subtitle: "（臺北市政府所屬各機關公共工程施工安全衛生須知第 5 點檢查事項）",
+            categories: [ 
+                { 
+                    name: "「施工安全衛生須知」第 5 點", 
+                    items: [ 
+                        { id: "020101", desc: "邊緣及開口部分或高處作業有墜落危險之虞者，應設置護欄、護蓋或安全網等防護設備。設置上列設施有困難，或作業之需要臨時將護欄拆除，應採取使勞工使用安全帶等防止因墜落之措施。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010101】</span>" }, 
+                        { id: "020102", desc: "除使用移動式起重機於道路或鄰接道路從事作業者外，從事垂直高度 20 公尺以下之高處作業，不得使用搭乘設備搭載或吊升人員作業。若有起重機吊掛搭乘設備搭載或吊升人員作業應依勞動部訂定之「起重機吊掛搭乘設備搭載或吊升人員作業注意事項」規定辦理。" },
+                        { id: "020103", desc: "無固定護欄或圍籬之臨時道路施工場所，應依核定之交通維持計畫辦理，除設置適當交通號誌、標誌、標示或柵欄外，於勞工作業時，另應指派交通引導人員手執閃光指揮棒在場指揮交通，以防止車輛突入等災害事故，作業人員應戴有反光帶之安全帽及穿著顏色鮮明有反光帶之施工背心，以利辨識。" },
+                        { id: "020104", desc: "工作場所邊緣及開口所設置之護欄，應符合營造安全衛生設施標準規定。但特殊設計之工作架台、工作車等護欄，經安全檢核無虞者，不在此限。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010101】</span>" },
+                        { id: "020105", desc: "臨時用電設備裝設漏電斷路器、電焊機裝設自動電擊防止裝置、移動電線應予以架高等措施。107 年 7 月 1 日之後生產之交流電焊機用自動電擊防止裝置應經勞動部認可之驗證機構實施型式驗證合格。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010202、010203】</span>" },
+                        { id: "020106", desc: "移動式起重機應具備 1 機 3 證(移動式起重機檢查合格證、從事吊掛作業人員之安衛訓練結業證書及操作人員之安衛訓練結業證書或技術士證)，除操作人員外，應至少隨車指派起重吊掛作業人員一人(可兼任指揮人員)。" },
+                        { id: "020107", desc: "高度 2 公尺以上之高處作業，設置護欄、護蓋或安全網等防護設備有困難，或因作業之需要臨時將護欄、護蓋或安全網等防護設備開啟或拆除者，應採取使勞工使用安全帶等防止墜落措施。但其設置困難之原因消失後，應設置護欄、護蓋或安全網等防護設備。" },
+                        { id: "020108", desc: "廠商從事露天開挖作業，其開挖垂直最大深度應妥為設計；其深度在 1.5 公尺以上，使勞工進入開挖面作業者，應設擋土支撐。但地質特殊或採取替代方案，經所僱之專任工程人員或委由相關執業技師簽認其安全性，並經機關或監造單位同意者，得依替代方案施作。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010302】</span>" },
+                        { id: "020109", desc: "鋼管施工架（含單管施工架及框式施工架），須符合營造安全衛生設施標準規定。" },
+                        { id: "020110", desc: "屋頂作業、露天開挖、擋土支撐、施工架組配、模板支撐、鋼構組配、缺氧作業、隧道等挖掘及隧道等襯砌之作業，應指派各作業主管人員於作業現場監督指揮。" }
+                    ] 
+                } 
+            ], 
+            notes: `<div style="text-align:left; line-height:1.8; color:#444;">
+                <strong>說明：</strong><br>
+                1、本表供機關及監造單位定期稽查使用，由稽查人員及相關單位會同人員簽認，並作為安全衛生費用扣罰之依據；廠商之相關檢查表內容可參考本表格訂定。<br>
+                2、廠商有違反「臺北市政府所屬各機關公共工程施工安全衛生須知」第五點規定之情事時，該稽（檢）查缺失應併入當次稽（檢）查缺失數量計算扣罰。<br>
+                3、廠商有違反前述規定之情事，而未立即（部分）停工或未於規定期限改善完成者，除應限期改善外，每次扣罰新臺幣 25,000 元整，並得連續扣罰至改善完成，惟該稽（檢）查缺失則不再併入當次稽（檢）查缺失數量重複扣罰。<br>
+                4、廠商於同一區域重複發生非屬「勞動檢查法第二十八條所定勞工有立即發生危險之虞認定標準」之缺失，除限期改善外，每項次扣罰新臺幣 5,000 元整，並得連續扣罰至改善完成，惟該項重複發生之缺失不再併入當次稽（檢）查缺失數量重複扣罰。<br>
+                5、稽查缺失應由監造單位列管追蹤至改善完成，非經監造單位複驗合格，廠商不得進行後續施工，缺失經複驗合格後，應檢附改善資料送機關備查。<br>
+                6、本表得依現場實際狀況修訂。
+            </div>`
         },
         {
-            formCode: "FP23-EMA2-50-B-R00", title: "一般性作業安全衛生稽查表（三）", subtitle: "",
-            categories: [ { name: "安全管理", items: [ { id: "030101", desc: "職業安全衛生人員常駐工地。" }, { id: "030111", desc: "設置休息區，配置飲水及食鹽。" } ] } ], notes: "說明：人員未配戴安全帽等，每人次扣罰新臺幣 3,000 元。"
+            formCode: "FP23-EMA2-50-B-R00", 
+            title: "一般性作業安全衛生稽查表（三）", 
+            subtitle: "",
+            categories: [ 
+                { 
+                    name: "安全衛生管理", 
+                    items: [ 
+                        { id: "030101", desc: "職業安全衛生人員常駐工地。" }, 
+                        { id: "030102", desc: "依規定提送職業安全衛生計畫（含墜落災害防止計畫）。" }, 
+                        { id: "030103", desc: "依規定辦理安全衛生自動檢查。" }, 
+                        { id: "030104", desc: "依規定辦理職業安全衛生教育訓練。" }, 
+                        { id: "030105", desc: "依規定設置安全告示牌。" }, 
+                        { id: "030106", desc: "設置緊急救援或消防編組。" }, 
+                        { id: "030107", desc: "依規定成立協議組織。會議紀錄落實執行。" }, 
+                        { id: "030111", desc: "設置休息區，配置飲水及食鹽。<br><span style='color:#d9534f; font-size:13px; font-weight:bold;'>◎請注意與安衛稽查系統登錄編號相符</span>" }, 
+                        { id: "030112", desc: "工區內禁止置放酒精性飲料，且禁止具有醉意之人員進行工作及在工作時段（含午休及晚休）飲酒。(另詳說明 2)<br><span style='color:#d9534f; font-size:13px; font-weight:bold;'>◎請注意與安衛稽查系統登錄編號相符 / 本項於說明 2規定每人次扣罰 3000 元</span>" }, 
+                        { id: "030113", desc: "工區中人員應依法投保勞工保險、就業保險、勞工職業災害保險。（另詳說明 2）<br><span style='color:#d9534f; font-size:13px; font-weight:bold;'>◎請注意與安衛稽查系統登錄編號相符 / 本項於說明 2規定每人次扣罰 3000 元</span>" }, 
+                        { id: "030114", desc: "實施勤前教育。(含工地預防災變及危害告知)<br><span style='color:#d9534f; font-size:13px; font-weight:bold;'>◎請注意與安衛稽查系統登錄編號相符 / 111年3月1日以後開(決)標之工程新增檢查項目</span>" }, 
+                        { id: "030115", desc: "工區防災應變通報機制確實與完備。<br><span style='color:#d9534f; font-size:13px; font-weight:bold;'>◎請注意與安衛稽查系統登錄編號相符 / 111年3月1日以後開(決)標之工程新增檢查項目</span>" }
+                    ] 
+                },
+                {
+                    name: "個人防護具",
+                    items: [
+                        { id: "030201", desc: "工區中人員應依規定配戴安全帽。（另詳說明 2）<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【本項於說明 2 規定每人次扣罰 3000 元】</span>" },
+                        { id: "030202", desc: "銲接作業使用適當防護(護目鏡、手套）。" },
+                        { id: "030203", desc: "高架作業配帶安全帶及安全母索。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010101】</span>" },
+                        { id: "030204", desc: "破碎機具進行作業使用適當防護（手套、耳塞、護目鏡、口罩）。" }
+                    ]
+                },
+                {
+                    name: "墜落防止",
+                    items: [
+                        { id: "030301", desc: "高差 2 公尺以上之工作場所邊緣或開孔，設置護欄、護蓋、安全網或配帶安全帶之防墜設施。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010101】</span>" },
+                        { id: "030302", desc: "於易踏穿材料構築之屋頂從事作業時，設置防止踏穿及寬度 30 公分以上之踏板、裝設安全網或配掛安全帶。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010103】</span>" },
+                        { id: "030303", desc: "高差 1.5 公尺以上場所，設置安全上下設備。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010104】</span>" },
+                        { id: "030304", desc: "使用合梯，符合規定（堅固構造、不得損傷或腐蝕、梯腳與地面之角度在 75 度內、兩梯腳間有金屬等硬質繫材扣牢、安全之防滑梯面、腳部有防滑絕緣腳座套）。不得以合梯當作二工作面之上下設備使用，並不得站立於頂版作業。" },
+                        { id: "030305", desc: "使用之移動梯，符合規定(堅固構造、不得損傷或腐蝕、寬度 30 公分以上、採取防止滑溜或轉動之措施)。" },
+                        { id: "030306", desc: "護欄高度 90 公分以上，包含上、中欄杆、腳趾板及杆柱。其上欄杆、中欄杆及地盤面與樓板面間之上下開口距離，應不大於 55 公分。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010101】</span>" }
+                    ]
+                },
+                {
+                    name: "倒、崩塌防止",
+                    items: [
+                        { id: "030401", desc: "施工架之垂直方向 5.5 公尺、水平方向 7.5公尺內，與穩定構造物妥實連接。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010301】</span>" },
+                        { id: "030402", desc: "施工構台及高度 7 公尺以上且立面面積達330 平方公尺之施工架，應由專任工程人員或委由相關執業技師妥為設計。" },
+                        { id: "030403", desc: "露天開挖作業，其開挖垂直深度在 1.5 公尺以上，且有崩塌之虞，應設擋土支撐。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010302】</span>" }
+                    ]
+                },
+                {
+                    name: "感電防止",
+                    items: [
+                        { id: "030501", desc: "電氣作業人員是否戴用防護具（絕緣性安全鞋、絕緣手套等）及活線作業器具。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010205】</span>" },
+                        { id: "030502", desc: "近接高壓電路作業是否有安全距離標示或派員監視。" },
+                        { id: "030503", desc: "停電活線作業前是否告知勞工並派專人指揮。" },
+                        { id: "030504", desc: "發電機之接地功能是否正常。" },
+                        { id: "030505", desc: "入場電動機具設備是否通過漏電檢測。" },
+                        { id: "030506", desc: "對於導電性良好及臨時用電設備應於各該電路設置高速型漏電斷路器並應保持功能正常（額定感度電流 30 毫安培，跳脫時間 0.1 秒以內），使用電動工具應接於負載側，不得跳接。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010202】</span>" },
+                        { id: "030507", desc: "分電盤應常保關閉，並設立警示標語。" },
+                        { id: "030508", desc: "電氣器材之裝設與保養，非合格之電器技術人員不得擔任。" },
+                        { id: "030509", desc: "分電盤線路之搭接，嚴禁跳過漏電斷路器。" },
+                        { id: "030510", desc: "於作業中或通行時，有接觸絕緣被覆配線或移動電線或電氣機具、設備之虞，應有防止絕緣被破壞或老化之設施。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010201】</span>" },
+                        { id: "030511", desc: "電線應架高，且避免浸水。" },
+                        { id: "030512", desc: "應以插座、插頭接用電源，避免裸線插接。" },
+                        { id: "030513", desc: "為防止電氣災害，應備有不導電之滅火設備。" },
+                        { id: "030514", desc: "營造工地周圍有高壓線路通過時，施工前應裝設絕緣護套並作警告標示。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010204】</span>" },
+                        { id: "030515", desc: "電氣設備裝置及線路，應依電業法規規定施工。" },
+                        { id: "030516", desc: "電氣器材及線路，應符合國家標準規格。" },
+                        { id: "030517", desc: "於良導體機器設備內之狹小空間或高度2公尺以上之鋼架上作業使用之交流電焊機，應有自動電擊防止裝置，並應保持功能正常（二次側電應在 25 伏特以下）。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010203】</span>" },
+                        { id: "030518", desc: "電焊機二次側有裝自動電擊防止裝置，電源側仍須經漏電斷路器，以保機體漏電時人員安全。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為有立即發生危險之虞項目 010202】</span>" },
+                        { id: "030519", desc: "對於電焊作業使用之焊接柄，應有相當之絕緣耐力及耐熱性。" }
+                    ]
+                },
+                {
+                    name: "吊掛作業",
+                    items: [
+                        { id: "030601", desc: "吊掛作業不得通過人員上方及人員不得進入吊掛物下方。" },
+                        { id: "030602", desc: "不得使用吊車吊運人員。" },
+                        { id: "030603", desc: "吊車應有年度檢查合格證明、吊車操作手應有訓練合格證。" },
+                        { id: "030604", desc: "吊車應標示合格編號、吊升荷重、額定速率。" },
+                        { id: "030605", desc: "吊掛設備應符合規定（鋼索、防滑舌片、過捲揚、過負荷警報裝置）。" },
+                        { id: "030606", desc: "吊車不得非法拼裝。" }
+                    ]
+                },
+                {
+                    name: "物料機具",
+                    items: [
+                        { id: "030701", desc: "分類堆置整齊，符合堆放地最大安全負荷。" },
+                        { id: "030702", desc: "不影響照明，不阻礙交通或出入口。" },
+                        { id: "030703", desc: "不妨礙機械設備之操作。" },
+                        { id: "030704", desc: "不減少自動灑水器及警報器有效使用，不妨礙消防器具之緊急使用。" },
+                        { id: "030705", desc: "高壓氣體容器應依規定儲存、搬運、使用。" },
+                        { id: "030706", desc: "就近利用填方堆置於工程司同意之適當地點。" },
+                        { id: "030707", desc: "材料堆置有塵土飛揚之虞者，已覆蓋良好。" },
+                        { id: "030708", desc: "車輛、施工機具堆置停放整齊。" },
+                        { id: "030709", desc: "型鋼護欄、槽鋼護欄、施工圍籬、交通錐及連桿、拒馬及其他安全設施，應維持其架構完整及外觀整潔。<br><span style='color:#d9534f; font-size:13px; font-weight:bold;'>◎111 年 3 月 1 日以後開(決)標之工程新增檢查項目</span>" }
+                    ]
+                },
+                {
+                    name: "交通維持及人行安全管制",
+                    items: [
+                        { id: "030801", desc: "車輛、施工機具未作業時不得停放於路邊，如因施工必要而須停放者，該停放地點須經工程司同意，不得影響人車通行，且於車輛、施工機具周邊以紐澤西護欄、槽鋼或型鋼等安全護欄圍設，並於夜間設置警示燈。" },
+                        { id: "030802", desc: "車輛、施工機具作業時，避免佔用車道，如屬臨時必要須進出工地佔據公路作業時，設置交通管制員或以交通錐、連桿設漸變車道並加設警示燈，維持交通安全。<br><span style='color:#0056b3; font-size:13px; font-weight:bold;'>【為第五點項目 020103】</span>" },
+                        { id: "030803", desc: "施工交通安全管制、警示設施應適當，現場依施工需要派置臨時交通指揮人員。" },
+                        { id: "030804", desc: "覆蓋板應防滑、平順、密接，無凸角、凹陷及過大之間隙。" },
+                        { id: "030805", desc: "工區周圍道路無坑洞，平整，無因施工損壞路面，無顯著破裂、凹洞等情形，並能維持車輛通行空間。" },
+                        { id: "030806", desc: "臨時行人通道之安全設施應適當，通行空間足夠，通道平整無坑洞，供行人出入之橫向踏板寬度足夠、平整穩固且防滑。" },
+                        { id: "030807", desc: "應設置圍籬、防溢座、警示設施，並加以清洗、維護。" },
+                        { id: "030808", desc: "除圍籬外其他阻隔設施(交通錐、紐澤西護欄、型鋼護欄、槽鋼護欄、拒馬、警示帶)已依規定數量設置並排列整齊，並於夜間設置警示燈。" },
+                        { id: "030809", desc: "廠商之大型施工機具（如挖土機、推土機、壓路機、吊車‧‧‧等等），且非屬汽車範圍之動力機械者，應於駕駛座旁或顯明處，噴漆標明所有者及聯絡電話。" },
+                        { id: "030810", desc: "同時每一開挖段應以兩個施工段及每一施工段不大於100公尺共計200公尺為限（人行道更新工程）。" },
+                        { id: "030811", desc: "寬 15 公尺以下之道路，除依核定之交通維持計畫封閉施工工區外，不得兩側同時開挖施工。" },
+                        { id: "030812", desc: "依核定之施工段順序分段或單元逐段施工。" },
+                        { id: "030813", desc: "依規定設置施工所需相關標誌、標線及告示。" },
+                        { id: "030814", desc: "夜間作業已依需要設置足夠之照明設施。" },
+                        { id: "030815", desc: "尚待施工之孔洞、未植栽樹穴，已遮蓋良好，並設置阻隔設施及警示。" }
+                    ]
+                },
+                {
+                    name: "火災防護",
+                    items: [
+                        { id: "030901", desc: "應設置消防設施，設備數量應足夠，並檢查維護。" },
+                        { id: "030902", desc: "易燃易爆物2公尺內不得放置及使用著引火物。" },
+                        { id: "030903", desc: "工區位於菸害防制法明定禁止吸菸之場所，或於密閉、局限空間及有發生火災或爆炸之虞工作場所，禁止人員吸菸。" }
+                    ]
+                }
+            ], 
+            notes: `<div style="text-align:left; line-height:1.8; color:#444;">
+                <strong>說明：</strong><br>
+                1、本表供機關及監造單位定期稽查使用，由稽查人員及相關單位會同人員簽認，並作為安全衛生費用扣罰之依據；廠商之相關檢查表內容可參考本表格訂定。<br>
+                2、廠商工區中人員有未依法投保勞工保險、就業保險、勞工職業災害保險、未依規定配戴安全帽、經酒測含有酒精性反應或作業場所中經查獲攜有酒精性飲料者之缺失時，除禁止該人員繼續作業外，每人次扣罰新臺幣 3,000 元整，該項則不再併入當次稽（檢）查缺失數量重複扣罰。<br>
+                3、廠商於同一區域重複發生非屬「勞動檢查法第二十八條所定勞工有立即發生危險之虞認定標準」之缺失，除限期改善外，每項次扣罰新臺幣 5,000 元整，並得連續扣罰至改善完成，惟該項重複發生之缺失不再併入當次稽（檢）查缺失數量重複扣罰。<br>
+                4、稽查缺失應由監造單位列管追蹤至改善完成，非經監造單位複驗合格，廠商不得進行後續施工，缺失經複驗合格後，應檢附改善資料送機關備查。<br>
+                5、本表得依現場實際狀況修訂。
+            </div>`
         }
     ];
 
@@ -745,16 +986,107 @@
         }
     };
 
-    function setupCanvas(canvasId, wrapperId, isPenRed = false) {
-        const canvas = document.getElementById(canvasId); const wrapper = document.getElementById(wrapperId); const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        let isDrawing = false; let undoStack = [];
-        function getCoordinates(event) { const rect = canvas.getBoundingClientRect(); let clientX = event.clientX; let clientY = event.clientY; if (event.touches && event.touches.length > 0) { clientX = event.touches[0].clientX; clientY = event.touches[0].clientY; } return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) }; }
+// 👇 新增全域變數與切換功能
+window.currentAnnoTool = 'pen';
+    window.currentAnnoColor = '#dc3545'; // 預設紅色
+
+    window.setAnnoTool = function(tool, btn) {
+        window.currentAnnoTool = tool;
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    };
+
+    window.setAnnoColor = function(color, btn) {
+        window.currentAnnoColor = color;
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    };
+
+    // 👇 升級版的 Canvas 繪圖引擎
+    function setupCanvas(canvasId, wrapperId, isForAnno = false) {
+        const canvas = document.getElementById(canvasId); 
+        const wrapper = document.getElementById(wrapperId); 
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        
+        let isDrawing = false; 
+        let undoStack = [];
+        let startX, startY, snapshot; // 供形狀繪製使用
+
+        function getCoordinates(event) { 
+            const rect = canvas.getBoundingClientRect(); 
+            let clientX = event.clientX; let clientY = event.clientY; 
+            if (event.touches && event.touches.length > 0) { 
+                clientX = event.touches[0].clientX; clientY = event.touches[0].clientY; 
+            } 
+            return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) }; 
+        }
+
         function saveState() { undoStack.push(canvas.toDataURL()); }
-        function start(e) { e.preventDefault(); isDrawing = true; saveState(); const coords = getCoordinates(e); ctx.beginPath(); ctx.moveTo(coords.x, coords.y); }
-        function draw(e) { if (!isDrawing) return; e.preventDefault(); const coords = getCoordinates(e); ctx.lineTo(coords.x, coords.y); ctx.strokeStyle = isPenRed ? "#dc3545" : "#000000"; ctx.lineWidth = isPenRed ? 4 : 3; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(); }
+
+        function start(e) { 
+            e.preventDefault(); 
+            isDrawing = true; 
+            saveState(); 
+            const coords = getCoordinates(e); 
+            
+            if (isForAnno) {
+                snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                startX = coords.x; startY = coords.y;
+                if (window.currentAnnoTool === 'pen') {
+                    ctx.beginPath(); ctx.moveTo(coords.x, coords.y);
+                }
+            } else {
+                ctx.beginPath(); ctx.moveTo(coords.x, coords.y); 
+            }
+        }
+
+        function draw(e) { 
+            if (!isDrawing) return; 
+            e.preventDefault(); 
+            const coords = getCoordinates(e); 
+            
+            ctx.lineWidth = isForAnno ? 4 : 3; 
+            ctx.lineCap = "round"; 
+            ctx.lineJoin = "round"; 
+            ctx.strokeStyle = isForAnno ? window.currentAnnoColor : "#000000"; 
+
+            if (!isForAnno || window.currentAnnoTool === 'pen') {
+                ctx.lineTo(coords.x, coords.y); 
+                ctx.stroke(); 
+            } else {
+                ctx.putImageData(snapshot, 0, 0); // 恢復背景以畫預覽形狀
+                ctx.beginPath();
+                
+                if (window.currentAnnoTool === 'rect') {
+                    ctx.rect(startX, startY, coords.x - startX, coords.y - startY);
+                } else if (window.currentAnnoTool === 'circle') {
+                    let radius = Math.sqrt(Math.pow(coords.x - startX, 2) + Math.pow(coords.y - startY, 2));
+                    ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
+                } else if (window.currentAnnoTool === 'line') {
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(coords.x, coords.y);
+                } else if (window.currentAnnoTool === 'arrow') {
+                    let headlen = 18; 
+                    let angle = Math.atan2(coords.y - startY, coords.x - startX);
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(coords.x, coords.y);
+                    ctx.lineTo(coords.x - headlen * Math.cos(angle - Math.PI / 6), coords.y - headlen * Math.sin(angle - Math.PI / 6));
+                    ctx.moveTo(coords.x, coords.y);
+                    ctx.lineTo(coords.x - headlen * Math.cos(angle + Math.PI / 6), coords.y - headlen * Math.sin(angle + Math.PI / 6));
+                }
+                ctx.stroke();
+            }
+        }
+
         function stop() { if(isDrawing) { ctx.closePath(); isDrawing = false; } }
-        canvas.addEventListener("mousedown", start); canvas.addEventListener("mousemove", draw); window.addEventListener("mouseup", stop);
-        canvas.addEventListener("touchstart", start, { passive: false }); canvas.addEventListener("touchmove", draw, { passive: false }); window.addEventListener("touchend", stop);
+
+        canvas.addEventListener("mousedown", start); 
+        canvas.addEventListener("mousemove", draw); 
+        window.addEventListener("mouseup", stop);
+        canvas.addEventListener("touchstart", start, { passive: false }); 
+        canvas.addEventListener("touchmove", draw, { passive: false }); 
+        window.addEventListener("touchend", stop);
+        
         return { canvas, ctx, wrapper, getUndoStack: () => undoStack };
     }
 
@@ -780,6 +1112,65 @@
     window.clearAnnoCanvas = function() { if(baseImgData){ let img = new Image(); img.src = baseImgData; img.onload = () => { anno.ctx.clearRect(0,0,anno.canvas.width,anno.canvas.height); anno.ctx.drawImage(img,0,0); }; anno.getUndoStack().length = 0; } };
     window.undoAnnoCanvas = function() { const stack = anno.getUndoStack(); if (stack.length > 0) { let imgData = stack.pop(); let img = new Image(); img.src = imgData; img.onload = () => { anno.ctx.clearRect(0, 0, anno.canvas.width, anno.canvas.height); anno.ctx.drawImage(img, 0, 0); }; } else { clearAnnoCanvas(); } };
     window.saveAnnotation = function() { if(currentAnnoItemCode) { uploadedPhotosDB[currentAnnoItemCode] = anno.canvas.toDataURL("image/png"); document.querySelector(`#photo-cell-${currentAnnoItemCode} img`).src = uploadedPhotosDB[currentAnnoItemCode]; } closeAnnoPad(); };
+
+    // 👇 新增：AI 稽查缺失匯入處理邏輯
+    window.handleAIImport = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const text = e.target.result;
+                const startIdx = text.indexOf('[');
+                const endIdx = text.lastIndexOf(']');
+                
+                if (startIdx === -1 || endIdx === -1) {
+                    throw new Error("找不到陣列格式資料 [...]");
+                }
+
+                const arrayStr = text.substring(startIdx, endIdx + 1);
+                // 安全解析 AI 產出的非標準 JSON (純 JS 物件)
+                const issues = new Function("return " + arrayStr)();
+
+                if (!Array.isArray(issues)) throw new Error("解析結果不是陣列格式");
+
+                let matchCount = 0;
+
+                document.querySelectorAll('.col-desc').forEach(descCell => {
+                    const idEl = descCell.querySelector('.item-id-code');
+                    if (!idEl) return;
+                    
+                    const itemId = idEl.textContent.trim();
+                    const issue = issues.find(i => i.id === itemId);
+
+                    if (issue && issue.note) {
+                        const tr = descCell.closest('tr');
+                        const defectInput = tr.querySelector('.defect-desc-input');
+                        
+                        defectInput.textContent = issue.note; // 填入缺失說明
+                        
+                        const failRadio = tr.querySelector('.fail-radio');
+                        const match = failRadio.className.match(/fail-radio-f(\d+)/);
+                        if (match) {
+                            // 呼叫原系統邏輯：自動勾選不合格並更新計數
+                            handleDefectInput(defectInput, match[1]);
+                            matchCount++;
+                        }
+                    }
+                });
+
+                event.target.value = ""; // 清空，允許重複上傳同檔案
+                showCustomAlert(`🤖 AI 缺失匯入成功！<br>共自動填入 <b>${matchCount}</b> 筆缺失資料。`);
+
+            } catch (err) {
+                event.target.value = ""; 
+                showCustomAlert("⚠️ 檔案解析失敗，請確認內容格式是否為有效的 JS 陣列。<br><br>錯誤訊息: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+    // 👆 新增結束
 
     window.addEventListener('click', function(event) { 
         if (event.target == sigMod) closeSignaturePad(); 
