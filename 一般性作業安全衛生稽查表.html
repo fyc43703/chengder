@@ -105,18 +105,18 @@
         .sign-box { flex: 1; height: 60px; border: 2px dashed #999; border-radius: 6px; background-color: #fafafa; display: flex; align-items: center; justify-content: center; color: #888; font-size: 15px; font-weight: bold; cursor: pointer; overflow: hidden; }
         .sign-box img { max-height: 100%; max-width: 100%; object-fit: contain; }
 
-/* 在 .bottom-actions 加上 position: relative; */
-.bottom-actions { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 40px; padding-top: 30px; border-top: 1px dashed #ccc; position: relative; }
-.btn-3d { padding: 15px 30px; font-size: 18px; font-weight: bold; color: #fff; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        /* 在 .bottom-actions 加上 position: relative; */
+        .bottom-actions { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 40px; padding-top: 30px; border-top: 1px dashed #ccc; position: relative; }
+        .btn-3d { padding: 15px 30px; font-size: 18px; font-weight: bold; color: #fff; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         
         .btn-pdf { background-color: #007bff; }
-.btn-photo { background-color: #17a2b8; }
-.btn-draft { background-color: #fd7e14; }
-.btn-system { background-color: #28a745; }
-/* 👇 新增 AI 匯入按鈕專屬樣式 */
-.btn-ai { background-color: #6f42c1; }
+        .btn-photo { background-color: #17a2b8; }
+        .btn-draft { background-color: #fd7e14; }
+        .btn-system { background-color: #28a745; }
+        /* AI 匯入按鈕專屬樣式 */
+        .btn-ai { background-color: #6f42c1; }
 
-@keyframes spin-anim { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin-anim { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .spin-icon { display: inline-block; animation: spin-anim 2s linear infinite; margin-right: 8px; font-size: 20px; }
 
         #photo-report-section { display: none; margin-top: 40px; padding-top: 20px; border-top: 3px double #333; }
@@ -149,7 +149,7 @@
         .sys-label { font-size: 18px; font-weight: bold; color: #333; letter-spacing: 2px; }
 
         /* ========================================================= */
-        /* 美化版自訂 Alert 彈跳視窗 (完美還原附圖樣式) */
+        /* 美化版自訂 Alert 彈跳視窗 */
         /* ========================================================= */
         #beauty-alert-modal { z-index: 10005; }
         .beauty-alert-box { background: #fff; width: 85%; max-width: 420px; border-radius: 12px; padding: 25px 30px; box-shadow: 0 15px 40px rgba(0,0,0,0.25); text-align: left; position: relative; font-family: "微軟正黑體", sans-serif; }
@@ -175,7 +175,8 @@
         .sig-btn-confirm .icon { background-color: #28a745; }
         .sig-btn-undo .icon { background-color: #ffc107; color: #333; }
         .sig-btn-clear .icon { background-color: #dc3545; }
-        /* 👇 新增：照片標記工具列樣式 */
+        
+        /* 照片標記工具列樣式 */
         .anno-toolbar {
             display: flex; justify-content: space-between; align-items: center;
             background: #f8f9fa; padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; gap: 10px; overflow-x: auto;
@@ -199,10 +200,6 @@
             .anno-toolbar { flex-direction: column; align-items: stretch; }
             .tool-group { justify-content: space-between; overflow-x: auto; padding-bottom: 5px; }
             .color-group { justify-content: center; }
-        }
-        /* 👆 新增結束 */
-        @media (max-width: 768px) {
-            /* ... (前面省略) ... */
             .bottom-actions { flex-direction: column; gap: 10px; margin-top: 20px; padding-top: 20px; }
             .btn-3d { width: 100%; padding: 13px; font-size: 15px; }
             .sig-controls { width: 60px; }
@@ -210,7 +207,7 @@
         }
 
         @media print {
-            .bottom-actions, .header-actions { display: none !important; }
+            .bottom-actions, .header-actions, #top-ai-btn-container { display: none !important; }
             body { padding: 0; background-color: #fff; }
             .container { box-shadow: none; padding: 0; width: 100%; }
             .form-page { page-break-after: always; }
@@ -220,6 +217,14 @@
 <body>
 
 <div class="container">
+    
+    <!-- 置頂的 AI 稽查缺失匯入按鈕 -->
+    <div id="top-ai-btn-container" style="display: flex; justify-content: center; margin-bottom: 25px; padding-top: 10px;">
+        <button class="btn-3d btn-ai" style="padding: 10px 25px; font-size: 18px; border-radius: 8px; box-shadow: 0 4px 10px rgba(111, 66, 193, 0.3);" onclick="openAIPasteModal()">
+            <span style="font-size: 22px; margin-right: 8px;">🤖</span> AI 稽查缺失匯入
+        </button>
+    </div>
+
     <div id="app"></div>
 
     <div id="photo-report-section">
@@ -230,16 +235,13 @@
         </table>
     </div>
 
-<!-- 底部功能按鈕 -->
-<div class="bottom-actions" id="action-buttons">
-    <button class="btn-3d btn-photo" onclick="generatePhotoReport()"><span class="spin-icon">📸</span> 傳送照片</button>
-    <button class="btn-3d btn-draft" onclick="openDraftModal()"><span class="spin-icon">💾</span> 暫存</button>
-    <button class="btn-3d btn-pdf" onclick="openExportFormatModal()"><span class="spin-icon">📄</span> 預覽匯出</button>
-    <button class="btn-3d btn-system" onclick="openSystemModal()"><span class="spin-icon">🚀</span> 系統確認登錄</button>
-    
-<!-- AI 稽查缺失匯入按鈕 (改為呼叫貼上視窗) -->
-<button class="btn-3d btn-ai" onclick="openAIPasteModal()"><span class="spin-icon">🤖</span> AI 稽查缺失匯入</button>
-</div>
+    <!-- 底部功能按鈕 -->
+    <div class="bottom-actions" id="action-buttons">
+        <button class="btn-3d btn-photo" onclick="generatePhotoReport()"><span class="spin-icon">📸</span> 傳送照片</button>
+        <button class="btn-3d btn-draft" onclick="openDraftModal()"><span class="spin-icon">💾</span> 暫存</button>
+        <button class="btn-3d btn-pdf" onclick="openExportFormatModal()"><span class="spin-icon">📄</span> 預覽匯出</button>
+        <button class="btn-3d btn-system" onclick="openSystemModal()"><span class="spin-icon">🚀</span> 系統確認登錄</button>
+    </div>
 </div>
 
 <!-- 自訂美化 Alert Modal -->
@@ -255,6 +257,7 @@
         </div>
     </div>
 </div>
+
 <!-- AI 稽查缺失匯入 (貼上程式碼) Modal -->
 <div id="ai-paste-modal" class="custom-modal">
     <div class="sys-container" style="max-width: 600px;">
@@ -273,6 +276,7 @@
         </div>
     </div>
 </div>
+
 <!-- 暫存管理 (匯出/匯入) Modal -->
 <div id="draft-format-modal" class="custom-modal">
     <div class="sys-container">
@@ -361,7 +365,6 @@
             <span style="width: 50px;"></span>
         </div>
         
-        <!-- 新增：標記工具列 (包含形狀與顏色) -->
         <div class="anno-toolbar" id="anno-toolbar">
             <div class="tool-group">
                 <button class="tool-btn active" onclick="setAnnoTool('pen', this)">✏️ 手繪</button>
@@ -392,9 +395,6 @@
 </div>
 
 <script>
-    // =========================================================
-    // 自訂美化版 Alert 控制邏輯
-    // =========================================================
     window.showCustomAlert = function(message) {
         document.getElementById('beauty-alert-text').innerHTML = message;
         document.getElementById('beauty-alert-modal').style.display = 'flex';
@@ -403,13 +403,9 @@
         document.getElementById('beauty-alert-modal').style.display = 'none';
     };
 
-    // =========================================================
-    // 暫存資料管理 (匯出/匯入 XML)
-    // =========================================================
     window.openDraftModal = function() { document.getElementById('draft-format-modal').style.display = 'flex'; };
     window.closeDraftModal = function() { document.getElementById('draft-format-modal').style.display = 'none'; };
 
-    // 匯出暫存 XML (原 exportXML 功能)
     window.executeExportXML = function() {
         closeDraftModal();
         const year = document.querySelector('.date-year').value;
@@ -459,7 +455,6 @@
         document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
     };
 
-    // 匯入暫存 XML 
     window.handleXMLImport = function(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -472,25 +467,21 @@
             
             const getNodeText = (tag) => { const node = xmlDoc.getElementsByTagName(tag)[0]; return node ? node.textContent : ""; };
 
-            // 1. 還原日期
             const year = getNodeText("年"); const month = getNodeText("月"); const day = getNodeText("日");
             if(year) syncDate('year', year); 
             if(month) syncDate('month', parseInt(month).toString()); 
             if(day) syncDate('day', parseInt(day).toString());
 
-            // 2. 還原工程名稱
             const proj = getNodeText("工程名稱");
             if (proj && proj !== "未選擇") {
                 document.querySelectorAll('.proj-sel').forEach(el => el.value = proj);
                 updateProjectInfo(proj); 
             }
 
-            // 3. 還原檢查地點與位置
             const loc = getNodeText("檢查地點"); const pos = getNodeText("檢查位置");
             if(loc && loc !== "未填寫") document.querySelectorAll('.sync-loc').forEach(el => el.textContent = loc);
             if(pos && pos !== "未填寫") document.querySelectorAll('.sync-pos').forEach(el => el.textContent = pos);
 
-            // 4. 還原缺失項目 (先清除所有現有勾選)
             for(let i=0; i<=2; i++) uncheckAllPass(i);
             const items = xmlDoc.getElementsByTagName("檢查項目");
             const defects = xmlDoc.getElementsByTagName("缺失情形／改善期限");
@@ -511,7 +502,6 @@
                             defectInput.textContent = defectDesc;
                         }
                         
-                        // 觸發防呆鎖定與計數更新
                         const match = failRadio.className.match(/fail-radio-f(\d+)/);
                         if (match) handleDefectInput(defectInput, match[1]);
                     }
@@ -519,15 +509,12 @@
             }
 
             closeDraftModal();
-            event.target.value = ""; // 清空 input file
+            event.target.value = ""; 
             showCustomAlert("暫存檔匯入成功！");
         };
         reader.readAsText(file);
     };
 
-    // =========================================================
-    // 送出前防呆檢核 (Validation) 
-    // =========================================================
     window.openSystemModal = function() {
         document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight'));
         let errors = [];
@@ -558,7 +545,6 @@
         if(errors.length > 0) {
             errors.forEach(el => el.classList.add('error-highlight'));
             errors[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // 替換為自訂 Alert
             showCustomAlert("請完成所有必填項目（請見紅框標示處：包含檢查地點、缺失照片或簽章）");
             return;
         }
@@ -577,7 +563,6 @@
     window.closeSystemModal = function() { document.getElementById('system-modal').style.display = 'none'; };
     window.submitSystemData = function() { showCustomAlert("已將稽查紀錄傳送臺北市政府捷運工程局 安全衛生稽查管理系統"); closeSystemModal(); };
     
-    // 表單資料同步功能
     const projectData = {
         "環狀線北環段CF680B": { main: "第一區工程處", super: "土木第一工務所", pm: "台灣世曦工程顧問", contractor: "皇昌營造" },
         "環狀線南環段CF670":  { main: "第二區工程處", super: "土木第十一工務所", pm: "台灣世曦工程顧問", contractor: "大陸工程" },
@@ -631,7 +616,7 @@
     window.calcFailCount = function(fIndex) { document.getElementById(`fail_count_${fIndex}`).textContent = document.querySelectorAll(`.fail-radio-f${fIndex}:checked`).length; };
 
     // =========================================================
-    // 預覽匯出功能 (PNG & PDF 雙軌)
+    // 預覽匯出功能 (修復高度截斷問題)
     // =========================================================
     window.openExportFormatModal = function() { document.getElementById('export-format-modal').style.display = 'flex'; };
     window.closeExportFormatModal = function() { document.getElementById('export-format-modal').style.display = 'none'; };
@@ -647,16 +632,45 @@
         const origHTML = btn.innerHTML; btn.innerHTML = '<span class="spin-icon">⏳</span> PNG產生中…'; btn.disabled = true; actions.style.display = 'none'; 
         document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight')); 
         
+        // 將視窗捲動到最上方，避免 html2canvas 因滾動位置算錯或出現頂部白邊
+        window.scrollTo(0, 0);
+
         try {
             await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
             const target = document.querySelector('.container');
+            
             const canvas = await html2canvas(target, {
-                scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: target.scrollWidth, width: target.scrollWidth, height: target.scrollHeight,
-                onclone: (doc) => { doc.querySelectorAll('.table-responsive').forEach(el => { el.style.overflow = 'visible'; el.style.maxHeight = 'none'; }); const c = doc.querySelector('.container'); if (c) c.style.boxShadow = 'none'; }
+                scale: 2, 
+                useCORS: true, 
+                backgroundColor: '#ffffff', 
+                scrollX: 0, 
+                scrollY: 0, 
+                windowWidth: document.documentElement.scrollWidth,
+                // 移除固定 width 和 height 讓 html2canvas 自己抓取 DOM 完整高度
+                onclone: (doc) => { 
+                    // 放開所有可能限制高度的 CSS 屬性
+                    doc.documentElement.style.overflow = 'visible';
+                    doc.body.style.overflow = 'visible';
+                    doc.querySelectorAll('.table-responsive').forEach(el => { 
+                        el.style.overflow = 'visible'; 
+                        el.style.maxHeight = 'none'; 
+                    }); 
+                    const c = doc.querySelector('.container'); 
+                    if (c) { 
+                        c.style.boxShadow = 'none'; 
+                        c.style.overflow = 'visible'; 
+                    }
+                    const topAiBtn = doc.getElementById('top-ai-btn-container');
+                    if (topAiBtn) topAiBtn.style.display = 'none'; // 匯出時隱藏 AI 按鈕
+                }
             });
             const filename = `稽查表_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.png`;
             const link = document.createElement('a'); link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
-        } catch(err) { showCustomAlert('匯出失敗：' + err.message); } finally { actions.style.display = ''; btn.innerHTML = origHTML; btn.disabled = false; }
+        } catch(err) { 
+            showCustomAlert('匯出失敗：' + err.message); 
+        } finally { 
+            actions.style.display = ''; btn.innerHTML = origHTML; btn.disabled = false; 
+        }
     };
 
     window.executeExportPDF = async function() {
@@ -665,6 +679,9 @@
         const origHTML = btn.innerHTML; btn.innerHTML = '<span class="spin-icon">⏳</span> PDF產生中…'; btn.disabled = true; actions.style.display = 'none'; 
         document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight')); 
 
+        // 將視窗捲動到最上方
+        window.scrollTo(0, 0);
+
         try {
             await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
             await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -672,8 +689,27 @@
             const { jsPDF } = window.jspdf;
             const target = document.querySelector('.container');
             const canvas = await html2canvas(target, {
-                scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: target.scrollWidth, width: target.scrollWidth, height: target.scrollHeight,
-                onclone: (doc) => { doc.querySelectorAll('.table-responsive').forEach(el => { el.style.overflow = 'visible'; el.style.maxHeight = 'none'; }); const c = doc.querySelector('.container'); if (c) c.style.boxShadow = 'none'; }
+                scale: 2, 
+                useCORS: true, 
+                backgroundColor: '#ffffff', 
+                scrollX: 0, 
+                scrollY: 0, 
+                windowWidth: document.documentElement.scrollWidth,
+                onclone: (doc) => { 
+                    doc.documentElement.style.overflow = 'visible';
+                    doc.body.style.overflow = 'visible';
+                    doc.querySelectorAll('.table-responsive').forEach(el => { 
+                        el.style.overflow = 'visible'; 
+                        el.style.maxHeight = 'none'; 
+                    }); 
+                    const c = doc.querySelector('.container'); 
+                    if (c) { 
+                        c.style.boxShadow = 'none'; 
+                        c.style.overflow = 'visible'; 
+                    }
+                    const topAiBtn = doc.getElementById('top-ai-btn-container');
+                    if (topAiBtn) topAiBtn.style.display = 'none'; // 匯出時隱藏 AI 按鈕
+                }
             });
 
             const imgData = canvas.toDataURL('image/jpeg', 1.0);
@@ -1002,9 +1038,8 @@
         }
     };
 
-// 👇 新增全域變數與切換功能
-window.currentAnnoTool = 'pen';
-    window.currentAnnoColor = '#dc3545'; // 預設紅色
+    window.currentAnnoTool = 'pen';
+    window.currentAnnoColor = '#dc3545'; 
 
     window.setAnnoTool = function(tool, btn) {
         window.currentAnnoTool = tool;
@@ -1018,7 +1053,6 @@ window.currentAnnoTool = 'pen';
         btn.classList.add('active');
     };
 
-    // 👇 升級版的 Canvas 繪圖引擎
     function setupCanvas(canvasId, wrapperId, isForAnno = false) {
         const canvas = document.getElementById(canvasId); 
         const wrapper = document.getElementById(wrapperId); 
@@ -1026,7 +1060,7 @@ window.currentAnnoTool = 'pen';
         
         let isDrawing = false; 
         let undoStack = [];
-        let startX, startY, snapshot; // 供形狀繪製使用
+        let startX, startY, snapshot; 
 
         function getCoordinates(event) { 
             const rect = canvas.getBoundingClientRect(); 
@@ -1070,7 +1104,7 @@ window.currentAnnoTool = 'pen';
                 ctx.lineTo(coords.x, coords.y); 
                 ctx.stroke(); 
             } else {
-                ctx.putImageData(snapshot, 0, 0); // 恢復背景以畫預覽形狀
+                ctx.putImageData(snapshot, 0, 0); 
                 ctx.beginPath();
                 
                 if (window.currentAnnoTool === 'rect') {
@@ -1129,11 +1163,8 @@ window.currentAnnoTool = 'pen';
     window.undoAnnoCanvas = function() { const stack = anno.getUndoStack(); if (stack.length > 0) { let imgData = stack.pop(); let img = new Image(); img.src = imgData; img.onload = () => { anno.ctx.clearRect(0, 0, anno.canvas.width, anno.canvas.height); anno.ctx.drawImage(img, 0, 0); }; } else { clearAnnoCanvas(); } };
     window.saveAnnotation = function() { if(currentAnnoItemCode) { uploadedPhotosDB[currentAnnoItemCode] = anno.canvas.toDataURL("image/png"); document.querySelector(`#photo-cell-${currentAnnoItemCode} img`).src = uploadedPhotosDB[currentAnnoItemCode]; } closeAnnoPad(); };
 
-// =========================================================
-    // AI 稽查缺失匯入 (貼上 JS 程式碼)
-    // =========================================================
     window.openAIPasteModal = function() {
-        document.getElementById('ai-paste-textarea').value = ''; // 開啟時先清空文字框
+        document.getElementById('ai-paste-textarea').value = ''; 
         document.getElementById('ai-paste-modal').style.display = 'flex';
     };
     
@@ -1157,7 +1188,6 @@ window.currentAnnoTool = 'pen';
             }
 
             const arrayStr = text.substring(startIdx, endIdx + 1);
-            // 安全解析 AI 產出的非標準 JSON (純 JS 物件)
             const issues = new Function("return " + arrayStr)();
 
             if (!Array.isArray(issues)) throw new Error("解析結果不是陣列格式");
@@ -1175,26 +1205,24 @@ window.currentAnnoTool = 'pen';
                     const tr = descCell.closest('tr');
                     const defectInput = tr.querySelector('.defect-desc-input');
                     
-                    defectInput.textContent = issue.note; // 填入缺失說明
+                    defectInput.textContent = issue.note; 
                     
                     const failRadio = tr.querySelector('.fail-radio');
                     const match = failRadio.className.match(/fail-radio-f(\d+)/);
                     if (match) {
-                        // 呼叫原系統邏輯：自動勾選不合格並更新計數
                         handleDefectInput(defectInput, match[1]);
                         matchCount++;
                     }
                 }
             });
 
-            closeAIPasteModal(); // 匯入成功後自動關閉視窗
+            closeAIPasteModal(); 
             showCustomAlert(`🤖 AI 缺失匯入成功！<br>共自動填入 <b>${matchCount}</b> 筆缺失資料。`);
 
         } catch (err) {
             showCustomAlert("⚠️ 程式碼解析失敗，請確認內容格式是否為有效的 JS 陣列。<br><br>錯誤訊息: " + err.message);
         }
     };
-    // 👆 新增結束
 
     window.addEventListener('click', function(event) { 
         if (event.target == sigMod) closeSignaturePad(); 
@@ -1202,7 +1230,6 @@ window.currentAnnoTool = 'pen';
         if (event.target == document.getElementById('export-format-modal')) closeExportFormatModal();
         if (event.target == document.getElementById('draft-format-modal')) closeDraftModal();
         if (event.target == document.getElementById('beauty-alert-modal')) closeCustomAlert();
-        // 👇 新增這行：點擊背景關閉 AI 貼上視窗
         if (event.target == document.getElementById('ai-paste-modal')) closeAIPasteModal();
     });
 </script>
