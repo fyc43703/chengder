@@ -430,6 +430,25 @@
             failItems.push({ item: itemDesc, defect: defectText });
         });
 
+        // 1. 收集所有簽名圖檔 (加入 CDATA 避免 XML 結構損毀)
+        let signaturesXML = `  <簽章群組>\n`;
+        document.querySelectorAll('.sign-box').forEach((box, index) => {
+            const img = box.querySelector('img');
+            if (img && img.src) {
+                signaturesXML += `    <簽章 索引="${index}"><![CDATA[${img.src}]]></簽章>\n`;
+            }
+        });
+        signaturesXML += `  </簽章群組>\n`;
+
+        // 2. 收集所有缺失照片與標記 (一起存進去)
+        let photosXML = `  <照片群組>\n`;
+        for (let code in uploadedPhotosDB) {
+            if (uploadedPhotosDB[code]) {
+                photosXML += `    <照片 代碼="${code}"><![CDATA[${uploadedPhotosDB[code]}]]></照片>\n`;
+            }
+        }
+        photosXML += `  </照片群組>\n`;
+
         const escapeXML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
         let xmlString = `<?xml version="1.0" encoding="utf-8"?>\n<稽查紀錄>\n`;
@@ -446,6 +465,10 @@
         } else {
             xmlString += `  <檢查項目></檢查項目>\n  <缺失情形／改善期限></缺失情形／改善期限>\n`;
         }
+        
+        // 將簽章與照片合併進 XML
+        xmlString += signaturesXML;
+        xmlString += photosXML;
         xmlString += `</稽查紀錄>`;
 
         const blob = new Blob([xmlString], { type: 'text/xml' });
@@ -465,6 +488,12 @@
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(text, "text/xml");
             
+            // 防呆：檢查 XML 是否解析失敗
+            if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+                showCustomAlert("匯入失敗：XML 檔案格式錯誤或損毀。");
+                return;
+            }
+
             const getNodeText = (tag) => { const node = xmlDoc.getElementsByTagName(tag)[0]; return node ? node.textContent : ""; };
 
             const year = getNodeText("年"); const month = getNodeText("月"); const day = getNodeText("日");
@@ -482,7 +511,20 @@
             if(loc && loc !== "未填寫") document.querySelectorAll('.sync-loc').forEach(el => el.textContent = loc);
             if(pos && pos !== "未填寫") document.querySelectorAll('.sync-pos').forEach(el => el.textContent = pos);
 
+            // 匯入前先重置所有欄位狀態
             for(let i=0; i<=2; i++) uncheckAllPass(i);
+            
+            // 匯入前清空並重置所有簽名框
+            const signBoxes = document.querySelectorAll('.sign-box');
+            signBoxes.forEach(box => {
+                box.innerHTML = "電子簽章";
+                box.style.backgroundColor = "#fafafa";
+                box.style.border = "2px dashed #999";
+            });
+
+            // 匯入前清空照片資料庫
+            for (let key in uploadedPhotosDB) delete uploadedPhotosDB[key];
+
             const items = xmlDoc.getElementsByTagName("檢查項目");
             const defects = xmlDoc.getElementsByTagName("缺失情形／改善期限");
 
@@ -508,9 +550,45 @@
                 });
             }
 
+            // --- 載入並還原電子簽章 ---
+            const signNodes = xmlDoc.getElementsByTagName("簽章");
+            for (let i = 0; i < signNodes.length; i++) {
+                const node = signNodes[i];
+                const index = parseInt(node.getAttribute("索引"), 10);
+                let base64Data = node.textContent;
+                if (base64Data) base64Data = base64Data.trim();
+                
+                if (!isNaN(index) && signBoxes[index] && base64Data) {
+                    const box = signBoxes[index];
+                    box.innerHTML = `<img src="${base64Data}" alt="電子簽名">`;
+                    box.style.backgroundColor = "transparent";
+                    box.style.border = "none";
+                }
+            }
+
+            // --- 載入並還原缺失照片 ---
+            const photoNodes = xmlDoc.getElementsByTagName("照片");
+            for (let i = 0; i < photoNodes.length; i++) {
+                const node = photoNodes[i];
+                const code = node.getAttribute("代碼");
+                let base64Data = node.textContent;
+                if (base64Data) base64Data = base64Data.trim();
+
+                if (code && base64Data) {
+                    uploadedPhotosDB[code] = base64Data;
+                }
+            }
+
+            // 若有不合格項目，觸發重繪照片表格
+            if (xmlDoc.getElementsByTagName("檢查項目").length > 0 && items[0].textContent !== "") {
+                generatePhotoReport();
+            } else {
+                document.getElementById('photo-report-section').style.display = 'none';
+            }
+
             closeDraftModal();
             event.target.value = ""; 
-            showCustomAlert("暫存檔匯入成功！");
+            showCustomAlert("暫存檔匯入成功！<br><span style='font-size:14px; color:#555;'>(包含各項欄位、電子簽章及照片)</span>");
         };
         reader.readAsText(file);
     };
