@@ -332,8 +332,7 @@
   .doc-line-cont { padding-left: 2em; margin-bottom: 2px; }
 
 .raw-footer { padding: 15px 20px; background: var(--meta-bg); display: flex; justify-content: center; align-items: center; border-top: 1px solid var(--border-color); overflow-x: auto; }
-.footer-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
-
+.footer-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 /* 新增：統一的綠色 AI 漸層按鈕 */
 .btn-emerald {
   background: linear-gradient(to bottom, #10B981, #059669); color: white; border-color: #047857;
@@ -1219,19 +1218,21 @@ body.font-kai .doc-paper [contenteditable="true"],
          <span style="font-size: 14px; margin-left: 12px; font-weight: 500;">
         😊 您好！<a href="https://console.groq.com/home" target="_blank" rel="noopener noreferrer" style="color: var(--nature-gold); text-decoration: none; border-bottom: 1px solid var(--nature-gold); padding-bottom: 2px; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">點此申請免費 Groq API Key</a>，不論是任何日常問題，我都能為您解答。
          </span><br>
-        💡 我無法記住之前的對話內容，每次的對話都是新的開始。<br>💡 請問今天有什麼可以幫您的？<br>💡範例：旅遊規劃<br>角色設定：你是一位專業的日本旅遊規劃師，擅長安排深度文化旅遊與流暢的交通動線。
-任務需求：請為我規劃一份「日本京阪奈10日春季深度遊」行程，細節要求如下：
-核心景點清單（務必包含）：>世界遺產與文化財：比叡山（延曆寺）、宇治（平等院）、洛東區域（清水寺周邊）、二条城。
-自然與秘境：吉野山（賞櫻）、奈良公園、貴船神社、大原三千院。
-人文與學術：京都大學、錦市場、黑門市場、難波商圈。
-行程邏輯：
-請考量春季（櫻花季）的交通擁塞情況，優化區域移動邏輯（例如將洛北、洛東、宇治分天進行）。
-需包含每日建議的交通手段（如近鐵、京阪電鐵、叡山電車等）。
-需預留足夠的「購物行程」時間，並建議適合採買的地點。
-住宿與機票建議：>根據行程順暢度，建議前幾晚住大阪、後幾晚住京都（或反之）。
-給予機票訂購的考量建議（如關西機場進出的動線）。
-輸出格式：>「清晰的條列式」呈現每日行程。
-每一天需註明「行程亮點」與「交通重點」說明文字都必須至少100個字。
+        💡 我無法記住之前的對話內容，每次的對話都是新的開始。<br>💡 請問今天有什麼可以幫您的？<br>
+        💡範例：旅遊規劃<br>
+        1.角色設定：你是一位專業的日本旅遊規劃師，擅長安排深度文化旅遊與流暢的交通動線。<br>
+2.任務需求：請為我規劃一份「日本京阪奈10日春季深度遊」行程，細節要求如下：<br>
+3.核心景點清單（務必包含）：世界遺產與文化財：比叡山（延曆寺）、宇治（平等院）、洛東區域（清水寺周邊）、二条城。<br>
+4.自然與秘境：吉野山（賞櫻）、奈良公園、貴船神社、大原三千院。<br>
+5.人文與學術：京都大學、錦市場、黑門市場、難波商圈。<br>
+6.行程邏輯：<br>
+請考量春季（櫻花季）的交通擁塞情況，優化區域移動邏輯（例如將洛北、洛東、宇治分天進行）。<br>
+需包含每日建議的交通手段（如近鐵、京阪電鐵、叡山電車等）。<br>
+需預留足夠的「購物行程」時間，並建議適合採買的地點。<br>
+7.住宿與機票建議：根據行程順暢度，建議前幾晚住大阪、後幾晚住京都（或反之）。<br>
+給予機票訂購的考量建議（如關西機場進出的動線）。<br>
+8.輸出格式：「清晰的條列式」呈現每日行程。<br>
+每一天需註明「行程亮點」與「交通重點」說明文字都必須至少100個字。<br>
 
         </div>
       </div>
@@ -1320,6 +1321,194 @@ body.font-kai .doc-paper [contenteditable="true"],
   </div>
 </div>
 
+<!-- ============================================================ -->
+<!-- 新增功能12：AI 法規風險警示 Modal -->
+<div class="modal-overlay" id="riskModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>⚖️ AI 法規風險警示掃描</h3>
+      <button class="modal-close" onclick="closeRiskModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--apple-gray);margin-bottom:15px;">AI 將從法律遵循角度全面掃描公文，標示法規引用、期限要求、責任歸屬等潛在風險。</p>
+      <div class="ai-result-box" id="riskResultBox" style="min-height:350px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeRiskModal()">關閉</button>
+      <button class="btn" id="btnRiskScan" onclick="startRiskScan()" style="background:linear-gradient(to bottom,#F43F5E,#BE123C);color:white;border-color:#9F1239;box-shadow:0 4px 0 #9F1239;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        開始風險掃描
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增功能14：AI 脈絡追蹤 Modal -->
+<div class="modal-overlay" id="contextModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>🔗 AI 跨文件脈絡追蹤</h3>
+      <button class="modal-close" onclick="closeContextModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--apple-gray);margin-bottom:10px;">可在下方貼入其他相關公文或背景資料，AI 將串聯所有文件，分析案件脈絡與辦理進度。</p>
+      <textarea id="contextExtraInput" class="ai-textarea" placeholder="（選填）貼入其他相關公文、背景說明、或歷史記錄...目前匯入的公文將自動納入分析。" style="height:140px;margin-bottom:15px;"></textarea>
+      <div class="ai-result-box" id="contextResultBox" style="min-height:300px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeContextModal()">關閉</button>
+      <button class="btn" id="btnAnalyzeContext" onclick="analyzeContext()" style="background:linear-gradient(to bottom,#0EA5E9,#0369A1);color:white;border-color:#075985;box-shadow:0 4px 0 #075985;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        分析脈絡
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增功能15：AI 批次改寫引擎 Modal -->
+<div class="modal-overlay" id="batchModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>⚡ AI 批次改寫引擎</h3>
+      <button class="modal-close" onclick="closeBatchModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--apple-gray);margin-bottom:12px;">設定全局替換規則（機關改名、年度換算、新法規條文），AI 套用後可進一步智慧潤飾。</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+        <input id="batchFrom" class="prof-input" placeholder="替換前（原詞）" style="flex:1;">
+        <span style="color:var(--apple-gray);font-weight:700;">→</span>
+        <input id="batchTo" class="prof-input" placeholder="替換後（留空=刪除）" style="flex:1;">
+        <button class="btn btn-primary" onclick="addBatchRule()" style="height:36px;min-width:auto;padding:0 14px;">加入規則</button>
+      </div>
+      <div id="batchRuleList" style="min-height:60px;max-height:150px;overflow-y:auto;padding:8px;background:var(--meta-bg);border-radius:8px;margin-bottom:12px;border:1px solid var(--border-color);"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:12px;cursor:pointer;">
+        <input type="checkbox" id="batchAIEnhance" checked style="width:16px;height:16px;">
+        套用後由 AI 智慧潤飾，修復因替換產生的語句不順
+      </label>
+      <div class="ai-result-box" id="batchResultBox" style="min-height:280px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeBatchModal()">關閉</button>
+      <button class="btn" id="btnBatchRun" onclick="executeBatchRewrite()" style="background:linear-gradient(to bottom,#F59E0B,#D97706);color:white;border-color:#B45309;box-shadow:0 4px 0 #B45309;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        執行批次改寫
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增功能17：AI 情境模擬 Modal -->
+<div class="modal-overlay" id="simulateModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>🎭 AI 反向情境模擬</h3>
+      <button class="modal-close" onclick="closeSimulateModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--apple-gray);margin-bottom:12px;">選擇視角後，AI 將扮演不同身份解讀此公文，幫助您預測各方反應、強化說服力。</p>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:14px;flex-shrink:0;">🎭 模擬視角：</span>
+        <select id="simulatePersona" style="flex:1;min-width:200px;padding:8px 15px;border-radius:8px;border:1px solid var(--apple-gray);background:var(--doc-bg);color:var(--text-main);outline:none;font-size:14px;font-weight:600;">
+          <option value="receiver">👨‍💼 收文承辦人員（業務單位視角）</option>
+          <option value="citizen">👤 受政策影響的一般民眾</option>
+          <option value="media">📰 調查記者（媒體視角）</option>
+          <option value="auditor">🔍 政府審計人員（稽核視角）</option>
+          <option value="superior">🏛️ 上級長官（決策者視角）</option>
+        </select>
+      </div>
+      <div class="ai-result-box" id="simulateResultBox" style="min-height:350px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSimulateModal()">關閉</button>
+      <button class="btn" id="btnStartSimulate" onclick="startSimulation()" style="background:linear-gradient(to bottom,#6366F1,#4338CA);color:white;border-color:#3730A3;box-shadow:0 4px 0 #3730A3;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        開始模擬
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增功能19：AI 回覆草稿 Modal -->
+<div class="modal-overlay" id="replyModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>💌 AI 跨機關回覆草稿</h3>
+      <button class="modal-close" onclick="closeReplyModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--apple-gray);margin-bottom:12px;">AI 分析來文訴求，自動填入受文者、引述字號，一鍵產生完整回覆函稿。</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div><label style="font-size:12px;font-weight:700;color:var(--nature-green-main);">本機關（回文方）</label><input id="replyOurOrg" class="prof-input" placeholder="本機關名稱" style="margin-top:4px;width:100%;"></div>
+        <div><label style="font-size:12px;font-weight:700;color:var(--nature-green-main);">受文者（來文機關）</label><input id="replyToOrg" class="prof-input" placeholder="來文機關名稱" style="margin-top:4px;width:100%;"></div>
+        <div><label style="font-size:12px;font-weight:700;color:var(--nature-green-main);">引用來文字號</label><input id="replyRefNo" class="prof-input" placeholder="來文字號" style="margin-top:4px;width:100%;"></div>
+        <div><label style="font-size:12px;font-weight:700;color:var(--nature-green-main);">回覆立場</label>
+          <select id="replyStance" style="margin-top:4px;width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--apple-gray);background:var(--doc-bg);color:var(--text-main);outline:none;font-size:13px;">
+            <option value="agree">✅ 同意配合辦理</option>
+            <option value="partial">🤝 部分同意，提出協商</option>
+            <option value="disagree">❌ 婉轉不同意，說明理由</option>
+            <option value="clarify">❓ 請求澄清補充說明</option>
+            <option value="extend">📅 說明進度，請求延期</option>
+          </select>
+        </div>
+      </div>
+      <div class="ai-result-box" id="replyResultBox" style="min-height:280px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeReplyModal()">關閉</button>
+      <button class="btn" id="btnGenReply" onclick="generateReply()" style="background:linear-gradient(to bottom,#EC4899,#BE185D);color:white;border-color:#9D174D;box-shadow:0 4px 0 #9D174D;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+        生成回覆草稿
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增功能21：AI 簡報大綱 Modal -->
+<div class="modal-overlay" id="presentModal">
+  <div class="modal-content" style="max-width:800px;">
+    <div class="modal-header">
+      <h3>🎬 AI 簡報大綱產生器</h3>
+      <button class="modal-close" onclick="closePresentModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--apple-gray);margin-bottom:12px;">將公文轉為完整簡報架構，含每張投影片標題、要點與主講備注，可直接用於報告或簡報製作。</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px;">
+        <div style="flex:1;min-width:160px;"><label style="font-size:12px;font-weight:700;color:var(--nature-green-main);">目標受眾</label>
+          <select id="presentAudience" style="margin-top:4px;width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--apple-gray);background:var(--doc-bg);color:var(--text-main);outline:none;font-size:13px;">
+            <option value="executive">🏛️ 高階主管/長官</option>
+            <option value="staff">👨‍💼 一般承辦人員</option>
+            <option value="public">👥 一般民眾</option>
+            <option value="council">⚖️ 議員/監督機關</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:140px;"><label style="font-size:12px;font-weight:700;color:var(--nature-green-main);">投影片張數</label>
+          <select id="presentSlides" style="margin-top:4px;width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--apple-gray);background:var(--doc-bg);color:var(--text-main);outline:none;font-size:13px;">
+            <option value="5">5 張（精簡版）</option>
+            <option value="8" selected>8 張（標準版）</option>
+            <option value="12">12 張（完整版）</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:160px;"><label style="font-size:12px;font-weight:700;color:var(--nature-green-main);">簡報風格</label>
+          <select id="presentStyle" style="margin-top:4px;width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--apple-gray);background:var(--doc-bg);color:var(--text-main);outline:none;font-size:13px;">
+            <option value="formal">🏛️ 正式政府風格</option>
+            <option value="modern">🚀 現代企業風格</option>
+            <option value="story">📖 故事敘事風格</option>
+          </select>
+        </div>
+      </div>
+      <div id="presentResultBox" style="min-height:380px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePresentModal()">關閉</button>
+      <button class="btn" id="btnGenPresent" onclick="generatePresentation()" style="background:linear-gradient(to bottom,#F97316,#EA580C);color:white;border-color:#C2410C;box-shadow:0 4px 0 #C2410C;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        生成簡報大綱
+      </button>
+    </div>
+  </div>
+</div>
+<!-- ============================================================ -->
+
  <!-- Diff 點擊浮動選單 -->
  <div class="diff-tooltip" id="diffTooltip">
   <button class="diff-btn" id="btnAcceptDiff" onclick="resolveDiff('accept')">✅ 接受</button>
@@ -1329,7 +1518,7 @@ body.font-kai .doc-paper [contenteditable="true"],
 <div class="top-bar">
   <header>
     <h1><a href="https://fyc43703.github.io/chengder/%E5%85%AC%E6%96%87%20DI%20%E6%AA%94%E6%A1%88%E9%A0%90%E8%A6%BD%E5%99%A8.html" style="color: inherit; text-decoration: none; transition: opacity 0.3s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">電子公文智慧處理平台</a></h1>
-    <p>智慧解析・光學辨識・快速編輯・輕鬆匯出・AI起稿潤稿・萃取摘要・智慧諮詢・多語系翻譯・語音播放・視覺化圖表</p>
+    <p>智慧解析・光學辨識・快速編輯・輕鬆匯出・AI起稿潤稿・萃取摘要・智慧諮詢・多語系翻譯・語音播放・視覺化圖表・法規風險・情境模擬・簡報大綱</p>
   </header>
 
   <div class="top-right-tools">
@@ -2500,6 +2689,42 @@ function render(d, raw) {
           <button class="btn btn-emerald" onclick="openDiagramModal()" title="說明段落太複雜？點擊由 AI 自動萃取流程與時間軸，生成容易閱讀的邏輯關係圖表。">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
             AI 視覺化圖表
+          </button>
+
+          <!-- 12. AI 法規風險警示 -->
+          <button class="btn" style="background:linear-gradient(to bottom,#F43F5E,#BE123C);color:white;border-color:#9F1239;box-shadow:0 4px 0 #9F1239,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openRiskModal()" title="AI 自動掃描公文中的法規依據、期限要求、責任歸屬，標示潛在的法律風險與遺漏項目">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            ⚖️ AI 法規風險
+          </button>
+
+          <!-- 14. AI 跨文件脈絡追蹤 -->
+          <button class="btn" style="background:linear-gradient(to bottom,#0EA5E9,#0369A1);color:white;border-color:#075985;box-shadow:0 4px 0 #075985,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openContextModal()" title="輸入多份相關公文，AI 自動串聯脈絡、找出前因後果、追蹤案件辦理進度">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            🔗 脈絡追蹤
+          </button>
+
+          <!-- 15. AI 批次改寫引擎 -->
+          <button class="btn" style="background:linear-gradient(to bottom,#F59E0B,#D97706);color:white;border-color:#B45309;box-shadow:0 4px 0 #B45309,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openBatchModal()" title="設定全局替換規則：機關名稱改名、年度換算、套用新法規條文，一鍵批次改寫全文">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            ⚡ 批次改寫
+          </button>
+
+          <!-- 17. AI 反向情境模擬 -->
+          <button class="btn" style="background:linear-gradient(to bottom,#6366F1,#4338CA);color:white;border-color:#3730A3;box-shadow:0 4px 0 #3730A3,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openSimulateModal()" title="AI 模擬收到此公文的各方反應：受文機關會如何解讀？民眾可能有什麼疑慮？媒體可能如何報導？">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="9" cy="10" r="1"/><circle cx="12" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg>
+            🎭 情境模擬
+          </button>
+
+          <!-- 19. AI 跨機關回覆草稿 -->
+          <button class="btn" style="background:linear-gradient(to bottom,#EC4899,#BE185D);color:white;border-color:#9D174D;box-shadow:0 4px 0 #9D174D,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openReplyModal()" title="AI 分析來文訴求，一鍵產生完整的回覆函稿，並自動填入正確受文者、引述來文字號">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+            💌 AI 回覆草稿
+          </button>
+
+          <!-- 21. AI 簡報大綱產生 -->
+          <button class="btn" style="background:linear-gradient(to bottom,#F97316,#EA580C);color:white;border-color:#C2410C;box-shadow:0 4px 0 #C2410C,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openPresentModal()" title="將公文轉換為完整的簡報大綱，包含投影片標題、說明要點、建議圖表，可直接匯出 PowerPoint 結構">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            🎬 簡報大綱
           </button>
         </div>
       </div>
@@ -4291,6 +4516,489 @@ function autoResizeDictationBox() {
 
 // 監聽鍵盤手動打字時，自動長高
 document.getElementById('bossDictationResult')?.addEventListener('input', autoResizeDictationBox);
+
+// ==========================================
+// 🚀 新增10項AI功能 - 共用 callGroqAI 函數
+// ==========================================
+async function callGroqAI(systemPrompt, userContent, resultBoxId, btnId, onSuccess) {
+  const apiKey = localStorage.getItem('di_groq_key');
+  if (!apiKey) {
+    const k = prompt('請輸入 Groq API Key（可至 console.groq.com 免費申請）：');
+    if (!k) return;
+    localStorage.setItem('di_groq_key', k.trim());
+  }
+  const key = localStorage.getItem('di_groq_key');
+  const resultBox = document.getElementById(resultBoxId);
+  const btn = document.getElementById(btnId);
+  if (btn) btn.disabled = true;
+  resultBox.innerHTML = `<div style="text-align:center;padding:40px 20px;font-weight:700;color:#059669;">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1.5s" repeatCount="indefinite"/></path></svg>
+    <br><br>AI 正在深度分析中，請稍候...</div>`;
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }], temperature: 0.3, max_tokens: 3000 })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || `HTTP ${resp.status}`);
+    const text = data.choices[0].message.content;
+    if (onSuccess) onSuccess(text, resultBox);
+    else resultBox.innerHTML = `<div style="white-space:pre-wrap;line-height:1.8;font-size:14px;">${esc(text)}</div>`;
+    showToast('✨ AI 分析完成！');
+  } catch (err) {
+    resultBox.innerHTML = `<div style="color:var(--seal-red);padding:20px;font-weight:600;">❌ 錯誤：${err.message}</div>`;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function getDocFullText() {
+  if (!lastParsedData) return '';
+  const d = lastParsedData;
+  return [
+    d.orgName ? `發文機關：${d.orgName}` : '',
+    d.docType ? `公文類別：${d.docType}` : '',
+    d.docNo ? `發文字號：${d.docNo}` : '',
+    d.docDate ? `發文日期：${d.docDate}` : '',
+    d.receiveOrg ? `受文者：${d.receiveOrg}` : '',
+    d.subject ? `【主旨】\n${d.subject}` : '',
+    d.content ? `【說明】\n${d.content}` : '',
+    d.proposal ? `【擬辦】\n${d.proposal}` : '',
+  ].filter(Boolean).join('\n\n');
+}
+
+// ==========================================
+// 功能12：AI 法規風險警示
+// ==========================================
+function openRiskModal() {
+  if (!lastParsedData) return showToast('請先匯入並解析一份公文！');
+  document.getElementById('riskModal').classList.add('show');
+  document.getElementById('riskResultBox').innerHTML = '<div style="text-align:center;padding:60px;opacity:0.5;font-weight:600;">點擊「開始風險掃描」，AI 將自動分析法規遵循狀況</div>';
+}
+function closeRiskModal() { document.getElementById('riskModal').classList.remove('show'); }
+
+async function startRiskScan() {
+  const sys = `你是一位精通中華民國行政法規、公文程序法與政府採購法的資深法律顧問。請從法律遵循角度，深度分析公文，輸出繁體中文風險報告。
+
+請依照以下格式輸出（使用 HTML 標籤）：
+<div class="risk-section risk-high">⚠️ 高風險項目（須立即處理）</div>
+<div class="risk-item">1. [具體風險描述] → [建議修正方式]</div>
+...
+<div class="risk-section risk-med">🔸 中風險項目（建議改善）</div>
+<div class="risk-item">...</div>
+<div class="risk-section risk-low">✅ 已符合規範</div>
+<div class="risk-item">...</div>
+<div class="risk-summary">📋 總體評估：[2-3句綜合評語]</div>
+
+請特別注意：1.引用法規是否正確且現行有效 2.期限要求是否明確 3.責任歸屬是否清楚 4.必要程序是否完備 5.密等標示是否適當`;
+  await callGroqAI(sys, getDocFullText(), 'riskResultBox', 'btnRiskScan', (text, box) => {
+    box.innerHTML = `<style>.risk-section{font-weight:800;font-size:15px;margin:15px 0 8px;padding:8px 15px;border-radius:8px;}.risk-high{background:rgba(244,63,94,0.1);color:#BE123C;border-left:4px solid #BE123C;}.risk-med{background:rgba(245,158,11,0.1);color:#D97706;border-left:4px solid #D97706;}.risk-low{background:rgba(16,185,129,0.1);color:#059669;border-left:4px solid #059669;}.risk-item{padding:6px 15px;font-size:14px;line-height:1.7;border-bottom:1px solid var(--border-color);}.risk-summary{background:rgba(0,122,255,0.07);border:1px solid rgba(0,122,255,0.2);border-radius:10px;padding:15px;margin-top:15px;font-size:14px;line-height:1.8;font-weight:600;}</style>${text}`;
+  });
+}
+
+
+// ==========================================
+// 功能14：AI 跨文件脈絡追蹤
+// ==========================================
+function openContextModal() {
+  document.getElementById('contextModal').classList.add('show');
+}
+function closeContextModal() { document.getElementById('contextModal').classList.remove('show'); }
+
+async function analyzeContext() {
+  const extraDocs = document.getElementById('contextExtraInput').value.trim();
+  const currentDoc = getDocFullText();
+  const combined = currentDoc ? `【主要公文】\n${currentDoc}\n\n【相關文件/補充說明】\n${extraDocs}` : `【文件內容】\n${extraDocs}`;
+  if (!combined.trim()) return showToast('請先匯入公文或輸入相關文件內容！');
+  const sys = `你是一位擁有豐富案件管理經驗的行政訴訟專家。請分析所有提供的公文/文件，輸出以下繁體中文分析報告（使用 HTML）：
+
+<h4 style="color:#0369A1">📅 時間脈絡</h4>
+<p>依時間序排列的事件發展...</p>
+
+<h4 style="color:#7C3AED">🔗 案件關聯</h4>
+<p>各文件間的因果關係、引述關係...</p>
+
+<h4 style="color:#D97706">⚠️ 未解決事項</h4>
+<p>尚待處理的事項與追蹤要點...</p>
+
+<h4 style="color:#059669">✅ 進度狀態</h4>
+<p>整體案件目前的進展程度...</p>
+
+<h4 style="color:#BE123C">🎯 下一步行動</h4>
+<p>建議的後續行動方案...</p>`;
+  await callGroqAI(sys, combined, 'contextResultBox', 'btnAnalyzeContext', (text, box) => {
+    box.innerHTML = `<style>#contextResultBox h4{margin:12px 0 6px;font-size:15px;}#contextResultBox p{font-size:14px;line-height:1.8;padding:0 0 10px;border-bottom:1px solid var(--border-color);}</style>${text}`;
+  });
+}
+
+// ==========================================
+// 功能15：AI 批次改寫引擎
+// ==========================================
+function openBatchModal() {
+  if (!lastParsedData) return showToast('請先匯入並解析一份公文！');
+  document.getElementById('batchModal').classList.add('show');
+  document.getElementById('batchResultBox').innerHTML = '<div style="text-align:center;padding:60px;opacity:0.5;font-weight:600;">設定替換規則後點擊「執行批次改寫」</div>';
+}
+function closeBatchModal() { document.getElementById('batchModal').classList.remove('show'); }
+function addBatchRule() {
+  const from = document.getElementById('batchFrom').value.trim();
+  const to = document.getElementById('batchTo').value.trim();
+  if (!from) return showToast('請輸入要被替換的詞彙！');
+  const list = document.getElementById('batchRuleList');
+  const item = document.createElement('div');
+  item.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--meta-bg);border-radius:8px;margin-bottom:6px;font-size:13px;';
+  item.innerHTML = `<span style="color:var(--seal-red);font-weight:700;">${esc(from)}</span><span style="color:var(--apple-gray);">→</span><span style="color:var(--nature-green-main);font-weight:700;">${esc(to)||'（刪除）'}</span><button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--apple-gray);font-size:16px;">×</button>`;
+  item.dataset.from = from; item.dataset.to = to;
+  list.appendChild(item);
+  document.getElementById('batchFrom').value = '';
+  document.getElementById('batchTo').value = '';
+  showToast(`✅ 規則已加入：${from} → ${to||'刪除'}`);
+}
+
+async function executeBatchRewrite() {
+  const rules = Array.from(document.getElementById('batchRuleList').children).map(el => `「${el.dataset.from}」 → 「${el.dataset.to || '（刪除）'}」`);
+  const aiEnhance = document.getElementById('batchAIEnhance').checked;
+  const fullText = getDocFullText();
+  let processedText = fullText;
+  
+  Array.from(document.getElementById('batchRuleList').children).forEach(el => {
+    processedText = processedText.replaceAll(el.dataset.from, el.dataset.to || '');
+  });
+  
+  if (!aiEnhance) {
+    document.getElementById('batchResultBox').innerHTML = `<div style="white-space:pre-wrap;font-size:14px;line-height:1.8;">${esc(processedText)}</div>
+      <button class="btn btn-primary" onclick="applyBatchResult()" style="margin-top:15px;width:100%;">✅ 套用至公文</button>`;
+    window._batchResult = processedText;
+    return;
+  }
+  
+  const sys = `你是資深中文公文校對員。以下公文已套用了若干詞彙替換規則：\n${rules.join('\n')}\n\n請在保留所有替換結果的前提下，針對因替換產生的不通順、重複或語病進行潤飾修正，使全文再次流暢自然。只輸出修正後的完整公文全文，不要有任何解說。`;
+  await callGroqAI(sys, processedText, 'batchResultBox', 'btnBatchRun', (text, box) => {
+    window._batchResult = text;
+    box.innerHTML = `<div style="white-space:pre-wrap;font-size:14px;line-height:1.8;">${esc(text)}</div>
+      <button class="btn btn-primary" onclick="applyBatchResult()" style="margin-top:15px;width:100%;">✅ 套用至公文</button>`;
+  });
+}
+
+function applyBatchResult() {
+  if (!window._batchResult || !lastParsedData) return;
+  const text = window._batchResult;
+  const subMatch = text.match(/【主旨】\n?([\s\S]*?)(?=\n\n【|$)/);
+  const conMatch = text.match(/【說明】\n?([\s\S]*?)(?=\n\n【|$)/);
+  const proMatch = text.match(/【擬辦】\n?([\s\S]*?)(?=\n\n【|$)/);
+  if (subMatch) lastParsedData.subject = subMatch[1].trim();
+  if (conMatch) lastParsedData.content = conMatch[1].trim();
+  if (proMatch) lastParsedData.proposal = proMatch[1].trim();
+  render(lastParsedData, lastRawText);
+  closeBatchModal();
+  showToast('✅ 批次改寫已套用至公文！');
+}
+
+
+// ==========================================
+// 功能17：AI 反向情境模擬
+// ==========================================
+function openSimulateModal() {
+  if (!lastParsedData) return showToast('請先匯入並解析一份公文！');
+  document.getElementById('simulateModal').classList.add('show');
+  document.getElementById('simulateResultBox').innerHTML = '<div style="text-align:center;padding:60px;opacity:0.5;font-weight:600;">選擇視角後點擊「開始模擬」，AI 將以不同身份解讀此公文</div>';
+}
+function closeSimulateModal() { document.getElementById('simulateModal').classList.remove('show'); }
+
+async function startSimulation() {
+  const persona = document.getElementById('simulatePersona').value;
+  const personas = {
+    receiver: '你是收到此公文的承辦人員。請模擬你收到此公文後的第一反應，包括：(1)你對此公文的解讀與理解 (2)你覺得需要確認的疑問點 (3)你打算如何回覆或辦理 (4)你覺得此公文有哪些地方不夠清楚',
+    citizen: '你是一位受此公文政策影響的一般民眾（非行政人員）。請模擬你的反應：(1)你對此政策的理解（用白話解釋） (2)你可能有的疑慮或不滿 (3)你可能想問政府的問題 (4)你對此公文語氣的感受',
+    media: '你是一位調查記者，專門報導政府行政效率。請模擬你看到此公文的想法：(1)你會如何下新聞標題 (2)你注意到哪些值得追蹤的細節 (3)你想向主管機關追問的問題 (4)你認為此公文有什麼信息透明度問題',
+    auditor: '你是政府審計院的審計人員。請從稽核角度分析：(1)此公文的程序合法性 (2)資源使用是否符合效益 (3)責任歸屬是否明確 (4)是否有可能的弊端或灰色地帶',
+    superior: '你是此公文發文機關的局長（上級長官）。請模擬你的批閱心得：(1)此公文達成機關目標的程度 (2)政治風險評估 (3)你會要求補充或修改的地方 (4)你對承辦人的評價'
+  };
+  const sys = `${personas[persona]}\n\n請以繁體中文，用條列式且具體的方式輸出你的模擬反應，要有真實感和洞見，不要空泛。每個部分用粗體標題分隔。`;
+  await callGroqAI(sys, getDocFullText(), 'simulateResultBox', 'btnStartSimulate', (text, box) => {
+    const formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--nature-green-deep);">$1</strong>').replace(/\n/g, '<br>');
+    box.innerHTML = `<div style="font-size:14px;line-height:1.9;">${formatted}</div>`;
+  });
+}
+
+
+// ==========================================
+// 功能19：AI 跨機關回覆草稿
+// ==========================================
+function openReplyModal() {
+  if (!lastParsedData) return showToast('請先匯入並解析一份公文！');
+  const d = lastParsedData;
+  document.getElementById('replyOurOrg').value = d.receiveOrg || '';
+  document.getElementById('replyToOrg').value = d.orgName || '';
+  document.getElementById('replyRefNo').value = d.docNo || '';
+  document.getElementById('replyModal').classList.add('show');
+  document.getElementById('replyResultBox').innerHTML = '<div style="text-align:center;padding:60px;opacity:0.5;font-weight:600;">確認資訊後點擊「生成回覆草稿」</div>';
+}
+function closeReplyModal() { document.getElementById('replyModal').classList.remove('show'); }
+
+async function generateReply() {
+  const ourOrg = document.getElementById('replyOurOrg').value.trim();
+  const toOrg = document.getElementById('replyToOrg').value.trim();
+  const refNo = document.getElementById('replyRefNo').value.trim();
+  const stance = document.getElementById('replyStance').value;
+  const stanceText = { agree:'表示同意並說明後續配合辦理方式', partial:'部分同意，對有疑義的部分提出協商意見', disagree:'婉轉但明確表達不同意，並說明理由與替代方案', clarify:'請求來文機關補充說明或澄清疑點', extend:'說明辦理進度，請求延期辦理' };
+  const sys = `你是一位擁有30年公文寫作經驗的政府機關秘書長。
+請依據以下來文，以「${ourOrg || '本機關'}」的身份，向「${toOrg || '來文機關'}」撰寫回覆公文草稿。
+
+立場：${stanceText[stance]}
+引據：本文係回覆 ${refNo || '貴機關來文'}
+
+格式要求：
+- 以「說明：」段落引述來文並說明回覆事項
+- 語氣${stance === 'disagree' ? '婉轉但堅定' : '誠懇得體'}
+- 若有後續行動，在「擬辦：」中明確列出
+- 最後以「請　鑒核」（上行文）或「請　查照」（平行文）結尾
+
+請直接輸出格式化的公文草稿（主旨、說明、擬辦），不要有解說文字。`;
+  await callGroqAI(sys, `【來文全文】\n${getDocFullText()}`, 'replyResultBox', 'btnGenReply', (text, box) => {
+    box.innerHTML = `<div style="white-space:pre-wrap;font-size:15px;line-height:1.9;font-family:'Noto Serif TC',serif;">${esc(text)}</div>
+      <button class="btn btn-primary" onclick="applyReplyDraft()" style="margin-top:15px;width:100%;">✅ 套用草稿至新公文</button>`;
+    window._replyDraft = text;
+  });
+}
+
+function applyReplyDraft() {
+  if (!window._replyDraft || !lastParsedData) return;
+  const text = window._replyDraft;
+  const d = lastParsedData;
+  const subMatch = text.match(/主旨[：:]\s*([\s\S]*?)(?=說明[：:]|$)/);
+  const conMatch = text.match(/說明[：:]\s*([\s\S]*?)(?=擬辦[：:]|$)/);
+  const proMatch = text.match(/擬辦[：:]\s*([\s\S]*?)$/);
+  const oldOrg = d.orgName; const oldReceiver = d.receiveOrg;
+  d.orgName = document.getElementById('replyOurOrg').value.trim() || oldOrg;
+  d.receiveOrg = document.getElementById('replyToOrg').value.trim() || oldReceiver;
+  if (subMatch) d.subject = subMatch[1].trim();
+  if (conMatch) d.content = conMatch[1].trim();
+  if (proMatch) d.proposal = proMatch[1].trim();
+  d.docNo = ''; d.docDate = '';
+  render(d, lastRawText);
+  closeReplyModal();
+  showToast('✅ 回覆草稿已套用！請確認各欄位後匯出。');
+}
+
+// ==========================================
+// 功能21：AI 簡報大綱產生
+// ==========================================
+function openPresentModal() {
+  if (!lastParsedData) return showToast('請先匯入並解析一份公文！');
+  document.getElementById('presentModal').classList.add('show');
+  document.getElementById('presentResultBox').innerHTML = '<div style="text-align:center;padding:60px;opacity:0.5;font-weight:600;">設定簡報參數後點擊「生成大綱」</div>';
+}
+function closePresentModal() { document.getElementById('presentModal').classList.remove('show'); }
+
+async function generatePresentation() {
+  const audience = document.getElementById('presentAudience').value;
+  const slides = document.getElementById('presentSlides').value;
+  const style = document.getElementById('presentStyle').value;
+  const audienceMap = { executive:'高階主管/長官（決策層）', staff:'一般承辦人員', public:'一般民眾', council:'議員/監督機關' };
+  const styleMap = { formal:'正式政府簡報風格', modern:'現代企業簡報風格', story:'故事敘事風格' };
+
+  // =====================================================================
+  // 【修正】強化 Prompt：要求每個要點含詳細說明、備注至少15句完整論述
+  // =====================================================================
+  const sys = `你是一位擅長政府公共事務溝通的頂尖簡報設計師，同時也是資深的政策傳達專家。
+請將公文內容轉化為一份 ${slides} 張投影片的【完整詳細】簡報大綱。
+
+目標受眾：${audienceMap[audience]}
+簡報風格：${styleMap[style]}
+
+【重要品質要求】
+1. keyPoints：每一個要點必須是一句完整的說明句（至少25個字），清楚闡述該要點的具體內容、數據或意義，不可只寫標題式短語。
+2. keyPointDetails：每個要點必須附上2-3句的詳細解說，說明背景、影響或執行方式。
+3. speakerNote：主講人備注必須至少15句以上的完整論述，包含：(a)開場如何引導受眾注意 (b)各要點的深入說明與補充 (c)可能的提問與回應方式 (d)與下一張投影片的銜接語。備注必須讓主講人可以直接照稿講述，內容豐富且具說服力。
+4. visualSuggestion：視覺建議需具體說明圖表類型、資料來源建議、配色方案及版面配置。
+
+請輸出純 JSON（不要有其他文字、不要有 markdown 符號）：
+{
+  "title": "簡報完整標題",
+  "subtitle": "副標題（說明簡報目的與時間範圍）",
+  "slides": [
+    {
+      "slideNum": 1,
+      "title": "投影片標題",
+      "type": "封面/目錄/內容/數據/結論/行動呼籲",
+      "keyPoints": [
+        "要點一：完整說明句，至少25字，說明具體內容與數據",
+        "要點二：完整說明句，至少25字，說明具體內容與數據",
+        "要點三：完整說明句，至少25字，說明具體內容與數據",
+        "要點四：完整說明句，至少25字，說明具體內容與數據",
+        "要點五：完整說明句，至少25字，說明具體內容與數據"
+      ],
+      "keyPointDetails": [
+        "要點一的詳細解說：背景說明、影響層面、執行方式或相關數據補充（2-3句完整說明）",
+        "要點二的詳細解說：背景說明、影響層面、執行方式或相關數據補充（2-3句完整說明）",
+        "要點三的詳細解說：背景說明、影響層面、執行方式或相關數據補充（2-3句完整說明）",
+        "要點四的詳細解說：背景說明、影響層面、執行方式或相關數據補充（2-3句完整說明）",
+        "要點五的詳細解說：背景說明、影響層面、執行方式或相關數據補充（2-3句完整說明）"
+      ],
+      "speakerNote": "主講人備注（至少15句完整論述）：開場白與引導語。第一個要點的詳細說明與補充。相關背景脈絡的介紹。第二個要點的展開說明。可能涉及的數據或案例說明。第三個要點的論述與影響分析。針對目標受眾的特別強調重點。第四個要點的實務操作說明。第五個要點的政策意涵分析。預期聽眾可能提出的疑問。建議的回應方式與補充說明。本張投影片的核心訊息總結。與下一張投影片的銜接引導語。特別注意事項或敏感議題的處理方式。結尾強調語與行動呼籲。",
+      "visualSuggestion": "具體視覺建議：圖表類型（如橫向條狀圖）、建議呈現的關鍵數據、配色方案（主色/輔色/強調色）、版面配置方式（左文右圖/全版圖表/分欄排列）、圖示風格建議"
+    }
+  ],
+  "designTheme": "整體設計主題：主色系、字型建議、版面風格、品牌一致性建議",
+  "totalDuration": "建議報告時間（含各段落時間分配）",
+  "presentationTips": "整體簡報注意事項與演講技巧建議（3-5點）"
+}`;
+
+  await callGroqAI(sys, getDocFullText(), 'presentResultBox', 'btnGenPresent', (text, box) => {
+    try {
+        let clean = text;
+      
+        // 第1層：移除 markdown code block 標記
+        clean = clean.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+      
+        // 第2層：嘗試以正則直接抽取最外層 { ... } 區塊（最穩健方式）
+        // 處理 AI 在 JSON 前後加說明文字的情況
+        const jsonMatch = clean.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          clean = jsonMatch[0];
+        }
+      
+        // 第3層：清除常見的非法尾部字元（部分模型會在結尾加上句點或換行）
+        clean = clean.trim().replace(/,\s*([}\]])/g, '$1');
+      
+        let p;
+        try {
+          p = JSON.parse(clean);
+        } catch (innerErr) {
+          // 第4層：若仍失敗，嘗試修復常見的 JSON 截斷問題（12張時 token 可能不足）
+          // 找到最後一個完整的 slide 物件位置，截斷並補齊結構
+          const lastCompleteSlide = clean.lastIndexOf('},\n    {');
+          const lastBrace = clean.lastIndexOf('}');
+          if (lastCompleteSlide > 0) {
+            // 截到最後一個完整 slide，補齊 JSON 結構
+            const truncated = clean.substring(0, lastCompleteSlide + 1) + 
+              '\n  ],' +
+              '\n  "designTheme": "（因內容過長自動截斷，請減少張數或分批生成）",' +
+              '\n  "totalDuration": "請依實際投影片數重新估算",' +
+              '\n  "presentationTips": "（備注已截斷，建議改為8張以內確保完整輸出）"' +
+              '\n}';
+            p = JSON.parse(truncated);
+            // 顯示截斷警告
+            setTimeout(() => showToast('⚠️ 內容過長已自動截斷，建議改選8張以內'), 500);
+          } else {
+            throw innerErr;
+          }
+        }
+      const typeColor = { '封面':'#1B4332', '目錄':'#374151', '內容':'#1D4ED8', '數據':'#7C3AED', '結論':'#D97706', '行動呼籲':'#BE123C' };
+
+      // =====================================================================
+      // 【修正】UI 呈現：要點展開顯示詳細說明、備注區放大且完整呈現
+      // =====================================================================
+      const slidesHtml = p.slides.map((s, i) => {
+        // 合併 keyPoints 與 keyPointDetails 顯示
+        const keyPointsHtml = s.keyPoints.map((kp, idx) => {
+          const detail = (s.keyPointDetails && s.keyPointDetails[idx]) ? s.keyPointDetails[idx] : '';
+          return `
+            <div style="background:var(--meta-bg);border-radius:8px;padding:10px 14px;margin-bottom:8px;border-left:3px solid ${typeColor[s.type]||'#374151'};">
+              <div style="display:flex;align-items:flex-start;gap:8px;">
+                <span style="color:${typeColor[s.type]||'#10B981'};font-weight:900;font-size:14px;flex-shrink:0;margin-top:1px;">▸</span>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:var(--text-main);line-height:1.6;">${esc(kp)}</div>
+                  ${detail ? `<div style="font-size:12px;color:var(--apple-gray);margin-top:5px;line-height:1.7;padding-left:2px;border-top:1px dashed var(--border-color);padding-top:5px;">${esc(detail)}</div>` : ''}
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+
+        // 主講備注：完整段落呈現，不截斷
+        const noteHtml = `
+          <div style="background:linear-gradient(135deg,rgba(27,67,50,0.06),rgba(45,106,79,0.04));border-radius:10px;padding:14px 16px;border:1px solid rgba(27,67,50,0.15);">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+              <span style="font-size:16px;">🎤</span>
+              <strong style="font-size:13px;color:var(--nature-green-deep);letter-spacing:0.05em;">主講人備注</strong>
+            </div>
+            <div style="font-size:13px;color:var(--text-main);line-height:2;white-space:pre-line;">${esc(s.speakerNote)}</div>
+          </div>`;
+
+        // 視覺建議區塊
+        const visualHtml = `
+          <div style="background:rgba(124,58,237,0.06);border-radius:8px;padding:10px 14px;margin-top:10px;border:1px solid rgba(124,58,237,0.15);">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+              <span style="font-size:14px;">🎨</span>
+              <strong style="font-size:12px;color:#7C3AED;">視覺設計建議</strong>
+            </div>
+            <div style="font-size:12px;color:var(--text-main);line-height:1.8;">${esc(s.visualSuggestion)}</div>
+          </div>`;
+
+        return `
+          <div style="border:1px solid var(--border-color);border-radius:14px;margin-bottom:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+            <div style="background:${typeColor[s.type]||'#374151'};color:white;padding:12px 18px;display:flex;align-items:center;gap:12px;">
+              <div style="background:rgba(255,255,255,0.25);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;">${s.slideNum}</div>
+              <div style="font-weight:800;font-size:16px;letter-spacing:0.03em;">${esc(s.title)}</div>
+              <span style="margin-left:auto;font-size:11px;background:rgba(255,255,255,0.22);padding:3px 10px;border-radius:12px;white-space:nowrap;">${esc(s.type)}</span>
+            </div>
+            <div style="padding:16px 18px;">
+              <div style="font-size:11px;font-weight:700;color:var(--apple-gray);letter-spacing:0.1em;margin-bottom:10px;text-transform:uppercase;">📋 投影片要點與說明</div>
+              ${keyPointsHtml}
+              <div style="margin-top:14px;">${noteHtml}</div>
+              ${visualHtml}
+            </div>
+          </div>`;
+      }).join('');
+
+      // 整體簡報技巧區塊
+      const tipsHtml = p.presentationTips ? `
+        <div style="background:linear-gradient(135deg,rgba(217,119,6,0.1),rgba(217,119,6,0.05));border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid rgba(217,119,6,0.2);">
+          <div style="font-weight:800;color:#D97706;margin-bottom:10px;font-size:14px;">💡 整體簡報技巧建議</div>
+          <div style="font-size:13px;color:var(--text-main);line-height:2;white-space:pre-line;">${esc(p.presentationTips)}</div>
+        </div>` : '';
+
+      box.innerHTML = `
+        <div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);color:white;border-radius:14px;padding:22px;margin-bottom:20px;text-align:center;">
+          <div style="font-size:24px;font-weight:900;font-family:'Noto Serif TC',serif;line-height:1.4;">${esc(p.title)}</div>
+          <div style="font-size:14px;opacity:0.85;margin-top:6px;line-height:1.6;">${esc(p.subtitle)}</div>
+          <div style="display:flex;justify-content:center;gap:20px;margin-top:14px;font-size:12px;opacity:0.9;flex-wrap:wrap;">
+            <span>📊 共 ${p.slides.length} 張投影片</span>
+            <span>⏱️ ${esc(p.totalDuration)}</span>
+            <span>🎨 ${esc(p.designTheme)}</span>
+          </div>
+        </div>
+        ${tipsHtml}
+        ${slidesHtml}
+        <button class="btn btn-primary" onclick="copyPresentText()" style="width:100%;margin-top:5px;">📋 複製完整大綱文字</button>`;
+      window._presentData = p;
+    } catch(e) {
+      box.innerHTML = `<div style="white-space:pre-wrap;font-size:14px;">${esc(text)}</div>`;
+    }
+  });
+}
+
+function copyPresentText() {
+  if (!window._presentData) return;
+  const p = window._presentData;
+  // =====================================================================
+  // 【修正】複製文字：包含要點詳細說明、完整備注、視覺建議
+  // =====================================================================
+  const txt = [
+    `${p.title}`,
+    `${p.subtitle}`,
+    `建議時間：${p.totalDuration}`,
+    `設計主題：${p.designTheme}`,
+    p.presentationTips ? `\n【簡報技巧建議】\n${p.presentationTips}` : '',
+    `\n${'═'.repeat(50)}`,
+    ...p.slides.map(s => [
+      `\n【第 ${s.slideNum} 張】${s.title}（${s.type}）`,
+      `${'─'.repeat(40)}`,
+      `▌ 投影片要點：`,
+      ...s.keyPoints.map((k, i) => {
+        const detail = (s.keyPointDetails && s.keyPointDetails[i]) ? `\n      └ ${s.keyPointDetails[i]}` : '';
+        return `  ${i+1}. ${k}${detail}`;
+      }),
+      `\n▌ 主講人備注：`,
+      s.speakerNote,
+      `\n▌ 視覺設計建議：`,
+      s.visualSuggestion
+    ].join('\n'))
+  ].join('\n');
+  navigator.clipboard.writeText(txt).then(()=>showToast('✅ 完整簡報大綱已複製！'));
+}
 </script>
 </body>
 </html>
