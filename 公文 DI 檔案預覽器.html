@@ -331,33 +331,63 @@
   .doc-line-item { padding-left: 2em; text-indent: -2em; margin-bottom: 2px; }
   .doc-line-cont { padding-left: 2em; margin-bottom: 2px; }
 
-.raw-footer { padding: 15px 20px; background: var(--meta-bg); display: flex; justify-content: center; align-items: center; border-top: 1px solid var(--border-color); overflow-x: auto; }
-.footer-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .raw-footer {
+  padding: 12px 20px;
+  background: var(--meta-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* 第一行：固定11顆按鈕，不換行 */
+.footer-actions-row1 {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  justify-content: center;
+  width: 100%;
+}
+
+/* 第二行：現有其餘功能，可換行擴充 */
+.footer-actions-row2 {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+/* 兩行按鈕共用樣式繼承 */
+.footer-actions-row1 .btn,
+.footer-actions-row2 .btn {
+  min-width: auto;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+  gap: 5px;
+  white-space: nowrap;
+  color: white !important;
+}
+
+.footer-actions-row1 .btn svg,
+.footer-actions-row2 .btn svg {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.footer-actions-row1 .btn:hover svg,
+.footer-actions-row2 .btn:hover svg {
+  transform: rotate(360deg) scale(1.15);
+}
 /* 新增：統一的綠色 AI 漸層按鈕 */
 .btn-emerald {
   background: linear-gradient(to bottom, #10B981, #059669); color: white; border-color: #047857;
   box-shadow: 0 4px 0 #047857, inset 0 1px 0 rgba(255,255,255,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 .btn-emerald:active:not(:disabled) { box-shadow: 0 1px 0 #047857, inset 0 1px 0 rgba(255,255,255,0.1); top: 3px; }
-
-/* 新增：專門針對底部的按鈕進行縮放與防跑版設定 */
-.footer-actions .btn {
-  min-width: auto; /* 取消原本 120px 的最小寬度限制 */
-  height: 32px; /* 明確降低按鈕高度，符合需求 */
-  padding: 0 10px; /* 縮小按鈕左右留白 */
-  font-size: 13px; /* 稍微縮小字體 */
-  gap: 5px; /* 縮小圖示與文字的間距 */
-  white-space: nowrap; /* 強制文字絕對不換行 */
-}
-.footer-actions .btn svg {
-  width: 15px; height: 15px; /* 稍微縮小圖示比例 */
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 設定旋轉動畫過渡效果 */
-}
-
-/* 圖示動態視覺：滑鼠懸停時 SVG 會彈性旋轉並稍微放大 */
-.footer-actions .btn:hover svg {
-  transform: rotate(360deg) scale(1.15);
-}
 
 #rawView { display: none; padding: 30px 50px; background: #FFFFFF; color: #333333; font-family: "SF Mono", Menlo, monospace; font-size: 16px; line-height: 1.8; max-height: 480px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; border-bottom-left-radius: var(--apple-radius); border-bottom-right-radius: var(--apple-radius); }
   #rawView.visible { display: block; }
@@ -1462,7 +1492,127 @@ body.font-kai .doc-paper [contenteditable="true"],
     </div>
   </div>
 </div>
+<!-- 新功能20：AI 公文流程時間軸 Modal -->
+<div class="modal-overlay" id="timelineModal">
+  <div class="modal-content" style="max-width:1000px;">
+    <div class="modal-header" style="background:linear-gradient(to right,#0F766E,#0D9488);">
+      <h3>🗺️ AI 公文流程時間軸甘特圖</h3>
+      <button class="modal-close" onclick="closeTimelineModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--apple-gray);margin-bottom:12px;">AI 自動萃取「行動項目 + 截止日期 + 責任單位」，繪製橫向甘特圖，長官一眼看清辦理順序與期限壓力。</p>
+      <div style="background:var(--meta-bg);padding:10px 16px;border-radius:10px;border:1px solid var(--border-color);display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <span style="font-size:14px;font-weight:700;">🔑 金鑰狀態：</span>
+        <span style="font-size:13px;color:var(--apple-blue);font-weight:700;" id="timelineKeyStatus">讀取中...</span>
+      </div>
+      <button class="btn" id="btnGenTimeline" onclick="generateTimeline()" style="background:linear-gradient(to bottom,#0D9488,#0F766E);color:white;border-color:#115E59;box-shadow:0 4px 0 #115E59;margin-bottom:16px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        一鍵生成時間軸
+      </button>
+      <div id="timelineResultBox" style="min-height:350px;overflow-y:auto;overflow-x:auto;">
+        <div style="text-align:center;padding-top:20%;opacity:0.5;font-weight:600;">點擊上方按鈕，AI 將自動解析公文並繪製甘特圖時間軸</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeTimelineModal()">關閉</button>
+    </div>
+  </div>
+</div>
 
+<!-- 新功能21：AI 公文朝代翻譯機 Modal -->
+<div class="modal-overlay" id="dynastyModal">
+  <div class="modal-content" style="max-width:1000px;">
+    <div class="modal-header" style="background:linear-gradient(to right,#78350F,#92400E);">
+      <h3>🏛️ AI 公文朝代翻譯機</h3>
+      <button class="modal-close" onclick="closeDynastyModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--apple-gray);margin-bottom:12px;">雙向轉換：現代公文 ⇄ 文言奏摺。適用日治時期、戰後初期老舊公文檔案的研究人員與檔案館員。</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:14px;font-weight:700;">🔑 金鑰：</span>
+          <span style="font-size:13px;color:var(--apple-blue);font-weight:700;" id="dynastyKeyStatus">讀取中...</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+          <span style="font-size:14px;font-weight:700;">轉換方向：</span>
+          <select id="dynastyDirection" style="padding:6px 12px;border-radius:8px;border:1px solid var(--apple-gray);background:var(--doc-bg);color:var(--text-main);outline:none;font-size:13px;font-weight:600;">
+            <option value="modern2ancient">🏛️ 現代公文 → 文言奏摺</option>
+            <option value="ancient2modern">📋 文言古文 → 現代行政語言</option>
+          </select>
+          <select id="dynastyStyle" style="padding:6px 12px;border-radius:8px;border:1px solid var(--apple-gray);background:var(--doc-bg);color:var(--text-main);outline:none;font-size:13px;font-weight:600;">
+            <option value="qing">清代奏摺風格</option>
+            <option value="ming">明代題本風格</option>
+            <option value="tang">唐宋牒文風格</option>
+            <option value="japanese">日治時期公文風格</option>
+          </select>
+        </div>
+        <button class="btn" id="btnGenDynasty" onclick="generateDynasty()" style="background:linear-gradient(to bottom,#92400E,#78350F);color:white;border-color:#451A03;box-shadow:0 4px 0 #451A03;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+          執行翻譯
+        </button>
+      </div>
+      <div class="ai-split-view">
+        <div class="ai-panel">
+          <h4 style="color:#92400E;">📜 原文</h4>
+          <textarea class="ai-textarea" id="dynastyInputText" style="height:400px;border-color:#92400E;" placeholder="將自動載入目前公文內容，您也可以直接在此貼上古文或現代公文..."></textarea>
+        </div>
+        <div class="ai-panel">
+          <h4 style="color:#92400E;">✨ 翻譯結果</h4>
+          <div class="ai-result-box" id="dynastyResultBox" style="height:400px;border-color:#92400E;white-space:pre-wrap;">
+            <div style="text-align:center;padding-top:40%;opacity:0.5;font-weight:600;">翻譯結果將顯示於此</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeDynastyModal()">關閉</button>
+      <button class="btn" id="btnCopyDynasty" onclick="copyDynastyResult()" style="display:none;background:linear-gradient(to bottom,#92400E,#78350F);color:white;border-color:#451A03;box-shadow:0 4px 0 #451A03;">
+        📋 複製翻譯結果
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 新功能22：AI 法規自動串接引擎 Modal -->
+<div class="modal-overlay" id="lawEngineModal">
+  <div class="modal-content" style="max-width:900px;">
+    <div class="modal-header" style="background:linear-gradient(to right,#1E3A8A,#1E40AF);">
+      <h3>🔗 AI 法規自動串接引擎</h3>
+      <button class="modal-close" onclick="closeLawEngineModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--apple-gray);margin-bottom:12px;">輸入事由關鍵字，AI 自動推薦最相關的 3 條法律條文，生成標準引述格式，並警示近期修訂情況。</p>
+      <div style="background:var(--meta-bg);padding:10px 16px;border-radius:10px;border:1px solid var(--border-color);display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+        <span style="font-size:13px;font-weight:700;">🔑 金鑰：</span>
+        <span style="font-size:13px;color:var(--apple-blue);font-weight:700;" id="lawEngineKeyStatus">讀取中...</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <input type="text" id="lawEngineKeyword" class="prof-input" style="flex:1;min-width:250px;" placeholder="輸入事由關鍵字，例如：公務人員差旅費、採購招標、環境影響評估...">
+        <select id="lawEngineCategory" style="padding:8px 12px;border-radius:8px;border:1px solid var(--apple-gray);background:var(--doc-bg);color:var(--text-main);outline:none;font-size:13px;font-weight:600;">
+          <option value="general">🏛️ 一般行政法規</option>
+          <option value="finance">💰 財政預算採購</option>
+          <option value="personnel">👥 人事行政</option>
+          <option value="urban">🏗️ 都市建設工程</option>
+          <option value="environment">🌱 環境保護</option>
+          <option value="social">👨‍👩‍👧 社會福利</option>
+        </select>
+        <button class="btn" id="btnGenLaw" onclick="generateLawEngine()" style="background:linear-gradient(to bottom,#1E40AF,#1E3A8A);color:white;border-color:#1E3069;box-shadow:0 4px 0 #1E3069;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          搜尋相關法條
+        </button>
+        <button class="btn btn-secondary" onclick="autoFillLawKeyword()" style="font-size:12px;" title="自動從目前公文主旨擷取關鍵字">⚡ 自動擷取關鍵字</button>
+      </div>
+      <div id="lawEngineResultBox" style="min-height:350px;overflow-y:auto;">
+        <div style="text-align:center;padding-top:18%;opacity:0.5;font-weight:600;">輸入關鍵字後點擊搜尋，AI 將推薦最精準的法條依據</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeLawEngineModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增功能21：AI 簡報大綱 Modal -->
 <!-- 新增功能21：AI 簡報大綱 Modal -->
 <div class="modal-overlay" id="presentModal">
   <div class="modal-content" style="max-width:800px;">
@@ -1605,8 +1755,31 @@ body.font-kai .doc-paper [contenteditable="true"],
           </div>
     
           <div class="control-right">
-            <span id="parseStatus">
-              → <a href="https://console.groq.com/home" target="_blank" rel="noopener noreferrer" style="color: var(--nature-gold); text-decoration: none; border-bottom: 1px solid var(--nature-gold); padding-bottom: 2px; transition: opacity 0.2s; font-weight: 700;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">點此申請免費 Groq API Key</a>
+            <span id="parseStatus" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+              <!-- 金鑰輸入框 -->
+              <label style="display:inline-flex;align-items:center;gap:6px;background:var(--glass-bg);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.3);border-radius:20px;padding:3px 6px 3px 10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <span style="font-size:14px;" title="Groq API 金鑰">🔑</span>
+                <span style="font-size:12px;font-weight:700;color:var(--nature-gold);white-space:nowrap;">金鑰</span>
+                <input
+                  id="groqApiKeyInput"
+                  type="password"
+                  placeholder="貼上 Groq API Key…"
+                  style="width:210px;border:none;background:transparent;outline:none;font-size:13px;color:var(--text-main);font-family:inherit;"
+                  oninput="document.getElementById('groqApiKeyInput').style.color=this.value?'var(--nature-gold)':'var(--text-main)'"
+                >
+                <button
+                  onclick="(function(){
+                    var k=document.getElementById('groqApiKeyInput').value.trim();
+                    if(!k){showToast('⚠️ 請先貼上 API Key');return;}
+                    localStorage.setItem('groqApiKey',k);
+                    showToast('✅ Groq API Key 已儲存！');
+                  })()"
+                  style="height:26px;padding:0 12px;border-radius:14px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:linear-gradient(to bottom,#D4AF37,#B8962E);color:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.2);transition:opacity 0.2s;"
+                  onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'"
+                  title="儲存金鑰至瀏覽器本機">儲存</button>
+              </label>
+              <!-- 申請連結 -->
+              → <a href="https://console.groq.com/home" target="_blank" rel="noopener noreferrer" style="color:var(--nature-gold);text-decoration:none;border-bottom:1px solid var(--nature-gold);padding-bottom:2px;transition:opacity 0.2s;font-weight:700;font-size:12px;white-space:nowrap;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">點此申請免費 Groq API Key</a>
             </span>
             
             <!-- 加入 title -->
@@ -1678,6 +1851,15 @@ function updateTime() {
 }
 setInterval(updateTime, 1000);
 updateTime();
+
+// 自動還原已儲存的 Groq API Key
+(function(){
+  var saved = localStorage.getItem('groqApiKey');
+  if(saved){
+    var el = document.getElementById('groqApiKeyInput');
+    if(el){ el.value = saved; el.style.color = 'var(--nature-gold)'; }
+  }
+})();
 
 const themeToggle = document.getElementById('themeToggle');
 const themeIcon = document.getElementById('themeIcon');
@@ -2625,109 +2807,133 @@ function render(d, raw) {
           <div class="section-text" id="doc-carbonCopy" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="carbonCopy">${renderText(d.carbonCopy)}</div>
         </div>
       </div>
- <div class="raw-footer">
-         <div class="footer-actions">
-           <!-- 1. 專注模式 -->
-           <button class="btn btn-apple" onclick="toggleZenMode()" title="隱藏周邊介面，進入無干擾的純文字專注編輯模式">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-             專注模式
-           </button>
-           <!-- 2. 一鍵複製 -->
-           <button class="btn btn-apple" onclick="copyContent()" title="將整份公文內容複製到剪貼簿，方便直接貼上至公文系統">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-             一鍵複製
-           </button>
-           <!-- 3. 檢視原始碼 -->
-           <button class="btn btn-apple" onclick="document.getElementById('rawView').classList.toggle('visible')" title="檢視解析前的公文原始文字，方便對照與除錯">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-             檢視原始碼
-           </button>
-           <!-- 4. 常用聯絡資訊 -->
-           <button class="btn btn-apple" onclick="openProfileModal()" title="預先設定您的機關與聯絡方式，一鍵自動填入公文各欄位">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-             常用聯絡資訊
-           </button>
-           <!-- 5. 罐頭語錄庫 -->
-           <button class="btn btn-apple" onclick="openSnippetModal()" title="建立並快速插入常用的公文段落或專業詞彙，提升撰寫效率">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-             罐頭語錄庫
-           </button>
-           <!-- 6. 雙檔比對 -->
-           <button class="btn btn-apple" onclick="openDiffModal()" title="匯入舊版公文進行比對，系統將為您自動標示新增與刪除的修訂痕跡">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>
-             雙檔比對
-           </button>
+<div class="raw-footer">
 
-          <!-- 7. 長官視角 -->
-          <button class="btn btn-emerald" onclick="openBossViewModal()" title="切換為長官專用模式：自動產生摘要簡報、語音朗讀，並支援麥克風語音智慧批示">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12h3l3 -9l5 18l3 -9h5"></path></svg>
-            長官視角
-          </button>
-           <!-- 8. AI 潤飾公文 -->
-           <button class="btn btn-emerald" onclick="openAIModal()" title="啟動 Groq AI 智慧公文潤飾引擎：
-1. 多元情境改寫：提供上行文(婉轉)、下行文(嚴謹)、民眾回覆(白話)等超過 10 種專業語氣轉換。
-2. 深度精煉校對：自動揪出錯漏字及語法瑕疵，剔除冗長贅字，強化段落邏輯與公文專業質感。
-3. 修訂痕跡對照：自動比對原文與 AI 修改結果，以「綠字新增、紅字刪除」清楚標示差異。
-4. 局部採納與套用：可點擊有顏色的文字「局部接受/拒絕」特定修改，並一鍵無縫套用回公文區。">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
-            AI 潤飾公文
-          </button>
-          
-          <!-- 9. 多語系翻譯 -->
-          <button class="btn btn-emerald" onclick="openTranslateModal()" title="啟動 AI 翻譯助理，將整份公文快速翻譯為英文、日文等外國語言，並提供雙欄對照功能。">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>
-            多語系翻譯
-          </button>
+  <!-- ═══ 第一行：固定功能（專注模式 → AI 視覺化圖表，共 11 顆）═══ -->
+  <div class="footer-actions-row1">
 
-          <!-- 10. AI 智慧起稿 -->
-          <button class="btn btn-emerald" onclick="openDraftModal()" title="輸入事由與關鍵字，AI 將自動為您生成主旨、說明與擬辦的完整公文草稿。">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
-            AI 起稿
-          </button>
+    <!-- 1. 專注模式 -->
+    <button class="btn btn-apple" onclick="toggleZenMode()" title="隱藏周邊介面，進入無干擾的純文字專注編輯模式">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      專注模式
+    </button>
 
-          <!-- 11. AI 視覺化圖表 -->
-          <button class="btn btn-emerald" onclick="openDiagramModal()" title="說明段落太複雜？點擊由 AI 自動萃取流程與時間軸，生成容易閱讀的邏輯關係圖表。">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-            AI 視覺化圖表
-          </button>
+    <!-- 2. 一鍵複製 -->
+    <button class="btn btn-apple" onclick="copyContent()" title="將整份公文內容複製到剪貼簿，方便直接貼上至公文系統">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      一鍵複製
+    </button>
 
-          <!-- 12. AI 法規風險警示 -->
-          <button class="btn" style="background:linear-gradient(to bottom,#F43F5E,#BE123C);color:white;border-color:#9F1239;box-shadow:0 4px 0 #9F1239,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openRiskModal()" title="AI 自動掃描公文中的法規依據、期限要求、責任歸屬，標示潛在的法律風險與遺漏項目">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            ⚖️ AI 法規風險
-          </button>
+    <!-- 3. 檢視原始碼 -->
+    <button class="btn btn-apple" onclick="document.getElementById('rawView').classList.toggle('visible')" title="檢視解析前的公文原始文字，方便對照與除錯">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+      檢視原始碼
+    </button>
 
-          <!-- 14. AI 跨文件脈絡追蹤 -->
-          <button class="btn" style="background:linear-gradient(to bottom,#0EA5E9,#0369A1);color:white;border-color:#075985;box-shadow:0 4px 0 #075985,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openContextModal()" title="輸入多份相關公文，AI 自動串聯脈絡、找出前因後果、追蹤案件辦理進度">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            🔗 脈絡追蹤
-          </button>
+    <!-- 4. 常用聯絡資訊 -->
+    <button class="btn btn-apple" onclick="openProfileModal()" title="預先設定您的機關與聯絡方式，一鍵自動填入公文各欄位">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      常用聯絡資訊
+    </button>
 
-          <!-- 15. AI 批次改寫引擎 -->
-          <button class="btn" style="background:linear-gradient(to bottom,#F59E0B,#D97706);color:white;border-color:#B45309;box-shadow:0 4px 0 #B45309,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openBatchModal()" title="設定全局替換規則：機關名稱改名、年度換算、套用新法規條文，一鍵批次改寫全文">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            ⚡ 批次改寫
-          </button>
+    <!-- 5. 罐頭語錄庫 -->
+    <button class="btn btn-apple" onclick="openSnippetModal()" title="建立並快速插入常用的公文段落或專業詞彙，提升撰寫效率">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      罐頭語錄庫
+    </button>
 
-          <!-- 17. AI 反向情境模擬 -->
-          <button class="btn" style="background:linear-gradient(to bottom,#6366F1,#4338CA);color:white;border-color:#3730A3;box-shadow:0 4px 0 #3730A3,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openSimulateModal()" title="AI 模擬收到此公文的各方反應：受文機關會如何解讀？民眾可能有什麼疑慮？媒體可能如何報導？">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="9" cy="10" r="1"/><circle cx="12" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg>
-            🎭 情境模擬
-          </button>
+    <!-- 6. 雙檔比對 -->
+    <button class="btn btn-apple" onclick="openDiffModal()" title="匯入舊版公文進行比對，系統將為您自動標示新增與刪除的修訂痕跡">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg>
+      雙檔比對
+    </button>
 
-          <!-- 19. AI 跨機關回覆草稿 -->
-          <button class="btn" style="background:linear-gradient(to bottom,#EC4899,#BE185D);color:white;border-color:#9D174D;box-shadow:0 4px 0 #9D174D,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openReplyModal()" title="AI 分析來文訴求，一鍵產生完整的回覆函稿，並自動填入正確受文者、引述來文字號">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
-            💌 AI 回覆草稿
-          </button>
+    <!-- 7. 長官視角 -->
+    <button class="btn btn-emerald" onclick="openBossViewModal()" title="切換為長官專用模式：自動產生摘要簡報、語音朗讀，並支援麥克風語音智慧批示">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12h3l3 -9l5 18l3 -9h5"></path></svg>
+      長官視角
+    </button>
 
-          <!-- 21. AI 簡報大綱產生 -->
-          <button class="btn" style="background:linear-gradient(to bottom,#F97316,#EA580C);color:white;border-color:#C2410C;box-shadow:0 4px 0 #C2410C,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openPresentModal()" title="將公文轉換為完整的簡報大綱，包含投影片標題、說明要點、建議圖表，可直接匯出 PowerPoint 結構">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-            🎬 簡報大綱
-          </button>
-        </div>
-      </div>
+    <!-- 8. AI 潤飾公文 -->
+    <button class="btn btn-emerald" onclick="openAIModal()" title="啟動 Groq AI 智慧公文潤飾引擎">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+      AI 潤飾公文
+    </button>
+
+    <!-- 9. 多語系翻譯 -->
+    <button class="btn btn-emerald" onclick="openTranslateModal()" title="啟動 AI 翻譯助理，將整份公文快速翻譯為英文、日文等外國語言，並提供雙欄對照功能。">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>
+      多語系翻譯
+    </button>
+
+    <!-- 10. AI 起稿 -->
+    <button class="btn btn-emerald" onclick="openDraftModal()" title="輸入事由與關鍵字，AI 將自動為您生成主旨、說明與擬辦的完整公文草稿。">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+      AI 起稿
+    </button>
+
+    <!-- 11. AI 視覺化圖表 -->
+    <button class="btn btn-emerald" onclick="openDiagramModal()" title="說明段落太複雜？點擊由 AI 自動萃取流程與時間軸，生成容易閱讀的邏輯關係圖表。">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+      AI 視覺化圖表
+    </button>
+
+  </div><!-- /footer-actions-row1 -->
+
+  <!-- ═══ 第二行：其餘功能（可繼續往後新增）═══ -->
+  <div class="footer-actions-row2">
+
+    <!-- 12. AI 法規風險警示 -->
+    <button class="btn" style="background:linear-gradient(to bottom,#F43F5E,#BE123C);color:white;border-color:#9F1239;box-shadow:0 4px 0 #9F1239,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openRiskModal()" title="AI 自動掃描公文中的法規依據、期限要求、責任歸屬，標示潛在的法律風險與遺漏項目">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      ⚖️ AI 法規風險
+    </button>
+
+    <!-- 14. AI 跨文件脈絡追蹤 -->
+    <button class="btn" style="background:linear-gradient(to bottom,#0EA5E9,#0369A1);color:white;border-color:#075985;box-shadow:0 4px 0 #075985,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openContextModal()" title="輸入多份相關公文，AI 自動串聯脈絡、找出前因後果、追蹤案件辦理進度">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      🔗 脈絡追蹤
+    </button>
+
+    <!-- 15. AI 批次改寫引擎 -->
+    <button class="btn" style="background:linear-gradient(to bottom,#F59E0B,#D97706);color:white;border-color:#B45309;box-shadow:0 4px 0 #B45309,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openBatchModal()" title="設定全局替換規則：機關名稱改名、年度換算、套用新法規條文，一鍵批次改寫全文">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      ⚡ 批次改寫
+    </button>
+
+    <!-- 17. AI 反向情境模擬 -->
+    <button class="btn" style="background:linear-gradient(to bottom,#6366F1,#4338CA);color:white;border-color:#3730A3;box-shadow:0 4px 0 #3730A3,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openSimulateModal()" title="AI 模擬收到此公文的各方反應">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="9" cy="10" r="1"/><circle cx="12" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg>
+      🎭 情境模擬
+    </button>
+
+<!-- 19. AI 跨機關回覆草稿（以下保留原有其餘按鈕不動） -->
+    <button class="btn" style="background:linear-gradient(to bottom,#EC4899,#BE185D);color:white;border-color:#9D174D;box-shadow:0 4px 0 #9D174D,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openReplyModal()" title="AI 分析來文訴求，一鍵產生完整的回覆函稿，並自動填入正確受文者、引述來文字號">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+      💌 回覆草稿
+    </button>
+
+    <!-- 20. AI 公文流程時間軸 -->
+    <button class="btn" style="background:linear-gradient(to bottom,#0D9488,#0F766E);color:white;border-color:#115E59;box-shadow:0 4px 0 #115E59,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openTimelineModal()" title="AI 自動萃取行動項目、截止日期、責任單位，繪製橫向甘特圖時間軸，一眼看清辦理順序與期限壓力">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><line x1="8" y1="14" x2="13" y2="14"></line><line x1="8" y1="18" x2="11" y2="18"></line></svg>
+      🗺️ 流程時間軸
+    </button>
+
+    <!-- 21. AI 公文朝代翻譯機 -->
+    <button class="btn" style="background:linear-gradient(to bottom,#92400E,#78350F);color:white;border-color:#451A03;box-shadow:0 4px 0 #451A03,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openDynastyModal()" title="雙向轉換：將現代公文翻為文言奏摺風格，或將古代文書翻成現代行政語言，日治時期老公文也適用">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><line x1="12" y1="6" x2="16" y2="6"></line><line x1="12" y1="10" x2="16" y2="10"></line><line x1="8" y1="14" x2="16" y2="14"></line></svg>
+      🏛️ 朝代翻譯機
+    </button>
+
+    <!-- 22. AI 法規自動串接引擎 -->
+    <button class="btn" style="background:linear-gradient(to bottom,#1E40AF,#1E3A8A);color:white;border-color:#1E3069;box-shadow:0 4px 0 #1E3069,inset 0 1px 0 rgba(255,255,255,0.3);" onclick="openLawEngineModal()" title="輸入事由關鍵字，AI 自動推薦最相關的法律條文並生成標準引述格式，同時警示近期修訂">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      🔗 法規串接引擎
+    </button>
+
+    <!-- 🔧 日後新增的功能按鈕請接續放置於此行 -->
+
+  </div><!-- /footer-actions-row2 -->
       <div id="rawView">${highlightRawText(raw)}</div>
     </div>
   `;
@@ -4998,6 +5204,296 @@ function copyPresentText() {
     ].join('\n'))
   ].join('\n');
   navigator.clipboard.writeText(txt).then(()=>showToast('✅ 完整簡報大綱已複製！'));
+}
+// ==========================================
+// 功能20：AI 公文流程時間軸甘特圖
+// ==========================================
+function openTimelineModal() {
+  if (!lastParsedData) return showToast("請先在主畫面匯入並解析一份公文！");
+  const keyStatus = document.getElementById('timelineKeyStatus');
+  const key = localStorage.getItem('groqApiKey');
+  keyStatus.textContent = key ? '✅ 已載入' : '⚠️ 尚未設定（請至主畫面右上角輸入）';
+  keyStatus.style.color = key ? 'var(--nature-green-main)' : 'var(--seal-red)';
+  document.getElementById('timelineModal').classList.add('show');
+}
+function closeTimelineModal() { document.getElementById('timelineModal').classList.remove('show'); }
+
+async function generateTimeline() {
+  const apiKey = localStorage.getItem('groqApiKey');
+  if (!apiKey) return showToast("請先在主畫面右上角設定 Groq API Key！");
+  const box = document.getElementById('timelineResultBox');
+  const btn = document.getElementById('btnGenTimeline');
+  btn.disabled = true;
+  box.innerHTML = '<div style="text-align:center;padding-top:15%;font-weight:700;color:var(--nature-green-main);">⏳ AI 正在解析公文並萃取流程資訊...</div>';
+
+  const fullText = getDocFullText();
+  const sys = `你是公文行政專家。請解析以下公文，萃取所有「行動項目」，每個項目需包含：
+1. 行動名稱（動詞開頭，簡潔）
+2. 責任單位（若無則填「承辦機關」）
+3. 截止日期（若有明確日期則填寫，若無則填「待定」或「即辦」）
+4. 優先等級（高/中/低）
+
+請嚴格以 JSON 格式回應，結構如下：
+{
+  "docTitle": "公文主旨摘要（20字內）",
+  "items": [
+    { "action": "行動名稱", "unit": "責任單位", "deadline": "截止日期", "priority": "高" },
+    ...
+  ]
+}
+只回傳 JSON，不要有任何說明文字。`;
+
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: "llama-3.3-70b-versatile", max_tokens: 1500,
+        messages: [{ role: "system", content: sys }, { role: "user", content: fullText }] })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || '請求失敗');
+    let raw = data.choices[0].message.content.trim().replace(/```json|```/gi, '').trim();
+    const jm = raw.match(/\{[\s\S]*\}/);
+    if (jm) raw = jm[0];
+    const parsed = JSON.parse(raw);
+    renderGanttChart(parsed, box);
+  } catch(e) {
+    box.innerHTML = `<div style="color:var(--seal-red);padding:20px;font-weight:700;">❌ 生成失敗：${esc(e.message)}</div>`;
+  }
+  btn.disabled = false;
+}
+
+function renderGanttChart(data, box) {
+  const priorityColor = { '高': '#EF4444', '中': '#F59E0B', '低': '#10B981' };
+  const priorityBg = { '高': 'rgba(239,68,68,0.12)', '中': 'rgba(245,158,11,0.12)', '低': 'rgba(16,185,129,0.12)' };
+  const items = data.items || [];
+
+  const rows = items.map((item, i) => {
+    const pColor = priorityColor[item.priority] || '#6366F1';
+    const pBg = priorityBg[item.priority] || 'rgba(99,102,241,0.12)';
+    const barWidth = Math.max(15, 85 - i * (60 / Math.max(items.length, 1)));
+    return `
+      <div style="display:grid;grid-template-columns:28px 1fr 120px 100px;gap:0;align-items:center;border-bottom:1px solid var(--border-color);min-height:46px;">
+        <div style="background:${pColor};color:white;font-size:12px;font-weight:900;text-align:center;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0;">${i+1}</div>
+        <div style="padding:8px 14px;">
+          <div style="font-size:13px;font-weight:700;color:var(--text-main);margin-bottom:3px;">${esc(item.action)}</div>
+          <div style="height:12px;background:var(--border-color);border-radius:6px;overflow:hidden;margin-top:4px;">
+            <div style="height:100%;width:${barWidth}%;background:${pColor};border-radius:6px;animation:growBar 0.8s ease;"></div>
+          </div>
+        </div>
+        <div style="padding:8px;font-size:12px;color:var(--apple-gray);font-weight:600;text-align:center;">${esc(item.unit)}</div>
+        <div style="padding:8px;text-align:center;">
+          <span style="background:${pBg};color:${pColor};font-size:11px;font-weight:800;padding:3px 8px;border-radius:8px;display:block;margin-bottom:3px;">${esc(item.priority)}優先</span>
+          <span style="font-size:11px;color:var(--apple-gray);">${esc(item.deadline)}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  box.innerHTML = `
+    <style>@keyframes growBar{from{width:0}}</style>
+    <div style="background:linear-gradient(135deg,#0F766E,#0D9488);color:white;border-radius:12px;padding:16px 20px;margin-bottom:16px;text-align:center;">
+      <div style="font-size:16px;font-weight:900;font-family:'Noto Serif TC',serif;">${esc(data.docTitle)}</div>
+      <div style="font-size:13px;opacity:0.85;margin-top:4px;">共 ${items.length} 項行動任務</div>
+    </div>
+    <div style="border:1px solid var(--border-color);border-radius:12px;overflow:hidden;">
+      <div style="display:grid;grid-template-columns:28px 1fr 120px 100px;background:var(--meta-bg);border-bottom:2px solid var(--border-color);">
+        <div style="padding:8px;font-size:11px;font-weight:800;color:var(--apple-gray);text-align:center;">#</div>
+        <div style="padding:8px 14px;font-size:11px;font-weight:800;color:var(--apple-gray);">行動項目（進度條）</div>
+        <div style="padding:8px;font-size:11px;font-weight:800;color:var(--apple-gray);text-align:center;">責任單位</div>
+        <div style="padding:8px;font-size:11px;font-weight:800;color:var(--apple-gray);text-align:center;">截止 / 優先</div>
+      </div>
+      ${rows}
+    </div>
+    <div style="margin-top:12px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <span style="font-size:12px;display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#EF4444;border-radius:3px;display:inline-block;"></span>高優先</span>
+      <span style="font-size:12px;display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#F59E0B;border-radius:3px;display:inline-block;"></span>中優先</span>
+      <span style="font-size:12px;display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#10B981;border-radius:3px;display:inline-block;"></span>低優先</span>
+    </div>`;
+}
+
+// ==========================================
+// 功能21：AI 公文朝代翻譯機
+// ==========================================
+function openDynastyModal() {
+  const key = localStorage.getItem('groqApiKey');
+  const keyStatus = document.getElementById('dynastyKeyStatus');
+  keyStatus.textContent = key ? '✅ 已載入' : '⚠️ 尚未設定';
+  keyStatus.style.color = key ? 'var(--nature-green-main)' : 'var(--seal-red)';
+  // 自動填入目前公文文字
+  const inputBox = document.getElementById('dynastyInputText');
+  if (lastParsedData) {
+    const d = lastParsedData;
+    let text = '';
+    if (d.subject) text += `主旨：${d.subject.replace(/<[^>]+>/g,'')}\n\n`;
+    if (d.content) text += `說明：${d.content.replace(/<[^>]+>/g,'')}\n\n`;
+    if (d.proposal) text += `擬辦：${d.proposal.replace(/<[^>]+>/g,'')}`;
+    inputBox.value = text.trim();
+  }
+  document.getElementById('dynastyResultBox').innerHTML = '<div style="text-align:center;padding-top:40%;opacity:0.5;font-weight:600;">翻譯結果將顯示於此</div>';
+  document.getElementById('btnCopyDynasty').style.display = 'none';
+  document.getElementById('dynastyModal').classList.add('show');
+}
+function closeDynastyModal() { document.getElementById('dynastyModal').classList.remove('show'); }
+
+async function generateDynasty() {
+  const apiKey = localStorage.getItem('groqApiKey');
+  if (!apiKey) return showToast("請先設定 Groq API Key！");
+  const inputText = document.getElementById('dynastyInputText').value.trim();
+  if (!inputText) return showToast("請先輸入要翻譯的文字！");
+  const direction = document.getElementById('dynastyDirection').value;
+  const style = document.getElementById('dynastyStyle').value;
+  const btn = document.getElementById('btnGenDynasty');
+  const box = document.getElementById('dynastyResultBox');
+  btn.disabled = true;
+  box.innerHTML = '<div style="text-align:center;padding-top:40%;font-weight:700;color:#92400E;">⏳ AI 正在進行時空翻譯...</div>';
+
+  const styleMap = { qing:'清代奏摺（奴才謹按、臣恭陳、伏惟聖覽等格式）', ming:'明代題本（臣謹題、為此謹題請旨等格式）', tang:'唐宋牒文（牒送、謹牒等格式）', japanese:'日治時期（御中、貴官、敬啟等格式）' };
+  const dirMap = {
+    modern2ancient: `請將以下現代公文轉換為「${styleMap[style]}」文言文風格。要求：①使用文言虛詞（之、乎、者、也）②加入朝代官場慣用語③保留核心語義④適當加入奏摺格式套語。翻譯完後附上「📚 用詞說明」區塊，解釋3～5個重要文言詞彙的意思。`,
+    ancient2modern: `請將以下古代文書（含日治時期公文）翻譯為現代繁體中文行政語言。要求：①保留原意②轉換為現代公文格式（主旨/說明/擬辦）③說明原文的歷史背景④若有特殊職官名稱請加括號說明現代對應職位。翻譯完後附上「📚 歷史背景說明」。`
+  };
+
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: "llama-3.3-70b-versatile", max_tokens: 2000,
+        messages: [{ role: "system", content: "你是精通歷代中文文體、清代官場文化與日治時期公文的語言學家。" },
+          { role: "user", content: dirMap[direction] + '\n\n原文：\n' + inputText }] })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || '請求失敗');
+    const result = data.choices[0].message.content.trim();
+    const dirLabel = direction === 'modern2ancient' ? '📜 文言翻譯結果' : '📋 現代行政語言翻譯';
+    box.innerHTML = `
+      <div style="background:linear-gradient(135deg,rgba(146,64,14,0.08),rgba(120,53,15,0.04));border:1px solid rgba(146,64,14,0.2);border-radius:10px;padding:16px;font-size:15px;line-height:2;font-family:'Noto Serif TC',serif;white-space:pre-wrap;color:var(--text-main);">${esc(result)}</div>`;
+    document.getElementById('btnCopyDynasty').style.display = 'inline-flex';
+    window._dynastyResult = result;
+    showToast("✅ 翻譯完成！");
+  } catch(e) {
+    box.innerHTML = `<div style="color:var(--seal-red);padding:20px;font-weight:700;">❌ 翻譯失敗：${esc(e.message)}</div>`;
+  }
+  btn.disabled = false;
+}
+
+function copyDynastyResult() {
+  if (!window._dynastyResult) return;
+  navigator.clipboard.writeText(window._dynastyResult).then(() => showToast("✅ 翻譯結果已複製！"));
+}
+
+// ==========================================
+// 功能22：AI 法規自動串接引擎
+// ==========================================
+function openLawEngineModal() {
+  const key = localStorage.getItem('groqApiKey');
+  const keyStatus = document.getElementById('lawEngineKeyStatus');
+  keyStatus.textContent = key ? '✅ 已載入' : '⚠️ 尚未設定（請至主畫面右上角輸入）';
+  keyStatus.style.color = key ? 'var(--nature-green-main)' : 'var(--seal-red)';
+  document.getElementById('lawEngineResultBox').innerHTML = '<div style="text-align:center;padding-top:18%;opacity:0.5;font-weight:600;">輸入關鍵字後點擊搜尋，AI 將推薦最精準的法條依據</div>';
+  document.getElementById('lawEngineModal').classList.add('show');
+}
+function closeLawEngineModal() { document.getElementById('lawEngineModal').classList.remove('show'); }
+
+function autoFillLawKeyword() {
+  if (!lastParsedData) return showToast("請先解析一份公文！");
+  const subject = (lastParsedData.subject || '').replace(/<[^>]+>/g,'').trim();
+  const keywords = subject.slice(0, 30);
+  document.getElementById('lawEngineKeyword').value = keywords;
+  showToast("✅ 已自動擷取主旨關鍵字！");
+}
+
+async function generateLawEngine() {
+  const apiKey = localStorage.getItem('groqApiKey');
+  if (!apiKey) return showToast("請先設定 Groq API Key！");
+  const keyword = document.getElementById('lawEngineKeyword').value.trim();
+  if (!keyword) { showToast("請輸入事由關鍵字！"); document.getElementById('lawEngineKeyword').focus(); return; }
+  const category = document.getElementById('lawEngineCategory').value;
+  const btn = document.getElementById('btnGenLaw');
+  const box = document.getElementById('lawEngineResultBox');
+  btn.disabled = true;
+  box.innerHTML = '<div style="text-align:center;padding-top:15%;font-weight:700;color:var(--apple-blue);">⏳ AI 正在比對法規資料庫，推薦最精準法條...</div>';
+
+  const categoryMap = { general:'行政程序法、政府資訊公開法、公務員服務法', finance:'政府採購法、預算法、國有財產法、會計法', personnel:'公務人員任用法、公務人員保障法、公務人員差旅費報支要點', urban:'都市計畫法、建築法、都市更新條例、大眾捷運法', environment:'環境影響評估法、空氣污染防制法、水污染防治法', social:'社會救助法、兒童及少年福利與權益保障法、身心障礙者權益保障法' };
+
+  const sys = `你是精通中華民國法律體系的資深法制專家。請根據使用者的事由關鍵字，在「${categoryMap[category]}」等相關法規中，推薦最精準的 3 條法律依據。
+
+嚴格以 JSON 格式回應：
+{
+  "summary": "本事由涉及的法律主要面向說明（2句話）",
+  "laws": [
+    {
+      "rank": 1,
+      "lawName": "法律名稱",
+      "article": "第○條第○項",
+      "fullQuote": "依據○○法第○條第○項規定辦理",
+      "content": "條文主要內容摘要（30字內）",
+      "relevanceReason": "與本事由的關聯說明（25字內）",
+      "recentAmended": true,
+      "amendNote": "若近期修訂請說明，否則填「目前版本穩定」"
+    }
+  ]
+}
+只回傳 JSON。`;
+
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: "llama-3.3-70b-versatile", max_tokens: 1500,
+        messages: [{ role: "system", content: sys }, { role: "user", content: `事由關鍵字：${keyword}` }] })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || '請求失敗');
+    let raw = data.choices[0].message.content.trim().replace(/```json|```/gi,'').trim();
+    const jm = raw.match(/\{[\s\S]*\}/);
+    if (jm) raw = jm[0];
+    const parsed = JSON.parse(raw);
+    renderLawResults(parsed, keyword, box);
+  } catch(e) {
+    box.innerHTML = `<div style="color:var(--seal-red);padding:20px;font-weight:700;">❌ 查詢失敗：${esc(e.message)}</div>`;
+  }
+  btn.disabled = false;
+}
+
+function renderLawResults(data, keyword, box) {
+  const rankBadge = ['🥇','🥈','🥉'];
+  const lawCards = (data.laws || []).map((law, i) => {
+    const amendBg = law.recentAmended ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.06)';
+    const amendBorder = law.recentAmended ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.25)';
+    const amendColor = law.recentAmended ? '#EF4444' : '#10B981';
+    const amendIcon = law.recentAmended ? '⚠️' : '✅';
+    return `
+      <div style="border:1px solid var(--border-color);border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <div style="background:linear-gradient(to right,#1E3A8A,#1E40AF);color:white;padding:12px 18px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">${rankBadge[i]||'📌'}</span>
+          <div>
+            <div style="font-weight:900;font-size:15px;">${esc(law.lawName)} ${esc(law.article)}</div>
+            <div style="font-size:12px;opacity:0.85;margin-top:2px;">${esc(law.content)}</div>
+          </div>
+          <span style="margin-left:auto;font-size:11px;background:rgba(255,255,255,0.18);padding:3px 9px;border-radius:10px;">#${law.rank} 相關度</span>
+        </div>
+        <div style="padding:14px 18px;">
+          <div style="background:rgba(30,64,175,0.06);border:1px solid rgba(30,64,175,0.2);border-radius:8px;padding:10px 14px;margin-bottom:10px;">
+            <div style="font-size:11px;font-weight:800;color:var(--apple-gray);letter-spacing:0.1em;margin-bottom:5px;">📝 標準引述格式（可直接複製）</div>
+            <div style="font-size:14px;font-weight:700;color:#1E3A8A;font-family:'Noto Serif TC',serif;cursor:pointer;" onclick="navigator.clipboard.writeText(${JSON.stringify(law.fullQuote)}).then(()=>showToast('✅ 引述格式已複製！'))" title="點擊複製">${esc(law.fullQuote)} 📋</div>
+          </div>
+          <div style="font-size:13px;color:var(--apple-gray);margin-bottom:8px;">💡 <b>關聯原因：</b>${esc(law.relevanceReason)}</div>
+          <div style="background:${amendBg};border:1px solid ${amendBorder};border-radius:8px;padding:8px 12px;font-size:12px;color:${amendColor};font-weight:700;">
+            ${amendIcon} <b>修訂狀態：</b>${esc(law.amendNote)}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  box.innerHTML = `
+    <div style="background:linear-gradient(135deg,#1E3A8A,#1E40AF);color:white;border-radius:12px;padding:14px 20px;margin-bottom:16px;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">🔍 查詢關鍵字：${esc(keyword)}</div>
+      <div style="font-size:13px;opacity:0.9;line-height:1.6;">${esc(data.summary)}</div>
+    </div>
+    <div style="font-size:12px;color:var(--apple-gray);margin-bottom:12px;padding:8px 12px;background:rgba(245,158,11,0.08);border-radius:8px;border:1px solid rgba(245,158,11,0.2);">
+      ⚠️ 本功能推薦結果僅供參考，正式文書請務必至<a href="https://law.moj.gov.tw/" target="_blank" style="color:var(--apple-blue);font-weight:700;">全國法規資料庫</a>核對最新條文版本。
+    </div>
+    ${lawCards}`;
 }
 </script>
 </body>
