@@ -410,6 +410,13 @@
 
     window.executeExportXML = function() {
         closeDraftModal();
+
+        // 【修復重點】：將 escapeXML 工具函數移到最上方，確保後面的程式都能正常呼叫
+        const escapeXML = (str) => {
+            if (!str) return "";
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        };
+
         const year = document.querySelector('.date-year').value;
         const month = document.querySelector('.date-month').value;
         const day = document.querySelector('.date-day').value;
@@ -432,7 +439,7 @@
             failItems.push({ item: itemDesc, defect: defectText });
         });
 
-        // 1. 收集所有簽名圖檔 (加入 CDATA 避免 XML 結構損毀)
+        // 1. 收集所有簽名圖檔
         let signaturesXML = `  <簽章群組>\n`;
         document.querySelectorAll('.sign-box').forEach((box, index) => {
             const img = box.querySelector('img');
@@ -442,17 +449,17 @@
         });
         signaturesXML += `  </簽章群組>\n`;
 
-// 2. 收集所有缺失照片與標記 (一起存進去)
-let photosXML = `  <照片群組>\n`;
+        // 2. 收集所有缺失照片與標記 (包含 GPS 與時間資訊)
+        let photosXML = `  <照片群組>\n`;
         for (let code in uploadedPhotosDB) {
             if (uploadedPhotosDB[code]) {
-                let exifData = escapeXML(photoExifDB[code] || ''); // 備份 EXIF 資訊
+                // 安全讀取 EXIF 資料庫，避免未定義錯誤
+                let currentExif = (typeof photoExifDB !== 'undefined' && photoExifDB[code]) ? photoExifDB[code] : '';
+                let exifData = escapeXML(currentExif);
                 photosXML += `    <照片 代碼="${code}" EXIF="${exifData}"><![CDATA[${uploadedPhotosDB[code]}]]></照片>\n`;
             }
         }
         photosXML += `  </照片群組>\n`;
-
-        const escapeXML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
         let xmlString = `<?xml version="1.0" encoding="utf-8"?>\n<稽查紀錄>\n`;
         xmlString += `  <檢查日期>${year}年${month}月${day}日</檢查日期>\n  <年>${year}</年>\n  <月>${month}</月>\n  <日>${day}</日>\n`;
@@ -474,11 +481,16 @@ let photosXML = `  <照片群組>\n`;
         xmlString += photosXML;
         xmlString += `</稽查紀錄>`;
 
+        // 產生並下載檔案
         const blob = new Blob([xmlString], { type: 'text/xml' });
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a'); link.href = url;
+        const link = document.createElement('a'); 
+        link.href = url;
         link.download = `稽查暫存檔_${year}${month.padStart(2,'0')}${day.padStart(2,'0')}.xml`;
-        document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
+        document.body.appendChild(link); 
+        link.click(); 
+        document.body.removeChild(link); 
+        URL.revokeObjectURL(url);
     };
 
     window.handleXMLImport = function(event) {
@@ -487,79 +499,130 @@ let photosXML = `  <照片群組>\n`;
 
         const reader = new FileReader();
         reader.onload = function(e) {
-            const text = e.target.result;
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(text, "text/xml");
-            
-            // 防呆：檢查 XML 是否解析失敗
-            if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
-                showCustomAlert("匯入失敗：XML 檔案格式錯誤或損毀。");
-                return;
-            }
+            // 加入 try...catch 防護，避免程式出錯時無聲無息卡死
+            try {
+                const text = e.target.result;
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(text, "text/xml");
+                
+                // 防呆：檢查 XML 是否解析失敗
+                if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+                    showCustomAlert("匯入失敗：XML 檔案格式錯誤或損毀。");
+                    return;
+                }
 
-            const getNodeText = (tag) => { const node = xmlDoc.getElementsByTagName(tag)[0]; return node ? node.textContent : ""; };
+                const getNodeText = (tag) => { const node = xmlDoc.getElementsByTagName(tag)[0]; return node ? node.textContent : ""; };
 
-            const year = getNodeText("年"); const month = getNodeText("月"); const day = getNodeText("日");
-            if(year) syncDate('year', year); 
-            if(month) syncDate('month', parseInt(month).toString()); 
-            if(day) syncDate('day', parseInt(day).toString());
+                // 1. 基礎欄位還原
+                const year = getNodeText("年"); const month = getNodeText("月"); const day = getNodeText("日");
+                if(year) syncDate('year', year); 
+                if(month) syncDate('month', parseInt(month).toString()); 
+                if(day) syncDate('day', parseInt(day).toString());
 
-            const proj = getNodeText("工程名稱");
-            if (proj && proj !== "未選擇") {
-                document.querySelectorAll('.proj-sel').forEach(el => el.value = proj);
-                updateProjectInfo(proj); 
-            }
+                const proj = getNodeText("工程名稱");
+                if (proj && proj !== "未選擇") {
+                    document.querySelectorAll('.proj-sel').forEach(el => el.value = proj);
+                    updateProjectInfo(proj); 
+                }
 
-            const loc = getNodeText("檢查地點"); const pos = getNodeText("檢查位置");
-            if(loc && loc !== "未填寫") document.querySelectorAll('.sync-loc').forEach(el => el.textContent = loc);
-            if(pos && pos !== "未填寫") document.querySelectorAll('.sync-pos').forEach(el => el.textContent = pos);
+                const loc = getNodeText("檢查地點"); const pos = getNodeText("檢查位置");
+                if(loc && loc !== "未填寫") document.querySelectorAll('.sync-loc').forEach(el => el.textContent = loc);
+                if(pos && pos !== "未填寫") document.querySelectorAll('.sync-pos').forEach(el => el.textContent = pos);
 
-            // 匯入前先重置所有欄位狀態
-            for(let i=0; i<=2; i++) uncheckAllPass(i);
-            
-            // 匯入前清空並重置所有簽名框
-            const signBoxes = document.querySelectorAll('.sign-box');
-            signBoxes.forEach(box => {
-                box.innerHTML = "電子簽章";
-                box.style.backgroundColor = "#fafafa";
-                box.style.border = "2px dashed #999";
-            });
+                // 2. 匯入前清空並重置 UI 狀態
+                for(let i=0; i<=2; i++) uncheckAllPass(i);
+                
+                const signBoxes = document.querySelectorAll('.sign-box');
+                signBoxes.forEach(box => {
+                    box.innerHTML = "電子簽章";
+                    box.style.backgroundColor = "#fafafa";
+                    box.style.border = "2px dashed #999";
+                });
 
-// 匯入前清空照片資料庫
-for (let key in uploadedPhotosDB) delete uploadedPhotosDB[key];
-            if (typeof photoExifDB !== 'undefined') {
-                for (let key in photoExifDB) delete photoExifDB[key]; // 新增：清空EXIF資料庫
-            }
+                // 安全清空照片與 EXIF 資料庫
+                if (typeof uploadedPhotosDB !== 'undefined') {
+                    for (let key in uploadedPhotosDB) delete uploadedPhotosDB[key];
+                }
+                if (typeof photoExifDB === 'undefined') {
+                    window.photoExifDB = {}; // 如果尚未宣告，則在此安全宣告
+                } else {
+                    for (let key in photoExifDB) delete photoExifDB[key];
+                }
 
-            const items = xmlDoc.getElementsByTagName("檢查項目");
-            // ...(略)
-            // --- 載入並還原缺失照片 ---
-            const photoNodes = xmlDoc.getElementsByTagName("照片");
-            for (let i = 0; i < photoNodes.length; i++) {
-                const node = photoNodes[i];
-                const code = node.getAttribute("代碼");
-                const exifHtml = node.getAttribute("EXIF") || ''; // 新增：讀取 EXIF 資訊
-                let base64Data = node.textContent;
-                if (base64Data) base64Data = base64Data.trim();
+                // 3. 還原檢查項目與缺失說明
+                const items = xmlDoc.getElementsByTagName("檢查項目");
+                const defects = xmlDoc.getElementsByTagName("缺失情形／改善期限");
 
-                if (code && base64Data) {
-                    uploadedPhotosDB[code] = base64Data;
-                    if (typeof photoExifDB !== 'undefined') {
-                        photoExifDB[code] = exifHtml; // 新增：回填 EXIF
+                for (let i = 0; i < items.length; i++) {
+                    const itemName = items[i].textContent;
+                    const defectDesc = defects[i].textContent;
+                    if (!itemName) continue;
+
+                    document.querySelectorAll('.col-desc').forEach(descCell => {
+                        if (descCell.textContent.includes(itemName)) {
+                            const tr = descCell.closest('tr');
+                            const failRadio = tr.querySelector('.fail-radio');
+                            const defectInput = tr.querySelector('.defect-desc-input');
+                            
+                            failRadio.checked = true;
+                            if(defectDesc && defectDesc !== "未填寫說明") {
+                                defectInput.textContent = defectDesc;
+                            }
+                            
+                            const match = failRadio.className.match(/fail-radio-f(\d+)/);
+                            if (match) handleDefectInput(defectInput, match[1]);
+                        }
+                    });
+                }
+
+                // 4. 還原電子簽章
+                const signNodes = xmlDoc.getElementsByTagName("簽章");
+                for (let i = 0; i < signNodes.length; i++) {
+                    const node = signNodes[i];
+                    const index = parseInt(node.getAttribute("索引"), 10);
+                    let base64Data = node.textContent;
+                    if (base64Data) base64Data = base64Data.trim();
+                    
+                    if (!isNaN(index) && signBoxes[index] && base64Data) {
+                        const box = signBoxes[index];
+                        box.innerHTML = `<img src="${base64Data}" alt="電子簽名">`;
+                        box.style.backgroundColor = "transparent";
+                        box.style.border = "none";
                     }
                 }
-            }
 
-            // 若有不合格項目，觸發重繪照片表格
-            if (xmlDoc.getElementsByTagName("檢查項目").length > 0 && items[0].textContent !== "") {
-                generatePhotoReport();
-            } else {
-                document.getElementById('photo-report-section').style.display = 'none';
-            }
+                // 5. 還原缺失照片與 EXIF 座標資訊
+                const photoNodes = xmlDoc.getElementsByTagName("照片");
+                for (let i = 0; i < photoNodes.length; i++) {
+                    const node = photoNodes[i];
+                    const code = node.getAttribute("代碼");
+                    const exifHtml = node.getAttribute("EXIF") || ''; // 讀取 EXIF 屬性
+                    let base64Data = node.textContent;
+                    if (base64Data) base64Data = base64Data.trim();
 
-            closeDraftModal();
-            event.target.value = ""; 
-            showCustomAlert("暫存檔匯入成功！<br><span style='font-size:14px; color:#555;'>(包含各項欄位、電子簽章及照片)</span>");
+                    if (code && base64Data) {
+                        uploadedPhotosDB[code] = base64Data;
+                        photoExifDB[code] = exifHtml; // 完美回填座標資訊
+                    }
+                }
+
+                // 6. 重繪照片表格
+                if (xmlDoc.getElementsByTagName("檢查項目").length > 0 && items[0].textContent !== "") {
+                    generatePhotoReport();
+                } else {
+                    document.getElementById('photo-report-section').style.display = 'none';
+                }
+
+                closeDraftModal();
+                event.target.value = ""; 
+                showCustomAlert("暫存檔匯入成功！<br><span style='font-size:14px; color:#555;'>(包含各項欄位、電子簽章及照片座標)</span>");
+
+            } catch (err) {
+                // 如果發生錯誤，攔截並顯示給使用者看，避免網頁當機卡死
+                console.error("匯入過程發生錯誤：", err);
+                showCustomAlert("⚠️ 匯入失敗，發生預期外的錯誤。<br><br><span style='font-size:12px; color:#dc3545;'>" + err.message + "</span>");
+                event.target.value = ""; 
+            }
         };
         reader.readAsText(file);
     };
@@ -1145,11 +1208,23 @@ window.getCurrentLocation = function() {
                     let lng = '';
                     let locationSource = ''; // 標示座標來源
 
+                    // 🌟 修復重點 1：自訂乾淨的時間格式化函數，避開 toLocaleString 產生的隱形字元
+                    const formatDateTime = (dateObj) => {
+                        if (isNaN(dateObj.getTime())) return "未知時間";
+                        const y = dateObj.getFullYear();
+                        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        const d = String(dateObj.getDate()).padStart(2, '0');
+                        const h = String(dateObj.getHours()).padStart(2, '0');
+                        const min = String(dateObj.getMinutes()).padStart(2, '0');
+                        const s = String(dateObj.getSeconds()).padStart(2, '0');
+                        return `${y}/${m}/${d} ${h}:${min}:${s}`;
+                    };
+
                     // 處理時間
                     if (exifData && exifData.DateTimeOriginal) {
-                        dateStr = new Date(exifData.DateTimeOriginal).toLocaleString('zh-TW');
+                        dateStr = formatDateTime(new Date(exifData.DateTimeOriginal));
                     } else {
-                        dateStr = new Date().toLocaleString('zh-TW') + " (上傳時間)";
+                        dateStr = formatDateTime(new Date()) + " (上傳時間)";
                     }
 
                     // 處理 GPS：優先找照片 EXIF
@@ -1174,13 +1249,13 @@ window.getCurrentLocation = function() {
                         }
                     }
 
-                    // 組合 HTML 顯示
+                    // 🌟 修復重點 2：對動態變數加上 font-family: Arial, sans-serif，確保 html2canvas 能完美匯出英數字
                     exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #333; text-align: left; background: #eef7ff; padding: 8px; border-radius: 6px; border: 1px solid #b8daff; display: inline-block; line-height: 1.6; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">`;
-                    exifInfoHTML += `<div><strong style="color:#0056b3;">📅 拍攝時間：</strong>${dateStr}</div>`;
+                    exifInfoHTML += `<div><strong style="color:#0056b3;">📅 拍攝時間：</strong><span style="font-family: Arial, sans-serif; font-weight: bold; color: #333;">${dateStr}</span></div>`;
                     
                     if (lat && lng) {
                         let sourceTag = locationSource === "裝置即時定位" ? `<span style="color:#dc3545; font-size:11px; margin-left:4px;">(${locationSource})</span>` : `<span style="color:#28a745; font-size:11px; margin-left:4px;">(${locationSource})</span>`;
-                        exifInfoHTML += `<div><strong style="color:#0056b3;">📍 GPS座標：</strong>${lat}, ${lng} ${sourceTag}</div>`;
+                        exifInfoHTML += `<div><strong style="color:#0056b3;">📍 GPS座標：</strong><span style="font-family: Arial, sans-serif; font-weight: bold; color: #333;">${lat}, ${lng}</span> ${sourceTag}</div>`;
                         exifInfoHTML += `<div style="margin-top:4px;"><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" style="color:#17a2b8; text-decoration:underline;">🌍 在地圖上查看</a></div>`;
                     } else {
                         exifInfoHTML += `<div style="color:#dc3545; margin-top:4px;">(⚠️ 無法取得照片座標，且未開啟瀏覽器定位權限)</div>`;
