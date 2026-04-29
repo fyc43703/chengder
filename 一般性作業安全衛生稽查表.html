@@ -1069,12 +1069,36 @@ for (let key in uploadedPhotosDB) delete uploadedPhotosDB[key];
             const tr = radio.closest('tr'); const itemCode = tr.querySelector('.item-id-code').textContent.trim();
             let defectText = tr.querySelector('.defect-desc-input').textContent.trim(); if(!defectText) defectText = '<span style="color:#aaa;">(未填寫說明)</span>';
             
-            // 將 EXIF 資訊一併帶入 HTML 中
-            let photoContent = uploadedPhotosDB[itemCode] 
-                ? `<img src="${uploadedPhotosDB[itemCode]}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片">
-                   ${photoExifDB[itemCode] || ''}
-                   <br><label class="reupload-text" style="display:inline-block; margin-top:8px;">重新上傳<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>` 
-                : `<label class="upload-btn-ui">上傳照片<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>`;
+            // 判斷是否已經有上傳照片，給予不同的 UI
+            let photoContent = '';
+            if (uploadedPhotosDB[itemCode]) {
+                // 已上傳照片的狀態：顯示圖片、座標，並提供「重新拍照」與「重新挑選」雙選項
+                photoContent = `
+                    <img src="${uploadedPhotosDB[itemCode]}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片">
+                    ${photoExifDB[itemCode] || ''}
+                    <div style="margin-top: 12px; display: flex; justify-content: center; gap: 15px; align-items: center;">
+                        <label class="reupload-text" style="margin:0; font-size:14px;">📷 重新拍照
+                            <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleImageFile(this, '${itemCode}')">
+                        </label>
+                        <span style="color:#ccc;">|</span>
+                        <label class="reupload-text" style="margin:0; font-size:14px;">🖼️ 重新挑選
+                            <input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')">
+                        </label>
+                    </div>`;
+            } else {
+                // 尚未上傳照片的狀態：顯示明顯的綠色「拍照」與藍色「相簿」按鈕
+                photoContent = `
+                    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                        <label class="upload-btn-ui" style="background-color: #28a745; width: 140px; border-radius: 6px;">
+                            📷 拍照上傳
+                            <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleImageFile(this, '${itemCode}')">
+                        </label>
+                        <label class="upload-btn-ui" style="background-color: #0056b3; width: 140px; border-radius: 6px;">
+                            🖼️ 相簿挑選
+                            <input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')">
+                        </label>
+                    </div>`;
+            }
                 
             tableHTML += `<tr><td style="font-size: 18px; font-weight: bold;">${itemCode}</td><td style="text-align: left;">${defectText}</td><td id="photo-cell-${itemCode}">${photoContent}</td></tr>`;
         });
