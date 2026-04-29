@@ -1085,51 +1085,67 @@ for (let key in uploadedPhotosDB) delete uploadedPhotosDB[key];
             const cell = document.getElementById(`photo-cell-${itemCode}`);
             cell.classList.remove('error-highlight'); 
 
-            // 改善 UX：顯示讀取中，避免大照片解析時畫面卡住
+            // 改善 UX：顯示讀取中
             cell.innerHTML = `<div style="padding: 20px; color:#666;">⏳ 照片與座標解析中...</div>`;
 
-            // --- 嘗試解析 EXIF (日期與 GPS) ---
+            // --- 強化版：雙重解析 EXIF (日期與 GPS) ---
             let exifInfoHTML = '';
             try {
-                // 確保 exifr 套件有正確載入
                 if (typeof exifr !== 'undefined') {
-                    // 讀取 GPS 與 EXIF
-                    const exifData = await exifr.parse(file, { gps: true, exif: true });
+                    // 同時取得一般 EXIF 資料，以及專屬的 GPS 資料，避免漏接
+                    const [exifData, gpsData] = await Promise.all([
+                        exifr.parse(file),       
+                        exifr.gps(file)          
+                    ]);
                     
-                    if (exifData) {
-                        // 處理日期格式
-                        let dateStr = '';
-                        if (exifData.DateTimeOriginal) {
-                            dateStr = new Date(exifData.DateTimeOriginal).toLocaleString('zh-TW');
+                    let dateStr = '';
+                    let lat = '';
+                    let lng = '';
+
+                    // 1. 處理時間
+                    if (exifData && exifData.DateTimeOriginal) {
+                        dateStr = new Date(exifData.DateTimeOriginal).toLocaleString('zh-TW');
+                    }
+
+                    // 2. 處理 GPS (優先使用 gpsData，若無再找 exifData)
+                    if (gpsData && gpsData.latitude && gpsData.longitude) {
+                        lat = gpsData.latitude.toFixed(6);
+                        lng = gpsData.longitude.toFixed(6);
+                    } else if (exifData && exifData.latitude && exifData.longitude) {
+                        lat = exifData.latitude.toFixed(6);
+                        lng = exifData.longitude.toFixed(6);
+                    }
+
+                    // 3. 組合 HTML 顯示
+                    if (dateStr || (lat && lng)) {
+                        exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #333; text-align: left; background: #eef7ff; padding: 8px; border-radius: 6px; border: 1px solid #b8daff; display: inline-block; line-height: 1.6; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">`;
+                        
+                        if (dateStr) {
+                            exifInfoHTML += `<div><strong style="color:#0056b3;">📅 拍攝時間：</strong>${dateStr}</div>`;
                         }
-
-                        // 處理 GPS 座標
-                        let lat = exifData.latitude ? exifData.latitude.toFixed(6) : '';
-                        let lng = exifData.longitude ? exifData.longitude.toFixed(6) : '';
-
-                        if (dateStr || (lat && lng)) {
-                            // 若有資訊，顯示藍底方塊
-                            exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #333; text-align: left; background: #eef7ff; padding: 8px; border-radius: 6px; border: 1px solid #b8daff; display: inline-block; line-height: 1.6; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">`;
-                            if (dateStr) exifInfoHTML += `<div><strong style="color:#0056b3;">📅 拍攝時間：</strong>${dateStr}</div>`;
-                            if (lat && lng) exifInfoHTML += `<div><strong style="color:#0056b3;">📍 GPS座標：</strong>${lat}, ${lng}</div>`;
-                            exifInfoHTML += `</div>`;
+                        
+                        if (lat && lng) {
+                            exifInfoHTML += `<div><strong style="color:#0056b3;">📍 GPS座標：</strong>${lat}, ${lng}</div>`;
+                            // 加上 Google Maps 連結，方便後續檢驗座標正確性
+                            exifInfoHTML += `<div style="margin-top:4px;"><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" style="color:#17a2b8; text-decoration:underline;">🌍 在地圖上查看</a></div>`;
                         } else {
-                            // 若解析成功，但照片內沒有 GPS/時間標籤
-                            exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #999;">(⚠️ 此照片未包含時間或 GPS 資訊)</div>`;
+                            // 明確告知時間有讀到，但缺乏座標
+                            exifInfoHTML += `<div style="color:#dc3545; margin-top:4px;">(⚠️ 此照片檔案未包含 GPS 座標資訊)</div>`;
                         }
+                        
+                        exifInfoHTML += `</div>`;
                     } else {
-                        // 完全沒有 EXIF 資料 (通常是被 LINE 洗掉或截圖)
-                        exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #999;">(⚠️ 此照片無 EXIF 資訊)</div>`;
+                        exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #999;">(⚠️ 此照片無任何 EXIF 資訊)</div>`;
                     }
                 } else {
-                    exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #dc3545;">(❌ EXIF 套件未載入，請確認 head 區塊設定)</div>`;
+                    exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #dc3545;">(❌ EXIF 套件未載入)</div>`;
                 }
             } catch (err) {
                 console.error("EXIF 解析錯誤:", err);
                 exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #dc3545;">(無法讀取此照片的資訊)</div>`;
             }
             
-            // 存入全域變數供其他功能(如匯出)使用
+            // 存入全域變數供暫存/匯出使用
             if (typeof photoExifDB !== 'undefined') {
                 photoExifDB[itemCode] = exifInfoHTML; 
             }
@@ -1138,7 +1154,6 @@ for (let key in uploadedPhotosDB) delete uploadedPhotosDB[key];
             const reader = new FileReader();
             reader.onload = function(e) {
                 uploadedPhotosDB[itemCode] = e.target.result;
-                // 更新畫面，將照片與 EXIF 資訊合併顯示
                 cell.innerHTML = `
                     <img src="${e.target.result}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片">
                     <br>
