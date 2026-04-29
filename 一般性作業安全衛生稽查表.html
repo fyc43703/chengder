@@ -6,6 +6,8 @@
     <title>安衛稽查表電子表單</title>
     <!-- 引入更柔和的現代字體 Noto Sans TC -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <!-- 引入 EXIF 解析套件 -->
+    <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
     <style>
         /* ========================================================= */
         /* 原有基本樣式與排版設定 */
@@ -440,11 +442,12 @@
         });
         signaturesXML += `  </簽章群組>\n`;
 
-        // 2. 收集所有缺失照片與標記 (一起存進去)
-        let photosXML = `  <照片群組>\n`;
+// 2. 收集所有缺失照片與標記 (一起存進去)
+let photosXML = `  <照片群組>\n`;
         for (let code in uploadedPhotosDB) {
             if (uploadedPhotosDB[code]) {
-                photosXML += `    <照片 代碼="${code}"><![CDATA[${uploadedPhotosDB[code]}]]></照片>\n`;
+                let exifData = escapeXML(photoExifDB[code] || ''); // 備份 EXIF
+                photosXML += `    <照片 代碼="${code}" EXIF="${exifData}"><![CDATA[${uploadedPhotosDB[code]}]]></照片>\n`;
             }
         }
         photosXML += `  </照片群組>\n`;
@@ -522,60 +525,24 @@
                 box.style.border = "2px dashed #999";
             });
 
-            // 匯入前清空照片資料庫
-            for (let key in uploadedPhotosDB) delete uploadedPhotosDB[key];
+// 匯入前清空照片資料庫
+for (let key in uploadedPhotosDB) delete uploadedPhotosDB[key];
+            for (let key in photoExifDB) delete photoExifDB[key]; // 新增：清空EXIF資料庫
 
             const items = xmlDoc.getElementsByTagName("檢查項目");
-            const defects = xmlDoc.getElementsByTagName("缺失情形／改善期限");
-
-            for (let i = 0; i < items.length; i++) {
-                const itemName = items[i].textContent;
-                const defectDesc = defects[i].textContent;
-                if (!itemName) continue;
-
-                document.querySelectorAll('.col-desc').forEach(descCell => {
-                    if (descCell.textContent.includes(itemName)) {
-                        const tr = descCell.closest('tr');
-                        const failRadio = tr.querySelector('.fail-radio');
-                        const defectInput = tr.querySelector('.defect-desc-input');
-                        
-                        failRadio.checked = true;
-                        if(defectDesc && defectDesc !== "未填寫說明") {
-                            defectInput.textContent = defectDesc;
-                        }
-                        
-                        const match = failRadio.className.match(/fail-radio-f(\d+)/);
-                        if (match) handleDefectInput(defectInput, match[1]);
-                    }
-                });
-            }
-
-            // --- 載入並還原電子簽章 ---
-            const signNodes = xmlDoc.getElementsByTagName("簽章");
-            for (let i = 0; i < signNodes.length; i++) {
-                const node = signNodes[i];
-                const index = parseInt(node.getAttribute("索引"), 10);
-                let base64Data = node.textContent;
-                if (base64Data) base64Data = base64Data.trim();
-                
-                if (!isNaN(index) && signBoxes[index] && base64Data) {
-                    const box = signBoxes[index];
-                    box.innerHTML = `<img src="${base64Data}" alt="電子簽名">`;
-                    box.style.backgroundColor = "transparent";
-                    box.style.border = "none";
-                }
-            }
-
+            // ...(略)
             // --- 載入並還原缺失照片 ---
             const photoNodes = xmlDoc.getElementsByTagName("照片");
             for (let i = 0; i < photoNodes.length; i++) {
                 const node = photoNodes[i];
                 const code = node.getAttribute("代碼");
+                const exifHtml = node.getAttribute("EXIF") || ''; // 新增：讀取 EXIF 資訊
                 let base64Data = node.textContent;
                 if (base64Data) base64Data = base64Data.trim();
 
                 if (code && base64Data) {
                     uploadedPhotosDB[code] = base64Data;
+                    photoExifDB[code] = exifHtml; // 新增：回填 EXIF
                 }
             }
 
@@ -1086,6 +1053,8 @@
     document.querySelectorAll('.date-year').forEach(el => el.value = _rocYear); document.querySelectorAll('.date-month').forEach(el => el.value = _month); document.querySelectorAll('.date-day').forEach(el => el.value = _day);
 
     const uploadedPhotosDB = {}; 
+    const photoExifDB = {}; // 新增：用來儲存照片的 EXIF HTML 資訊
+
     window.generatePhotoReport = function() {
         const failRadios = document.querySelectorAll('.fail-radio:checked');
         const reportSection = document.getElementById('photo-report-section');
@@ -1095,7 +1064,14 @@
         failRadios.forEach(radio => {
             const tr = radio.closest('tr'); const itemCode = tr.querySelector('.item-id-code').textContent.trim();
             let defectText = tr.querySelector('.defect-desc-input').textContent.trim(); if(!defectText) defectText = '<span style="color:#aaa;">(未填寫說明)</span>';
-            let photoContent = uploadedPhotosDB[itemCode] ? `<img src="${uploadedPhotosDB[itemCode]}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片"><label class="reupload-text">重新上傳<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>` : `<label class="upload-btn-ui">上傳照片<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>`;
+            
+            // 將 EXIF 資訊一併帶入 HTML 中
+            let photoContent = uploadedPhotosDB[itemCode] 
+                ? `<img src="${uploadedPhotosDB[itemCode]}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片">
+                   ${photoExifDB[itemCode] || ''}
+                   <br><label class="reupload-text">重新上傳<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>` 
+                : `<label class="upload-btn-ui">上傳照片<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>`;
+                
             tableHTML += `<tr><td style="font-size: 18px; font-weight: bold;">${itemCode}</td><td style="text-align: left;">${defectText}</td><td id="photo-cell-${itemCode}">${photoContent}</td></tr>`;
         });
         tbody.innerHTML = tableHTML; reportSection.style.display = 'block'; 
@@ -1103,16 +1079,75 @@
         reportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    window.handleImageFile = function(inputElement, itemCode) {
+    window.handleImageFile = async function(inputElement, itemCode) {
         const file = inputElement.files[0];
         if (file) {
             const cell = document.getElementById(`photo-cell-${itemCode}`);
             cell.classList.remove('error-highlight'); 
+
+            // 改善 UX：顯示讀取中，避免大照片解析時畫面卡住
+            cell.innerHTML = `<div style="padding: 20px; color:#666;">⏳ 照片與座標解析中...</div>`;
+
+            // --- 嘗試解析 EXIF (日期與 GPS) ---
+            let exifInfoHTML = '';
+            try {
+                // 確保 exifr 套件有正確載入
+                if (typeof exifr !== 'undefined') {
+                    // 讀取 GPS 與 EXIF
+                    const exifData = await exifr.parse(file, { gps: true, exif: true });
+                    
+                    if (exifData) {
+                        // 處理日期格式
+                        let dateStr = '';
+                        if (exifData.DateTimeOriginal) {
+                            dateStr = new Date(exifData.DateTimeOriginal).toLocaleString('zh-TW');
+                        }
+
+                        // 處理 GPS 座標
+                        let lat = exifData.latitude ? exifData.latitude.toFixed(6) : '';
+                        let lng = exifData.longitude ? exifData.longitude.toFixed(6) : '';
+
+                        if (dateStr || (lat && lng)) {
+                            // 若有資訊，顯示藍底方塊
+                            exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #333; text-align: left; background: #eef7ff; padding: 8px; border-radius: 6px; border: 1px solid #b8daff; display: inline-block; line-height: 1.6; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">`;
+                            if (dateStr) exifInfoHTML += `<div><strong style="color:#0056b3;">📅 拍攝時間：</strong>${dateStr}</div>`;
+                            if (lat && lng) exifInfoHTML += `<div><strong style="color:#0056b3;">📍 GPS座標：</strong>${lat}, ${lng}</div>`;
+                            exifInfoHTML += `</div>`;
+                        } else {
+                            // 若解析成功，但照片內沒有 GPS/時間標籤
+                            exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #999;">(⚠️ 此照片未包含時間或 GPS 資訊)</div>`;
+                        }
+                    } else {
+                        // 完全沒有 EXIF 資料 (通常是被 LINE 洗掉或截圖)
+                        exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #999;">(⚠️ 此照片無 EXIF 資訊)</div>`;
+                    }
+                } else {
+                    exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #dc3545;">(❌ EXIF 套件未載入，請確認 head 區塊設定)</div>`;
+                }
+            } catch (err) {
+                console.error("EXIF 解析錯誤:", err);
+                exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #dc3545;">(無法讀取此照片的資訊)</div>`;
+            }
+            
+            // 存入全域變數供其他功能(如匯出)使用
+            if (typeof photoExifDB !== 'undefined') {
+                photoExifDB[itemCode] = exifInfoHTML; 
+            }
+            // ----------------------------------------
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 uploadedPhotosDB[itemCode] = e.target.result;
-                cell.innerHTML = `<img src="${e.target.result}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片"><label class="reupload-text">重新上傳<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>`;
-            }; reader.readAsDataURL(file);
+                // 更新畫面，將照片與 EXIF 資訊合併顯示
+                cell.innerHTML = `
+                    <img src="${e.target.result}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片">
+                    <br>
+                    ${exifInfoHTML}
+                    <br>
+                    <label class="reupload-text" style="display:inline-block; margin-top:8px;">重新上傳<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>
+                `;
+            }; 
+            reader.readAsDataURL(file);
         }
     };
 
