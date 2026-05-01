@@ -107,7 +107,6 @@
         .sign-box { flex: 1; height: 60px; border: 2px dashed #999; border-radius: 6px; background-color: #fafafa; display: flex; align-items: center; justify-content: center; color: #888; font-size: 15px; font-weight: bold; cursor: pointer; overflow: hidden; }
         .sign-box img { max-height: 100%; max-width: 100%; object-fit: contain; }
 
-        /* 在 .bottom-actions 加上 position: relative; */
         .bottom-actions { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 40px; padding-top: 30px; border-top: 1px dashed #ccc; position: relative; }
         .btn-3d { padding: 15px 30px; font-size: 18px; font-weight: bold; color: #fff; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         
@@ -150,9 +149,7 @@
         .sys-icon.green { background-color: #28a745; }
         .sys-label { font-size: 18px; font-weight: bold; color: #333; letter-spacing: 2px; }
 
-        /* ========================================================= */
         /* 美化版自訂 Alert 彈跳視窗 */
-        /* ========================================================= */
         #beauty-alert-modal { z-index: 10005; }
         .beauty-alert-box { background: #fff; width: 85%; max-width: 420px; border-radius: 12px; padding: 25px 30px; box-shadow: 0 15px 40px rgba(0,0,0,0.25); text-align: left; position: relative; font-family: "微軟正黑體", sans-serif; }
         .beauty-alert-title { font-size: 18px; color: #333; margin-bottom: 15px; font-weight: bold; }
@@ -179,24 +176,25 @@
         .sig-btn-clear .icon { background-color: #dc3545; }
         
         /* 照片標記工具列樣式 */
-        .anno-toolbar {
-            display: flex; justify-content: space-between; align-items: center;
-            background: #f8f9fa; padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; gap: 10px; overflow-x: auto;
-        }
+        .anno-toolbar { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; gap: 10px; overflow-x: auto; }
         .tool-group, .color-group { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; }
-        .tool-btn {
-            background: #fff; border: 1px solid #ccc; padding: 6px 12px; border-radius: 4px;
-            cursor: pointer; font-size: 14px; font-weight: bold; color: #444; transition: 0.1s; white-space: nowrap;
-            display: flex; align-items: center; justify-content: center;
-        }
+        .tool-btn { background: #fff; border: 1px solid #ccc; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; color: #444; transition: 0.1s; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
         .tool-btn.active, .tool-btn:hover { background: #e2e6ea; border-color: #adb5bd; }
         .tool-btn.active { box-shadow: inset 0 2px 4px rgba(0,0,0,0.15); color: #000; }
-        
-        .color-btn {
-            width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc;
-            cursor: pointer; transition: 0.2s; padding: 0;
-        }
+        .color-btn { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc; cursor: pointer; transition: 0.2s; padding: 0; }
         .color-btn.active { box-shadow: 0 0 0 2px #333; transform: scale(1.15); }
+
+        /* ========================================================= */
+        /* 缺失情形下拉選單專用樣式 */
+        /* ========================================================= */
+        .dropdown-btn { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: #fff; border: 2px solid #dc3545; border-radius: 4px; font-size: 16px; margin-left: 5px; transition: 0.2s; user-select: none; color: #dc3545; font-weight: bold; }
+        .dropdown-btn:hover { background: #dc3545; color: #fff; }
+        .defect-dropdown-menu { display: none; position: absolute; right: 0; top: 32px; background: #fff; border: 1px solid #ccc; box-shadow: 0 8px 20px rgba(0,0,0,0.2); border-radius: 6px; z-index: 1000; min-width: 320px; max-width: 450px; overflow: hidden; }
+        .defect-dropdown-menu.show { display: block; }
+        .defect-option { padding: 12px 15px; font-size: 14px; color: #333; cursor: pointer; border-bottom: 1px solid #eee; line-height: 1.5; transition: background 0.1s; }
+        .defect-option:last-child { border-bottom: none; }
+        .defect-option:hover { background-color: #f0f7ff; color: #0056b3; font-weight: bold; }
+        .defect-option::before { content: "📝 "; }
 
         @media (max-width: 768px) {
             .anno-toolbar { flex-direction: column; align-items: stretch; }
@@ -405,13 +403,209 @@
         document.getElementById('beauty-alert-modal').style.display = 'none';
     };
 
+// =========================================================
+    // 缺失情形快速選單資料庫 (專業嚴謹版：結合法規精隨與現場實務)
+    // =========================================================
+    const defectSuggestionsDB = {
+        // --- 表一：有立即發生墜落危險之虞 ---
+        "010101": ["高差 2 公尺以上之邊緣及開口，未依規定設置護欄、護蓋或安全網等防墜設施。", "高處開口作業未確實設置防墜設施，且未使勞工配掛安全帶。"],
+        "010102": ["高處作業未依規定設置工作臺或使用高空工作車。", "設置工作臺有困難時，未依法張掛安全網或使人員配掛安全帶。"],
+        "010103": ["於易踏穿材料構築之屋頂作業，未設置寬度 30 公分以上之踏板。", "易踏穿屋頂作業未確實張掛安全網或使人員配掛安全帶。"],
+        "010104": ["高差超過 1.5 公尺以上之作業場所，未依規定設置安全上下設備。", "所設置之上下設備未符合安全規定或未確實固定牢穩。"],
+        "010105": ["高差超過 7.5 公尺（或二層樓）之鋼構建築，未依法張設安全網。", "安全網下方淨空不足，或工作面與安全網之間未確實清除障礙物。"],
+        "010106": ["起重機吊掛平台搭載人員進入 2 公尺以上高處，未依規定設置圍欄。", "起重機吊掛平台作業人員，未確實使用安全母索及安全帶。"],
+
+        // --- 表一：有立即發生感電危險之虞 ---
+        "010201": ["電氣機具之帶電部分，未依規定設置防止感電之護圍。", "帶電設備於人員通行或作業進行中，未確實採取絕緣被覆措施。"],
+        "010202": ["臨時用電設備或移動式機具，未依法裝設高敏感度、高速型漏電斷路器。", "於潮濕或導電性良好場所使用電動機具，未確實連接漏電斷路器。"],
+        "010203": ["於鋼架等高導電性場所使用交流電焊機，未裝設自動電擊防止裝置。", "交流電焊機之自動電擊防止裝置未能確實動作或功能失效。"],
+        "010204": ["鄰近架空電線或帶電體作業，未依規定保持接近界線安全距離。", "接近高壓電路作業未依法設置護圍、絕緣防護裝備或移開電路。"],
+        "010205": ["從事活線作業時，未使勞工確實戴用絕緣用防護具。", "活線作業未使用絕緣工作台，或未採取防止身體接觸帶電體之措施。"],
+
+        // --- 表一：有立即發生倒塌、崩塌危險之虞 ---
+        "010301": ["施工架未依規定（垂直5.5m、水平7.5m內）與穩定構造物妥實連接。", "施工架之壁體連結構件未確實設置，整體結構有發生倒塌之虞。"],
+        "010302": ["露天開挖深度達 1.5 公尺以上，未依法設置擋土支撐或邊坡保護。", "開挖場所未確實採取擋土設施，且未張設防護網防止土石飛落。"],
+        "010303": ["隧道或坑道作業有土石崩塌之虞，未依規定設置支撐或清除浮石。", "坑洞進出口表土未確實採取邊坡保護、張設防護網或設置擋土支撐。"],
+        "010304": ["模板支撐之支柱基礎周邊積水，未依規定改善致地盤軟弱。", "於軟弱地盤設置模板支撐，未確實強化其承載力以防倒塌。"],
+
+        // --- 表一：有立即發生火災、爆炸危險之虞 ---
+        "010401": ["對存有危險物之配管或儲槽從事明火作業，事先未確實清除可燃物質。", "於有發生火花之虞之場所進行熔接熔斷作業，未確認周遭安全無虞。"],
+        "010402": ["有可燃性氣體滯留之場所，作業前未依法測定蒸氣或氣體濃度。", "氣體濃度達爆炸下限值 30% 以上，未立即停止點火源機具並使人員退避。"],
+        "010403": ["存有易燃氣體或可燃性粉塵之場所，未依規定設置通風或換氣設施。", "具火災爆炸危險之工作場所，未確實採取除塵或去除靜電之必要設施。"],
+        "010404": ["進行化學設備維修清理作業，未指派專人依規定將閥設置雙重關閉。", "處理化學設備附屬管線，未確實設置盲板以防危險物洩漏。"],
+        "010405": ["處理高熱礦渣之場所，未依規定設置良好之排水設備。", "高熱物處理設備周遭積水，未確實採取防止蒸氣爆炸之必要措施。"],
+        "010406": ["於局限空間從事作業，違規使用純氧進行換氣。", "局限空間換氣設備不符規定，且誤用純氧致生火災爆炸危害之虞。"],
+
+        // --- 表一：有立即發生中毒、缺氧危險之虞 ---
+        "010501": ["於通風不充分之儲槽內部作業，未依規定供給勞工輸氣管面罩。", "於未設局部排氣裝置之室內作業，未使勞工作業時確實佩戴呼吸防護具。"],
+        "010502": ["使用特定化學設備，未依規定設置異常狀態之自動警報裝置。", "特定化學管理設備未確實設置適當之溫度、壓力及流量計測裝置。"],
+        "010503": ["特定化學管理設備未依規定設置遮斷原料供輸或卸放製品之裝置。", "處置特定化學物質未確實配置冷卻用水裝置或供輸惰性氣體。"],
+        "010504": ["處置特定化學物質之場所，未設置洩漏時能立即發出警報之器具。", "特定化學物質作業區域，未確實備置除卻危害必要之藥劑容器設施。"],
+        "010505": ["於自然換氣不充分之場所（如人孔、局限空間），未確實佩戴空氣呼吸器及安全帶。", "局限空間作業未依規定置備適當通風換氣設備及氣體濃度測定儀器。"],
+
+        // --- 表二：施工安全衛生須知第 5 點 ---
+        "020101": ["高處作業或邊緣開口未依法設置護欄、護蓋或安全網等防護設備。", "臨時拆除防墜設施期間，未確實要求勞工使用安全帶等防止墜落措施。"],
+        "020102": ["垂直高度 20 公尺以下之高處作業，違規使用搭乘設備搭載人員升降。", "起重機吊掛搭乘設備搭載人員，未符合勞動部相關作業注意事項規定。"],
+        "020103": ["臨時道路施工未依核定計畫辦理，且未指派交通引導人員在場指揮。", "道路作業人員未確實戴用具反光帶之安全帽，及穿著顏色鮮明之施工背心。"],
+        "020104": ["工作場所邊緣所設置之護欄，其高度或強度未符合營造安全衛生設施標準。", "特殊設計之工作架台護欄，未確實經安全檢核無虞即行使用。"],
+        "020105": ["臨時用電未依規定裝設漏電斷路器，或電焊機未裝設自動電擊防止裝置。", "移動電線未依規定予以架高，或電擊防止裝置未經驗證合格。"],
+        "020106": ["移動式起重機未具備一機三證（檢查合格證、吊掛及操作人員結業證書）。", "進行起重吊掛作業時，未依規定至少隨車指派起重吊掛作業人員一人。"],
+        "020107": ["高度 2 公尺以上之高處作業，未依法設置護欄、護蓋或安全網。", "因作業需要開啟防護設備時，未確實採取使勞工作業時佩掛安全帶等防墜措施。"],
+        "020108": ["露天開挖深度達 1.5 公尺以上，未依設計圖說設置擋土支撐。", "採開挖替代方案，未確實經專任工程人員簽認安全性並報監造同意。"],
+        "020109": ["現場構築之鋼管施工架（含框式施工架），未符合營造安全衛生設施標準。", "鋼管施工架之構件及組配方式未確實依規定施作，致生安全疑慮。"],
+        "020110": ["進行屋頂、開挖、施工架組配等危險作業，未依法指派各該作業主管在場。", "作業現場之法定作業主管未確實執行監督指揮防護具佩戴等職責。"],
+
+        // --- 表三：安全衛生管理 ---
+        "030101": ["職業安全衛生人員未依規定常駐工地執行職務。", "現場查無安衛人員到勤紀錄，或未於現場確實執行安衛管理作業。"],
+        "030102": ["未依規定提送職業安全衛生計畫（含墜落災害防止計畫）報審。", "現場作業未確實落實已核准之職業安全衛生計畫內容。"],
+        "030103": ["現場未依規定辦理相關設備或作業之安全衛生自動檢查。", "自動檢查表單填寫不實，或未確實執行檢點即進行施工作業。"],
+        "030104": ["進場作業勞工未依規定辦理職業安全衛生教育訓練。", "勞工作業前未能提出有效之一般或特殊安全衛生教育訓練證明。"],
+        "030105": ["工區現場未依規定設置相關安全衛生告示牌。", "安全告示牌內容不全、損壞未修，或未設置於明顯易見處。"],
+        "030106": ["現場未依規定設置緊急救援或消防編組。", "緊急救援編組人員未落實演練，或名單未明列於計畫及告示中。"],
+        "030107": ["承攬人間未依規定成立安全衛生協議組織。", "協議組織會議紀錄未確實辦理，或相關決議事項未落實執行。"],
+        "030111": ["現場未依規定設置人員休息區。", "休息區未確實配置充足之飲用水及食鹽供勞工使用。"],
+        "030112": ["工區內違規置放酒精性飲料。", "查獲具有醉意之人員進行工作，或於工作時段（含午晚休）飲酒。"],
+        "030113": ["工區內部分人員未依法投保勞工保險或勞工職業災害保險。", "承攬人未確實查核並備妥進場人員之相關保險證明文件。"],
+        "030114": ["作業前未依規定實施勤前教育（含工地預防災變及危害告知）。", "勤前教育未確實留下紀錄，或未針對當日高風險作業進行危害宣導。"],
+        "030115": ["工區防災應變通報機制尚未建置或未符規定。", "緊急通報流程及聯絡資訊未確實張貼公告於工區顯眼處。"],
+
+        // --- 表三：個人防護具 ---
+        "030201": ["工區內人員未依規定確實配戴安全帽。", "部分人員安全帽未扣妥顎帶，或配戴不合格之工程帽。"],
+        "030202": ["從事銲接作業未依規定使用防護面罩或護目鏡。", "銲接作業人員未確實佩戴防護手套及適當之防護衣物。"],
+        "030203": ["於高架作業場所，人員未依規定配帶安全帶。", "安全帶未確實勾掛於安全母索或堅固之錨錠點。"],
+        "030204": ["使用破碎機具作業時，未配戴防音耳塞及防塵口罩。", "破碎作業人員未確實使用安全護目鏡及防振手套等防護具。"],
+
+        // --- 表三：墜落防止 ---
+        "030301": ["高差 2 公尺以上之邊緣或開孔，未依規定設置護欄或護蓋。", "防墜設施不足，且未要求作業人員確實配帶安全帶。"],
+        "030302": ["於易踏穿屋頂作業，未設置寬度 30 公分以上之踏板。", "屋頂作業未確實裝設安全網或配掛安全帶防止踏穿墜落。"],
+        "030303": ["高差 1.5 公尺以上場所，未依規定設置安全上下設備。", "現場上下設備不穩固或未確實固定，有滑動傾倒之虞。"],
+        "030304": ["使用之合梯構造不符規定，或梯腳未設防滑絕緣腳座套。", "違規將合梯當作二工作面之上下設備使用，或人員站立於頂版作業。"],
+        "030305": ["使用之移動梯寬度未達 30 公分以上。", "移動梯未確實採取防止滑溜或轉動之固定措施。"],
+        "030306": ["設置之護欄高度未達 90 公分以上，或缺少中欄杆、腳趾板。", "護欄桿件間之上下開口距離大於 55 公分，未符合規定。"],
+
+        // --- 表三：倒、崩塌防止 ---
+        "030401": ["施工架未依規定間距與穩定構造物妥實連接。", "壁體連結構件數量不足或未確實固定。"],
+        "030402": ["高度 7 公尺以上施工架未由專任工程人員或技師妥為設計。", "現場施工構台未確實依技師簽認之設計圖說按圖施作。"],
+        "030403": ["開挖深度達 1.5 公尺以上且有崩塌之虞，未依規定設擋土支撐。", "開挖面擋土設施未確實施作，防護強度不足。"],
+
+        // --- 表三：感電防止 ---
+        "030501": ["電氣作業人員未依規定戴用絕緣手套或絕緣性安全鞋。", "活線作業進行時，未確實使用合格之活線作業器具。"],
+        "030502": ["近接高壓電路作業未依規定設置安全距離標示。", "高壓電路旁作業未確實派員在場進行監視。"],
+        "030503": ["停電活線作業前未確實告知勞工作業相關危害。", "停電作業進行中，未依規定派專人在場指揮管制。"],
+        "030504": ["現場發電機之設備接地未依規定施作。", "發電機接地功能不良或未確實檢測接地電阻值。"],
+        "030505": ["入場電動機具設備未依規定實施漏電檢測。", "電動機具未確實張貼合格檢測標籤即行使用。"],
+        "030506": ["臨時用電設備未接於高速型漏電斷路器負載側。", "電動工具線路有違規跳接之情形，未確實經過漏電斷路器。"],
+        "030507": ["分電盤外蓋未常保關閉，有觸電感電之虞。", "分電盤外部未確實設立明顯之感電警示標語。"],
+        "030508": ["電氣器材之裝設與保養，由非合格之電器技術人員擔任。", "電氣結線作業未確實由具備證照之合格電工執行。"],
+        "030509": ["分電盤線路搭接違規跳過漏電斷路器。", "電氣配線未確實由漏電斷路器二次側接出。"],
+        "030510": ["移動電線被覆有破損或老化現象，未予以抽換改善。", "車輛通行處之臨時電線，未確實採取防止絕緣破壞之保護設施。"],
+        "030511": ["施工用電線未依規定架高整理。", "電線散落於地面且有浸水之虞，未確實改善。"],
+        "030512": ["未以符合規定之插頭與插座接用電源。", "現場違規以裸線直接插接於插座孔內取電。"],
+        "030513": ["電氣設備旁未依規定備有不導電之滅火設備。", "電氣專用滅火器未確實保養或藥劑已逾期。"],
+        "030514": ["周圍高壓線路通過處，未依規定裝設絕緣護套。", "鄰近高壓電路施工前，未確實設置明顯之警告標示。"],
+        "030515": ["電氣設備裝置及線路，未依電業法規相關規定施工。", "現場臨時電氣配管配線未確實符合標準安全規範。"],
+        "030516": ["現場使用之電氣器材及線路，未符合國家標準（CNS）規格。", "採用之電氣材料規格不足或未確實具備檢驗合格標識。"],
+        "030517": ["於狹小空間或高架作業使用交流電焊機，未裝自動電擊防止裝置。", "電焊機之自動電擊防止裝置未確實開啟或功能異常。"],
+        "030518": ["電焊機電源側未依規定裝設漏電斷路器。", "電焊機配線未確實連接漏電斷路器以防機體漏電危害。"],
+        "030519": ["電焊作業使用之焊接柄絕緣耐力不足或已破損。", "焊接柄把手處未確實具備良好之耐熱性及絕緣性。"],
+
+        // --- 表三：吊掛作業 ---
+        "030601": ["吊掛作業時，吊運物違規通過人員上方。", "現場管制不當，人員未確實撤離或淨空吊掛物下方。"],
+        "030602": ["違規使用起重機吊掛設備搭載或吊運人員。", "未確實使用合格搭乘設備即以起重機吊升勞工作業。"],
+        "030603": ["吊車未能出具仍在有效期內之年度檢查合格證明。", "吊車操作手未確實持有相關訓練合格證或技術士證。"],
+        "030604": ["吊車未依規定於機身標示合格編號。", "機身未確實噴塗標示吊升荷重及額定速率。"],
+        "030605": ["吊鉤未裝設防滑舌片或防滑舌片功能失效。", "吊車未確實配置過捲揚預防裝置或過負荷警報裝置。"],
+        "030606": ["現場違規使用非法拼裝之移動式起重機。", "吊車機體構造經私自改裝，未確實符合原廠安全規定。"],
+
+        // --- 表三：物料機具 ---
+        "030701": ["物料未依分類堆置整齊，散落凌亂。", "物料堆放過高或過重，未確實符合堆放地之最大安全負荷。"],
+        "030702": ["堆置之物料阻礙現場交通動線或出入口通道。", "物料堆放不當，未確實預留空間且影響現場照明採光。"],
+        "030703": ["物料堆放位置不當，妨礙現場機械設備之操作。", "機具周遭未確實淨空，影響機具操作人員視線或迴轉空間。"],
+        "030704": ["物料堆置妨礙消防滅火器具之緊急取用。", "堆置物品未確實避開自動灑水器或警報器之有效作用範圍。"],
+        "030705": ["高壓氣體容器未依規定分類儲存或妥善固定。", "鋼瓶搬運及使用時未確實安裝護蓋或採取防傾倒措施。"],
+        "030706": ["現場填方未就近堆置於工程司同意之適當地點。", "廢土石方未確實集中管理，造成工區動線混亂。"],
+        "030707": ["現場易飛揚之材料（如土砂）未依規定覆蓋良好。", "堆置之土堆未確實覆蓋防塵網，有塵土飛揚之虞。"],
+        "030708": ["工程車輛及施工機具未於指定區域堆置停放整齊。", "下班或非作業時間，機具未確實妥善停放且阻礙動線。"],
+        "030709": ["紐澤西護欄、圍籬或拒馬等設施，未維持架構完整。", "安全設施外觀髒污受損，未確實加以清洗或維護更換。"],
+
+        // --- 表三：交通維持及人行安全管制 ---
+        "030801": ["車輛未作業時停放路邊，未經同意且影響人車通行。", "停放之機具周邊未確實圍設安全護欄及夜間警示燈。"],
+        "030802": ["施工佔用車道未依規定設置漸變段或交通錐連桿。", "佔據道路作業未確實派置交通指揮人員維持交通安全。"],
+        "030803": ["施工交通安全管制及警示設施佈設不足。", "現場施工佔用道路，未確實派置臨時交通指揮人員。"],
+        "030804": ["路面覆蓋板未密接平順，有凹陷或過大之間隙。", "覆蓋板未確實採取防滑措施，或邊緣出現凸角易生危險。"],
+        "030805": ["工區周圍道路有因施工造成之顯著破裂或坑洞。", "路面未確實整平，影響車輛通行空間及行車安全。"],
+        "030806": ["臨時行人通道空間不足或未設置適當安全設施。", "行人踏板寬度不足、表面不平整，未確實採取防滑穩固措施。"],
+        "030807": ["工區周邊未依規定設置完整之圍籬或防溢座。", "圍籬及警示設施外觀髒污，未確實加以清洗及維護。"],
+        "030808": ["交通錐、連桿或拒馬未依規定數量設置並排列整齊。", "阻隔設施上未確實設置夜間警示燈或警示燈不亮。"],
+        "030809": ["大型施工動力機械未於顯明處標明所有者名稱。", "機具駕駛座旁未確實標示緊急聯絡人及聯絡電話。"],
+        "030810": ["道路開挖施工段長度大於 100 公尺，違反交通維持規定。", "同時開挖超過兩個施工段（總長超過200公尺），未確實分段。"],
+        "030811": ["寬度 15 公尺以下之道路，違規於兩側同時開挖施工。", "未確實依核定之交通維持計畫辦理封閉或單側施作。"],
+        "030812": ["未依核定之施工順序分段或單元逐段進行施工。", "前一施工段尚未復舊，未確實管制即進行下一段開挖。"],
+        "030813": ["未依核准交維計畫設置施工所需之相關標誌或告示。", "標誌、標線或導引牌面未確實設立或擺放位置錯誤。"],
+        "030814": ["夜間作業現場未依需要設置足夠之照明設施。", "交通改道區域之夜間照明光度不足，未確實照亮動線。"],
+        "030815": ["尚待施工之孔洞或未植栽樹穴，未依規定遮蓋良好。", "開口處未確實設置阻隔設施及防墜警示，有行人跌落危險。"],
+
+        // --- 表三：火災防護 ---
+        "030901": ["現場設置之消防滅火設施數量不足。", "滅火器材過期或失壓，未確實定期檢查及維護。"],
+        "030902": ["易燃易爆物品 2 公尺範圍內違規放置著引火物。", "於易燃物周遭進行動火作業，未確實保持安全距離。"],
+        "030903": ["人員於密閉、局限空間或有火災爆炸危險場所違規吸菸。", "菸害防制法明定之禁菸場所，未確實落實禁菸管理。"]
+    };
+
+    // 下拉選單開關邏輯
+    window.toggleDefectDropdown = function(event, btn, itemId, fIndex) {
+        event.stopPropagation();
+        
+        // 關閉其他開啟的選單
+        document.querySelectorAll('.defect-dropdown-menu.show').forEach(menu => {
+            if (menu.id !== `dropdown-${itemId}`) menu.classList.remove('show');
+        });
+
+        const menu = document.getElementById(`dropdown-${itemId}`);
+        if (menu.classList.contains('show')) {
+            menu.classList.remove('show');
+            return;
+        }
+
+        // 取得該項目的建議選項，如果資料庫沒有建置，提供通用預設值
+        const suggestions = defectSuggestionsDB[itemId] || [
+            "未依規定設置相關防護設施或措施。",
+            "設施或管理作為不符規定，未確實執行。"
+        ];
+
+        // 渲染選項
+        menu.innerHTML = suggestions.map(text => 
+            `<div class="defect-option" onclick="selectDefectOption(event, this, ${fIndex})">${text}</div>`
+        ).join('');
+
+        menu.classList.add('show');
+    };
+
+    // 點選選項後自動帶入文字並觸發「不合格」
+    window.selectDefectOption = function(event, optionEl, fIndex) {
+        event.stopPropagation();
+        const text = optionEl.textContent.replace('📝 ', ''); // 移除 icon
+        const container = optionEl.closest('div[style*="position: relative"]');
+        const inputDiv = container.querySelector('.defect-desc-input');
+        
+        // 將文字寫入，若原本有字則自動換行或附加
+        if (inputDiv.textContent.trim() === '' || inputDiv.textContent.trim() === '點此輸入...') {
+            inputDiv.textContent = text;
+        } else {
+            inputDiv.textContent += (inputDiv.textContent.endsWith('。') ? ' ' : '，') + text;
+        }
+        
+        // 觸發「不合格」判定與防呆機制
+        handleDefectInput(inputDiv, fIndex);
+        
+        // 關閉選單
+        optionEl.closest('.defect-dropdown-menu').classList.remove('show');
+    };
+
     window.openDraftModal = function() { document.getElementById('draft-format-modal').style.display = 'flex'; };
     window.closeDraftModal = function() { document.getElementById('draft-format-modal').style.display = 'none'; };
 
     window.executeExportXML = function() {
         closeDraftModal();
-
-        // 【修復重點】：將 escapeXML 工具函數移到最上方，確保後面的程式都能正常呼叫
         const escapeXML = (str) => {
             if (!str) return "";
             return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -439,7 +633,6 @@
             failItems.push({ item: itemDesc, defect: defectText });
         });
 
-        // 1. 收集所有簽名圖檔
         let signaturesXML = `  <簽章群組>\n`;
         document.querySelectorAll('.sign-box').forEach((box, index) => {
             const img = box.querySelector('img');
@@ -449,11 +642,9 @@
         });
         signaturesXML += `  </簽章群組>\n`;
 
-        // 2. 收集所有缺失照片與標記 (包含 GPS 與時間資訊)
         let photosXML = `  <照片群組>\n`;
         for (let code in uploadedPhotosDB) {
             if (uploadedPhotosDB[code]) {
-                // 安全讀取 EXIF 資料庫，避免未定義錯誤
                 let currentExif = (typeof photoExifDB !== 'undefined' && photoExifDB[code]) ? photoExifDB[code] : '';
                 let exifData = escapeXML(currentExif);
                 photosXML += `    <照片 代碼="${code}" EXIF="${exifData}"><![CDATA[${uploadedPhotosDB[code]}]]></照片>\n`;
@@ -476,12 +667,10 @@
             xmlString += `  <檢查項目></檢查項目>\n  <缺失情形／改善期限></缺失情形／改善期限>\n`;
         }
         
-        // 將簽章與照片合併進 XML
         xmlString += signaturesXML;
         xmlString += photosXML;
         xmlString += `</稽查紀錄>`;
 
-        // 產生並下載檔案
         const blob = new Blob([xmlString], { type: 'text/xml' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a'); 
@@ -499,13 +688,11 @@
 
         const reader = new FileReader();
         reader.onload = function(e) {
-            // 加入 try...catch 防護，避免程式出錯時無聲無息卡死
             try {
                 const text = e.target.result;
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(text, "text/xml");
                 
-                // 防呆：檢查 XML 是否解析失敗
                 if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
                     showCustomAlert("匯入失敗：XML 檔案格式錯誤或損毀。");
                     return;
@@ -513,7 +700,6 @@
 
                 const getNodeText = (tag) => { const node = xmlDoc.getElementsByTagName(tag)[0]; return node ? node.textContent : ""; };
 
-                // 1. 基礎欄位還原
                 const year = getNodeText("年"); const month = getNodeText("月"); const day = getNodeText("日");
                 if(year) syncDate('year', year); 
                 if(month) syncDate('month', parseInt(month).toString()); 
@@ -529,7 +715,6 @@
                 if(loc && loc !== "未填寫") document.querySelectorAll('.sync-loc').forEach(el => el.textContent = loc);
                 if(pos && pos !== "未填寫") document.querySelectorAll('.sync-pos').forEach(el => el.textContent = pos);
 
-                // 2. 匯入前清空並重置 UI 狀態
                 for(let i=0; i<=2; i++) uncheckAllPass(i);
                 
                 const signBoxes = document.querySelectorAll('.sign-box');
@@ -539,17 +724,15 @@
                     box.style.border = "2px dashed #999";
                 });
 
-                // 安全清空照片與 EXIF 資料庫
                 if (typeof uploadedPhotosDB !== 'undefined') {
                     for (let key in uploadedPhotosDB) delete uploadedPhotosDB[key];
                 }
                 if (typeof photoExifDB === 'undefined') {
-                    window.photoExifDB = {}; // 如果尚未宣告，則在此安全宣告
+                    window.photoExifDB = {}; 
                 } else {
                     for (let key in photoExifDB) delete photoExifDB[key];
                 }
 
-                // 3. 還原檢查項目與缺失說明
                 const items = xmlDoc.getElementsByTagName("檢查項目");
                 const defects = xmlDoc.getElementsByTagName("缺失情形／改善期限");
 
@@ -575,7 +758,6 @@
                     });
                 }
 
-                // 4. 還原電子簽章
                 const signNodes = xmlDoc.getElementsByTagName("簽章");
                 for (let i = 0; i < signNodes.length; i++) {
                     const node = signNodes[i];
@@ -591,22 +773,20 @@
                     }
                 }
 
-                // 5. 還原缺失照片與 EXIF 座標資訊
                 const photoNodes = xmlDoc.getElementsByTagName("照片");
                 for (let i = 0; i < photoNodes.length; i++) {
                     const node = photoNodes[i];
                     const code = node.getAttribute("代碼");
-                    const exifHtml = node.getAttribute("EXIF") || ''; // 讀取 EXIF 屬性
+                    const exifHtml = node.getAttribute("EXIF") || ''; 
                     let base64Data = node.textContent;
                     if (base64Data) base64Data = base64Data.trim();
 
                     if (code && base64Data) {
                         uploadedPhotosDB[code] = base64Data;
-                        photoExifDB[code] = exifHtml; // 完美回填座標資訊
+                        photoExifDB[code] = exifHtml; 
                     }
                 }
 
-                // 6. 重繪照片表格
                 if (xmlDoc.getElementsByTagName("檢查項目").length > 0 && items[0].textContent !== "") {
                     generatePhotoReport();
                 } else {
@@ -618,7 +798,6 @@
                 showCustomAlert("暫存檔匯入成功！<br><span style='font-size:14px; color:#555;'>(包含各項欄位、電子簽章及照片座標)</span>");
 
             } catch (err) {
-                // 如果發生錯誤，攔截並顯示給使用者看，避免網頁當機卡死
                 console.error("匯入過程發生錯誤：", err);
                 showCustomAlert("⚠️ 匯入失敗，發生預期外的錯誤。<br><br><span style='font-size:12px; color:#dc3545;'>" + err.message + "</span>");
                 event.target.value = ""; 
@@ -727,9 +906,6 @@
     window.uncheckAllPass = function(fIndex) { document.querySelectorAll(`.pass-radio-f${fIndex}, .fail-radio-f${fIndex}`).forEach(radio => { radio.checked = false; }); calcFailCount(fIndex); };
     window.calcFailCount = function(fIndex) { document.getElementById(`fail_count_${fIndex}`).textContent = document.querySelectorAll(`.fail-radio-f${fIndex}:checked`).length; };
 
-    // =========================================================
-    // 預覽匯出功能 (修復高度截斷問題)
-    // =========================================================
     window.openExportFormatModal = function() { document.getElementById('export-format-modal').style.display = 'flex'; };
     window.closeExportFormatModal = function() { document.getElementById('export-format-modal').style.display = 'none'; };
 
@@ -744,7 +920,6 @@
         const origHTML = btn.innerHTML; btn.innerHTML = '<span class="spin-icon">⏳</span> PNG產生中…'; btn.disabled = true; actions.style.display = 'none'; 
         document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight')); 
         
-        // 將視窗捲動到最上方，避免 html2canvas 因滾動位置算錯或出現頂部白邊
         window.scrollTo(0, 0);
 
         try {
@@ -758,9 +933,7 @@
                 scrollX: 0, 
                 scrollY: 0, 
                 windowWidth: document.documentElement.scrollWidth,
-                // 移除固定 width 和 height 讓 html2canvas 自己抓取 DOM 完整高度
                 onclone: (doc) => { 
-                    // 放開所有可能限制高度的 CSS 屬性
                     doc.documentElement.style.overflow = 'visible';
                     doc.body.style.overflow = 'visible';
                     doc.querySelectorAll('.table-responsive').forEach(el => { 
@@ -773,7 +946,7 @@
                         c.style.overflow = 'visible'; 
                     }
                     const topAiBtn = doc.getElementById('top-ai-btn-container');
-                    if (topAiBtn) topAiBtn.style.display = 'none'; // 匯出時隱藏 AI 按鈕
+                    if (topAiBtn) topAiBtn.style.display = 'none';
                 }
             });
             const filename = `稽查表_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.png`;
@@ -791,7 +964,6 @@
         const origHTML = btn.innerHTML; btn.innerHTML = '<span class="spin-icon">⏳</span> PDF產生中…'; btn.disabled = true; actions.style.display = 'none'; 
         document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight')); 
 
-        // 將視窗捲動到最上方
         window.scrollTo(0, 0);
 
         try {
@@ -820,7 +992,7 @@
                         c.style.overflow = 'visible'; 
                     }
                     const topAiBtn = doc.getElementById('top-ai-btn-container');
-                    if (topAiBtn) topAiBtn.style.display = 'none'; // 匯出時隱藏 AI 按鈕
+                    if (topAiBtn) topAiBtn.style.display = 'none'; 
                 }
             });
 
@@ -1107,7 +1279,7 @@
             const verticalName = cat.name.split('').join('<br>');
             cat.items.forEach((item, iIndex) => {
                 const uniqueName = `radio_${fIndex}_${item.id}`;
-                htmlContent += `<tr>${iIndex === 0 ? `<td rowspan="${cat.items.length}" class="col-cat vertical-text">${verticalName}</td>` : ''}<td class="col-desc"><strong class="item-id-code">${item.id}</strong> ${item.desc}</td><td class="radio-cell"><label><input type="radio" class="pass-radio pass-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})"><span class="custom-radio"></span></label></td><td class="radio-cell"><label><input type="radio" class="fail-radio fail-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})"><span class="custom-radio"></span></label></td><td class="col-remark"><div style="display:flex; align-items:flex-start;"><div contenteditable="true" class="defect-desc-input" style="flex:1; min-height:1.5em; outline:none;" oninput="handleDefectInput(this, ${fIndex})"></div><span class="mic-btn" title="語音輸入" onclick="startSpeechToText(this, ${fIndex})">🎤</span></div></td></tr>`;
+                htmlContent += `<tr>${iIndex === 0 ? `<td rowspan="${cat.items.length}" class="col-cat vertical-text">${verticalName}</td>` : ''}<td class="col-desc"><strong class="item-id-code">${item.id}</strong> ${item.desc}</td><td class="radio-cell"><label><input type="radio" class="pass-radio pass-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})"><span class="custom-radio"></span></label></td><td class="radio-cell"><label><input type="radio" class="fail-radio fail-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})"><span class="custom-radio"></span></label></td><td class="col-remark"><div style="display:flex; align-items:flex-start; position: relative;"><div contenteditable="true" class="defect-desc-input" style="flex:1; min-height:1.5em; outline:none;" oninput="handleDefectInput(this, ${fIndex})"></div><span class="mic-btn" title="語音輸入" onclick="startSpeechToText(this, ${fIndex})">🎤</span><span class="dropdown-btn" title="選擇常見缺失敘述" onclick="toggleDefectDropdown(event, this, '${item.id}', ${fIndex})">↓</span><div class="defect-dropdown-menu" id="dropdown-${item.id}"></div></div></td></tr>`;
             });
         });
         htmlContent += `</tbody></table></div><div style="background:#f9f9f9; padding:15px; border:1px solid #ddd; font-size:14px; margin-bottom:20px;">${form.notes}</div>
@@ -1120,7 +1292,7 @@
     document.querySelectorAll('.date-year').forEach(el => el.value = _rocYear); document.querySelectorAll('.date-month').forEach(el => el.value = _month); document.querySelectorAll('.date-day').forEach(el => el.value = _day);
 
     const uploadedPhotosDB = {}; 
-    const photoExifDB = {}; // 新增：用來儲存照片的 EXIF/定位 HTML 資訊
+    const photoExifDB = {}; 
 
     window.generatePhotoReport = function() {
         const failRadios = document.querySelectorAll('.fail-radio:checked');
@@ -1132,10 +1304,8 @@
             const tr = radio.closest('tr'); const itemCode = tr.querySelector('.item-id-code').textContent.trim();
             let defectText = tr.querySelector('.defect-desc-input').textContent.trim(); if(!defectText) defectText = '<span style="color:#aaa;">(未填寫說明)</span>';
             
-            // 判斷是否已經有上傳照片，給予不同的 UI
             let photoContent = '';
             if (uploadedPhotosDB[itemCode]) {
-                // 已上傳照片的狀態：顯示圖片、座標，並提供「重新拍照」與「重新挑選」雙選項
                 photoContent = `
                     <img src="${uploadedPhotosDB[itemCode]}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片">
                     ${photoExifDB[itemCode] || ''}
@@ -1149,7 +1319,6 @@
                         </label>
                     </div>`;
             } else {
-                // 尚未上傳照片的狀態：顯示明顯的綠色「拍照」與藍色「相簿」按鈕
                 photoContent = `
                     <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
                         <label class="upload-btn-ui" style="background-color: #28a745; width: 140px; border-radius: 6px;">
@@ -1170,8 +1339,7 @@
         reportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-// 新增：輔助函數 - 取得裝置當前即時 GPS
-window.getCurrentLocation = function() {
+    window.getCurrentLocation = function() {
         return new Promise((resolve) => {
             if (!navigator.geolocation) {
                 resolve(null);
@@ -1179,7 +1347,7 @@ window.getCurrentLocation = function() {
                 navigator.geolocation.getCurrentPosition(
                     (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
                     (error) => resolve(null),
-                    { enableHighAccuracy: true, timeout: 5000 } // 高精確度，5秒超時
+                    { enableHighAccuracy: true, timeout: 5000 } 
                 );
             }
         });
@@ -1190,14 +1358,11 @@ window.getCurrentLocation = function() {
         if (file) {
             const cell = document.getElementById(`photo-cell-${itemCode}`);
             cell.classList.remove('error-highlight'); 
-
-            // 改善 UX：顯示讀取中
             cell.innerHTML = `<div style="padding: 20px; color:#666;">⏳ 照片與座標解析中...</div>`;
 
             let exifInfoHTML = '';
             try {
                 if (typeof exifr !== 'undefined') {
-                    // 1. 嘗試解析照片本身的 EXIF 與 GPS
                     const [exifData, gpsData] = await Promise.all([
                         exifr.parse(file),       
                         exifr.gps(file)          
@@ -1206,9 +1371,8 @@ window.getCurrentLocation = function() {
                     let dateStr = '';
                     let lat = '';
                     let lng = '';
-                    let locationSource = ''; // 標示座標來源
+                    let locationSource = ''; 
 
-                    // 🌟 修復重點 1：自訂乾淨的時間格式化函數，避開 toLocaleString 產生的隱形字元
                     const formatDateTime = (dateObj) => {
                         if (isNaN(dateObj.getTime())) return "未知時間";
                         const y = dateObj.getFullYear();
@@ -1220,14 +1384,12 @@ window.getCurrentLocation = function() {
                         return `${y}/${m}/${d} ${h}:${min}:${s}`;
                     };
 
-                    // 處理時間
                     if (exifData && exifData.DateTimeOriginal) {
                         dateStr = formatDateTime(new Date(exifData.DateTimeOriginal));
                     } else {
                         dateStr = formatDateTime(new Date()) + " (上傳時間)";
                     }
 
-                    // 處理 GPS：優先找照片 EXIF
                     if (gpsData && gpsData.latitude && gpsData.longitude) {
                         lat = gpsData.latitude.toFixed(6);
                         lng = gpsData.longitude.toFixed(6);
@@ -1238,7 +1400,6 @@ window.getCurrentLocation = function() {
                         locationSource = "照片內建";
                     }
 
-                    // 🚨 終極救援：如果照片沒有 GPS，呼叫裝置即時定位！
                     if (!lat || !lng) {
                         cell.innerHTML = `<div style="padding: 20px; color:#0056b3;">📡 照片無座標，正在嘗試獲取裝置即時定位...</div>`;
                         const currentLoc = await window.getCurrentLocation();
@@ -1249,7 +1410,6 @@ window.getCurrentLocation = function() {
                         }
                     }
 
-                    // 🌟 修復重點 2：對動態變數加上 font-family: Arial, sans-serif，確保 html2canvas 能完美匯出英數字
                     exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #333; text-align: left; background: #eef7ff; padding: 8px; border-radius: 6px; border: 1px solid #b8daff; display: inline-block; line-height: 1.6; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">`;
                     exifInfoHTML += `<div><strong style="color:#0056b3;">📅 拍攝時間：</strong><span style="font-family: Arial, sans-serif; font-weight: bold; color: #333;">${dateStr}</span></div>`;
                     
@@ -1271,7 +1431,6 @@ window.getCurrentLocation = function() {
                 exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #dc3545;">(無法讀取此照片的資訊)</div>`;
             }
             
-            // 存入全域變數供暫存/匯出使用
             if (typeof photoExifDB !== 'undefined') {
                 photoExifDB[itemCode] = exifInfoHTML; 
             }
@@ -1484,6 +1643,11 @@ window.getCurrentLocation = function() {
         if (event.target == document.getElementById('draft-format-modal')) closeDraftModal();
         if (event.target == document.getElementById('beauty-alert-modal')) closeCustomAlert();
         if (event.target == document.getElementById('ai-paste-modal')) closeAIPasteModal();
+        
+        // 點擊畫面其他空白處時，自動關閉所有下拉選單
+        if (!event.target.closest('.dropdown-btn') && !event.target.closest('.defect-dropdown-menu')) {
+            document.querySelectorAll('.defect-dropdown-menu.show').forEach(menu => menu.classList.remove('show'));
+        }
     });
 </script>
 
