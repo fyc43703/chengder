@@ -215,8 +215,18 @@
             .sig-btn { font-size: 12px; }
         }
 
+        /* Groq API Key 設定列 */
+        #groq-key-bar { background: #f3eeff; border-bottom: 2px solid #6f42c1; padding: 8px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; }
+        #groq-key-bar label { font-weight: bold; color: #6f42c1; white-space: nowrap; }
+        #groq-key-input { flex: 1; min-width: 220px; max-width: 420px; font-size: 14px; padding: 6px 10px; border: 1.5px solid #c0a0f0; border-radius: 6px; outline: none; font-family: monospace; background: #fff; }
+        #groq-key-input:focus { border-color: #6f42c1; }
+        #groq-eye-btn { padding: 5px 12px; border: 1.5px solid #c0a0f0; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; color: #6f42c1; font-weight: bold; white-space: nowrap; }
+        #groq-eye-btn:hover { background: #e8d8ff; }
+        #groq-key-hint { font-size: 12px; color: #888; }
+        #groq-key-hint a { color: #6f42c1; }
+
         @media print {
-            .bottom-actions, .header-actions, #top-ai-btn-container { display: none !important; }
+            .bottom-actions, .header-actions, #top-ai-btn-container, #groq-key-bar { display: none !important; }
             body { padding: 0; background-color: #fff; }
             .container { box-shadow: none; padding: 0; width: 100%; }
             .form-page { page-break-after: always; }
@@ -224,6 +234,13 @@
     </style>
 </head>
 <body>
+
+<div id="groq-key-bar">
+    <label>🤖 Groq API Key：</label>
+    <input type="password" id="groq-key-input" placeholder="請輸入 Groq API Key（格式：gsk_...）" oninput="onGroqKeyInput(this.value)">
+    <button id="groq-eye-btn" onclick="toggleGroqKeyVisible()">👁 顯示</button>
+    <span id="groq-key-hint">尚未設定 Key，✨ AI 潤飾功能需要此 Key｜<a href="https://console.groq.com/keys" target="_blank">免費申請 →</a></span>
+</div>
 
 <div class="container">
     
@@ -1609,15 +1626,43 @@
     };
 
 // =========================================================
-    // AI 核心功能：文字潤飾 (改用 Groq API)
+    // AI 核心功能：Groq API 串接（含頁面頂部 Key 管理）
     // =========================================================
     let userGroqApiKey = null;
 
+    // 頁面頂部 Key 輸入框同步
+    window.onGroqKeyInput = function(val) {
+        userGroqApiKey = val.trim() || null;
+        const hint = document.getElementById('groq-key-hint');
+        if (userGroqApiKey) {
+            hint.innerHTML = '<span style="color:#28a745; font-weight:bold;">✅ API Key 已設定，AI 潤飾功能已啟用</span>';
+        } else {
+            hint.innerHTML = '尚未設定 Key，✨ AI 潤飾功能需要此 Key｜<a href="https://console.groq.com/keys" target="_blank">免費申請 →</a>';
+        }
+    };
+
+    window.toggleGroqKeyVisible = function() {
+        const inp = document.getElementById('groq-key-input');
+        const btn = document.getElementById('groq-eye-btn');
+        if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈 隱藏'; }
+        else { inp.type = 'password'; btn.textContent = '👁 顯示'; }
+    };
+
     function getApiKey() {
+        // 優先讀取頁面頂部輸入框的值
+        const inputVal = document.getElementById('groq-key-input')?.value.trim();
+        if (inputVal) {
+            userGroqApiKey = inputVal;
+            return userGroqApiKey;
+        }
         if (userGroqApiKey) return userGroqApiKey;
-        const key = prompt("⚠️ 啟用 AI 智能功能需串接 Groq API。\n\n請輸入您的 Groq API Key (格式為 gsk_...)\n*此密鑰僅存放於您當前的瀏覽器中，關閉網頁即刪除，絕對安全。");
+        // fallback：彈窗提示
+        const key = prompt("⚠️ 啟用 AI 智能功能需串接 Groq API。\n\n請輸入您的 Groq API Key（格式為 gsk_...）\n* 此密鑰僅存放於當前瀏覽器記憶體，關閉網頁即自動清除，絕對安全。\n\n建議：可直接填入頁面頂部的 Key 輸入欄，下次就不用再輸入。");
         if (key && key.trim() !== "") {
             userGroqApiKey = key.trim();
+            // 同步回頁面頂部輸入框
+            const inp = document.getElementById('groq-key-input');
+            if (inp) { inp.value = userGroqApiKey; onGroqKeyInput(userGroqApiKey); }
             return userGroqApiKey;
         }
         return null;
@@ -1631,9 +1676,8 @@
         const requestBody = {
             model: modelName,
             messages: messages,
-            temperature: 0.1 // 降低溫度讓輸出更穩定
+            temperature: 0.1
         };
-
         if (isJsonMode) {
             requestBody.response_format = { type: "json_object" };
         }
@@ -1648,16 +1692,18 @@
                 body: JSON.stringify(requestBody)
             });
 
-            // 如果驗證失敗 (如 Key 錯誤)，清空暫存的 Key 讓使用者下次可以重新輸入
             if (response.status === 401) {
                 userGroqApiKey = null;
-                throw new Error("API Key 無效或已過期，請重新操作並輸入正確的 Groq API Key。");
+                const inp = document.getElementById('groq-key-input');
+                if (inp) inp.value = '';
+                onGroqKeyInput('');
+                throw new Error("API Key 無效或已過期，請重新輸入正確的 Groq API Key。");
             }
 
             const data = await response.json();
             if (data.error) throw new Error(data.error.message);
             return data.choices[0].message.content;
-            
+
         } catch (error) {
             console.error(error);
             showCustomAlert("❌ AI 運算失敗：" + error.message);
@@ -1674,47 +1720,196 @@
         document.getElementById('ai-loading-screen').style.display = 'none';
     }
 
-// 🌟 功能一：✨ AI 缺失口語轉專業術語潤飾
-window.polishTextWithAI = async function(btnEl, fIndex) {
+// 🌟 功能一：✨ AI 缺失分析面板（強化版）
+    let _aiPanelContext = null; // 儲存當前分析上下文
+
+    window.polishTextWithAI = async function(btnEl, fIndex) {
         const tr = btnEl.closest('tr');
         const inputDiv = btnEl.parentElement.querySelector('.defect-desc-input');
         const rawText = inputDiv.textContent.trim();
-        // 抓取對應的檢查項目內容
-        const itemDescText = tr.querySelector('.col-desc').textContent.trim(); 
-        
+        const itemDescText = tr.querySelector('.col-desc').textContent.trim();
+        const itemId = tr.querySelector('.item-id-code').textContent.trim();
+
         if (!rawText || rawText === '點此輸入...') {
             showCustomAlert("請先輸入或語音唸出一些白話文的缺失敘述，再來點擊 AI 潤飾喔！");
             return;
         }
 
-        showAILoading("✨ AI 正在整合檢查項目與您的描述，轉換為專業法規術語...");
-        
-        const messages = [
-            { 
-                role: "system", 
-                content: "你是一位臺灣資深的營造業職業安全衛生管理員。你的任務是將使用者口語化的現場缺失觀察，參考並緊扣對應的『檢查項目標準』，重新潤飾成『符合職安法規用語、精簡、專業、嚴肅』的勞檢缺失敘述。請直接回傳潤飾後的文字，不要包含任何問候語、引號或多餘的前綴說明。" 
-            },
-            { 
-                role: "user", 
-                content: `【檢查項目標準】：${itemDescText}\n【現場實際觀察（白話文）】：${rawText}\n\n請整合上述兩者，輸出最終的專業缺失敘述：` 
-            }
-        ];
+        // 儲存上下文供面板使用
+        _aiPanelContext = { btnEl, fIndex, inputDiv, rawText, itemDescText, itemId };
 
-        // 🟢 切換為最新的 Llama 3.3 70B 模型
-        const polishedText = await callGroqAPI(messages, "llama-3.3-70b-versatile", false);
+        // 打開面板並開始分析
+        openAIAnalysisPanel(rawText, itemDescText, itemId);
+    };
+
+    function openAIAnalysisPanel(rawText, itemDescText, itemId) {
+        const panel = document.getElementById('ai-analysis-panel');
+        const overlay = document.getElementById('ai-panel-overlay');
         
-        if (polishedText) {
-            inputDiv.textContent = polishedText;
-            handleDefectInput(inputDiv, fIndex);
-            
-            btnEl.style.background = "#28a745";
-            btnEl.style.borderColor = "#28a745";
-            btnEl.style.color = "#fff";
-            setTimeout(() => {
-                btnEl.style.background = ""; btnEl.style.borderColor = ""; btnEl.style.color = "";
-            }, 1000);
+        // 重置面板狀態
+        document.getElementById('aip-original').textContent = rawText;
+        document.getElementById('aip-item-id').textContent = itemId;
+        document.getElementById('aip-polished').textContent = '';
+        document.getElementById('aip-regulation').textContent = '';
+        document.getElementById('aip-risk-badge').textContent = '分析中...';
+        document.getElementById('aip-risk-badge').className = 'aip-risk-badge aip-risk-loading';
+        document.getElementById('aip-improvement').textContent = '';
+        document.getElementById('aip-diff-view').innerHTML = '';
+        document.getElementById('aip-apply-btn').disabled = true;
+        document.getElementById('aip-apply-btn').textContent = '⏳ AI 分析中...';
+        setAIPSection('loading');
+
+        overlay.classList.add('show');
+        panel.classList.add('show');
+        document.body.style.overflow = 'hidden';
+
+        runFullAIAnalysis(rawText, itemDescText, itemId);
+    }
+
+    function closeAIAnalysisPanel() {
+        document.getElementById('ai-analysis-panel').classList.remove('show');
+        document.getElementById('ai-panel-overlay').classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    function setAIPSection(state) {
+        document.getElementById('aip-loading-state').style.display = state === 'loading' ? 'flex' : 'none';
+        document.getElementById('aip-result-state').style.display = state === 'result' ? 'block' : 'none';
+        document.getElementById('aip-error-state').style.display = state === 'error' ? 'block' : 'none';
+    }
+
+    async function runFullAIAnalysis(rawText, itemDescText, itemId) {
+        const systemPrompt = `你是一位臺灣資深的營造業職業安全衛生稽查專家，具備豐富的勞動檢查與法規執行經驗。
+請針對以下缺失情況，以 JSON 格式回傳完整分析結果，不得包含任何 JSON 以外的文字：
+{
+  "polished": "（潤飾後的專業缺失敘述，使用職安法規標準用語，精簡嚴肅，包含缺失現象與潛在危害，100字以內）",
+  "risk_level": "高" 或 "中" 或 "低",
+  "risk_reason": "（1句話說明風險等級判斷理由）",
+  "regulation": "（最相關的法規依據，格式：法規名稱 第X條，可列出1-2條，中間以分號隔開）",
+  "improvement": "（具體改善建議，2-3項，每項以「・」開頭）"
+}`;
+
+        const userPrompt = `【檢查項目編號】：${itemId}
+【檢查項目標準】：${itemDescText}
+【現場實際觀察（白話文）】：${rawText}
+
+請輸出 JSON 格式分析：`;
+
+        try {
+            const result = await callGroqAPI(
+                [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+                'llama-3.3-70b-versatile',
+                true
+            );
+
+            if (!result) throw new Error('AI 未回傳結果');
+
+            let data;
+            try {
+                const clean = result.replace(/```json|```/g, '').trim();
+                data = JSON.parse(clean);
+            } catch(e) {
+                throw new Error('AI 回傳格式解析失敗');
+            }
+
+            // 填入結果
+            const polished = data.polished || '';
+            document.getElementById('aip-polished').textContent = polished;
+            document.getElementById('aip-regulation').textContent = data.regulation || '（無法確定相關法規）';
+            document.getElementById('aip-improvement').innerHTML = (data.improvement || '').split('\n').map(l => `<div class="aip-improvement-item">${l}</div>`).join('');
+
+            // 風險等級
+            const riskBadge = document.getElementById('aip-risk-badge');
+            const riskLevel = data.risk_level || '中';
+            const riskClass = riskLevel === '高' ? 'aip-risk-high' : riskLevel === '低' ? 'aip-risk-low' : 'aip-risk-mid';
+            riskBadge.textContent = riskLevel + '風險';
+            riskBadge.className = 'aip-risk-badge ' + riskClass;
+            document.getElementById('aip-risk-reason').textContent = data.risk_reason || '';
+
+            // 差異對比
+            renderDiff(rawText, polished);
+
+            document.getElementById('aip-apply-btn').disabled = false;
+            document.getElementById('aip-apply-btn').textContent = '✅ 套用潤飾結果';
+            setAIPSection('result');
+
+        } catch(err) {
+            document.getElementById('aip-error-msg').textContent = err.message;
+            setAIPSection('error');
         }
-        hideAILoading();
+    }
+
+    function renderDiff(original, polished) {
+        const container = document.getElementById('aip-diff-view');
+        // 簡單的字元級差異標示
+        const oChars = [...original];
+        const pChars = [...polished];
+        
+        // 找出刪除的字（在原文有但潤飾沒有）和新增的字
+        const oSet = new Set(oChars);
+        const pSet = new Set(pChars);
+
+        let origHTML = '';
+        for (const ch of oChars) {
+            if (ch === '\n') { origHTML += '<br>'; continue; }
+            if (!pSet.has(ch)) {
+                origHTML += `<span class="diff-del">${ch}</span>`;
+            } else {
+                origHTML += ch;
+            }
+        }
+
+        let polHTML = '';
+        for (const ch of pChars) {
+            if (ch === '\n') { polHTML += '<br>'; continue; }
+            if (!oSet.has(ch)) {
+                polHTML += `<span class="diff-add">${ch}</span>`;
+            } else {
+                polHTML += ch;
+            }
+        }
+
+        container.innerHTML = `
+            <div class="diff-col">
+                <div class="diff-col-label diff-label-before">修改前</div>
+                <div class="diff-col-content">${origHTML}</div>
+            </div>
+            <div class="diff-arrow">→</div>
+            <div class="diff-col">
+                <div class="diff-col-label diff-label-after">修改後</div>
+                <div class="diff-col-content">${polHTML}</div>
+            </div>
+        `;
+    }
+
+    window.applyAIPolish = function() {
+        if (!_aiPanelContext) return;
+        const { inputDiv, fIndex, btnEl } = _aiPanelContext;
+        const polished = document.getElementById('aip-polished').textContent;
+        if (!polished) return;
+
+        inputDiv.textContent = polished;
+        handleDefectInput(inputDiv, fIndex);
+        closeAIAnalysisPanel();
+
+        // 短暫成功反饋
+        btnEl.style.background = '#28a745';
+        btnEl.style.borderColor = '#28a745';
+        btnEl.style.color = '#fff';
+        setTimeout(() => {
+            btnEl.style.background = '';
+            btnEl.style.borderColor = '';
+            btnEl.style.color = '';
+        }, 1200);
+    };
+
+    window.rerunAIAnalysis = function() {
+        if (!_aiPanelContext) return;
+        const { rawText, itemDescText, itemId } = _aiPanelContext;
+        document.getElementById('aip-apply-btn').disabled = true;
+        document.getElementById('aip-apply-btn').textContent = '⏳ AI 分析中...';
+        setAIPSection('loading');
+        runFullAIAnalysis(rawText, itemDescText, itemId);
     };
 
     window.addEventListener('click', function(event) { 
@@ -1724,12 +1919,279 @@ window.polishTextWithAI = async function(btnEl, fIndex) {
         if (event.target == document.getElementById('draft-format-modal')) closeDraftModal();
         if (event.target == document.getElementById('beauty-alert-modal')) closeCustomAlert();
         if (event.target == document.getElementById('ai-paste-modal')) closeAIPasteModal();
+        if (event.target == document.getElementById('ai-panel-overlay')) closeAIAnalysisPanel();
         
         if (!event.target.closest('.dropdown-btn') && !event.target.closest('.defect-dropdown-menu')) {
             document.querySelectorAll('.defect-dropdown-menu.show').forEach(menu => menu.classList.remove('show'));
         }
     });
 </script>
+
+<!-- ===== AI 分析抽屜面板 ===== -->
+<div id="ai-panel-overlay"></div>
+<div id="ai-analysis-panel">
+    <div class="aip-header">
+        <div class="aip-header-left">
+            <span class="aip-header-icon">✨</span>
+            <div>
+                <div class="aip-header-title">AI 缺失深度分析</div>
+                <div class="aip-header-sub">項目編號：<span id="aip-item-id">—</span></div>
+            </div>
+        </div>
+        <button class="aip-close-btn" onclick="closeAIAnalysisPanel()">✕</button>
+    </div>
+
+    <!-- 載入中 -->
+    <div id="aip-loading-state" class="aip-loading-state">
+        <div class="aip-spinner-wrap">
+            <div class="aip-spinner"></div>
+        </div>
+        <div class="aip-loading-text">AI 正在深度分析中</div>
+        <div class="aip-loading-sub">整合法規資料庫・評估風險等級・產生改善建議</div>
+    </div>
+
+    <!-- 錯誤狀態 -->
+    <div id="aip-error-state" class="aip-error-state">
+        <div class="aip-error-icon">⚠️</div>
+        <div class="aip-error-title">分析失敗</div>
+        <div id="aip-error-msg" class="aip-error-msg"></div>
+        <button class="aip-retry-btn" onclick="rerunAIAnalysis()">重新嘗試</button>
+    </div>
+
+    <!-- 結果面板 -->
+    <div id="aip-result-state" class="aip-result-state">
+
+        <!-- 風險等級 -->
+        <div class="aip-section">
+            <div class="aip-section-label">風險評估</div>
+            <div class="aip-risk-row">
+                <span id="aip-risk-badge" class="aip-risk-badge">—</span>
+                <span id="aip-risk-reason" class="aip-risk-reason"></span>
+            </div>
+        </div>
+
+        <!-- 前後對比 Diff -->
+        <div class="aip-section">
+            <div class="aip-section-label">修改對比 <span class="aip-label-hint">（<span style="color:#e53e3e;background:#fff0f0;padding:0 3px;border-radius:2px;">刪除</span> / <span style="color:#276749;background:#f0fff4;padding:0 3px;border-radius:2px;">新增</span>）</span></div>
+            <div id="aip-diff-view" class="aip-diff-view"></div>
+        </div>
+
+        <!-- 原始輸入 -->
+        <div class="aip-section">
+            <div class="aip-section-label">您的原始描述</div>
+            <div id="aip-original" class="aip-original-box"></div>
+        </div>
+
+        <!-- 潤飾結果 -->
+        <div class="aip-section">
+            <div class="aip-section-label">AI 潤飾結果 <span class="aip-label-hint">（可點擊直接編輯）</span></div>
+            <div id="aip-polished" class="aip-polished-box" contenteditable="true"></div>
+        </div>
+
+        <!-- 法規依據 -->
+        <div class="aip-section">
+            <div class="aip-section-label">📋 相關法規依據</div>
+            <div id="aip-regulation" class="aip-regulation-box"></div>
+        </div>
+
+        <!-- 改善建議 -->
+        <div class="aip-section">
+            <div class="aip-section-label">🔧 改善建議</div>
+            <div id="aip-improvement" class="aip-improvement-box"></div>
+        </div>
+
+    </div>
+
+    <!-- 底部操作列 -->
+    <div class="aip-footer">
+        <button class="aip-rerun-btn" onclick="rerunAIAnalysis()">🔄 重新分析</button>
+        <button id="aip-apply-btn" class="aip-apply-btn" onclick="applyAIPolish()" disabled>⏳ AI 分析中...</button>
+    </div>
+</div>
+
+<style>
+/* ===== AI 分析抽屜面板樣式 ===== */
+#ai-panel-overlay {
+    display: none;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(3px);
+    z-index: 20000;
+    transition: opacity 0.3s;
+    opacity: 0;
+}
+#ai-panel-overlay.show { display: block; opacity: 1; }
+
+#ai-analysis-panel {
+    position: fixed;
+    top: 0; right: -520px;
+    width: 480px; max-width: 95vw;
+    height: 100vh;
+    background: #fff;
+    z-index: 20001;
+    box-shadow: -8px 0 40px rgba(0,0,0,0.18);
+    display: flex; flex-direction: column;
+    transition: right 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    overflow: hidden;
+}
+#ai-analysis-panel.show { right: 0; }
+
+/* Header */
+.aip-header {
+    background: linear-gradient(135deg, #4a1e8a 0%, #6f42c1 100%);
+    color: #fff;
+    padding: 18px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+}
+.aip-header-left { display: flex; align-items: center; gap: 12px; }
+.aip-header-icon { font-size: 28px; }
+.aip-header-title { font-size: 17px; font-weight: bold; letter-spacing: 1px; }
+.aip-header-sub { font-size: 12px; color: rgba(255,255,255,0.75); margin-top: 2px; }
+.aip-close-btn {
+    background: rgba(255,255,255,0.2); border: none; color: #fff;
+    width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+    font-size: 16px; font-weight: bold; transition: 0.2s;
+    display: flex; align-items: center; justify-content: center;
+}
+.aip-close-btn:hover { background: rgba(255,255,255,0.35); }
+
+/* 捲動內容區 */
+#aip-result-state { overflow-y: auto; flex: 1; padding: 16px 18px 0; }
+
+/* 載入狀態 */
+.aip-loading-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    padding: 40px 20px;
+}
+.aip-spinner-wrap {
+    width: 64px; height: 64px; position: relative;
+}
+.aip-spinner {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 4px solid #f0e8ff;
+    border-top-color: #6f42c1;
+    animation: aip-spin 0.9s linear infinite;
+}
+@keyframes aip-spin { to { transform: rotate(360deg); } }
+.aip-loading-text { font-size: 16px; font-weight: bold; color: #4a1e8a; }
+.aip-loading-sub { font-size: 13px; color: #888; text-align: center; line-height: 1.6; }
+
+/* 錯誤狀態 */
+.aip-error-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    padding: 40px 20px; text-align: center;
+}
+.aip-error-icon { font-size: 40px; }
+.aip-error-title { font-size: 18px; font-weight: bold; color: #c53030; }
+.aip-error-msg { font-size: 14px; color: #666; line-height: 1.6; max-width: 340px; }
+.aip-retry-btn {
+    padding: 10px 24px; background: #6f42c1; color: #fff;
+    border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;
+}
+
+/* Section 通用 */
+.aip-section { margin-bottom: 18px; }
+.aip-section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    color: #6f42c1; text-transform: uppercase;
+    margin-bottom: 8px; padding-bottom: 5px;
+    border-bottom: 1.5px solid #f0e8ff;
+    display: flex; align-items: center; gap: 6px;
+}
+.aip-label-hint { font-size: 11px; font-weight: normal; letter-spacing: 0; color: #aaa; }
+
+/* 風險徽章 */
+.aip-risk-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.aip-risk-badge {
+    font-size: 13px; font-weight: bold; padding: 4px 14px; border-radius: 20px;
+    white-space: nowrap; flex-shrink: 0;
+}
+.aip-risk-loading { background: #eee; color: #888; }
+.aip-risk-high { background: #fff0f0; color: #c53030; border: 1.5px solid #fc8181; }
+.aip-risk-mid { background: #fffbeb; color: #b7791f; border: 1.5px solid #f6ad55; }
+.aip-risk-low { background: #f0fff4; color: #276749; border: 1.5px solid #68d391; }
+.aip-risk-reason { font-size: 13px; color: #555; line-height: 1.5; }
+
+/* Diff 對比 */
+.aip-diff-view {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: #fafafa; border: 1px solid #e2e8f0;
+    border-radius: 6px; padding: 12px; font-size: 13px;
+}
+.diff-col { flex: 1; min-width: 0; }
+.diff-col-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    margin-bottom: 6px; padding: 2px 8px; border-radius: 3px;
+    display: inline-block;
+}
+.diff-label-before { background: #fff0f0; color: #c53030; }
+.diff-label-after { background: #f0fff4; color: #276749; }
+.diff-col-content { line-height: 1.9; color: #333; word-break: break-all; }
+.diff-del { background: #fff0f0; color: #c53030; text-decoration: line-through; border-radius: 2px; padding: 0 1px; }
+.diff-add { background: #f0fff4; color: #276749; border-radius: 2px; padding: 0 1px; }
+.diff-arrow { font-size: 20px; color: #cbd5e0; flex-shrink: 0; padding-top: 4px; }
+
+/* 原始文字框 */
+.aip-original-box {
+    background: #f7fafc; border: 1.5px solid #e2e8f0; border-radius: 6px;
+    padding: 10px 13px; font-size: 14px; line-height: 1.8; color: #555;
+    white-space: pre-wrap;
+}
+
+/* 潤飾結果框（可編輯）*/
+.aip-polished-box {
+    background: #f8f4ff; border: 1.5px solid #c4b5fd; border-radius: 6px;
+    padding: 12px 14px; font-size: 14px; line-height: 1.9; color: #1a1a1a;
+    font-weight: 500; min-height: 60px; white-space: pre-wrap; outline: none;
+    cursor: text; transition: border-color 0.2s;
+}
+.aip-polished-box:focus { border-color: #6f42c1; background: #faf7ff; }
+
+/* 法規依據 */
+.aip-regulation-box {
+    background: #fffbeb; border: 1.5px solid #f6e05e; border-radius: 6px;
+    padding: 10px 13px; font-size: 13px; line-height: 1.8; color: #744210;
+    white-space: pre-wrap;
+}
+
+/* 改善建議 */
+.aip-improvement-box {
+    background: #ebf8ff; border: 1.5px solid #90cdf4; border-radius: 6px;
+    padding: 10px 13px; font-size: 13px; line-height: 1.9; color: #2c5282;
+}
+.aip-improvement-item { padding: 2px 0; }
+
+/* 底部操作列 */
+.aip-footer {
+    display: flex; gap: 10px; padding: 14px 18px;
+    border-top: 1px solid #f0e8ff; flex-shrink: 0;
+    background: #fff;
+}
+.aip-rerun-btn {
+    flex: 0 0 auto; padding: 11px 16px;
+    background: #f0e8ff; color: #6f42c1; border: none;
+    border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer;
+    transition: 0.2s;
+}
+.aip-rerun-btn:hover { background: #e0cffc; }
+.aip-apply-btn {
+    flex: 1; padding: 11px 20px;
+    background: linear-gradient(135deg, #4a1e8a, #6f42c1); color: #fff;
+    border: none; border-radius: 6px; font-size: 15px; font-weight: bold;
+    cursor: pointer; transition: 0.2s; letter-spacing: 0.5px;
+}
+.aip-apply-btn:hover:not(:disabled) { filter: brightness(1.1); }
+.aip-apply-btn:disabled { background: #ccc; cursor: not-allowed; filter: none; }
+
+@media (max-width: 600px) {
+    #ai-analysis-panel { width: 100vw; }
+    .aip-diff-view { flex-direction: column; }
+    .diff-arrow { display: none; }
+}
+</style>
 
 </body>
 </html>
