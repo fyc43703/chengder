@@ -233,7 +233,7 @@
             #groq-key-hint a { color: #6f42c1; }
     
             @media print {
-                .bottom-actions, .header-actions, #top-ai-btn-container, #groq-key-bar { display: none !important; }
+                .bottom-actions, .header-actions, #top-ai-btn-container, #groq-key-bar, #autosave-bar { display: none !important; }
                 body { padding: 0; background-color: #fff; }
                 .container { box-shadow: none; padding: 0; width: 100%; }
                 .form-page { page-break-after: always; }
@@ -275,6 +275,10 @@
             <button class="btn-3d btn-pdf" onclick="openExportFormatModal()"><span class="spin-icon">📄</span> 預覽匯出</button>
             <button class="btn-3d btn-system" onclick="openSystemModal()"><span class="spin-icon">🚀</span> 系統確認登錄</button>
         </div>
+        <!-- ★ 修正18：最後儲存時間提示列 -->
+        <div id="autosave-bar" style="display:none; text-align:center; margin-top:10px; padding-bottom:6px; font-size:12px; color:#999; letter-spacing:0.5px;">
+            💾 最後儲存：<span id="autosave-time">--:--</span>
+        </div>
     </div>
     <!-- 蘋果風格 API Key 專屬 Modal -->
     <div id="apple-api-modal" class="custom-modal" style="z-index: 25000;">
@@ -304,6 +308,21 @@
             </div>
             <div class="beauty-alert-actions">
                 <button class="beauty-alert-btn" onclick="closeCustomAlert()">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ★ 專屬「恢復暫存」詢問 Modal（不再劫持 closeCustomAlert） -->
+    <div id="restore-draft-modal" class="custom-modal" style="z-index: 10006;">
+        <div class="beauty-alert-box">
+            <div class="beauty-alert-title">🔔 偵測到未完成的暫存紀錄</div>
+            <div class="beauty-alert-content" style="display:block;">
+                <div style="margin-bottom:10px;">系統偵測到您有<b>尚未完成的暫存紀錄</b>。</div>
+                <div style="font-size:14px; color:#666;">是否要載入上次的資料繼續填寫？</div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:5px;">
+                <button onclick="discardDraftAndClose()" style="flex:1; padding:8px; border-radius:6px; border:1px solid #ccc; background:#f8f9fa; cursor:pointer; font-size:15px;">開啟空白新表</button>
+                <button onclick="restoreAndClose()" style="flex:1; padding:8px; border-radius:6px; border:none; background:#0b5ed7; color:white; font-weight:bold; cursor:pointer; font-size:15px;">🔄 恢復資料</button>
             </div>
         </div>
     </div>
@@ -634,9 +653,10 @@
             const failItems = [];
             document.querySelectorAll('.fail-radio:checked').forEach(radio => {
                 const tr = radio.closest('tr');
+                const itemId = tr.querySelector('.item-id-code').textContent.trim();
                 const itemDesc = tr.querySelector('.col-desc').textContent.trim();
                 const defectText = tr.querySelector('.defect-desc-input').textContent.trim() || "未填寫說明";
-                failItems.push({ item: itemDesc, defect: defectText });
+                failItems.push({ id: itemId, item: itemDesc, defect: defectText });
             });
     
             let signaturesXML = `  <簽章群組>\n`;
@@ -667,10 +687,10 @@
             
             if (failItems.length > 0) {
                 failItems.forEach(fi => {
-                    xmlString += `  <檢查項目>${escapeXML(fi.item)}</檢查項目>\n  <缺失情形／改善期限>${escapeXML(fi.defect)}</缺失情形／改善期限>\n`;
+                    xmlString += `  <檢查項目 編號="${escapeXML(fi.id)}">${escapeXML(fi.item)}</檢查項目>\n  <缺失情形／改善期限>${escapeXML(fi.defect)}</缺失情形／改善期限>\n`;
                 });
             } else {
-                xmlString += `  <檢查項目></檢查項目>\n  <缺失情形／改善期限></缺失情形／改善期限>\n`;
+                xmlString += `  <檢查項目 編號=""></檢查項目>\n  <缺失情形／改善期限></缺失情形／改善期限>\n`;
             }
             
             xmlString += signaturesXML;
@@ -743,12 +763,19 @@
                     const defects = xmlDoc.getElementsByTagName("缺失情形／改善期限");
     
                     for (let i = 0; i < items.length; i++) {
+                        const itemId   = items[i].getAttribute("編號") || ""; // 新版 XML 含 編號 屬性
                         const itemName = items[i].textContent;
-                        const defectDesc = defects[i].textContent;
-                        if (!itemName) continue;
-    
+                        const defectDesc = defects[i] ? defects[i].textContent : "";
+                        if (!itemId && !itemName) continue;
+
                         document.querySelectorAll('.col-desc').forEach(descCell => {
-                            if (descCell.textContent.includes(itemName)) {
+                            // ★ 優先以 item ID 精確比對；若舊版 XML 無 ID 屬性則退回文字包含比對
+                            const cellId = descCell.querySelector('.item-id-code').textContent.trim();
+                            const isMatch = itemId
+                                ? cellId === itemId
+                                : (itemName && descCell.textContent.includes(itemName));
+
+                            if (isMatch) {
                                 const tr = descCell.closest('tr');
                                 const failRadio = tr.querySelector('.fail-radio');
                                 const defectInput = tr.querySelector('.defect-desc-input');
@@ -1931,9 +1958,15 @@ const reader = new FileReader();
                 document.getElementById('aip-polished').textContent = polished;
                 document.getElementById('aip-regulation').textContent = data.regulation || '（無法確定相關法規）';
                 
-                // 改善建議也一併經過強制校正
+                // 改善建議：先做 HTML 跳脫再轉換換行，防止 AI 回傳惡意 HTML 標籤注入
+                const escapeAI = (str) => str
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                 const improvements = enforceTerminology(data.improvement || '');
-                document.getElementById('aip-improvement').innerHTML = improvements.split('\n').map(l => `<div class="aip-improvement-item">${l}</div>`).join('');
+                document.getElementById('aip-improvement').innerHTML =
+                    improvements.split('\n')
+                        .map(l => `<div class="aip-improvement-item">${escapeAI(l)}</div>`)
+                        .join('');
     
                 // 風險等級
                 const riskBadge = document.getElementById('aip-risk-badge');
@@ -1957,34 +1990,63 @@ const reader = new FileReader();
         }
         function renderDiff(original, polished) {
             const container = document.getElementById('aip-diff-view');
-            // 簡單的字元級差異標示
-            const oChars = [...original];
-            const pChars = [...polished];
-            
-            // 找出刪除的字（在原文有但潤飾沒有）和新增的字
-            const oSet = new Set(oChars);
-            const pSet = new Set(pChars);
-    
-            let origHTML = '';
-            for (const ch of oChars) {
-                if (ch === '\n') { origHTML += '<br>'; continue; }
-                if (!pSet.has(ch)) {
-                    origHTML += `<span class="diff-del">${ch}</span>`;
-                } else {
-                    origHTML += ch;
+
+            // ── LCS（最長公共子序列）字元級差異比對 ──
+            // 使用 Myers diff 簡化版：先以 LCS 找出共同字元位置，再標示刪除／新增
+            function lcsMatrix(a, b) {
+                const m = a.length, n = b.length;
+                // 使用滾動二列節省記憶體（只需前一列）
+                let prev = new Int32Array(n + 1);
+                let curr = new Int32Array(n + 1);
+                const full = []; // 儲存完整矩陣供回溯
+                full.push(prev.slice());
+                for (let i = 1; i <= m; i++) {
+                    for (let j = 1; j <= n; j++) {
+                        curr[j] = a[i-1] === b[j-1] ? prev[j-1] + 1 : Math.max(prev[j], curr[j-1]);
+                    }
+                    prev = curr.slice();
+                    full.push(prev.slice());
+                }
+                return full;
+            }
+
+            function buildDiff(a, b) {
+                const mat = lcsMatrix(a, b);
+                let i = a.length, j = b.length;
+                const ops = []; // {type: 'eq'|'del'|'ins', ch}
+                while (i > 0 || j > 0) {
+                    if (i > 0 && j > 0 && a[i-1] === b[j-1]) {
+                        ops.push({ type: 'eq', ch: a[i-1] }); i--; j--;
+                    } else if (j > 0 && (i === 0 || mat[i][j-1] >= mat[i-1][j])) {
+                        ops.push({ type: 'ins', ch: b[j-1] }); j--;
+                    } else {
+                        ops.push({ type: 'del', ch: a[i-1] }); i--;
+                    }
+                }
+                return ops.reverse();
+            }
+
+            function escapeForDiff(ch) {
+                return ch.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            }
+
+            const aChars = [...original];
+            const bChars = [...polished];
+            const ops    = buildDiff(aChars, bChars);
+
+            let origHTML = '', polHTML = '';
+            for (const op of ops) {
+                const safe = op.ch === '\n' ? '<br>' : escapeForDiff(op.ch);
+                if (op.type === 'eq') {
+                    origHTML += safe;
+                    polHTML  += safe;
+                } else if (op.type === 'del') {
+                    origHTML += `<span class="diff-del">${safe}</span>`;
+                } else { // ins
+                    polHTML  += `<span class="diff-add">${safe}</span>`;
                 }
             }
-    
-            let polHTML = '';
-            for (const ch of pChars) {
-                if (ch === '\n') { polHTML += '<br>'; continue; }
-                if (!oSet.has(ch)) {
-                    polHTML += `<span class="diff-add">${ch}</span>`;
-                } else {
-                    polHTML += ch;
-                }
-            }
-    
+
             container.innerHTML = `
                 <div class="diff-col">
                     <div class="diff-col-label diff-label-before">修改前</div>
@@ -2346,7 +2408,6 @@ const reader = new FileReader();
           <button class="chat-chip" onclick="quickAsk('本稽查表有關護欄規定是什麼？')">護欄</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關安全帶規定是什麼？')">安全帶</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關墜落規定是什麼？')">墜落</button>
-          <button class="chat-chip" onclick="quickAsk('本稽查表有關安全帶規定是什麼？')">安全帶</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關高處規定是什麼？')">高處</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關上下設備規定是什麼？')">上下設備</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關防護具規定是什麼？')">防護具</button>
@@ -2361,14 +2422,14 @@ const reader = new FileReader();
           <button class="chat-chip" onclick="quickAsk('本稽查表有關消防規定是什麼？')">消防</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關火規定是什麼？')">火</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關通風規定是什麼？')">通風</button>
-          <button class="chat-chip" onclick="quickAsk('本稽查表有關擋土支撐規定是什麼？')">擋土支撐</button>
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關擋土規定是什麼？')">擋土</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關絕緣規定是什麼？')">絕緣</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關電擊規定是什麼？')">電擊</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關起重規定是什麼？')">起重</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關護蓋規定是什麼？')">護蓋</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關自動檢查規定是什麼？')">自動檢查</button>        
-          <button class="chat-chip" onclick="quickAsk('本稽查表有關夜間作業規定是什麼？')">夜間作業</button>        
-          <button class="chat-chip" onclick="quickAsk('本稽查表有關漏電斷路器規定是什麼？')">漏電斷路器</button>
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關夜間規定是什麼？')">夜間</button>        
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關漏電規定是什麼？')">漏電</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關吊掛規定是什麼？')">吊掛</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關施工架規定是什麼？')">施工架</button>
         </div>
@@ -2430,7 +2491,8 @@ const reader = new FileReader();
       font-size: 15px; font-weight: bold;
       cursor: pointer;
       box-shadow: 0 4px 20px rgba(26,92,154,0.45);
-      transition: transform 0.2s, box-shadow 0.2s;
+      /* ★ 修正11：加入 bottom 的 transition，讓 FAB 在位移時有平滑動畫 */
+      transition: transform 0.2s, box-shadow 0.2s, bottom 0.3s ease;
       user-select: none;
     }
     #chat-fab:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(26,92,154,0.5); }
@@ -2598,6 +2660,8 @@ const reader = new FileReader();
     
     @media (max-width: 440px) {
       #chat-window { width: calc(100vw - 16px); right: 8px; bottom: 80px; }
+      /* ★ 修正11：手機螢幕下，FAB 預設上移避免蓋住底部操作按鈕；
+         JS 會在頁面捲動超過 action-buttons 時自動恢復 bottom:16px */
       #chat-fab { bottom: 16px; right: 16px; }
     }
     </style>
@@ -2914,6 +2978,31 @@ bubbleContent = bubbleContent.replace(
       setTimeout(() => {
         document.getElementById('chat-fab').style.opacity = '1';
       }, 50);
+
+    // ★ 修正11：IntersectionObserver 偵測底部操作列是否在畫面中可見
+    // 若可見，FAB 自動上移至操作列上方，避免遮擋；離開視窗後恢復原位
+    (function setupFabAvoidance() {
+      const fab    = document.getElementById('chat-fab');
+      const actBar = document.getElementById('action-buttons');
+      if (!fab || !actBar) return;
+
+      const observer = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting) {
+          // 操作列在畫面內：計算操作列高度 + 間距，讓 FAB 浮在它上方
+          const barH = actBar.offsetHeight;
+          fab.style.bottom = (barH + 18) + 'px';
+        } else {
+          // 操作列已捲出視窗：恢復預設位置
+          fab.style.bottom = '28px';
+        }
+      }, {
+        // 只要操作列有任何一點進入視窗就觸發
+        threshold: 0
+      });
+
+      observer.observe(actBar);
+    })();
     // =========================================================
     // 💾 本地自動暫存機制 (Auto-save)
     // =========================================================
@@ -2960,6 +3049,15 @@ bubbleContent = bubbleContent.replace(
 
             // 轉字串寫入 localStorage
             localStorage.setItem('ema2_autosave_draft', JSON.stringify(draft));
+
+            // ★ 修正18：儲存成功後更新畫面上的「最後儲存時間」提示
+            const now = new Date();
+            const hh  = String(now.getHours()).padStart(2, '0');
+            const mm  = String(now.getMinutes()).padStart(2, '0');
+            const timeEl = document.getElementById('autosave-time');
+            const barEl  = document.getElementById('autosave-bar');
+            if (timeEl) timeEl.textContent = hh + ':' + mm;
+            if (barEl)  barEl.style.display = 'block';
             
         } catch (e) {
             // 防呆：如果 localStorage 容量爆滿 (通常是 5MB)，放棄儲存照片，只保留文字紀錄
@@ -3071,33 +3169,30 @@ bubbleContent = bubbleContent.replace(
     setTimeout(() => {
         const draftStr = localStorage.getItem('ema2_autosave_draft');
         if (draftStr) {
-            const timeDiff = new Date().getTime() - JSON.parse(draftStr).timestamp;
-            // 如果暫存檔是 12 小時內的，跳出詢問
-            if (timeDiff < 12 * 60 * 60 * 1000) {
-                // 利用現有的 alert 系統稍作修改來呈現
-                document.getElementById('beauty-alert-text').innerHTML = `
-                    <div style="margin-bottom:10px;">系統偵測到您有<b>尚未完成的暫存紀錄</b>。</div>
-                    <div style="font-size:14px; color:#666;">是否要載入上次的資料繼續填寫？</div>
-                    <div style="margin-top:15px; display:flex; gap:10px;">
-                        <button onclick="localStorage.removeItem('ema2_autosave_draft'); closeCustomAlert();" style="flex:1; padding:8px; border-radius:6px; border:1px solid #ccc; background:#f8f9fa; cursor:pointer;">開啟空白新表</button>
-                        <button onclick="restoreFromLocalStorage(); closeCustomAlert();" style="flex:1; padding:8px; border-radius:6px; border:none; background:#0b5ed7; color:white; font-weight:bold; cursor:pointer;">🔄 恢復資料</button>
-                    </div>
-                `;
-                document.querySelector('.beauty-alert-actions').style.display = 'none'; // 隱藏原本的確定按鈕
-                document.getElementById('beauty-alert-modal').style.display = 'flex';
-                
-                // 補救機制：當自訂 Alert 關閉時，把下方 actions 按鈕加回來以免影響後續使用
-                const _originalCloseAlert = window.closeCustomAlert;
-                window.closeCustomAlert = function() {
-                    _originalCloseAlert();
-                    setTimeout(() => { document.querySelector('.beauty-alert-actions').style.display = 'block'; }, 200);
+            try {
+                const timeDiff = new Date().getTime() - JSON.parse(draftStr).timestamp;
+                // 如果暫存檔是 12 小時內的，以專屬 Modal 詢問（不劫持 closeCustomAlert）
+                if (timeDiff < 12 * 60 * 60 * 1000) {
+                    document.getElementById('restore-draft-modal').style.display = 'flex';
+                } else {
+                    // 超過 12 小時視為過期作廢
+                    localStorage.removeItem('ema2_autosave_draft');
                 }
-            } else {
-                // 超過 12 小時視為過期作廢
+            } catch(e) {
                 localStorage.removeItem('ema2_autosave_draft');
             }
         }
     }, 800); // 延遲 800 毫秒等 UI 載入完畢再詢問
+
+    // 專屬 Modal 的操作函數
+    window.discardDraftAndClose = function() {
+        localStorage.removeItem('ema2_autosave_draft');
+        document.getElementById('restore-draft-modal').style.display = 'none';
+    };
+    window.restoreAndClose = function() {
+        document.getElementById('restore-draft-modal').style.display = 'none';
+        restoreFromLocalStorage();
+    };
     })(); // IIFE：避免污染全域變數
     </script>
     
