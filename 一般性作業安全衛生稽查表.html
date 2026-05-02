@@ -148,8 +148,7 @@
             table.photo-table td { text-align: center; vertical-align: middle; }
             .upload-btn-ui { display: inline-block; background-color: #000080; color: #fff; padding: 8px 16px; font-size: 16px; font-weight: bold; cursor: pointer; letter-spacing: 2px; }
             .upload-btn-ui:active { transform: scale(0.95); }
-            .uploaded-img-preview { max-width: 100%; max-height: 200px; object-fit: contain; display: block; margin: 0 auto; cursor: crosshair; border: 1px solid #ddd; }
-            .reupload-text { display: inline-block; margin-top: 8px; font-size: 13px; color: #0056b3; text-decoration: underline; cursor: pointer; }
+            .uploaded-img-preview { max-width: 100%; max-height: 200px; object-fit: contain; display: block; margin: 0 auto; cursor: pointer; border: 1px solid #ddd; }            .reupload-text { display: inline-block; margin-top: 8px; font-size: 13px; color: #0056b3; text-decoration: underline; cursor: pointer; }
     
             /* Modal 共用毛玻璃背景 */
             .custom-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px); z-index: 10000; align-items: center; justify-content: center; }
@@ -381,7 +380,7 @@
                 <div><strong>檢查位置：</strong> <span id="sys-pos"></span></div>
             </div>
             <div class="sys-reminder">提醒：請先開啟 GlobalProtect App，確認 VPN 已成功連線至本局後，再進行稽查紀錄上傳作業。</div>
-            <div class="sys-warning">確認後傳送<br>臺北市政府捷運工程局<br>安全衛生稽查管理系統</div>
+            <div class="sys-warning">確認後將立即傳送<br>捷運工程局<br>安全衛生稽查管理系統</div>
             <div class="sys-actions">
                 <div class="sys-btn-group" onclick="closeSystemModal()"><div class="sys-icon red">✖</div><div class="sys-label">清除</div></div>
                 <div class="sys-btn-group" onclick="submitSystemData()"><div class="sys-icon green">✔</div><div class="sys-label">確認</div></div>
@@ -1454,18 +1453,57 @@
                     photoExifDB[itemCode] = exifInfoHTML; 
                 }
     
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    uploadedPhotosDB[itemCode] = e.target.result;
+// 🌟 加入 Canvas 圖片壓縮引擎
+const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // 設定最大寬高 (1280px 足以應付稽查報表，且檔案極小)
+                    const MAX_WIDTH = 1280;
+                    const MAX_HEIGHT = 1280;
+                    let width = img.width;
+                    let height = img.height;
+
+                    // 計算等比例縮放
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    // 繪製到 Canvas 上
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // 壓縮為 JPEG 格式，品質設定為 0.7 (70%)
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+                    // 儲存壓縮後的圖檔
+                    uploadedPhotosDB[itemCode] = compressedBase64;
+                    
                     cell.innerHTML = `
-                        <img src="${e.target.result}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片">
+                        <img src="${compressedBase64}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片">
                         <br>
                         ${exifInfoHTML}
                         <br>
                         <label class="reupload-text" style="display:inline-block; margin-top:8px;">重新上傳<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>
                     `;
-                }; 
-                reader.readAsDataURL(file);
+
+                    // 觸發自動存檔 (搭配第二部分功能)
+                    if(typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage();
+                };
+                img.src = e.target.result; // 將 FileReader 讀取的原檔餵給 Image
+            }; 
+            reader.readAsDataURL(file);
             }
         };
     
@@ -2288,7 +2326,7 @@
       <!-- 標題列 -->
       <div class="chat-header">
         <div class="chat-header-left">
-          <div class="chat-avatar">AI</div>
+          <div class="chat-avatar">Q&A</div>
           <div>
             <div class="chat-title">稽查表助理</div>
             <div class="chat-status" id="chat-status">隨時提問，立即解答</div>
@@ -2341,10 +2379,10 @@
     <!-- 歡迎訊息 -->
     <div class="chat-msg chat-msg-ai">
         <div class="chat-msg-bubble">
-          👋 您好！我是稽查表助理，您可以點選上方快速提問，或者於對話框輸入關鍵字：
+          👋 您好！我是稽查表助理，您可以點選上方快速提問，或者於對話框輸入關鍵字搜尋：
           <ul style="margin:6px 0 0 5px; padding:0; line-height:1.5; list-style: none;">
-              <li style="margin-bottom: 6px;">💡 如「吊掛作業」、「開口作業」等，我會幫您找到相關的檢查項目缺失編號，並說明本稽查表對應之合約扣罰金額。</li>
-              <li>💡 如「010101」、「030103」等，我會幫您找到相關的檢查項目，並說明本稽查表對應之合約扣罰金額。</li>
+              <li style="margin-bottom: 6px;">💡 如輸入「吊掛作業」，我會幫您找到本表檢查項目缺失編號及對應之合約扣罰金額。</li>
+              <li>💡 如輸入「010101」，我會幫您找到本表檢查項目及對應之合約扣罰金額。</li>
           </ul>
         </div>
         <div class="chat-msg-time">稽查表助理</div>
@@ -2673,13 +2711,47 @@
         quickShown = true;
       };
     
-      // ── 本地強效搜尋引擎 ──
-      function localRuleSearch(userText) {
+// ── 本地強效搜尋引擎 ──
+function localRuleSearch(userText) {
         if (typeof formsData === 'undefined' || !userText) return "系統資料尚未載入。";
-    
+
+        // 🌟 新增：針對「6碼數字」的強制精確搜尋優先攔截
+        const exactIdMatch = userText.match(/\d{6}/);
+        if (exactIdMatch) {
+            const targetId = exactIdMatch[0];
+            let foundItem = null;
+            let foundPenalty = "5,000";
+
+            // 尋找唯一符合的 ID
+            for (const form of formsData) {
+                for (const cat of form.categories) {
+                    for (const item of cat.items) {
+                        if (item.id === targetId) {
+                            foundItem = item;
+                            if (item.id.startsWith("01") || item.id.startsWith("02") || item.id === "030103") foundPenalty = "25,000";
+                            else if (item.id === "030112" || item.id === "030113" || item.id === "030201") foundPenalty = "3,000";
+                            if (item.desc.includes("為有立即發生危險之虞項目 01") || item.desc.includes("25,000")) foundPenalty = "25,000";
+                            break;
+                        }
+                    }
+                    if (foundItem) break;
+                }
+                if (foundItem) break;
+            }
+
+            if (foundItem) {
+                let cleanDesc = foundItem.desc.replace(/<[^>]+>/g, '').trim();
+                return `🔍 找到指定編號【${targetId}】的項目：\n\n1. 📑 檢查項目：【${foundItem.id}】${cleanDesc}\n💰 合約扣罰：${foundPenalty} 元\n`;
+            } else {
+                return `很抱歉，在稽查表中找不到編號為「${targetId}」的項目。`;
+            }
+        }
+
+        // ============================================
+        // 下方為原本的文字模糊搜尋邏輯 (未包含 6 碼數字時執行)
+        // ============================================
         let matches = [];
         
-        // 1. 萃取核心關鍵字 (排除無意義的問句與高頻詞)
         let searchKeywords = [];
         let corePhrases = userText.replace(/本稽查表|有關|規定|是什麼|請問|告訴我|幫我|查一下|多少|的/g, '|').split(/[|，。！？、\s]+/);
         const stopWords = ["作業", "設施", "設備", "人員", "事項", "情形", "辦理", "標準", "符合"];
@@ -2691,28 +2763,21 @@
           }
         });
         
-        // 如果過濾完沒東西，就把原始輸入去特殊符號當作關鍵字
         if (searchKeywords.length === 0) {
             let clean = userText.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
             if(clean.length >= 2) searchKeywords.push(clean);
         }
     
-        // 2. 掃描稽查表 (formsData)
         formsData.forEach(form => {
           form.categories.forEach(cat => {
             cat.items.forEach(item => {
               let score = 0;
               let cleanDesc = item.desc.replace(/<[^>]+>/g, '').trim();
     
-              // 如果包含原始輸入編號 (例如 010101) 直接滿分
-              if (userText.match(/\d{6}/) && item.id.includes(userText.match(/\d{6}/)[0])) score += 1000;
-    
               searchKeywords.forEach(kw => {
-                // 核心詞彙完全命中 (給予超高分)
                 if (cleanDesc.includes(kw)) score += 100;
                 if (cat.name.includes(kw)) score += 50;
                 
-                // 針對 3 個字以上的核心詞彙，才切雙字詞輔助搜尋，避免過度發散抓到不相干的項目
                 if (kw.length >= 3) {
                     for(let i=0; i < kw.length - 1; i++) {
                         let bigram = kw.substring(i, i+2);
@@ -2721,7 +2786,6 @@
                 }
               });
     
-              // 提高門檻至 30 分，濾掉只有單一雙字詞(10分)碰巧命中的項目 (解決假陽性)
               if (score >= 30) { 
                 let penalty = "5,000";
                 if (item.id.startsWith("01") || item.id.startsWith("02") || item.id === "030103") penalty = "25,000";
@@ -2751,24 +2815,21 @@
     
         const topMatches = uniqueMatches.slice(0, 25);
     
-        // 3. 組合回覆字串與 Highlight 標記
-        // 為了讓 Highlight 更準確，把 searchKeywords 由長到短排序
         searchKeywords.sort((a, b) => b.length - a.length);
     
         let responseText = `🔍 在稽查表中找到以下與「${userText}」相關的項目（共 ${topMatches.length} 筆）：`;
     
-    topMatches.forEach((m, index) => {
-      // 💡 移除截斷設定，直接使用完整法規文字
-      let fullDesc = m.desc;
-      
-      searchKeywords.forEach(hw => {
-         let re = new RegExp(hw, 'gi');
-         fullDesc = fullDesc.replace(re, `[[${hw}]]`);
-      });
-      fullDesc = fullDesc.replace(/\[\[\[\[/g, '[[').replace(/\]\]\]\]/g, ']]');
+        topMatches.forEach((m, index) => {
+          let fullDesc = m.desc;
+          
+          searchKeywords.forEach(hw => {
+             let re = new RegExp(hw, 'gi');
+             fullDesc = fullDesc.replace(re, `[[${hw}]]`);
+          });
+          fullDesc = fullDesc.replace(/\[\[\[\[/g, '[[').replace(/\]\]\]\]/g, ']]');
 
-      responseText += `${index + 1}. 📑 檢查項目：【${m.id}】${fullDesc}\n💰 合約扣罰：${m.penalty} 元\n`;
-    });
+          responseText += `${index + 1}. 📑 檢查項目：【${m.id}】${fullDesc}\n💰 合約扣罰：${m.penalty} 元\n`;
+        });
     
         return responseText;
       }
@@ -2853,7 +2914,190 @@ bubbleContent = bubbleContent.replace(
       setTimeout(() => {
         document.getElementById('chat-fab').style.opacity = '1';
       }, 50);
+    // =========================================================
+    // 💾 本地自動暫存機制 (Auto-save)
+    // =========================================================
     
+    // 1. 自動儲存函數
+    window.saveToLocalStorage = function() {
+        try {
+            const draft = {
+                timestamp: new Date().getTime(),
+                date: {
+                    y: document.querySelector('.date-year').value,
+                    m: document.querySelector('.date-month').value,
+                    d: document.querySelector('.date-day').value
+                },
+                info: {
+                    proj: document.querySelector('.proj-sel').value,
+                    loc: document.querySelector('.sync-loc').textContent,
+                    pos: document.querySelector('.sync-pos').textContent
+                },
+                checklist: {},
+                signatures: [],
+                photos: uploadedPhotosDB,
+                exifs: photoExifDB
+            };
+
+            // 儲存勾選狀態與文字
+            document.querySelectorAll('.col-desc').forEach(descCell => {
+                const id = descCell.querySelector('.item-id-code').textContent.trim();
+                const tr = descCell.closest('tr');
+                const isPass = tr.querySelector('.pass-radio').checked;
+                const isFail = tr.querySelector('.fail-radio').checked;
+                const desc = tr.querySelector('.defect-desc-input').textContent;
+                
+                if(isPass || isFail || desc) {
+                    draft.checklist[id] = { status: isPass ? 'pass' : (isFail ? 'fail' : ''), desc: desc };
+                }
+            });
+
+            // 儲存簽名
+            document.querySelectorAll('.sign-box').forEach((box, i) => {
+                const img = box.querySelector('img');
+                draft.signatures[i] = img ? img.src : null;
+            });
+
+            // 轉字串寫入 localStorage
+            localStorage.setItem('ema2_autosave_draft', JSON.stringify(draft));
+            
+        } catch (e) {
+            // 防呆：如果 localStorage 容量爆滿 (通常是 5MB)，放棄儲存照片，只保留文字紀錄
+            if (e.name === 'QuotaExceededError' || e.code === 22) {
+                console.warn('LocalStorage 空間不足，嘗試僅儲存文字資料...');
+                try {
+                    const fallbackDraft = JSON.parse(localStorage.getItem('ema2_autosave_draft') || '{}');
+                    fallbackDraft.photos = {}; // 清空照片
+                    localStorage.setItem('ema2_autosave_draft', JSON.stringify(fallbackDraft));
+                } catch(err) {}
+            }
+        }
+    };
+
+    // 2. 恢復暫存函數
+    window.restoreFromLocalStorage = function() {
+        const draftStr = localStorage.getItem('ema2_autosave_draft');
+        if (!draftStr) return;
+        
+        try {
+            const draft = JSON.parse(draftStr);
+            
+            // 恢復日期
+            if(draft.date) {
+                if(draft.date.y) syncDate('year', draft.date.y);
+                if(draft.date.m) syncDate('month', draft.date.m);
+                if(draft.date.d) syncDate('day', draft.date.d);
+            }
+            
+            // 恢復基本資訊
+            if(draft.info) {
+                if(draft.info.proj) updateProjectInfo(draft.info.proj);
+                if(draft.info.loc) document.querySelectorAll('.sync-loc').forEach(el => el.textContent = draft.info.loc);
+                if(draft.info.pos) document.querySelectorAll('.sync-pos').forEach(el => el.textContent = draft.info.pos);
+            }
+
+            // 清空所有勾選
+            for(let i=0; i<=2; i++) uncheckAllPass(i);
+
+            // 恢復檢查項目
+            if(draft.checklist) {
+                document.querySelectorAll('.col-desc').forEach(descCell => {
+                    const id = descCell.querySelector('.item-id-code').textContent.trim();
+                    if (draft.checklist[id]) {
+                        const tr = descCell.closest('tr');
+                        const data = draft.checklist[id];
+                        
+                        if(data.status === 'pass') tr.querySelector('.pass-radio').checked = true;
+                        if(data.status === 'fail') tr.querySelector('.fail-radio').checked = true;
+                        
+                        const inputDiv = tr.querySelector('.defect-desc-input');
+                        if(data.desc) inputDiv.textContent = data.desc;
+                        
+                        // 觸發 UI 更新
+                        const match = tr.querySelector('.fail-radio').className.match(/fail-radio-f(\d+)/);
+                        if (match) handleDefectInput(inputDiv, match[1]);
+                    }
+                });
+            }
+
+            // 恢復照片與 EXIF
+            if(draft.photos) Object.assign(uploadedPhotosDB, draft.photos);
+            if(draft.exifs) Object.assign(photoExifDB, draft.exifs);
+            generatePhotoReport(); // 重新渲染照片區塊
+
+            // 恢復簽章
+            if(draft.signatures) {
+                const boxes = document.querySelectorAll('.sign-box');
+                draft.signatures.forEach((sigBase64, i) => {
+                    if(sigBase64 && boxes[i]) {
+                        boxes[i].innerHTML = `<img src="${sigBase64}" alt="電子簽名">`;
+                        boxes[i].style.backgroundColor = "transparent";
+                        boxes[i].style.border = "none";
+                    }
+                });
+            }
+
+            closeDraftModal();
+            showCustomAlert('🔄 已成功為您恢復上次的暫存紀錄！');
+        } catch (e) {
+            console.error("恢復失敗", e);
+            localStorage.removeItem('ema2_autosave_draft');
+        }
+    };
+
+    // 3. 綁定自動儲存觸發器 (綁定在原有的事件上)
+    document.addEventListener('input', (e) => {
+        if(e.target.closest('.defect-desc-input') || e.target.classList.contains('sync-text')) {
+            saveToLocalStorage();
+        }
+    });
+    document.addEventListener('change', (e) => {
+        if(e.target.type === 'radio' || e.target.tagName === 'SELECT') {
+            saveToLocalStorage();
+        }
+    });
+
+    // 攔截部分需要存檔的原生函數
+    const _originalSaveSignature = window.saveSignature;
+    window.saveSignature = function() { _originalSaveSignature(); saveToLocalStorage(); };
+
+    const _originalSaveAnnotation = window.saveAnnotation;
+    window.saveAnnotation = function() { _originalSaveAnnotation(); saveToLocalStorage(); };
+
+    const _originalApplyAIPolish = window.applyAIPolish;
+    window.applyAIPolish = function() { _originalApplyAIPolish(); saveToLocalStorage(); };
+
+    // 4. 系統初始化時檢查是否有暫存檔
+    setTimeout(() => {
+        const draftStr = localStorage.getItem('ema2_autosave_draft');
+        if (draftStr) {
+            const timeDiff = new Date().getTime() - JSON.parse(draftStr).timestamp;
+            // 如果暫存檔是 12 小時內的，跳出詢問
+            if (timeDiff < 12 * 60 * 60 * 1000) {
+                // 利用現有的 alert 系統稍作修改來呈現
+                document.getElementById('beauty-alert-text').innerHTML = `
+                    <div style="margin-bottom:10px;">系統偵測到您有<b>尚未完成的暫存紀錄</b>。</div>
+                    <div style="font-size:14px; color:#666;">是否要載入上次的資料繼續填寫？</div>
+                    <div style="margin-top:15px; display:flex; gap:10px;">
+                        <button onclick="localStorage.removeItem('ema2_autosave_draft'); closeCustomAlert();" style="flex:1; padding:8px; border-radius:6px; border:1px solid #ccc; background:#f8f9fa; cursor:pointer;">開啟空白新表</button>
+                        <button onclick="restoreFromLocalStorage(); closeCustomAlert();" style="flex:1; padding:8px; border-radius:6px; border:none; background:#0b5ed7; color:white; font-weight:bold; cursor:pointer;">🔄 恢復資料</button>
+                    </div>
+                `;
+                document.querySelector('.beauty-alert-actions').style.display = 'none'; // 隱藏原本的確定按鈕
+                document.getElementById('beauty-alert-modal').style.display = 'flex';
+                
+                // 補救機制：當自訂 Alert 關閉時，把下方 actions 按鈕加回來以免影響後續使用
+                const _originalCloseAlert = window.closeCustomAlert;
+                window.closeCustomAlert = function() {
+                    _originalCloseAlert();
+                    setTimeout(() => { document.querySelector('.beauty-alert-actions').style.display = 'block'; }, 200);
+                }
+            } else {
+                // 超過 12 小時視為過期作廢
+                localStorage.removeItem('ema2_autosave_draft');
+            }
+        }
+    }, 800); // 延遲 800 毫秒等 UI 載入完畢再詢問
     })(); // IIFE：避免污染全域變數
     </script>
     
