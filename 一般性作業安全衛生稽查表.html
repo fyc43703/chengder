@@ -269,7 +269,24 @@
         <button class="btn-3d btn-system" onclick="openSystemModal()"><span class="spin-icon">🚀</span> 系統確認登錄</button>
     </div>
 </div>
-
+<!-- 蘋果風格 API Key 專屬 Modal -->
+<div id="apple-api-modal" class="custom-modal" style="z-index: 25000;">
+    <div style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); width: 90%; max-width: 360px; border-radius: 18px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro TC', 'Noto Sans TC', sans-serif;">
+        <h3 style="margin: 0 0 12px 0; font-size: 19px; color: #1d1d1f; font-weight: 600;">🔑 啟用 AI 智能分析</h3>
+        <p style="margin: 0 0 20px 0; font-size: 14px; color: #515154; line-height: 1.6; text-align: left;">
+            需串接 Groq API 以進行雲端運算。<br>
+            <span style="font-size:12px; color:#888;">* 密鑰僅存放於您的瀏覽器記憶體，絕對安全。</span>
+        </p>
+        <input type="password" id="apple-api-input" placeholder="請輸入 gsk_ 開頭的密鑰..." style="width: 100%; padding: 12px 14px; border: 1.5px solid #d2d2d7; border-radius: 10px; font-size: 15px; outline: none; transition: 0.2s; box-sizing: border-box; background: #f5f5f7;" onfocus="this.style.borderColor='#007aff'; this.style.backgroundColor='#fff'; this.style.boxShadow='0 0 0 3px rgba(0,122,255,0.2)';" onblur="this.style.borderColor='#d2d2d7'; this.style.backgroundColor='#f5f5f7'; this.style.boxShadow='none';">
+        <div style="margin: 12px 0 24px 0; text-align: right;">
+            <a href="https://console.groq.com/keys" target="_blank" style="color: #007aff; font-size: 13px; text-decoration: none; font-weight: 600;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">👉 點此免費申請 Groq API Key</a>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="closeAppleApiModal()" style="flex: 1; padding: 12px 0; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; background: #e5e5ea; color: #1d1d1f;" onmouseover="this.style.background='#d1d1d6'" onmouseout="this.style.background='#e5e5ea'">取消</button>
+            <button onclick="confirmAppleApiModal()" style="flex: 1; padding: 12px 0; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; background: #007aff; color: #fff;" onmouseover="this.style.background='#006ae6'" onmouseout="this.style.background='#007aff'">確認</button>
+        </div>
+    </div>
+</div>
 <!-- 自訂美化 Alert Modal -->
 <div id="beauty-alert-modal" class="custom-modal">
     <div class="beauty-alert-box">
@@ -1641,29 +1658,52 @@
         else { inp.type = 'password'; btn.textContent = '👁 顯示'; }
     };
 
-    function getApiKey() {
-        // 優先讀取頁面頂部輸入框的值
-        const inputVal = document.getElementById('groq-key-input')?.value.trim();
-        if (inputVal) {
-            userGroqApiKey = inputVal;
-            return userGroqApiKey;
-        }
-        if (userGroqApiKey) return userGroqApiKey;
-        // fallback：彈窗提示
-        const key = prompt("⚠️ 啟用 AI 智能功能需串接 Groq API。\n\n請輸入您的 Groq API Key（格式為 gsk_...）\n* 此密鑰僅存放於當前瀏覽器記憶體，關閉網頁即自動清除，絕對安全。\n\n建議：可直接填入頁面頂部的 Key 輸入欄，下次就不用再輸入。");
-        if (key && key.trim() !== "") {
-            userGroqApiKey = key.trim();
-            // 同步回頁面頂部輸入框
-            const inp = document.getElementById('groq-key-input');
-            if (inp) { inp.value = userGroqApiKey; onGroqKeyInput(userGroqApiKey); }
-            return userGroqApiKey;
-        }
-        return null;
-    }
+    let resolveApiPromise = null;
 
-    // 呼叫 Groq API 的共用函數
-    async function callGroqAPI(messages, modelName, isJsonMode = false) {
-        const apiKey = getApiKey();
+window.closeAppleApiModal = function() {
+    document.getElementById('apple-api-modal').style.display = 'none';
+    if (resolveApiPromise) resolveApiPromise(null);
+};
+
+window.confirmAppleApiModal = function() {
+    const val = document.getElementById('apple-api-input').value.trim();
+    document.getElementById('apple-api-modal').style.display = 'none';
+    if (resolveApiPromise) resolveApiPromise(val);
+};
+
+// 改為非同步 (Async) 的 API 取得機制
+async function getApiKey() {
+    // 1. 優先讀取頁面頂部輸入框的值
+    const inputVal = document.getElementById('groq-key-input')?.value.trim();
+    if (inputVal) {
+        userGroqApiKey = inputVal;
+        return userGroqApiKey;
+    }
+    // 2. 檢查記憶體中是否已有
+    if (userGroqApiKey) return userGroqApiKey;
+    
+    // 3. 呼叫我們自訂的蘋果風格彈跳視窗
+    return new Promise((resolve) => {
+        resolveApiPromise = (key) => {
+            if (key && key.trim() !== "") {
+                userGroqApiKey = key.trim();
+                // 同步回頁面頂部輸入框
+                const inp = document.getElementById('groq-key-input');
+                if (inp) { inp.value = userGroqApiKey; onGroqKeyInput(userGroqApiKey); }
+                resolve(userGroqApiKey);
+            } else {
+                resolve(null);
+            }
+        };
+        document.getElementById('apple-api-input').value = '';
+        document.getElementById('apple-api-modal').style.display = 'flex';
+        setTimeout(() => document.getElementById('apple-api-input').focus(), 100);
+    });
+}
+
+// 呼叫 Groq API 的共用函數
+async function callGroqAPI(messages, modelName, isJsonMode = false) {
+        const apiKey = await getApiKey(); // ← 這裡加上 await
         if (!apiKey) return null;
 
         const requestBody = {
@@ -1805,11 +1845,37 @@
                 throw new Error('AI 回傳格式解析失敗');
             }
 
-            // 填入結果
-            const polished = data.polished || '';
+            // ── 新增：法規用語強制校正濾網 ──
+            const enforceTerminology = (text) => {
+                if (!text) return text;
+                const rules = {
+                    "工人": "作業人員",
+                    "外勞": "移工",
+                    "高空作業車": "高空工作車",
+                    "觸電": "感電",
+                    "記錄": "紀錄",
+                    "高度": "高差",
+                    "梯子": "上下設備",
+                    "蓋子": "護蓋",
+                    "網子": "安全網",
+                    "洞洞": "坑洞"
+                };
+                let newText = text;
+                for (const [wrong, correct] of Object.entries(rules)) {
+                    // 使用正規表達式進行全域替換 (g)
+                    newText = newText.replace(new RegExp(wrong, 'g'), correct);
+                }
+                return newText;
+            };
+
+            // 填入結果 (經過強制校正)
+            const polished = enforceTerminology(data.polished || '');
             document.getElementById('aip-polished').textContent = polished;
             document.getElementById('aip-regulation').textContent = data.regulation || '（無法確定相關法規）';
-            document.getElementById('aip-improvement').innerHTML = (data.improvement || '').split('\n').map(l => `<div class="aip-improvement-item">${l}</div>`).join('');
+            
+            // 改善建議也一併經過強制校正
+            const improvements = enforceTerminology(data.improvement || '');
+            document.getElementById('aip-improvement').innerHTML = improvements.split('\n').map(l => `<div class="aip-improvement-item">${l}</div>`).join('');
 
             // 風險等級
             const riskBadge = document.getElementById('aip-risk-badge');
@@ -1819,7 +1885,7 @@
             riskBadge.className = 'aip-risk-badge ' + riskClass;
             document.getElementById('aip-risk-reason').textContent = data.risk_reason || '';
 
-            // 差異對比
+            // 差異對比 (使用校正過後的 polished 去做對比)
             renderDiff(rawText, polished);
 
             document.getElementById('aip-apply-btn').disabled = false;
@@ -1831,7 +1897,6 @@
             setAIPSection('error');
         }
     }
-
     function renderDiff(original, polished) {
         const container = document.getElementById('aip-diff-view');
         // 簡單的字元級差異標示
@@ -2670,14 +2735,15 @@ window.sendChatMessage = async function() {
       });
       fullDesc = fullDesc.replace(/\[\[\[\[/g, '[[').replace(/\]\]\]\]/g, ']]');
 
-      responseText += `📑 相關稽查項目：【${m.id}】${fullDesc}\n💰 合約扣罰：${m.penalty} 元\n`;
+      responseText += `📑 檢查項目：【${m.id}】${fullDesc}\n💰 合約扣罰：${m.penalty} 元\n`;
     });
 
     return responseText;
   }
 
   // ── 輔助：append 訊息泡泡 ──
-  function appendMessage(role, text) {
+// ── 輔助：append 訊息泡泡 ──
+function appendMessage(role, text) {
     const msgs = document.getElementById('chat-messages');
     const div = document.createElement('div');
     div.className = `chat-msg chat-msg-${role === 'user' ? 'user' : 'ai'}`;
@@ -2689,10 +2755,16 @@ window.sendChatMessage = async function() {
     let bubbleContent = escapeHtml(text);
     
     if (role === 'ai') {
-      // 💡 1. 先處理稽查項目的藍色底框 (趁換行符號 \n 還沒變成 <br> 時處理，避免框框沾黏)
-      // 修改：margin 設為 8px 0，讓每個項目有明顯獨立的間距與獨立的藍色左邊線
+// 💡 0. 針對 【123456】 稽查編號，加上黃色醒目標記
+      // 移除全形括號以消除隱形空白，加上 letter-spacing 讓數字稍微拉開，達到完美對稱
       bubbleContent = bubbleContent.replace(
-        /(📑 相關稽查項目[：:][^\n]*)\n(💰 合約扣罰[：:][^\n]*)\n?/g,
+        /【([0-9]{6})】/g, 
+        '<span style="background-color: #ffeb3b; color: #222; padding: 2px 7px 2px 8px; border-radius: 5px; border: 1px solid #fbc02d; box-shadow: 0 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0 6px 0 2px; font-family: monospace; font-size: 14px; letter-spacing: 1px;">$1</span>'
+      );
+
+      // 💡 1. 先處理稽查項目的藍色底框 (趁換行符號 \n 還沒變成 <br> 時處理，避免框框沾黏)
+      bubbleContent = bubbleContent.replace(
+        /(📑 檢查項目[：:][^\n]*)\n(💰 合約扣罰[：:][^\n]*)\n?/g,
         '<div style="background:#eef7ff; border-left:4px solid #1a5c9a; padding:10px 12px; margin:8px 0; border-radius:0 6px 6px 0; box-shadow:0 2px 4px rgba(0,0,0,0.08);">' +
           '<div style="color:#0f3d6a; font-size:13px; font-weight:bold; line-height:1.6; margin-bottom:8px;">$1</div>' +
           '<div style="display:inline-block; background:#fff5f5; border:1px solid #fc8181; color:#c53030; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:bold;">$2</div>' +
