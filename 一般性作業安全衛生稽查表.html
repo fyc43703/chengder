@@ -2840,7 +2840,8 @@ function localRuleSearch(userText) {
     
               searchKeywords.forEach(kw => {
                 if (cleanDesc.includes(kw)) score += 100;
-                if (cat.name.includes(kw)) score += 50;
+                // 將分類名稱的分數權重降低，作為輔助排序加分，避免未命中敘述的項目跨過 30 分門檻
+                if (cat.name.includes(kw)) score += 15; 
                 
                 if (kw.length >= 3) {
                     for(let i=0; i < kw.length - 1; i++) {
@@ -2881,18 +2882,23 @@ function localRuleSearch(userText) {
     
         searchKeywords.sort((a, b) => b.length - a.length);
     
-        let responseText = `🔍 在稽查表中找到以下與「${userText}」相關的項目（共 ${topMatches.length} 筆）：`;
-    
-        topMatches.forEach((m, index) => {
-  let fullDesc = m.desc;
-  
-  searchKeywords.forEach(hw => {
-     let re = new RegExp(hw, 'gi');
-     fullDesc = fullDesc.replace(re, `[[${hw}]]`);
-  });
-  fullDesc = fullDesc.replace(/\[\[\[\[/g, '[[').replace(/\]\]\]\]/g, ']]');
+    let responseText = `🔍 在稽查表中找到以下與「${userText}」相關的項目（共 ${topMatches.length} 筆）：`;
 
-  // ✅ 第 1 筆加上錨點 id，供「回到第 1 筆」按鈕跳轉用
+    topMatches.forEach((m, index) => {
+let fullDesc = m.desc;
+
+searchKeywords.forEach(hw => {
+ // 將關鍵字拆解，允許字元間含有彈性空白 (\s*)，同時對正則特殊符號(如小數點)進行跳脫
+ let chars = hw.replace(/\s+/g, '').split('');
+ let flexibleHw = chars.map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*');
+ let re = new RegExp(flexibleHw, 'gi');
+ 
+ // 使用 $& 替換，以保留原文的實際內容（包含原始的空白）
+ fullDesc = fullDesc.replace(re, `[[$&]]`);
+});
+fullDesc = fullDesc.replace(/\[\[\[\[/g, '[[').replace(/\]\]\]\]/g, ']]');
+
+// ✅ 第 1 筆加上錨點 id，供「回到第 1 筆」按鈕跳轉用
 // ✅ 不用 HTML 標籤，改用純文字錨點標記，escapeHtml 不會破壞它
 // ✅ 把 [[FIRST_ITEM]] 放在「檢查項目：」之後，確保錨點在藍色底框內
 const anchorMark = index === 0 ? '[[FIRST_ITEM]]' : '';
