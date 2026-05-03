@@ -2817,14 +2817,14 @@ function localRuleSearch(userText) {
         let matches = [];
         
         let searchKeywords = [];
-        let corePhrases = userText.replace(/本稽查表|有關|規定|是什麼|請問|告訴我|幫我|查一下|多少|的/g, '|').split(/[|，。！？、\s]+/);
+        let corePhrases = userText.replace(/本稽查表|有關|規定|是什麼|請問|告訴我|幫我|查一下|多少|的|作業|設施|設備|人員|事項|情形|辦理|標準|符合/g, '|').split(/[|，。！？、\s]+/);
         const stopWords = ["作業", "設施", "設備", "人員", "事項", "情形", "辦理", "標準", "符合"];
         
         corePhrases.forEach(phrase => {
           let p = phrase.trim();
-          if (p.length >= 2 && !stopWords.includes(p)) {
-              searchKeywords.push(p);
-          }
+          if (p.length >= 1 && !stopWords.includes(p)) {
+    searchKeywords.push(p);
+}
         });
         
         if (searchKeywords.length === 0) {
@@ -2884,18 +2884,28 @@ function localRuleSearch(userText) {
         let responseText = `🔍 在稽查表中找到以下與「${userText}」相關的項目（共 ${topMatches.length} 筆）：`;
     
         topMatches.forEach((m, index) => {
-          let fullDesc = m.desc;
-          
-          searchKeywords.forEach(hw => {
-             let re = new RegExp(hw, 'gi');
-             fullDesc = fullDesc.replace(re, `[[${hw}]]`);
-          });
-          fullDesc = fullDesc.replace(/\[\[\[\[/g, '[[').replace(/\]\]\]\]/g, ']]');
+  let fullDesc = m.desc;
+  
+  searchKeywords.forEach(hw => {
+     let re = new RegExp(hw, 'gi');
+     fullDesc = fullDesc.replace(re, `[[${hw}]]`);
+  });
+  fullDesc = fullDesc.replace(/\[\[\[\[/g, '[[').replace(/\]\]\]\]/g, ']]');
 
-          responseText += `${index + 1}. 📑 檢查項目：【${m.id}】${fullDesc}\n💰 合約扣罰：${m.penalty} 元\n`;
-        });
-    
-        return responseText;
+  // ✅ 第 1 筆加上錨點 id，供「回到第 1 筆」按鈕跳轉用
+// ✅ 不用 HTML 標籤，改用純文字錨點標記，escapeHtml 不會破壞它
+// ✅ 把 [[FIRST_ITEM]] 放在「檢查項目：」之後，確保錨點在藍色底框內
+const anchorMark = index === 0 ? '[[FIRST_ITEM]]' : '';
+// ✅ anchorMark 獨立成一行，不插入「檢查項目：」之間，不干擾底框正則
+responseText += `${anchorMark}${index + 1}. 📑 檢查項目：【${m.id}】${fullDesc}\n💰 合約扣罰：${m.penalty} 元\n`;
+});
+
+// ✅ 筆數 > 3 筆時，才在末尾加入「回第 1 筆」提示標記
+if (topMatches.length > 3) {
+  responseText += `[[SCROLL_TOP_BTN:${topMatches.length}]]`;
+}
+
+return responseText;
       }
     
       // ── 輔助：append 訊息泡泡 ──
@@ -2919,24 +2929,46 @@ function localRuleSearch(userText) {
             '<span style="background-color: #ffeb3b; color: #222; padding: 2px 7px 2px 8px; border-radius: 5px; border: 1px solid #fbc02d; box-shadow: 0 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0 6px 0 2px; font-family: monospace; font-size: 14px; letter-spacing: 1px;">$1</span>'
           );
     
-// 💡 1. 先處理稽查項目的藍色底框 (趁換行符號 \n 還沒變成 <br> 時處理，避免框框沾黏)
+// 💡 2-a. 【必須最先處理】FIRST_ITEM 錨點，趁還沒被底框正則吃掉前替換
+// ✅ 改用獨立 div，display:block 確保佔據一行，height:0 不影響排版
 bubbleContent = bubbleContent.replace(
-        /((?:[0-9]+\.\s*)?📑 檢查項目[：:][^\n]*)\n(💰 合約扣罰[：:][^\n]*)\n?/g,
-        '<div style="background:#eef7ff; border-left:4px solid #1a5c9a; padding:10px 12px; margin:8px 0; border-radius:0 6px 6px 0; box-shadow:0 2px 4px rgba(0,0,0,0.08);">' +
-          '<div style="color:#0f3d6a; font-size:13px; font-weight:bold; line-height:1.6; margin-bottom:8px;">$1</div>' +
-          '<div style="display:inline-block; background:#fff5f5; border:1px solid #fc8181; color:#c53030; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:bold;">$2</div>' +
-        '</div>'
-      );
-    
-          // 💡 2. 處理關鍵字高亮
-          bubbleContent = bubbleContent.replace(
-            /\[\[(.*?)\]\]/g, 
-            '<span style="color:#c53030; font-weight:bold; background:#fff0f0; padding:1px 4px; border-radius:4px; border:1px solid #fed7d7; margin:0 2px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">$1</span>'
-          );
-    
-          // 💡 3. 最後把剩餘的純文字換行 \n 轉成 <br>
-          bubbleContent = bubbleContent.replace(/\n/g, '<br>');
-        }
+    /\[\[FIRST_ITEM\]\]\n?/g,
+    '<div id="qa-result-first" style="height:0;overflow:hidden;"></div>'
+);
+
+// 💡 1. 再處理稽查項目的藍色底框（此時 FIRST_ITEM 已變成真正的 HTML，會被包進底框內）
+bubbleContent = bubbleContent.replace(
+    /((?:[0-9]+\.\s*)?📑 檢查項目[：:][^\n]*)\n(💰 合約扣罰[：:][^\n]*)\n?/g,
+    '<div style="background:#eef7ff; border-left:4px solid #1a5c9a; padding:10px 12px; margin:8px 0; border-radius:0 6px 6px 0; box-shadow:0 2px 4px rgba(0,0,0,0.08);">' +
+      '<div style="color:#0f3d6a; font-size:13px; font-weight:bold; line-height:1.6; margin-bottom:8px;">$1</div>' +
+      '<div style="display:inline-block; background:#fff5f5; border:1px solid #fc8181; color:#c53030; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:bold;">$2</div>' +
+    '</div>'
+);
+
+        // 💡 2-b. 再處理 SCROLL_TOP_BTN 按鈕（具體標記優先）
+// 💡 2-b. 再處理 SCROLL_TOP_BTN 按鈕（具體標記優先）
+bubbleContent = bubbleContent.replace(
+          /\[\[SCROLL_TOP_BTN:(\d+)\]\]/g,
+          (_, count) => '<div style="text-align:right;margin-top:8px;"><button onclick="(function(){var msgs=document.getElementById(\'chat-messages\');var el=document.getElementById(\'qa-result-first\');if(el&&msgs){msgs.scrollTop=el.getBoundingClientRect().top-msgs.getBoundingClientRect().top+msgs.scrollTop-10;}})()" style="background:#1a5c9a;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(26,92,154,0.35);display:inline-flex;align-items:center;gap:5px;" onmouseover="this.style.background=\'#154e87\'" onmouseout="this.style.background=\'#1a5c9a\'">⬆ 回到第 1 筆（共 ' + count + ' 筆）</button></div>'
+        );
+
+        // 💡 2-c. 最後才做通用關鍵字高亮（此時具體標記已處理完畢）
+        bubbleContent = bubbleContent.replace(
+          /\[\[(.*?)\]\]/g,
+          '<span style="color:#c53030; font-weight:bold; background:#fff0f0; padding:1px 4px; border-radius:4px; border:1px solid #fed7d7; margin:0 2px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">$1</span>'
+        );
+
+        // 💡 3. 換行轉 <br>
+        bubbleContent = bubbleContent.replace(/\n/g, '<br>');
+// 2-c. 最後才做關鍵字高亮（此時 [[FIRST_ITEM]] 與 [[SCROLL_TOP_BTN]] 都已處理完畢）
+bubbleContent = bubbleContent.replace(
+  /\[\[(.*?)\]\]/g,
+  '<span style="color:#c53030; font-weight:bold; background:#fff0f0; padding:1px 4px; border-radius:4px; border:1px solid #fed7d7; margin:0 2px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">$1</span>'
+);
+
+// 💡 3. 換行轉 <br>
+bubbleContent = bubbleContent.replace(/\n/g, '<br>');
+}
     
         div.innerHTML = `
           <div class="chat-msg-bubble">${bubbleContent}</div>
