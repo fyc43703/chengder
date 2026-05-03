@@ -670,10 +670,21 @@
     
             let photosXML = `  <照片群組>\n`;
             for (let code in uploadedPhotosDB) {
-                if (uploadedPhotosDB[code]) {
-                    let currentExif = (typeof photoExifDB !== 'undefined' && photoExifDB[code]) ? photoExifDB[code] : '';
-                    let exifData = escapeXML(currentExif);
-                    photosXML += `    <照片 代碼="${code}" EXIF="${exifData}"><![CDATA[${uploadedPhotosDB[code]}]]></照片>\n`;
+                let photos = uploadedPhotosDB[code];
+                if (photos) {
+                    if (Array.isArray(photos)) {
+                        // ★ 修正：陣列格式匯出，加入「索引」屬性
+                        for (let i = 0; i < photos.length; i++) {
+                            let currentExif = (typeof photoExifDB !== 'undefined' && photoExifDB[code] && photoExifDB[code][i]) ? photoExifDB[code][i] : '';
+                            let exifData = escapeXML(currentExif);
+                            photosXML += `    <照片 代碼="${code}" 索引="${i}" EXIF="${exifData}"><![CDATA[${photos[i]}]]></照片>\n`;
+                        }
+                    } else if (typeof photos === 'string') {
+                        // 防呆：舊版字串格式匯出
+                        let currentExif = (typeof photoExifDB !== 'undefined' && photoExifDB[code]) ? photoExifDB[code] : '';
+                        let exifData = escapeXML(currentExif);
+                        photosXML += `    <照片 代碼="${code}" 索引="0" EXIF="${exifData}"><![CDATA[${photos}]]></照片>\n`;
+                    }
                 }
             }
             photosXML += `  </照片群組>\n`;
@@ -810,13 +821,18 @@
                     for (let i = 0; i < photoNodes.length; i++) {
                         const node = photoNodes[i];
                         const code = node.getAttribute("代碼");
+                        const indexAttr = node.getAttribute("索引");
+                        const pIdx = indexAttr ? parseInt(indexAttr, 10) : 0; // ★ 抓取索引，舊版無索引預設為 0
                         const exifHtml = node.getAttribute("EXIF") || ''; 
                         let base64Data = node.textContent;
                         if (base64Data) base64Data = base64Data.trim();
     
                         if (code && base64Data) {
-                            uploadedPhotosDB[code] = base64Data;
-                            photoExifDB[code] = exifHtml; 
+                            if (!uploadedPhotosDB[code]) uploadedPhotosDB[code] = [];
+                            if (!photoExifDB[code]) photoExifDB[code] = [];
+                            
+                            uploadedPhotosDB[code][pIdx] = base64Data;
+                            photoExifDB[code][pIdx] = exifHtml; 
                         }
                     }
     
@@ -1338,51 +1354,82 @@
     
         const uploadedPhotosDB = {}; 
         const photoExifDB = {}; 
-    
-        window.generatePhotoReport = function() {
-            const failRadios = document.querySelectorAll('.fail-radio:checked');
-            const reportSection = document.getElementById('photo-report-section');
-            const tbody = document.getElementById('photo-table-body');
-            if (failRadios.length === 0) { showCustomAlert('目前沒有勾選任何「不合格」項目，無須上傳照片！'); reportSection.style.display = 'none'; return; }
-            let tableHTML = '';
-            failRadios.forEach(radio => {
-                const tr = radio.closest('tr'); const itemCode = tr.querySelector('.item-id-code').textContent.trim();
-                let defectText = tr.querySelector('.defect-desc-input').textContent.trim(); if(!defectText) defectText = '<span style="color:#aaa;">(未填寫說明)</span>';
-                
-                let photoContent = '';
-                if (uploadedPhotosDB[itemCode]) {
-                    photoContent = `
-                        <img src="${uploadedPhotosDB[itemCode]}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片">
-                        ${photoExifDB[itemCode] || ''}
-                        <div style="margin-top: 12px; display: flex; justify-content: center; gap: 15px; align-items: center;">
-                            <label class="reupload-text" style="margin:0; font-size:14px;">📷 重新拍照
-                                <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleImageFile(this, '${itemCode}')">
-                            </label>
-                            <span style="color:#ccc;">|</span>
-                            <label class="reupload-text" style="margin:0; font-size:14px;">🖼️ 重新挑選
-                                <input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')">
-                            </label>
-                        </div>`;
-                } else {
-                    photoContent = `
-                        <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
-                            <label class="upload-btn-ui" style="background-color: #28a745; width: 140px; border-radius: 6px;">
-                                📷 拍照上傳
-                                <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleImageFile(this, '${itemCode}')">
-                            </label>
-                            <label class="upload-btn-ui" style="background-color: #0056b3; width: 140px; border-radius: 6px;">
-                                🖼️ 相簿挑選
-                                <input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')">
-                            </label>
-                        </div>`;
-                }
-                    
-                tableHTML += `<tr><td style="font-size: 18px; font-weight: bold;">${itemCode}</td><td style="text-align: left;">${defectText}</td><td id="photo-cell-${itemCode}">${photoContent}</td></tr>`;
-            });
-            tbody.innerHTML = tableHTML; reportSection.style.display = 'block'; 
-            if(!event || event.type !== 'click') return; 
-            reportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        };
+
+// ★ 新增：刪除單張照片功能
+window.deletePhoto = function(itemCode, index) {
+    if (uploadedPhotosDB[itemCode] && Array.isArray(uploadedPhotosDB[itemCode])) {
+        uploadedPhotosDB[itemCode].splice(index, 1);
+        if (photoExifDB[itemCode] && Array.isArray(photoExifDB[itemCode])) {
+            photoExifDB[itemCode].splice(index, 1);
+        }
+        // 若照片全空，清理陣列
+        if (uploadedPhotosDB[itemCode].length === 0) {
+            delete uploadedPhotosDB[itemCode];
+            delete photoExifDB[itemCode];
+        }
+        generatePhotoReport(); // 重新渲染 UI
+        if(typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage(); // 觸發暫存
+    }
+};
+
+window.generatePhotoReport = function() {
+    const failRadios = document.querySelectorAll('.fail-radio:checked');
+    const reportSection = document.getElementById('photo-report-section');
+    const tbody = document.getElementById('photo-table-body');
+    if (failRadios.length === 0) { showCustomAlert('目前沒有勾選任何「不合格」項目，無須上傳照片！'); reportSection.style.display = 'none'; return; }
+    let tableHTML = '';
+    failRadios.forEach(radio => {
+        const tr = radio.closest('tr'); const itemCode = tr.querySelector('.item-id-code').textContent.trim();
+        let defectText = tr.querySelector('.defect-desc-input').textContent.trim(); if(!defectText) defectText = '<span style="color:#aaa;">(未填寫說明)</span>';
+        
+        // ★ 修正：改用 Flexbox 並排顯示陣列中的照片 (最多 3 張)
+        let photoContent = `<div style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center; align-items:center;">`;
+        
+        let photos = uploadedPhotosDB[itemCode] || [];
+        let exifs = photoExifDB[itemCode] || [];
+        // 防呆：向下相容舊版字串格式
+        if (typeof photos === 'string') { photos = [photos]; uploadedPhotosDB[itemCode] = photos; }
+        if (typeof exifs === 'string') { exifs = [exifs]; photoExifDB[itemCode] = exifs; }
+
+        // 渲染已上傳的照片
+        for(let i=0; i<photos.length; i++) {
+            photoContent += `
+            <div style="position:relative; width: 220px; border:1px solid #ddd; padding:8px; border-radius:6px; background:#fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                <button onclick="deletePhoto('${itemCode}', ${i})" title="刪除此照片" style="position:absolute; top:-10px; right:-10px; background:#dc3545; color:white; border:none; border-radius:50%; width:26px; height:26px; cursor:pointer; font-weight:bold; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,0.3); transition:0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">✕</button>
+                <img src="${photos[i]}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}', ${i})" title="點擊進行畫筆標記" style="max-height:160px; object-fit:contain; width:100%; border:1px solid #eee;">
+                ${exifs[i] || ''}
+                <div style="margin-top: 10px; text-align:center;">
+                    <label class="reupload-text" style="font-size:13px; margin:0;">🔄 更換此照片
+                        <input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}', ${i})">
+                    </label>
+                </div>
+            </div>`;
+        }
+
+        // 若照片數量少於 3 張，顯示新增按鈕
+        if(photos.length < 3) {
+            photoContent += `
+            <div style="display:flex; flex-direction:column; justify-content:center; gap:10px; padding: 10px;">
+                <label class="upload-btn-ui" style="background-color: #28a745; width: 130px; font-size:14px; padding:8px; border-radius: 6px; text-align:center;">
+                    📷 新增拍照
+                    <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleImageFile(this, '${itemCode}')">
+                </label>
+                <label class="upload-btn-ui" style="background-color: #0056b3; width: 130px; font-size:14px; padding:8px; border-radius: 6px; text-align:center;">
+                    🖼️ 新增挑選
+                    <input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')">
+                </label>
+                <div style="font-size:11px; color:#888; text-align:center;">(最多 3 張)</div>
+            </div>`;
+        }
+        
+        photoContent += `</div>`;
+            
+        tableHTML += `<tr><td style="font-size: 18px; font-weight: bold;">${itemCode}</td><td style="text-align: left;">${defectText}</td><td id="photo-cell-${itemCode}">${photoContent}</td></tr>`;
+    });
+    tbody.innerHTML = tableHTML; reportSection.style.display = 'block'; 
+    if(!event || event.type !== 'click') return; 
+    reportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
     
         window.getCurrentLocation = function() {
             return new Promise((resolve) => {
@@ -1398,12 +1445,17 @@
             });
         };
     
-        window.handleImageFile = async function(inputElement, itemCode) {
+        // ★ 修正：加入 photoIndex 參數 (-1 代表新增，>=0 代表替換)
+        window.handleImageFile = async function(inputElement, itemCode, photoIndex = -1) {
             const file = inputElement.files[0];
             if (file) {
                 const cell = document.getElementById(`photo-cell-${itemCode}`);
                 cell.classList.remove('error-highlight'); 
-                cell.innerHTML = `<div style="padding: 20px; color:#666;">⏳ 照片與座標解析中...</div>`;
+                
+                // 為了不讓畫面閃爍太嚴重，我們只在該儲存格上方加一個小提示，而不是清空內容
+                const loadingTip = document.createElement('div');
+                loadingTip.innerHTML = `<div style="padding: 10px; color:#0056b3; font-weight:bold; text-align:center;">⏳ 照片解析與壓縮中...</div>`;
+                cell.prepend(loadingTip);
     
                 let exifInfoHTML = '';
                 try {
@@ -1446,7 +1498,7 @@
                         }
     
                         if (!lat || !lng) {
-                            cell.innerHTML = `<div style="padding: 20px; color:#0056b3;">📡 照片無座標，正在嘗試獲取裝置即時定位...</div>`;
+                            loadingTip.innerHTML = `<div style="padding: 10px; color:#dc3545; font-weight:bold; text-align:center;">📡 照片無座標，正嘗試獲取裝置定位...</div>`;
                             const currentLoc = await window.getCurrentLocation();
                             if (currentLoc) {
                                 lat = currentLoc.lat.toFixed(6);
@@ -1455,15 +1507,15 @@
                             }
                         }
     
-                        exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #333; text-align: left; background: #eef7ff; padding: 8px; border-radius: 6px; border: 1px solid #b8daff; display: inline-block; line-height: 1.6; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">`;
-                        exifInfoHTML += `<div><strong style="color:#0056b3;">📅 拍攝時間：</strong><span style="font-family: Arial, sans-serif; font-weight: bold; color: #333;">${dateStr}</span></div>`;
+                        exifInfoHTML = `<div style="margin-top: 8px; font-size: 11px; color: #333; text-align: left; background: #eef7ff; padding: 6px; border-radius: 4px; border: 1px solid #b8daff; display: inline-block; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box;">`;
+                        exifInfoHTML += `<div><strong style="color:#0056b3;">📅 時間：</strong><span style="font-family: Arial, sans-serif; font-weight: bold; color: #333;">${dateStr}</span></div>`;
                         
                         if (lat && lng) {
-                            let sourceTag = locationSource === "裝置即時定位" ? `<span style="color:#dc3545; font-size:11px; margin-left:4px;">(${locationSource})</span>` : `<span style="color:#28a745; font-size:11px; margin-left:4px;">(${locationSource})</span>`;
-                            exifInfoHTML += `<div><strong style="color:#0056b3;">📍 GPS座標：</strong><span style="font-family: Arial, sans-serif; font-weight: bold; color: #333;">${lat}, ${lng}</span> ${sourceTag}</div>`;
-                            exifInfoHTML += `<div style="margin-top:4px;"><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" style="color:#17a2b8; text-decoration:underline;">🌍 在地圖上查看</a></div>`;
+                            let sourceTag = locationSource === "裝置即時定位" ? `<span style="color:#dc3545; font-size:10px; margin-left:2px;">(裝置)</span>` : `<span style="color:#28a745; font-size:10px; margin-left:2px;">(內建)</span>`;
+                            exifInfoHTML += `<div><strong style="color:#0056b3;">📍 座標：</strong><span style="font-family: Arial, sans-serif; font-weight: bold; color: #333;">${lat}, ${lng}</span> ${sourceTag}</div>`;
+                            exifInfoHTML += `<div style="margin-top:4px; text-align:right;"><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" style="color:#17a2b8; text-decoration:underline;">🌍 點此開地圖</a></div>`;
                         } else {
-                            exifInfoHTML += `<div style="color:#dc3545; margin-top:4px;">(⚠️ 無法取得照片座標，且未開啟瀏覽器定位權限)</div>`;
+                            exifInfoHTML += `<div style="color:#dc3545; margin-top:4px;">(⚠️ 無法取得座標)</div>`;
                         }
                         
                         exifInfoHTML += `</div>`;
@@ -1475,60 +1527,51 @@
                     console.error("解析錯誤:", err);
                     exifInfoHTML = `<div style="margin-top: 8px; font-size: 13px; color: #dc3545;">(無法讀取此照片的資訊)</div>`;
                 }
-                
-                if (typeof photoExifDB !== 'undefined') {
-                    photoExifDB[itemCode] = exifInfoHTML; 
-                }
     
-// 🌟 加入 Canvas 圖片壓縮引擎
-const reader = new FileReader();
+            // 🌟 Canvas 圖片壓縮引擎
+            const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    // 設定最大寬高 (1280px 足以應付稽查報表，且檔案極小)
                     const MAX_WIDTH = 1280;
                     const MAX_HEIGHT = 1280;
                     let width = img.width;
                     let height = img.height;
 
-                    // 計算等比例縮放
                     if (width > height) {
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                     } else {
-                        if (height > MAX_HEIGHT) {
-                            width *= MAX_HEIGHT / height;
-                            height = MAX_HEIGHT;
-                        }
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
                     }
 
-                    // 繪製到 Canvas 上
                     const canvas = document.createElement('canvas');
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // 壓縮為 JPEG 格式，品質設定為 0.7 (70%)
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
-                    // 儲存壓縮後的圖檔
-                    uploadedPhotosDB[itemCode] = compressedBase64;
-                    
-                    cell.innerHTML = `
-                        <img src="${compressedBase64}" class="uploaded-img-preview" alt="缺失照片" onclick="openAnnoPad('${itemCode}')" title="點擊標記照片">
-                        <br>
-                        ${exifInfoHTML}
-                        <br>
-                        <label class="reupload-text" style="display:inline-block; margin-top:8px;">重新上傳<input type="file" accept="image/*" style="display:none;" onchange="handleImageFile(this, '${itemCode}')"></label>
-                    `;
+                    // ★ 修正：將結果寫入陣列
+                    if (!uploadedPhotosDB[itemCode]) uploadedPhotosDB[itemCode] = [];
+                    if (!photoExifDB[itemCode]) photoExifDB[itemCode] = [];
 
-                    // 觸發自動存檔 (搭配第二部分功能)
+                    if (photoIndex >= 0) {
+                        // 替換現有照片
+                        uploadedPhotosDB[itemCode][photoIndex] = compressedBase64;
+                        photoExifDB[itemCode][photoIndex] = exifInfoHTML;
+                    } else {
+                        // 新增照片
+                        uploadedPhotosDB[itemCode].push(compressedBase64);
+                        photoExifDB[itemCode].push(exifInfoHTML);
+                    }
+                    
+                    // 重新渲染該儲存格 UI
+                    generatePhotoReport();
+
                     if(typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage();
                 };
-                img.src = e.target.result; // 將 FileReader 讀取的原檔餵給 Image
+                img.src = e.target.result; 
             }; 
             reader.readAsDataURL(file);
             }
@@ -1643,9 +1686,16 @@ const reader = new FileReader();
         window.undoCanvas = function() { const stack = sig.getUndoStack(); if (stack.length > 0) { let imgData = stack.pop(); let img = new Image(); img.src = imgData; img.onload = () => { sig.ctx.clearRect(0, 0, sig.canvas.width, sig.canvas.height); sig.ctx.drawImage(img, 0, 0); }; } else { clearCanvas(); } };
         window.saveSignature = function() { if (currentSignBox) { currentSignBox.innerHTML = `<img src="${sig.canvas.toDataURL("image/png")}" alt="電子簽名">`; currentSignBox.style.backgroundColor = "transparent"; currentSignBox.style.border = "none"; } closeSignaturePad(); };
     
-        const annoMod = document.getElementById("anno-modal"); const anno = setupCanvas("anno-canvas", "anno-wrapper", true); let currentAnnoItemCode = null; let baseImgData = null;
-        window.openAnnoPad = function(itemCode) {
-            currentAnnoItemCode = itemCode; annoMod.style.display = "flex"; const img = new Image(); img.src = uploadedPhotosDB[itemCode];
+        const annoMod = document.getElementById("anno-modal"); const anno = setupCanvas("anno-canvas", "anno-wrapper", true); 
+        let currentAnnoItemCode = null; let currentAnnoPhotoIndex = 0; let baseImgData = null; // ★ 新增 Index 變數
+        
+        window.openAnnoPad = function(itemCode, photoIndex = 0) {
+            currentAnnoItemCode = itemCode; 
+            currentAnnoPhotoIndex = photoIndex; 
+            annoMod.style.display = "flex"; 
+            const img = new Image(); 
+            // ★ 修正：從陣列讀取
+            img.src = Array.isArray(uploadedPhotosDB[itemCode]) ? uploadedPhotosDB[itemCode][photoIndex] : uploadedPhotosDB[itemCode];
             img.onload = () => {
                 anno.canvas.width = anno.wrapper.clientWidth; anno.canvas.height = anno.wrapper.clientHeight; anno.ctx.clearRect(0, 0, anno.canvas.width, anno.canvas.height);
                 let hRatio = anno.canvas.width / img.width; let vRatio = anno.canvas.height / img.height; let ratio = Math.min(hRatio, vRatio);
@@ -1657,7 +1707,19 @@ const reader = new FileReader();
         window.closeAnnoPad = function() { annoMod.style.display = "none"; currentAnnoItemCode = null; };
         window.clearAnnoCanvas = function() { if(baseImgData){ let img = new Image(); img.src = baseImgData; img.onload = () => { anno.ctx.clearRect(0,0,anno.canvas.width,anno.canvas.height); anno.ctx.drawImage(img,0,0); }; anno.getUndoStack().length = 0; } };
         window.undoAnnoCanvas = function() { const stack = anno.getUndoStack(); if (stack.length > 0) { let imgData = stack.pop(); let img = new Image(); img.src = imgData; img.onload = () => { anno.ctx.clearRect(0, 0, anno.canvas.width, anno.canvas.height); anno.ctx.drawImage(img, 0, 0); }; } else { clearAnnoCanvas(); } };
-        window.saveAnnotation = function() { if(currentAnnoItemCode) { uploadedPhotosDB[currentAnnoItemCode] = anno.canvas.toDataURL("image/png"); document.querySelector(`#photo-cell-${currentAnnoItemCode} img`).src = uploadedPhotosDB[currentAnnoItemCode]; } closeAnnoPad(); };
+        
+        window.saveAnnotation = function() { 
+            if(currentAnnoItemCode !== null) { 
+                // ★ 修正：存回陣列並重新渲染
+                if (Array.isArray(uploadedPhotosDB[currentAnnoItemCode])) {
+                    uploadedPhotosDB[currentAnnoItemCode][currentAnnoPhotoIndex] = anno.canvas.toDataURL("image/png"); 
+                } else {
+                    uploadedPhotosDB[currentAnnoItemCode] = [anno.canvas.toDataURL("image/png")]; 
+                }
+                generatePhotoReport(); 
+            } 
+            closeAnnoPad(); 
+        };
     
         window.openAIPasteModal = function() {
             document.getElementById('ai-paste-textarea').value = ''; 
@@ -2409,29 +2471,33 @@ const reader = new FileReader();
           <button class="chat-chip" onclick="quickAsk('本稽查表有關安全帶規定是什麼？')">安全帶</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關墜落規定是什麼？')">墜落</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關高處規定是什麼？')">高處</button>
-          <button class="chat-chip" onclick="quickAsk('本稽查表有關上下設備規定是什麼？')">上下設備</button>
-          <button class="chat-chip" onclick="quickAsk('本稽查表有關防護具規定是什麼？')">防護具</button>
-          <button class="chat-chip" onclick="quickAsk('本稽查表有關感電規定是什麼？')">感電</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關1.5公尺規定是什麼？')">1.5公尺</button>
-          <button class="chat-chip" onclick="quickAsk('本稽查表有關2公尺作業規定是什麼？')">2公尺</button>        
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關2公尺作業規定是什麼？')">2公尺</button>
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關水規定是什麼？')">水</button>
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關火規定是什麼？')">火</button>
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關感電規定是什麼？')">感電</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關堆置規定是什麼？')">堆置</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關高壓規定是什麼？')">高壓</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關機具規定是什麼？')">機具</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關吊車規定是什麼？')">吊車</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關警示規定是什麼？')">警示</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關消防規定是什麼？')">消防</button>
-          <button class="chat-chip" onclick="quickAsk('本稽查表有關火規定是什麼？')">火</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關通風規定是什麼？')">通風</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關擋土規定是什麼？')">擋土</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關絕緣規定是什麼？')">絕緣</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關電擊規定是什麼？')">電擊</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關起重規定是什麼？')">起重</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關護蓋規定是什麼？')">護蓋</button>
-          <button class="chat-chip" onclick="quickAsk('本稽查表有關自動檢查規定是什麼？')">自動檢查</button>        
           <button class="chat-chip" onclick="quickAsk('本稽查表有關夜間規定是什麼？')">夜間</button>        
           <button class="chat-chip" onclick="quickAsk('本稽查表有關漏電規定是什麼？')">漏電</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關吊掛規定是什麼？')">吊掛</button>
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關交通規定是什麼？')">交通</button>
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關電線規定是什麼？')">電線</button>
           <button class="chat-chip" onclick="quickAsk('本稽查表有關施工架規定是什麼？')">施工架</button>
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關防護具規定是什麼？')">防護具</button>
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關自動檢查規定是什麼？')">自動檢查</button>
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關上下設備規定是什麼？')">上下設備</button>
+          <button class="chat-chip" onclick="quickAsk('本稽查表有關局限空間規定是什麼？')">局限空間</button>
         </div>
       </div>
     
@@ -2924,15 +2990,15 @@ return responseText;
         const now = new Date();
         const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
     
-        // 格式化系統回應
-        let bubbleContent = escapeHtml(text);
+// 格式化系統回應
+let bubbleContent = escapeHtml(text);
         
         if (role === 'ai') {
-    // 💡 0. 針對 【123456】 稽查編號，加上黃色醒目標記
+    // 💡 0. 針對 【123456】 稽查編號，加上黃色醒目標記與點擊跳轉功能
           // 移除全形括號以消除隱形空白，加上 letter-spacing 讓數字稍微拉開，達到完美對稱
           bubbleContent = bubbleContent.replace(
             /【([0-9]{6})】/g, 
-            '<span style="background-color: #ffeb3b; color: #222; padding: 2px 7px 2px 8px; border-radius: 5px; border: 1px solid #fbc02d; box-shadow: 0 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0 6px 0 2px; font-family: monospace; font-size: 14px; letter-spacing: 1px;">$1</span>'
+            '<span onclick="(function(){ var els = document.querySelectorAll(\'.item-id-code\'); for(var i=0;i<els.length;i++){ if(els[i].textContent.trim()===\'$1\') { els[i].scrollIntoView({behavior:\'smooth\', block:\'center\'}); var tr = els[i].closest(\'tr\'); var oldBg = tr.style.backgroundColor; tr.style.transition = \'background-color 0.5s\'; tr.style.backgroundColor = \'#fff3cd\'; setTimeout(function(){ tr.style.backgroundColor = oldBg; }, 1500); break; } } })()" title="點擊跳轉至此檢查項目" style="cursor: pointer; display: inline-block; transition: transform 0.1s; background-color: #ffeb3b; color: #222; padding: 2px 7px 2px 8px; border-radius: 5px; border: 1px solid #fbc02d; box-shadow: 0 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0 6px 0 2px; font-family: monospace; font-size: 14px; letter-spacing: 1px;" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">$1</span>'
           );
     
 // 💡 2-a. 【必須最先處理】FIRST_ITEM 錨點，趁還沒被底框正則吃掉前替換
@@ -3156,9 +3222,18 @@ bubbleContent = bubbleContent.replace(/\n/g, '<br>');
                 });
             }
 
-            // 恢復照片與 EXIF
-            if(draft.photos) Object.assign(uploadedPhotosDB, draft.photos);
-            if(draft.exifs) Object.assign(photoExifDB, draft.exifs);
+// 恢復照片與 EXIF (★ 加入舊版字串轉陣列的向下相容機制)
+if(draft.photos) {
+                for(let key in draft.photos) {
+                    if(typeof draft.photos[key] === 'string') {
+                        uploadedPhotosDB[key] = [draft.photos[key]];
+                        photoExifDB[key] = [draft.exifs ? draft.exifs[key] : ''];
+                    } else {
+                        uploadedPhotosDB[key] = draft.photos[key];
+                        photoExifDB[key] = draft.exifs ? draft.exifs[key] : [];
+                    }
+                }
+            }
             generatePhotoReport(); // 重新渲染照片區塊
 
             // 恢復簽章
