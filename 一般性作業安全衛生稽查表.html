@@ -1782,97 +1782,109 @@ window.generatePhotoReport = function() {
         window.undoCanvas = function() { const stack = sig.getUndoStack(); if (stack.length > 0) { let imgData = stack.pop(); let img = new Image(); img.src = imgData; img.onload = () => { sig.ctx.clearRect(0, 0, sig.canvas.width, sig.canvas.height); sig.ctx.drawImage(img, 0, 0); }; } else { clearCanvas(); } };
         window.saveSignature = function() { if (currentSignBox) { currentSignBox.innerHTML = `<img src="${sig.canvas.toDataURL("image/png")}" alt="電子簽名">`; currentSignBox.style.backgroundColor = "transparent"; currentSignBox.style.border = "none"; } closeSignaturePad(); };
 
-        // 🌟 新增：接力簽名 (平板端產生 QR 與接收)
-        window.generateSignQRCode = function() {
-            if(window.location.protocol === 'file:') {
-                showCustomAlert("⚠️ 遠端簽名功能需要將此表單放置於網頁伺服器 (http/https) 上才能跨裝置連線。");
-                return;
-            }
-            const remoteTopic = 'ema2_sign_' + Math.random().toString(36).substr(2, 9);
-            const signUrl = window.location.href.split('?')[0] + '?remoteSign=' + remoteTopic;
-
-            document.getElementById('qr-overlay').style.display = 'flex';
-            QRCode.toCanvas(document.getElementById('qr-canvas'), signUrl, { width: 220, margin: 2, color: { dark: '#0f3d6a' } }, function (error) {
-                if (error) console.error(error);
-            });
-
-            // 連線至公開且極度輕量的 MQTT 測試伺服器
-            currentMqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
-            currentMqttClient.on('connect', function () {
-                currentMqttClient.subscribe(remoteTopic);
-            });
-            currentMqttClient.on('message', function (topic, message) {
-                if(topic === remoteTopic) {
-                    const imgData = message.toString();
-                    if(imgData.startsWith('data:image')) {
-                        if (currentSignBox) {
-                            currentSignBox.innerHTML = `<img src="${imgData}" alt="電子簽名">`;
-                            currentSignBox.style.backgroundColor = "transparent";
-                            currentSignBox.style.border = "none";
-                        }
-                        if(typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage();
-                        closeSignaturePad();
-                        showCustomAlert("✨ 接收成功！簽名已飛回平板。");
-                    }
-                }
-            });
-        };
-
-        window.cancelRemoteSign = function() {
-            document.getElementById('qr-overlay').style.display = 'none';
-            if(currentMqttClient) { currentMqttClient.end(); currentMqttClient = null; }
-        };
-
-        // 🌟 新增：接力簽名 (手機端開啟後自動轉為全螢幕簽名板)
-        window.addEventListener('load', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const remoteTopicParam = urlParams.get('remoteSign');
-            if (remoteTopicParam) {
-                // 隱藏原始表單所有無關元素
-                document.querySelector('.container').style.display = 'none';
-                if(document.getElementById('chat-fab')) document.getElementById('chat-fab').style.display = 'none';
-                document.body.style.background = '#eef2f5';
-                
-                // 強制開啟簽名板並設定為全螢幕
-                sigMod.style.display = "flex";
-                sigMod.style.background = "transparent";
-                
-                const sigContainer = document.querySelector('.sig-container');
-                sigContainer.style.width = "100%";
-                sigContainer.style.height = "100vh";
-                sigContainer.style.maxWidth = "none";
-                sigContainer.style.borderRadius = "0";
-                sigContainer.style.boxShadow = "none";
-                
-                document.querySelector('.sig-header-btn').style.display = "none"; // 隱藏返回按鈕
-                document.querySelector('.sig-header').innerHTML = "📱 遠端接力簽名";
-                if(document.querySelector('.sig-btn-qr')) document.querySelector('.sig-btn-qr').style.display = "none";
-
-                // 等待動畫結束後重算畫布尺寸
-                setTimeout(() => {
-                    sig.canvas.width = sig.wrapper.clientWidth;
-                    sig.canvas.height = sig.wrapper.clientHeight;
-                    window.clearCanvas();
-                }, 300);
-
-                // 覆寫「確認」按鈕：改為發送 MQTT 訊號而非存入本地
-                window.saveSignature = function() {
-                    const imgData = sig.canvas.toDataURL("image/png");
-                    const btn = document.querySelector('.sig-btn-confirm');
-                    btn.innerHTML = "<div class='icon'>⏳</div>傳送中";
-                    btn.disabled = true;
-
-                    const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
-                    client.on('connect', function () {
-                        // 瞬間推播給平板
-                        client.publish(remoteTopicParam, imgData, { qos: 1 }, function() {
-                            client.end();
-                            sigContainer.innerHTML = "<div style='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;font-size:24px;color:#28a745;font-weight:bold;background:#fff;'>✅ 簽名已送出！<br><br><span style='font-size:16px;color:#666;font-weight:normal;'>平板已接收成功，請直接關閉此視窗。</span></div>";
-                        });
-                    });
-                };
-            }
+// 🌟 新增：接力簽名 (平板端產生 QR 與接收)
+window.generateSignQRCode = function() {
+    if(window.location.protocol === 'file:') {
+        showCustomAlert("⚠️ 遠端簽名功能需要將此表單放置於網頁伺服器 (http/https) 上才能跨裝置連線。");
+        return;
+    }
+    
+    // 產生安全的 UUID v4 作為 Topic，避免頻道被猜測或碰撞
+    const generateUUID = () => {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
         });
+    };
+    const remoteTopic = 'ema2_sign_secure_' + generateUUID();
+    const signUrl = window.location.href.split('?')[0] + '?remoteSign=' + remoteTopic;
+
+    document.getElementById('qr-overlay').style.display = 'flex';
+    QRCode.toCanvas(document.getElementById('qr-canvas'), signUrl, { width: 220, margin: 2, color: { dark: '#0f3d6a' } }, function (error) {
+        if (error) console.error(error);
+    });
+
+    // 使用 wss:// (WebSocket Secure) 確保 MQTT 連線經過 TLS/SSL 加密
+    currentMqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+    currentMqttClient.on('connect', function () {
+        currentMqttClient.subscribe(remoteTopic);
+    });
+    currentMqttClient.on('message', function (topic, message) {
+        if(topic === remoteTopic) {
+            const imgData = message.toString();
+            if(imgData.startsWith('data:image')) {
+                if (currentSignBox) {
+                    currentSignBox.innerHTML = `<img src="${imgData}" alt="電子簽名">`;
+                    currentSignBox.style.backgroundColor = "transparent";
+                    currentSignBox.style.border = "none";
+                }
+                if(typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage();
+                closeSignaturePad();
+                showCustomAlert("✨ 接收成功！簽名已飛回平板。");
+            }
+        }
+    });
+};
+
+window.cancelRemoteSign = function() {
+    document.getElementById('qr-overlay').style.display = 'none';
+    if(currentMqttClient) { currentMqttClient.end(); currentMqttClient = null; }
+};
+
+// 🌟 新增：接力簽名 (手機端開啟後自動轉為全螢幕簽名板)
+window.addEventListener('load', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const remoteTopicParam = urlParams.get('remoteSign');
+    if (remoteTopicParam) {
+        // 隱藏原始表單所有無關元素
+        document.querySelector('.container').style.display = 'none';
+        if(document.getElementById('chat-fab')) document.getElementById('chat-fab').style.display = 'none';
+        document.body.style.background = '#eef2f5';
+        
+        // 強制開啟簽名板並設定為全螢幕
+        sigMod.style.display = "flex";
+        sigMod.style.background = "transparent";
+        
+        const sigContainer = document.querySelector('.sig-container');
+        sigContainer.style.width = "100%";
+        sigContainer.style.height = "100vh";
+        sigContainer.style.maxWidth = "none";
+        sigContainer.style.borderRadius = "0";
+        sigContainer.style.boxShadow = "none";
+        
+        document.querySelector('.sig-header-btn').style.display = "none"; // 隱藏返回按鈕
+        document.querySelector('.sig-header').innerHTML = "📱 遠端接力簽名";
+        if(document.querySelector('.sig-btn-qr')) document.querySelector('.sig-btn-qr').style.display = "none";
+
+        // 等待動畫結束後重算畫布尺寸
+        setTimeout(() => {
+            sig.canvas.width = sig.wrapper.clientWidth;
+            sig.canvas.height = sig.wrapper.clientHeight;
+            window.clearCanvas();
+        }, 300);
+
+        // 覆寫「確認」按鈕：改為發送 MQTT 訊號而非存入本地
+        window.saveSignature = function() {
+            const imgData = sig.canvas.toDataURL("image/png");
+            const btn = document.querySelector('.sig-btn-confirm');
+            btn.innerHTML = "<div class='icon'>⏳</div>傳送中";
+            btn.disabled = true;
+
+            // 使用 wss:// (WebSocket Secure) 確保 MQTT 連線經過 TLS/SSL 加密
+            const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+            client.on('connect', function () {
+                // 瞬間推播給平板
+                client.publish(remoteTopicParam, imgData, { qos: 1 }, function() {
+                    client.end();
+                    sigContainer.innerHTML = "<div style='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;font-size:24px;color:#28a745;font-weight:bold;background:#fff;'>✅ 簽名已送出！<br><br><span style='font-size:16px;color:#666;font-weight:normal;'>平板已接收成功，請直接關閉此視窗。</span></div>";
+                });
+            });
+        };
+    }
+});
     
         const annoMod = document.getElementById("anno-modal"); const anno = setupCanvas("anno-canvas", "anno-wrapper", true); 
         let currentAnnoItemCode = null; let currentAnnoPhotoIndex = 0; let baseImgData = null; // ★ 新增 Index 變數
