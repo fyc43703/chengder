@@ -282,6 +282,10 @@
             <button class="btn-3d btn-ai" style="padding: 10px 25px; font-size: 18px; border-radius: 8px; box-shadow: 0 4px 10px rgba(111, 66, 193, 0.3);" onclick="openAIPasteModal()">
                 <span style="font-size: 22px; margin-right: 8px;">🤖</span> AI 程式碼匯入
             </button>
+            <!-- 新增：一次產生全部 6 組簽名 QR Code -->
+            <button id="btn-all-qr" style="padding: 10px 25px; font-size: 18px; border-radius: 8px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #1a5c9a, #0f3d6a); border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(26, 92, 154, 0.4); display: flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 18px rgba(26,92,154,0.5)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 12px rgba(26,92,154,0.4)';" onclick="generateAllSignQRCodes()">
+                <span style="font-size: 22px;">📱</span> 產生全部簽名 QR Code
+            </button>
         </div>
     
         <!-- AI 專屬讀取畫面 -->
@@ -477,6 +481,22 @@
         </div>
     </div>
     
+    <!-- 全部簽名 QR Code Modal（一次顯示 6 組）-->
+    <div id="all-qr-modal" class="custom-modal" style="z-index: 20000;">
+        <div style="background:#fff; border-radius:16px; padding:30px 24px 24px; width:95%; max-width:860px; max-height:90vh; overflow-y:auto; position:relative; box-shadow:0 20px 50px rgba(0,0,0,0.25);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:2px solid #0f3d6a; padding-bottom:12px;">
+                <div style="font-size:20px; font-weight:bold; color:#0f3d6a;">📱 全部簽名 QR Code</div>
+                <div style="font-size:13px; color:#666; flex:1; margin: 0 16px;">請將此畫面分享給會同人員，掃描對應 QR Code 即可在手機上簽名</div>
+                <button onclick="closeAllQRModal()" style="background:#f2f2f7; border:none; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#333;">✕</button>
+            </div>
+            <div id="all-qr-grid" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:20px;"></div>
+            <div style="text-align:center; margin-top:20px;">
+                <div style="font-size:13px; color:#888; animation: pulseApple 1.5s infinite;">📡 等待接收簽名中⋯</div>
+                <button onclick="closeAllQRModal()" style="margin-top:14px; padding:10px 30px; border-radius:10px; border:1px solid #ccc; background:#fff; cursor:pointer; font-weight:bold; font-size:15px;">關閉</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 照片標記 Modal -->
     <div id="anno-modal" class="custom-modal">
         <div class="sig-container">
@@ -1424,7 +1444,7 @@
         });
             htmlContent += `</tbody></table></div><div style="background:#f9f9f9; padding:15px; border:1px solid #ddd; font-size:14px; margin-bottom:20px;">${form.notes}</div>
                 <div class="signatures">
-                    <div class="sign-column"><div class="sign-row"><span class="sign-label">會同單位：</span><div class="sign-box" onclick="openSignaturePad(this)">電子簽章</div></div><div class="sign-row"><span class="sign-label">會同人員：</span><div class="sign-box" onclick="openSignaturePad(this)">電子簽章</div></div></div>
+                    <div class="sign-column"><div class="sign-row"><span class="sign-label">會同單位：</span><div class="sign-box" data-form-index="${fIndex}" data-sign-type="joint-org" onclick="openSignaturePad(this)">電子簽章</div></div><div class="sign-row"><span class="sign-label">會同人員：</span><div class="sign-box" data-form-index="${fIndex}" data-sign-type="joint-person" onclick="openSignaturePad(this)">電子簽章</div></div></div>
                     <div class="sign-column"><div class="sign-row"><span class="sign-label">稽查單位：</span><div class="sign-box" onclick="openSignaturePad(this)">電子簽章</div></div><div class="sign-row"><span class="sign-label">稽查人員：</span><div class="sign-box" onclick="openSignaturePad(this)">電子簽章</div></div></div>
                 </div></div>`;
         });
@@ -1833,6 +1853,101 @@ window.cancelRemoteSign = function() {
     document.getElementById('qr-overlay').style.display = 'none';
     if(currentMqttClient) { currentMqttClient.end(); currentMqttClient = null; }
 };
+
+// ✅ 新增：一次產生全部 6 組簽名 QR Code（表一~表三，各含會同單位及會同人員）
+const allQRMqttClients = []; // 儲存全部 MQTT 連線
+
+window.generateAllSignQRCodes = function() {
+    if(window.location.protocol === 'file:') {
+        showCustomAlert("⚠️ 遠端簽名功能需要將此表單放置於網頁伺服器 (http/https) 上才能跨裝置連線。");
+        return;
+    }
+
+    // 關閉舊有連線
+    allQRMqttClients.forEach(c => { try { c.end(); } catch(e){} });
+    allQRMqttClients.length = 0;
+
+    const generateUUID = () => {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    };
+
+    const formNames = ['表一', '表二', '表三'];
+    const signTypes = [
+        { type: 'joint-org',    label: '會同單位' },
+        { type: 'joint-person', label: '會同人員' }
+    ];
+
+    const grid = document.getElementById('all-qr-grid');
+    grid.innerHTML = '';
+
+    // 依表一→表三、各表依「會同單位→會同人員」順序產生 6 張卡片
+    formNames.forEach((formName, fIndex) => {
+        signTypes.forEach(({ type, label }) => {
+            const topic = 'ema2_sign_secure_' + generateUUID();
+            const signUrl = window.location.href.split('?')[0] + '?remoteSign=' + topic;
+            const canvasId = `all-qr-canvas-${fIndex}-${type}`;
+            const statusId = `all-qr-status-${fIndex}-${type}`;
+
+            // 建立卡片
+            const card = document.createElement('div');
+            card.style.cssText = 'border:1.5px solid #dde3ea; border-radius:14px; padding:16px; text-align:center; background:#f8fbff;';
+            card.innerHTML = `
+                <div style="font-size:13px; font-weight:bold; color:#fff; background:#1a5c9a; border-radius:8px; padding:5px 10px; display:inline-block; margin-bottom:10px; letter-spacing:1px;">${formName}</div>
+                <div style="font-size:16px; font-weight:bold; color:#0f3d6a; margin-bottom:10px;">${label}</div>
+                <canvas id="${canvasId}" style="border-radius:8px;"></canvas>
+                <div id="${statusId}" style="margin-top:8px; font-size:13px; color:#888;">📡 等待掃描中⋯</div>
+            `;
+            grid.appendChild(card);
+
+            // 產生 QR Code
+            QRCode.toCanvas(document.getElementById(canvasId), signUrl,
+                { width: 180, margin: 2, color: { dark: '#0f3d6a' } },
+                function(error) { if(error) console.error(error); }
+            );
+
+            // 對應 sign-box 目標
+            const targetBox = document.querySelector(
+                `.sign-box[data-form-index="${fIndex}"][data-sign-type="${type}"]`
+            );
+
+            // 建立 MQTT 監聽
+            const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+            allQRMqttClients.push(client);
+            client.on('connect', () => client.subscribe(topic));
+            client.on('message', (t, message) => {
+                if(t !== topic) return;
+                const imgData = message.toString();
+                if(!imgData.startsWith('data:image')) return;
+
+                // 填入對應欄位
+                if(targetBox) {
+                    targetBox.innerHTML = `<img src="${imgData}" alt="電子簽名">`;
+                    targetBox.style.backgroundColor = 'transparent';
+                    targetBox.style.border = 'none';
+                }
+                if(typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage();
+
+                // 更新狀態提示
+                const statusEl = document.getElementById(statusId);
+                if(statusEl) statusEl.innerHTML = '<span style="color:#28a745; font-weight:bold;">✅ 已接收</span>';
+                client.end();
+            });
+        });
+    });
+
+    document.getElementById('all-qr-modal').style.display = 'flex';
+};
+
+window.closeAllQRModal = function() {
+    document.getElementById('all-qr-modal').style.display = 'none';
+    allQRMqttClients.forEach(c => { try { c.end(); } catch(e){} });
+    allQRMqttClients.length = 0;
+};
+
 
 // 🌟 新增：接力簽名 (手機端開啟後自動轉為全螢幕簽名板)
 window.addEventListener('load', function() {
