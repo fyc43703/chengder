@@ -52,15 +52,21 @@
             .date-row { text-align: right; margin-bottom: 15px; font-size: 16px; font-weight: bold; }
             
             select.date-year, select.date-month, select.date-day {
-                font-family: inherit; font-size: 16px; padding: 2px 5px; text-align: center;
-                border: none; border-bottom: 1px solid #333; outline: none; background: transparent; cursor: pointer;
-            }
-            select.proj-sel {
-                width: 100%; padding: 6px; font-family: inherit; font-size: 15px; border: 1px solid #ccc;
-                border-radius: 4px; outline: none; cursor: pointer; background-color: #fdfdfd; transition: 0.2s;
-            }
-    
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: auto; }
+            font-family: inherit; font-size: 16px; padding: 2px 5px; text-align: center;
+            border: none; border-bottom: 1px solid #333; outline: none; background: transparent; cursor: pointer;
+        }
+        select.proj-sel {
+            width: 100%; 
+            padding: 6px 32px 6px 8px; /* 加大右側 padding 預留給箭頭 */
+            font-family: inherit; font-size: 15px; border: 1px solid #ccc;
+            border-radius: 4px; outline: none; cursor: pointer; background-color: #fdfdfd; transition: 0.2s;
+            appearance: none; -webkit-appearance: none; -moz-appearance: none; /* 清除原生箭頭 */
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 10px center; background-size: 16px;
+            text-overflow: ellipsis; overflow: hidden; white-space: nowrap; /* 過長文字變為 ... */
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: auto; }
             th, td { border: 1px solid #666; padding: 10px; line-height: 1.5; outline: none; word-break: break-word; }
             th { background-color: #ffffcc; font-weight: bold; text-align: center; } 
             
@@ -192,7 +198,8 @@
             .sys-container { background: #fff; width: 90%; max-width: 480px; border-radius: 12px; padding: 30px 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); text-align: center; max-height: 90vh; overflow-y: auto; }
             .sys-title { color: #0056b3; font-size: 22px; font-weight: bold; margin-bottom: 20px; margin-top: 0; }
             .sys-details { background: #f4f7fa; border: 1px solid #dce4ec; border-radius: 8px; padding: 15px; text-align: left; font-size: 16px; line-height: 1.8; color: #333; margin-bottom: 15px; }
-            .sys-details strong { color: #555; display: inline-block; width: 90px; }
+        .sys-details div { display: flex; align-items: flex-start; margin-bottom: 2px; }
+        .sys-details strong { color: #555; flex-shrink: 0; width: 90px; }
             .sys-reminder { color: #0056b3; font-size: 15px; font-weight: bold; text-align: left; line-height: 1.5; margin-bottom: 20px; padding: 0 5px; }
             .sys-warning { color: #d9534f; font-size: 16px; font-weight: bold; margin-bottom: 30px; text-align: center; line-height: 1.6; }
             .sys-actions { display: flex; justify-content: space-around; align-items: center; }
@@ -268,31 +275,61 @@
             #groq-key-hint { font-size: 12px; color: #888; }
             #groq-key-hint a { color: #6f42c1; }
     
-            @media print {
-                .bottom-actions, .header-actions, #top-ai-btn-container, #groq-key-bar, #autosave-bar { display: none !important; }
-                body { padding: 0; background-color: #fff; }
-                .container { box-shadow: none; padding: 0; width: 100%; }
-                .form-page { page-break-after: always; }
-            }
-        </style>
+/* ===== 懸浮快速導覽樣式 (無進度條) ===== */
+#floating-nav {
+            position: fixed; left: 20px; top: 50%; transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+            border: 1px solid #dce4ec; border-radius: 16px; padding: 15px 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 9000;
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+            transition: 0.3s;
+        }
+        .nav-btn {
+            background: #f4f7fa; color: #333; border: 1px solid #e0e6ed; width: 44px; height: 44px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: bold; cursor: pointer; transition: all 0.2s;
+            text-decoration: none;
+        }
+        .nav-btn:hover { background: #007AFF; color: #fff; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,122,255,0.3); }
+        @media (max-width: 1200px) { #floating-nav { display: none; } }
+
+        @media print {
+            .bottom-actions, .header-actions, #top-ai-btn-container, #groq-key-bar, #autosave-bar, #floating-nav, #chat-fab { display: none !important; }
+            body { padding: 0; background-color: #fff; }
+            .container { box-shadow: none; padding: 0; width: 100%; }
+            .form-page { page-break-after: always; }
+        }
+    </style>
     </head>
     <body>
     
-    <div class="container">
-        
+<!-- 懸浮快速導覽 (無進度條) -->
+<div id="floating-nav">
+    <button class="nav-btn" onclick="document.querySelectorAll('.form-page')[0].scrollIntoView({behavior:'smooth'})">表一</button>
+    <button class="nav-btn" onclick="document.querySelectorAll('.form-page')[1].scrollIntoView({behavior:'smooth'})">表二</button>
+    <button class="nav-btn" onclick="document.querySelectorAll('.form-page')[2].scrollIntoView({behavior:'smooth'})">表三</button>
+    <button class="nav-btn" onclick="scrollToPhotoSection()">照片</button>
+</div>
+
+<div class="container">
+
 <!-- 置頂的 AI 智能輔助按鈕群 -->
 <div id="top-ai-btn-container" style="display: flex; justify-content: center; gap: 12px; margin-bottom: 25px; padding-top: 10px; flex-wrap: wrap;">
-    <!-- 原有：AI 程式碼匯入 (海軍藍) -->
-    <button style="padding: 8px 16px; font-size: 15px; border-radius: 8px; font-weight: 600; color: #fff; background: #049635; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 4px 10px rgba(15, 61, 106, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(15, 61, 106, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 10px rgba(15, 61, 106, 0.3)';" onclick="openAIPasteModal()">
-        <span style="font-size: 17px; display: inline-flex; align-items: center;">🤖</span> AI 程式碼匯入
-    </button>
-    <!-- 新增：一次產生全部簽名 QR Code (蘋果藍) -->
-    <button id="btn-all-qr" style="padding: 8px 16px; font-size: 15px; border-radius: 8px; font-weight: 600; color: #fff; background: #007AFF; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 4px 10px rgba(0, 122, 255, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(0, 122, 255, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 10px rgba(0, 122, 255, 0.3)';" onclick="generateAllSignQRCodes()">
-        <span style="font-size: 17px; display: inline-flex; align-items: center;">📱</span> 產生全部簽名 QR Code
-    </button>
+<!-- 原有：AI 程式碼匯入 (海軍藍) -->
+<button style="padding: 8px 16px; font-size: 15px; border-radius: 8px; font-weight: 600; color: #fff; background: #049635; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 4px 10px rgba(15, 61, 106, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(15, 61, 106, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 10px rgba(15, 61, 106, 0.3)';" onclick="openAIPasteModal()">
+    <span style="font-size: 17px; display: inline-flex; align-items: center;">🤖</span> AI 程式碼匯入
+</button>
+<!-- 新增：一次產生全部簽名 QR Code (蘋果藍) -->
+<button id="btn-all-qr" style="padding: 8px 16px; font-size: 15px; border-radius: 8px; font-weight: 600; color: #fff; background: #007AFF; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 4px 10px rgba(0, 122, 255, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(0, 122, 255, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 10px rgba(0, 122, 255, 0.3)';" onclick="generateAllSignQRCodes()">
+    <span style="font-size: 17px; display: inline-flex; align-items: center;">📱</span> 產生全部簽名 QR Code
+</button>
+<!-- 新增：只看不合格專注模式 (警示橘) -->
+<button id="btn-focus-mode" style="padding: 8px 16px; font-size: 15px; border-radius: 8px; font-weight: 600; color: #fff; background: #FF9500; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 4px 10px rgba(255, 149, 0, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(255, 149, 0, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 10px rgba(255, 149, 0, 0.3)';" onclick="toggleFocusMode()">
+    <span style="font-size: 17px; display: inline-flex; align-items: center;" id="focus-mode-icon">👁️</span> <span id="focus-mode-text">只看不合格</span>
+</button>
 </div>
-    
-        <!-- AI 專屬讀取畫面 -->
+
+    <!-- AI 專屬讀取畫面 -->
         <div id="ai-loading-screen" class="ai-loading-overlay">
             <div class="ai-spinner">✨</div>
             <div class="ai-loading-text" id="ai-loading-msg">AI 正在深度分析中，請稍候...</div>
@@ -439,20 +476,21 @@
     </div>
 </div>
     
-    <!-- 系統確認 Modal -->
-    <div id="system-modal" class="custom-modal">
-        <div class="sys-container">
-            <h2 class="sys-title">系統登錄確認</h2>
-            <div class="sys-details">
-                <div><strong>日　　期：</strong> <span id="sys-datetime"></span></div>
-                <div><strong>工程名稱：</strong> <span id="sys-proj"></span></div>
-                <div><strong>監造單位：</strong> <span id="sys-super"></span></div>
-                <div><strong>承攬廠商：</strong> <span id="sys-contractor"></span></div>
-                <div><strong>檢查地點：</strong> <span id="sys-loc"></span></div>
-                <div><strong>檢查位置：</strong> <span id="sys-pos"></span></div>
-            </div>
-            <div class="sys-reminder">提醒：請先開啟 GlobalProtect App，確認 VPN 已成功連線至本局後，再進行稽查紀錄上傳作業。</div>
-            <div class="sys-warning">確認後將立即傳送<br>捷運工程局<br>安全衛生稽查管理系統</div>
+<!-- 系統確認 Modal -->
+<div id="system-modal" class="custom-modal">
+    <div class="sys-container">
+        <h2 class="sys-title">系統登錄確認</h2>
+        <div class="sys-details">
+            <div><strong>日　　期：</strong> <span id="sys-datetime"></span></div>
+            <div><strong>工程名稱：</strong> <span id="sys-proj"></span></div>
+            <div><strong>主辦機關：</strong> <span id="sys-main"></span></div>
+            <div><strong>監造單位：</strong> <span id="sys-super"></span></div>
+            <div><strong>承攬廠商：</strong> <span id="sys-contractor"></span></div>
+            <div><strong>檢查地點：</strong> <span id="sys-loc"></span></div>
+            <div><strong>檢查位置：</strong> <span id="sys-pos"></span></div>
+        </div>
+            <div class="sys-warning">🔔 上傳稽查紀錄前<br>請先透過 GlobalProtect App 完成 VPN 連線</div>
+            <div class="sys-warning">📝 請再次檢核資料內容<br>「確認」後即刻進行傳送</div>
             <div class="sys-actions">
                 <div class="sys-btn-group" onclick="closeSystemModal()"><div class="sys-icon red">✖</div><div class="sys-label">清除</div></div>
                 <div class="sys-btn-group" onclick="submitSystemData()"><div class="sys-icon green">✔</div><div class="sys-label">確認</div></div>
@@ -938,6 +976,9 @@
     
             let loc = document.querySelector('.sync-loc');
             if(!loc.textContent.trim()) errors.push(loc);
+
+            let pos = document.querySelector('.sync-pos');
+            if(!pos.textContent.trim()) errors.push(pos);
     
             document.querySelectorAll('.sign-box').forEach(box => {
                 if(!box.querySelector('img')) errors.push(box);
@@ -962,7 +1003,7 @@
             if(errors.length > 0) {
                 errors.forEach(el => el.classList.add('error-highlight'));
                 errors[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                showCustomAlert("請完成所有必填項目（請見紅框標示處：包含檢查地點、缺失照片或簽章）");
+                showCustomAlert("請完成所有必填項目（請見紅框標示處：包含檢查地點、檢查位置、缺失照片或簽章）");
                 return;
             }
     
@@ -971,6 +1012,7 @@
             const formattedDate = rocYear + '-' + (now.getMonth() + 1) + '-' + now.getDate() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
             document.getElementById('sys-datetime').textContent = formattedDate;
             document.getElementById('sys-proj').textContent = document.querySelector('.proj-sel').value || "(未選擇)";
+            document.getElementById('sys-main').textContent = document.querySelector('.org-main').textContent.trim() || "(未填寫)";
             document.getElementById('sys-super').textContent = document.querySelector('.org-super').textContent.trim() || "(未填寫)";
             document.getElementById('sys-contractor').textContent = document.querySelector('.org-contractor').textContent.trim() || "(未填寫)";
             document.getElementById('sys-loc').textContent = document.querySelector('.sync-loc').textContent.trim() || "(未填寫)";
@@ -978,7 +1020,7 @@
             document.getElementById('system-modal').style.display = 'flex';
         };
         window.closeSystemModal = function() { document.getElementById('system-modal').style.display = 'none'; };
-        window.submitSystemData = function() { showCustomAlert("已將稽查紀錄傳送臺北市政府捷運工程局 安全衛生稽查管理系統"); closeSystemModal(); };
+        window.submitSystemData = function() { showCustomAlert("已將稽查紀錄傳送臺北市政府捷運工程局「安全衛生稽查管理系統」"); closeSystemModal(); };
         
         const projectData = {
             "環狀線北環段 CF680C 區段標之 CF683 標土建工程": { main: "第二區工程處", super: "土木第十二工務所", contractor: "大陸工程股份有限公司" },
@@ -1067,6 +1109,16 @@ window.clearAllNoTask = function(fIndex) {
         }
     });
 };
+
+window.scrollToPhotoSection = function() {
+    const section = document.getElementById('photo-report-section');
+    if (window.getComputedStyle(section).display === 'none') {
+        showCustomAlert("目前尚未勾選任何「不合格」項目，因此無須填寫照片區塊！");
+    } else {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+};
+
 window.openExportFormatModal = function() { document.getElementById('export-format-modal').style.display = 'flex'; };
         window.closeExportFormatModal = function() { document.getElementById('export-format-modal').style.display = 'none'; };
     
@@ -1074,21 +1126,31 @@ window.openExportFormatModal = function() { document.getElementById('export-form
             if (document.querySelector(`script[src="${src}"]`)) return resolve();
             const s = document.createElement('script'); s.src = src; s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
         });
-    
+
+        // ==========================================
+        // ★ 新增：匯出長圖片 (JPG) 功能補齊
+        // ==========================================
         window.executeExportPNG = async function() {
             closeExportFormatModal();
-            const btn = document.querySelector('.btn-pdf'); const actions = document.getElementById('action-buttons');
-            const origHTML = btn.innerHTML; btn.innerHTML = '<span class="spin-icon">⏳</span> 圖片產生中…'; btn.disabled = true; actions.style.display = 'none'; 
-            document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight')); 
             
+            if (isFocusMode) toggleFocusMode();
+            
+            const btn = document.querySelector('.btn-pdf'); 
+            const actions = document.getElementById('action-buttons');
+            const origHTML = btn.innerHTML; 
+            btn.innerHTML = '<span class="spin-icon">⏳</span> 圖片產生中…'; 
+            btn.disabled = true; 
+            actions.style.display = 'none'; 
+            
+            document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight')); 
             window.scrollTo(0, 0);
-    
+
             try {
                 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-                const target = document.querySelector('.container');
                 
+                const target = document.querySelector('.container');
                 const canvas = await html2canvas(target, {
-                    scale: 1.2, 
+                    scale: 1.5, 
                     useCORS: true, 
                     backgroundColor: '#ffffff', 
                     scrollX: 0, 
@@ -1107,26 +1169,45 @@ window.openExportFormatModal = function() { document.getElementById('export-form
                             c.style.overflow = 'visible'; 
                         }
                         const topAiBtn = doc.getElementById('top-ai-btn-container');
-                        if (topAiBtn) topAiBtn.style.display = 'none';
+                        if (topAiBtn) topAiBtn.style.display = 'none'; 
+                        const floatingNav = doc.getElementById('floating-nav');
+                        if (floatingNav) floatingNav.style.display = 'none';
+                        const aiFab = doc.getElementById('chat-fab');
+                        if (aiFab) aiFab.style.display = 'none';
                     }
                 });
+
+                const imgData = canvas.toDataURL('image/jpeg', 0.85);
+                const link = document.createElement('a');
                 const filename = `稽查表_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.jpg`;
-                const link = document.createElement('a'); link.download = filename; link.href = canvas.toDataURL('image/jpeg', 0.8); link.click();
+                link.download = filename;
+                link.href = imgData;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
             } catch(err) { 
-                showCustomAlert('匯出失敗：' + err.message); 
+                showCustomAlert('圖片匯出失敗：' + err.message); 
             } finally { 
-                actions.style.display = ''; btn.innerHTML = origHTML; btn.disabled = false; 
+                actions.style.display = ''; 
+                btn.innerHTML = origHTML; 
+                btn.disabled = false; 
             }
         };
-    
+
+        // 原有的 PDF 匯出功能保持不動
         window.executeExportPDF = async function() {
             closeExportFormatModal();
+            
+            // 匯出前自動關閉專注模式，確保匯出內容完整
+            if (isFocusMode) toggleFocusMode();
+            
             const btn = document.querySelector('.btn-pdf'); const actions = document.getElementById('action-buttons');
             const origHTML = btn.innerHTML; btn.innerHTML = '<span class="spin-icon">⏳</span> PDF產生中…'; btn.disabled = true; actions.style.display = 'none'; 
             document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight')); 
-    
+
             window.scrollTo(0, 0);
-    
+
             try {
                 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
                 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -1154,24 +1235,189 @@ window.openExportFormatModal = function() { document.getElementById('export-form
                         }
                         const topAiBtn = doc.getElementById('top-ai-btn-container');
                         if (topAiBtn) topAiBtn.style.display = 'none'; 
+                        const floatingNav = doc.getElementById('floating-nav');
+                        if (floatingNav) floatingNav.style.display = 'none';
                     }
                 });
-    
+
                 const imgData = canvas.toDataURL('image/jpeg', 0.75);
-                const pdfWidth = 210; const pdfHeight = 297; 
+                const pdfWidth = 210; 
+                const pdfHeight = 297; 
+                const margin = 12; // 設定上下邊界為 12mm
+                const maxPageHeight = pdfHeight - margin * 2; // 實際可放置圖片的單頁高度
                 const contentHeight = (canvas.height * pdfWidth) / canvas.width;
-                let heightLeft = contentHeight; let position = 0; let pdf = new jsPDF('p', 'mm', 'a4');
-    
-                pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, contentHeight); heightLeft -= pdfHeight;
-                while (heightLeft > 0) { position = heightLeft - contentHeight; pdf.addPage(); pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, contentHeight); heightLeft -= pdfHeight; }
-    
+                
+                let heightLeft = contentHeight; 
+                let imgPosition = 0; // 大圖的 Y 軸偏移量
+                let pdf = new jsPDF('p', 'mm', 'a4');
+
+                // 第一頁處理
+                pdf.addImage(imgData, 'JPEG', 0, margin, pdfWidth, contentHeight);
+                heightLeft -= maxPageHeight;
+
+                // 後續頁面處理
+                while (heightLeft > 0) { 
+                    imgPosition -= maxPageHeight; // 將大圖往上推移一個有效頁面高度
+                    pdf.addPage(); 
+                    
+                    // 貼上圖片，並加上頂部邊界的位移
+                    pdf.addImage(imgData, 'JPEG', 0, imgPosition + margin, pdfWidth, contentHeight); 
+                    
+                    // 使用白色矩形遮罩，強制產生乾淨的上下邊界空白
+                    pdf.setFillColor(255, 255, 255);
+                    pdf.rect(0, 0, pdfWidth, margin, 'F'); // 遮蔽頂部超出範圍的圖片
+                    pdf.rect(0, pdfHeight - margin, pdfWidth, margin, 'F'); // 遮蔽底部超出範圍的圖片
+                    
+                    heightLeft -= maxPageHeight; 
+                }
+
+                // 回到第一頁，補上底部的白色遮罩
+                pdf.setPage(1);
+                pdf.setFillColor(255, 255, 255);
+                pdf.rect(0, pdfHeight - margin, pdfWidth, margin, 'F');
+
                 const filename = `稽查表_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.pdf`;
                 pdf.save(filename);
-    
+
             } catch(err) { 
                 showCustomAlert('PDF匯出失敗：' + err.message); 
             } finally { 
                 actions.style.display = ''; btn.innerHTML = origHTML; btn.disabled = false; 
+            }
+        };
+
+// 僅顯示不合格專注模式邏輯 (修正跑版問題版)
+let isFocusMode = false;
+        window.toggleFocusMode = function() {
+            isFocusMode = !isFocusMode;
+            const btnText = document.getElementById('focus-mode-text');
+            const btnIcon = document.getElementById('focus-mode-icon');
+            const btnObj = document.getElementById('btn-focus-mode');
+
+            if (isFocusMode) {
+                btnText.textContent = "顯示全部項目";
+                btnIcon.textContent = "📋";
+                btnObj.style.background = "#007AFF"; 
+                btnObj.style.boxShadow = "0 4px 10px rgba(0, 122, 255, 0.3)";
+
+                // 隱藏非必要元素
+                document.querySelectorAll('.form-header-row, .date-row, .info-table, .signatures').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.form-page > div[style*="background:#f9f9f9"]').forEach(el => el.style.display = 'none');
+
+                // 處理表格內容，維持 rowspan 結構
+                document.querySelectorAll('.checklist-table tbody').forEach(tbody => {
+                    let hasAnyFailInTable = false;
+                    let rows = Array.from(tbody.querySelectorAll('tr'));
+                    
+                    let i = 0;
+                    while (i < rows.length) {
+                        let tr = rows[i];
+                        let catCell = tr.querySelector('.col-cat');
+                        
+                        if (catCell) {
+                            // 標記該分類的原始起始行，方便後續復原
+                            tr.setAttribute('data-cat-start', 'true');
+                            // 儲存原始的 rowspan
+                            if (!catCell.hasAttribute('data-orig-rowspan')) {
+                                catCell.setAttribute('data-orig-rowspan', catCell.rowSpan);
+                            }
+                            
+                            let origRowSpan = parseInt(catCell.getAttribute('data-orig-rowspan'), 10) || 1;
+                            let blockRows = rows.slice(i, i + origRowSpan); // 取得這一個分類區塊的所有行
+                            
+                            // 找出這個區塊內勾選「不合格」的行
+                            let failedRows = blockRows.filter(r => r.querySelector('.fail-radio') && r.querySelector('.fail-radio').checked);
+                            
+                            if (failedRows.length > 0) {
+                                hasAnyFailInTable = true;
+                                // 更新 rowspan 為實際不合格的數量
+                                catCell.rowSpan = failedRows.length;
+                                
+                                // ★ 關鍵修復：如果第一行合格被隱藏，我們必須把分類儲存格搬移到第一個不合格的行上！
+                                if (failedRows[0] !== tr) {
+                                    failedRows[0].insertBefore(catCell, failedRows[0].firstChild);
+                                }
+                                
+                                // 設定顯示與隱藏
+                                blockRows.forEach(r => {
+                                    if (failedRows.includes(r)) {
+                                        r.style.display = '';
+                                        Array.from(r.children).forEach(td => td.style.display = '');
+                                    } else {
+                                        r.style.display = 'none';
+                                    }
+                                });
+                            } else {
+                                // 這個分類完全沒有不合格，整塊隱藏
+                                blockRows.forEach(r => r.style.display = 'none');
+                            }
+                            
+                            i += origRowSpan; // 跳至下一個分類區塊
+                        } else {
+                            // 容錯處理：遇到沒有 col-cat 的單獨行直接跳下一行
+                            i++;
+                        }
+                    }
+
+                    // 若整張表都沒有缺失，隱藏整個表格區塊
+                    if (!hasAnyFailInTable) {
+                        tbody.closest('.table-responsive').style.display = 'none';
+                        if(tbody.closest('.table-responsive').previousElementSibling) {
+                            tbody.closest('.table-responsive').previousElementSibling.style.display = 'none'; // 隱藏「向右滑動」提示
+                        }
+                    }
+                });
+
+                // 隱藏完全沒有顯示表格的頁面容器
+                document.querySelectorAll('.form-page').forEach(page => {
+                    let hasVisibleTable = Array.from(page.querySelectorAll('.table-responsive')).some(el => el.style.display !== 'none');
+                    if (!hasVisibleTable) page.style.display = 'none';
+                });
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            } else {
+                // === 復原所有顯示狀態 ===
+                btnText.textContent = "只看不合格";
+                btnIcon.textContent = "👁️";
+                btnObj.style.background = "#FF9500";
+                
+                document.querySelectorAll('.form-header-row, .date-row, .info-table, .signatures').forEach(el => el.style.display = '');
+                document.querySelectorAll('.form-page > div[style*="background:#f9f9f9"]').forEach(el => el.style.display = '');
+                document.querySelectorAll('.table-responsive').forEach(el => el.style.display = '');
+                document.querySelectorAll('.table-responsive').forEach(el => {
+                    if(el.previousElementSibling) el.previousElementSibling.style.display = '';
+                });
+                document.querySelectorAll('.form-page').forEach(page => page.style.display = '');
+
+                document.querySelectorAll('.checklist-table tbody').forEach(tbody => {
+                    let rows = Array.from(tbody.querySelectorAll('tr'));
+                    let currentCatCell = null;
+                    
+                    // 先把被搬移的「分類名稱」儲存格搬回原來的起始行
+                    rows.forEach(tr => {
+                        let catCell = tr.querySelector('.col-cat');
+                        if (catCell) {
+                            currentCatCell = catCell;
+                        }
+                        // 如果這行原本是起始行，但分類儲存格不見了(被搬走了)，就把它搬回來
+                        if (tr.getAttribute('data-cat-start') === 'true' && !tr.querySelector('.col-cat')) {
+                            if (currentCatCell) {
+                                tr.insertBefore(currentCatCell, tr.firstChild);
+                            }
+                        }
+                    });
+
+                    // 接著恢復所有行與儲存格的顯示與原始 rowspan
+                    rows.forEach(tr => {
+                        tr.style.display = '';
+                        Array.from(tr.children).forEach(td => td.style.display = '');
+                        let catCell = tr.querySelector('.col-cat');
+                        if (catCell && catCell.hasAttribute('data-orig-rowspan')) {
+                            catCell.rowSpan = catCell.getAttribute('data-orig-rowspan');
+                        }
+                    });
+                });
             }
         };
     
@@ -1454,10 +1700,8 @@ window.openExportFormatModal = function() { document.getElementById('export-form
                         <option value="環狀線東環段 CF710 區段標之 CF711 標土建工程">環狀線東環段 CF710 區段標之 CF711 標土建工程</option>
                         <option value="環狀線東環段 CF720 區段標之 CF721 標土建工程">環狀線東環段 CF720 區段標之 CF721 標土建工程</option>
                     </select></td><th>不合格數量</th><td id="fail_count_${fIndex}" class="fail-count-cell">0</td></tr>
-                    <tr><th>主辦機關</th><td class="org-main"></td><th>專案管理廠商</th><td contenteditable="true" class="sync-pm sync-text" oninput="syncField('sync-pm', this)"></td></tr>
+<tr><th>主辦機關</th><td class="org-main"></td><th>專案管理廠商</th><td contenteditable="true" class="sync-pm sync-text" oninput="syncField('sync-pm', this)"></td></tr>
                     <tr><th>監造單位</th><td class="org-super"></td><th>承攬廠商</th><td class="org-contractor"></td></tr>
-                    <tr><th>檢查地點</th><td contenteditable="true" class="sync-loc sync-text" oninput="syncField('sync-loc', this)"></td><th>檢查位置</th><td contenteditable="true" class="sync-pos sync-text" oninput="syncField('sync-pos', this)"></td></tr>
-                </table>
                     <tr><th>檢查地點</th><td contenteditable="true" class="sync-loc sync-text" oninput="syncField('sync-loc', this)"></td><th>檢查位置</th><td contenteditable="true" class="sync-pos sync-text" oninput="syncField('sync-pos', this)"></td></tr>
                 </table>
                 <div style="text-align:right; font-size:12px; color:#d32f2f; margin-bottom:5px;">向右滑動查看更多 ➔</div>
