@@ -1715,11 +1715,11 @@ let isFocusMode = false;
                         <option value="環狀線東環段 CF760 區段標之 CF761 標土建工程">環狀線東環段 CF760 區段標之 CF761 標土建工程</option>
                         <option value="環狀線東環段 CF760 區段標之 CF762 標土建工程">環狀線東環段 CF760 區段標之 CF762 標土建工程</option>
                         <option value="環狀線東環段 CF710 區段標之 CF711 標土建工程">環狀線東環段 CF710 區段標之 CF711 標土建工程</option>
-                        <option value="環狀線東環段 CF720 區段標之 CF721 標土建工程">環狀線東環段 CF720 區段標之 CF721 標土建工程</option>
+<option value="環狀線東環段 CF720 區段標之 CF721 標土建工程">環狀線東環段 CF720 區段標之 CF721 標土建工程</option>
                     </select></td><th>不合格數量</th><td id="fail_count_${fIndex}" class="fail-count-cell">0</td></tr>
 <tr><th>主辦機關</th><td class="org-main"></td><th>專案管理廠商</th><td contenteditable="true" class="sync-pm sync-text" oninput="syncField('sync-pm', this)"></td></tr>
                     <tr><th>監造單位</th><td class="org-super"></td><th>承攬廠商</th><td class="org-contractor"></td></tr>
-                    <tr><th>檢查地點</th><td contenteditable="true" class="sync-loc sync-text" oninput="syncField('sync-loc', this)"></td><th>檢查位置</th><td contenteditable="true" class="sync-pos sync-text" oninput="syncField('sync-pos', this)"></td></tr>
+                    <tr><th>檢查地點</th><td contenteditable="true" class="sync-loc sync-text" oninput="syncField('sync-loc', this)"></td><th>檢查位置</th><td style="position:relative; vertical-align: top; padding-bottom: 25px;"><div contenteditable="true" class="sync-pos sync-text" oninput="syncField('sync-pos', this)" style="min-height: 1.5em; outline: none; word-break: break-word;"></div><div contenteditable="false" onclick="fillGPS(this)" style="position:absolute; right:8px; bottom:4px; cursor:pointer; color:#1a6bb5; font-size:16px; font-weight:bold; letter-spacing:1px; user-select:none;">GPS座標</div></td></tr>
                 </table>
                 <div style="text-align:right; font-size:12px; color:#d32f2f; margin-bottom:5px;">向右滑動查看更多 ➔</div>
                 <div class="table-responsive">
@@ -1854,7 +1854,7 @@ window.generatePhotoReport = function() {
     reportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
     
-        window.getCurrentLocation = function() {
+window.getCurrentLocation = function() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) {
                     resolve(null);
@@ -1868,6 +1868,22 @@ window.generatePhotoReport = function() {
             });
         };
     
+        window.fillGPS = async function(btn) {
+            const posDiv = btn.parentElement.querySelector('.sync-pos');
+            const origText = btn.textContent;
+            btn.textContent = '定位中...';
+            btn.style.pointerEvents = 'none';
+            const loc = await window.getCurrentLocation();
+            if (loc) {
+                posDiv.textContent = `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}`;
+                syncField('sync-pos', posDiv);
+            } else {
+                showCustomAlert('無法獲取GPS座標，請確認裝置已開啟定位並允許瀏覽器存取。');
+            }
+            btn.textContent = origText;
+            btn.style.pointerEvents = 'auto';
+        };
+
         // ★ 修正：加入 photoIndex 參數 (-1 代表新增，>=0 代表替換)
         window.handleImageFile = async function(inputElement, itemCode, photoIndex = -1) {
             const file = inputElement.files[0];
