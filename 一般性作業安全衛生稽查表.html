@@ -55,16 +55,26 @@
             font-family: inherit; font-size: 16px; padding: 2px 5px; text-align: center;
             border: none; border-bottom: 1px solid #333; outline: none; background: transparent; cursor: pointer;
         }
-        select.proj-sel {
-            width: 100%; 
-            padding: 6px 32px 6px 8px; /* 加大右側 padding 預留給箭頭 */
-            font-family: inherit; font-size: 15px; border: 1px solid #ccc;
-            border-radius: 4px; outline: none; cursor: pointer; background-color: #fdfdfd; transition: 0.2s;
-            appearance: none; -webkit-appearance: none; -moz-appearance: none; /* 清除原生箭頭 */
+        
+        /* 手機版支援顏色的自訂下拉選單 */
+        .custom-select-wrapper { position: relative; width: 100%; user-select: none; }
+        .custom-select-trigger {
+            width: 100%; padding: 6px 32px 6px 8px; font-size: 15px; border: 1px solid #ccc;
+            border-radius: 4px; background-color: #fdfdfd; cursor: pointer;
             background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
             background-repeat: no-repeat; background-position: right 10px center; background-size: 16px;
-            text-overflow: ellipsis; overflow: hidden; white-space: nowrap; /* 過長文字變為 ... */
+            text-overflow: ellipsis; overflow: hidden; white-space: nowrap; min-height: 35px; line-height: 21px;
         }
+        .custom-options {
+            position: absolute; display: none; top: 100%; left: 0; right: 0; z-index: 999; text-align: left;
+            background: #fff; border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-height: 280px; overflow-y: auto; margin-top: -1px;
+        }
+        .custom-options.open { display: block; animation: fadeInDown 0.15s ease-out; }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .custom-option { padding: 10px 12px; font-size: 15px; cursor: pointer; border-bottom: 1px solid #eee; line-height: 1.4; transition: 0.1s; }
+        .custom-option:last-child { border-bottom: none; }
+        .custom-option:hover { background-color: #f0f7ff; }
 
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: auto; }
             th, td { border: 1px solid #666; padding: 10px; line-height: 1.5; outline: none; word-break: break-word; }
@@ -1064,6 +1074,9 @@
             
             document.querySelectorAll('.proj-sel').forEach(el => {
                 el.value = val;
+            });
+            document.querySelectorAll('.proj-sel-trigger').forEach(el => {
+                el.textContent = val || "-- 請選擇 --";
                 el.style.color = selColor;
                 el.style.fontWeight = val ? "bold" : "normal";
             });
@@ -1071,6 +1084,27 @@
             document.querySelectorAll('.org-super').forEach(el => el.textContent = data.super);
             document.querySelectorAll('.org-contractor').forEach(el => el.textContent = data.contractor);
         };
+
+        window.toggleCustomSelect = function(triggerEl) {
+            document.querySelectorAll('.custom-options.open').forEach(opt => {
+                if (opt !== triggerEl.nextElementSibling) opt.classList.remove('open');
+            });
+            triggerEl.nextElementSibling.classList.toggle('open');
+        };
+
+        window.selectCustomOption = function(optionEl, fIndex) {
+            const val = optionEl.getAttribute('data-value');
+            updateProjectInfo(val);
+            optionEl.parentElement.classList.remove('open');
+            if(typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage();
+        };
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.custom-select-wrapper')) {
+                document.querySelectorAll('.custom-options.open').forEach(opt => opt.classList.remove('open'));
+            }
+        });
+
         window.syncDate = function(type, val) { document.querySelectorAll('.date-' + type).forEach(el => el.value = val); };
         window.syncField = function(className, sourceElement) { 
             sourceElement.classList.remove('error-highlight');
@@ -1708,26 +1742,31 @@ let isFocusMode = false;
                     </div>
                 </div>
 <div class="date-row">檢查日期： <select class="date-year" onchange="syncDate('year', this.value)">${yearOpts}</select> 年 <select class="date-month" onchange="syncDate('month', this.value)">${monthOpts}</select> 月 <select class="date-day" onchange="syncDate('day', this.value)">${dayOpts}</select> 日</div>
-                <table class="info-table">
-                    <tr><th>工程名稱</th><td><select class="proj-sel" onchange="updateProjectInfo(this.value)">
-<option value="">-- 請選擇 --</option>
-                        <option value="環狀線北環段CF680A區段標之CF681標土建工程" style="color:#8B4513; font-weight:bold;">環狀線北環段CF680A區段標之CF681標土建工程</option>
-                        <option value="環狀線北環段CF680B區段標之CF682標土建工程" style="color:#8B4513; font-weight:bold;">環狀線北環段CF680B區段標之CF682標土建工程</option>
-                        <option value="環狀線北環段CF680C區段標之CF683標土建工程" style="color:#8B4513; font-weight:bold;">環狀線北環段CF680C區段標之CF683標土建工程</option>
-                        <option value="環狀線北環段CF690A區段標之CF692標土建工程" style="color:#8B4513; font-weight:bold;">環狀線北環段CF690A區段標之CF692標土建工程</option>
-                        <option value="環狀線北環段CF690B區段標之CF694標土建工程" style="color:#8B4513; font-weight:bold;">環狀線北環段CF690B區段標之CF694標土建工程</option>
-                        <option value="環狀線北環段CF690C區段標之CF691標土建工程" style="color:#8B4513; font-weight:bold;">環狀線北環段CF690C區段標之CF691標土建工程</option>
-                        <option value="環狀線南環段CF670A區段標之CF671標土建工程" style="color:#006400; font-weight:bold;">環狀線南環段CF670A區段標之CF671標土建工程</option>
-                        <option value="環狀線南環段CF670區段標之CF672標土建工程" style="color:#006400; font-weight:bold;">環狀線南環段CF670區段標之CF672標土建工程</option>
-                        <option value="環狀線南環段CF670區段標之CF673標土建工程" style="color:#006400; font-weight:bold;">環狀線南環段CF670區段標之CF673標土建工程</option>
-                        <option value="環狀線東環段CF710區段標之CF711標土建工程" style="color:#E64A19; font-weight:bold;">環狀線東環段CF710區段標之CF711標土建工程</option>
-                        <option value="環狀線東環段CF720區段標之CF721標土建工程" style="color:#E64A19; font-weight:bold;">環狀線東環段CF720區段標之CF721標土建工程</option>
-                        <option value="環狀線東環段CF760區段標之CF761標土建工程" style="color:#E64A19; font-weight:bold;">環狀線東環段CF760區段標之CF761標土建工程</option>
-                        <option value="環狀線東環段CF760區段標之CF762標土建工程" style="color:#E64A19; font-weight:bold;">環狀線東環段CF760區段標之CF762標土建工程</option>
-                        <option value="環狀線東環段CF763標土建工程" style="color:#E64A19; font-weight:bold;">環狀線東環段CF763標土建工程</option>
-                    </select></td><th>不合格數量</th><td id="fail_count_${fIndex}" class="fail-count-cell">0</td></tr>
+<table class="info-table">
+                    <tr><th>工程名稱</th><td>
+                        <div class="custom-select-wrapper">
+                            <div class="custom-select-trigger proj-sel-trigger" onclick="toggleCustomSelect(this)">-- 請選擇 --</div>
+                            <div class="custom-options">
+                                <div class="custom-option" data-value="" onclick="selectCustomOption(this, ${fIndex})">-- 請選擇 --</div>
+                                <div class="custom-option" data-value="環狀線北環段CF680A區段標之CF681標土建工程" style="color:#8B4513; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線北環段CF680A區段標之CF681標土建工程</div>
+                                <div class="custom-option" data-value="環狀線北環段CF680B區段標之CF682標土建工程" style="color:#8B4513; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線北環段CF680B區段標之CF682標土建工程</div>
+                                <div class="custom-option" data-value="環狀線北環段CF680C區段標之CF683標土建工程" style="color:#8B4513; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線北環段CF680C區段標之CF683標土建工程</div>
+                                <div class="custom-option" data-value="環狀線北環段CF690A區段標之CF692標土建工程" style="color:#8B4513; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線北環段CF690A區段標之CF692標土建工程</div>
+                                <div class="custom-option" data-value="環狀線北環段CF690B區段標之CF694標土建工程" style="color:#8B4513; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線北環段CF690B區段標之CF694標土建工程</div>
+                                <div class="custom-option" data-value="環狀線北環段CF690C區段標之CF691標土建工程" style="color:#8B4513; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線北環段CF690C區段標之CF691標土建工程</div>
+                                <div class="custom-option" data-value="環狀線南環段CF670A區段標之CF671標土建工程" style="color:#006400; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線南環段CF670A區段標之CF671標土建工程</div>
+                                <div class="custom-option" data-value="環狀線南環段CF670區段標之CF672標土建工程" style="color:#006400; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線南環段CF670區段標之CF672標土建工程</div>
+                                <div class="custom-option" data-value="環狀線南環段CF670區段標之CF673標土建工程" style="color:#006400; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線南環段CF670區段標之CF673標土建工程</div>
+                                <div class="custom-option" data-value="環狀線東環段CF710區段標之CF711標土建工程" style="color:#E64A19; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線東環段CF710區段標之CF711標土建工程</div>
+                                <div class="custom-option" data-value="環狀線東環段CF720區段標之CF721標土建工程" style="color:#E64A19; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線東環段CF720區段標之CF721標土建工程</div>
+                                <div class="custom-option" data-value="環狀線東環段CF760區段標之CF761標土建工程" style="color:#E64A19; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線東環段CF760區段標之CF761標土建工程</div>
+                                <div class="custom-option" data-value="環狀線東環段CF760區段標之CF762標土建工程" style="color:#E64A19; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線東環段CF760區段標之CF762標土建工程</div>
+                                <div class="custom-option" data-value="環狀線東環段CF763標土建工程" style="color:#E64A19; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線東環段CF763標土建工程</div>
+                            </div>
+                            <input type="hidden" class="proj-sel" value="">
+                        </div>
+                    </td><th>不合格數量</th><td id="fail_count_${fIndex}" class="fail-count-cell">0</td></tr>
 <tr><th>主辦機關</th><td class="org-main"></td><th>專案管理廠商</th><td contenteditable="true" class="sync-pm sync-text" oninput="syncField('sync-pm', this)"></td></tr>
-                    <tr><th>監造單位</th><td class="org-super"></td><th>承攬廠商</th><td class="org-contractor"></td></tr>
                     <tr><th>檢查地點</th><td contenteditable="true" class="sync-loc sync-text" oninput="syncField('sync-loc', this)"></td><th>檢查位置</th><td style="position:relative; vertical-align: top; padding-bottom: 25px;"><div contenteditable="true" class="sync-pos sync-text" oninput="syncField('sync-pos', this)" style="min-height: 1.5em; outline: none; word-break: break-word;"></div><div contenteditable="false" onclick="fillGPS(this)" style="position:absolute; right:8px; bottom:4px; cursor:pointer; color:#1a6bb5; font-size:16px; font-weight:bold; letter-spacing:1px; user-select:none;">GPS座標</div></td></tr>
                 </table>
                 <div style="text-align:right; font-size:12px; color:#d32f2f; margin-bottom:5px;">向右滑動查看更多 ➔</div>
