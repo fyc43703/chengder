@@ -76,14 +76,15 @@
         .custom-option:last-child { border-bottom: none; }
         .custom-option:hover { background-color: #f0f7ff; }
 
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: auto; }
-            th, td { border: 1px solid #666; padding: 10px; line-height: 1.5; outline: none; word-break: break-word; }
-            th { background-color: #ffffcc; font-weight: bold; text-align: center; } 
-            
-            .info-table th { width: 18%; }
-            .info-table td { width: 32%; }
-            .org-main, .org-super, .org-pm, .org-contractor { color: #0056b3; font-weight: bold; }
-            .fail-count-cell { color: #dc3545; font-weight: bold; text-align: center; font-size: 18px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: auto; }
+    th, td { border: 1px solid #666; padding: 10px; line-height: 1.5; outline: none; word-break: break-word; }
+    th { background-color: #ffffcc; font-weight: bold; text-align: center; } 
+    
+    .info-table { table-layout: fixed; }
+    .info-table th { width: 18%; }
+    .info-table td { width: 32%; }
+    .org-main, .org-super, .org-pm, .org-contractor { color: #0056b3; font-weight: bold; }
+    .fail-count-cell { color: #dc3545; font-weight: bold; text-align: center; font-size: 18px; }
             .sync-text { color: #0056b3; font-weight: bold; }
             [contenteditable="true"]:empty:before { content: "點此輸入..."; color: #aaa; font-weight: normal; font-size: 14px; }
     
@@ -127,11 +128,24 @@
             .defect-option:hover { background-color: #f0f7ff; color: #0056b3; font-weight: bold; }
             .defect-option::before { content: "📝 "; }
     
-            /* 防呆錯誤標示動畫 */
-            .error-highlight { border: 2px solid #dc3545 !important; box-shadow: 0 0 8px rgba(220, 53, 69, 0.6) !important; background-color: #fff8f8; transition: 0.3s; }
+    /* 防呆錯誤標示動畫 */
+    .error-highlight { border: 2px solid #dc3545 !important; box-shadow: 0 0 8px rgba(220, 53, 69, 0.6) !important; background-color: #fff8f8; transition: 0.3s; }
     
-            .header-actions { display: flex; justify-content: center; gap: 10px; margin-top: 5px; }
-            .btn-select-all, .btn-cancel-all { font-size: 13px; text-decoration: underline; cursor: pointer; font-weight: normal; }
+    /* 提示回歸原始項目之閃爍動畫 */
+    @keyframes flash-yellow-bg {
+        0%, 100% { background-color: transparent; box-shadow: none; }
+        50% { background-color: #ffe066; box-shadow: 0 0 10px #ffe066; }
+    }
+    .flash-warning {
+        animation: flash-yellow-bg 1s infinite;
+        display: inline-block;
+        padding: 3px 6px;
+        border-radius: 4px;
+        margin-top: 5px;
+    }
+
+    .header-actions { display: flex; justify-content: center; gap: 10px; margin-top: 5px; }
+    .btn-select-all, .btn-cancel-all { font-size: 13px; text-decoration: underline; cursor: pointer; font-weight: normal; }
             .btn-select-all { color: #007bff; }
             .btn-select-all:hover { color: #0056b3; }
             .btn-cancel-all { color: #6c757d; }
@@ -891,7 +905,7 @@
     
                     const loc = getNodeText("檢查地點"); const pos = getNodeText("檢查位置"); const pm = getNodeText("專案管理廠商");
                     if(loc && loc !== "未填寫") document.querySelectorAll('.sync-loc').forEach(el => el.textContent = loc);
-                    if(pos && pos !== "未填寫") document.querySelectorAll('.sync-pos').forEach(el => el.textContent = pos);
+                    if(pos && pos !== "未填寫") document.querySelectorAll('.sync-pos').forEach(el => { el.textContent = pos; window.autoFitText(el); });
                     if(pm && pm !== "未填寫") document.querySelectorAll('.sync-pm').forEach(el => el.textContent = pm);
     
                     for(let i=0; i<=2; i++) uncheckAllPass(i);
@@ -1106,10 +1120,48 @@
         });
 
         window.syncDate = function(type, val) { document.querySelectorAll('.date-' + type).forEach(el => el.value = val); };
-        window.syncField = function(className, sourceElement) { 
+        
+// 自動縮小文字以符合欄寬
+window.autoFitText = function(el) {
+            setTimeout(() => {
+                el.style.fontSize = '16px'; // 先重置為預設字體大小
+                
+                // 建立臨時隱藏元素，測量字串的真實不受限像素寬度
+                const measureSpan = document.createElement('span');
+                measureSpan.style.visibility = 'hidden';
+                measureSpan.style.position = 'absolute';
+                measureSpan.style.whiteSpace = 'nowrap';
+                measureSpan.style.fontSize = '16px';
+                measureSpan.style.fontWeight = 'bold';
+                measureSpan.textContent = el.textContent;
+                document.body.appendChild(measureSpan);
+                
+                const textWidth = measureSpan.offsetWidth;
+                document.body.removeChild(measureSpan);
+                
+                // 取得真實可用寬度
+                const style = window.getComputedStyle(el);
+                const paddingRight = parseFloat(style.paddingRight) || 0;
+                const paddingLeft = parseFloat(style.paddingLeft) || 0;
+                const availableWidth = el.clientWidth - paddingLeft - paddingRight;
+
+                // 若文字真實寬度大於可用寬度，依比例計算出能完美塞入的新字級
+                if (textWidth > availableWidth && availableWidth > 0) {
+                    let newSize = Math.floor(16 * (availableWidth / textWidth));
+                    if (newSize < 8) newSize = 8; // 最低限制，避免小到看不見
+                    el.style.fontSize = newSize + 'px';
+                }
+            }, 50);
+        };
+
+        window.syncField = function(className, sourceElement) {
             sourceElement.classList.remove('error-highlight');
             const val = sourceElement.textContent; 
-            document.querySelectorAll('.' + className).forEach(el => { if (el !== sourceElement) el.textContent = val; }); 
+            document.querySelectorAll('.' + className).forEach(el => { 
+                if (el !== sourceElement) el.textContent = val; 
+                if (className === 'sync-pos') window.autoFitText(el);
+            }); 
+            if (className === 'sync-pos') window.autoFitText(sourceElement);
         };
     
         window.handleDefectInput = function(cell, fIndex) {
@@ -1119,26 +1171,133 @@
             const passRadio = tr.querySelector('.pass-radio');
             const passLabel = passRadio.closest('label');
 
+            // 尋找該項目是否包含需要提示回歸的字眼
+            let targetSpan = null;
+            tr.querySelectorAll('.col-desc span').forEach(span => {
+                if (span.textContent.includes('【為有立即發生危險之虞項目') || span.textContent.includes('【為第五點項目')) {
+                    targetSpan = span;
+                }
+            });
+
             if (text !== '' && text !== '無此作業項目') {
                 failRadio.checked = true; passRadio.disabled = true;
                 passLabel.style.pointerEvents = 'none'; passLabel.style.opacity = '0.3';
+                if (targetSpan) targetSpan.classList.add('flash-warning');
             } else {
                 failRadio.checked = false; passRadio.disabled = false;
                 passLabel.style.pointerEvents = 'auto'; passLabel.style.opacity = '1';
+                if (targetSpan) targetSpan.classList.remove('flash-warning');
             }
             calcFailCount(fIndex);
         };
     
-        window.startSpeechToText = function(btn, fIndex) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) { showCustomAlert("您的瀏覽器不支援語音輸入功能。"); return; }
-            const targetDiv = btn.previousElementSibling; const recognition = new SpeechRecognition();
-            recognition.lang = 'zh-TW'; recognition.interimResults = false; recognition.maxAlternatives = 1;
-            btn.classList.add('recording'); btn.innerHTML = '🔴';
-            recognition.onresult = function(event) { targetDiv.textContent += (targetDiv.textContent ? '，' : '') + event.results[0][0].transcript; handleDefectInput(targetDiv, fIndex); };
-            recognition.onerror = function(event) { showCustomAlert("語音辨識錯誤：" + event.error); };
-            recognition.onend = function() { btn.classList.remove('recording'); btn.innerHTML = '🎤'; };
-            recognition.start();
+        // 🌟 補齊遺漏的變數宣告
+        let activeMediaRecorder = null;
+        let audioChunks = [];
+
+        // 🌟 補齊遺漏的 async 關鍵字，解決語法錯誤
+        window.startSpeechToText = async function(btn, fIndex) {
+            const targetDiv = btn.previousElementSibling;
+            
+            // 狀態 1：如果正在錄音中，則停止錄音並送出給 AI 分析
+            if (btn.classList.contains('recording')) {
+                if (activeMediaRecorder && activeMediaRecorder.state !== 'inactive') {
+                    activeMediaRecorder.stop();
+                }
+                return;
+            }
+
+            // 狀態 2：尚未錄音，準備取得 API Key 與麥克風權限
+            try {
+                // 優先確認是否已有 API Key (沿用現有 AI 潤飾的 Key 管理系統)
+                const apiKey = await getApiKey();
+                if (!apiKey) return;
+
+                // 強制要求瀏覽器開啟降噪與回音消除
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: { noiseSuppression: true, echoCancellation: true, autoGainControl: true }
+                });
+
+                activeMediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                activeMediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                activeMediaRecorder.onstop = async () => {
+                    // 切換至上傳解析狀態
+                    btn.classList.remove('recording');
+                    btn.innerHTML = '<span class="spin-icon" style="margin:0; font-size:14px;">⏳</span>'; 
+                    btn.style.pointerEvents = 'none';
+
+                    try {
+                        const mimeType = activeMediaRecorder.mimeType || 'audio/webm';
+                        const audioBlob = new Blob(audioChunks, { type: mimeType });
+                        const file = new File([audioBlob], "record.webm", { type: mimeType });
+
+                        const formData = new FormData();
+                        formData.append("file", file);
+                        formData.append("model", "whisper-large-v3");
+                        formData.append("language", "zh"); // 指定繁體中文
+                        formData.append("temperature", "0");
+                        // 🌟 秘訣：提供預設 Prompt，強制約束 AI 了解營造業專有名詞，大幅降低錯字率
+                        formData.append("prompt", "這是一段台灣營造業職業安全衛生稽查的現場語音，包含常見的工程術語，如：護欄、護蓋、安全網、施工架、漏電斷路器、安全母索、高差、感電、墜落、開挖、擋土支撐等。請以繁體中文輸出。"); 
+
+                        const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+                            method: "POST",
+                            headers: { "Authorization": `Bearer ${apiKey}` },
+                            body: formData
+                        });
+
+                        if (response.status === 401) {
+                            userGroqApiKey = null;
+                            if(document.getElementById('groq-key-input')) document.getElementById('groq-key-input').value = '';
+                            onGroqKeyInput('');
+                            throw new Error("API Key 無效或已過期，請重新設定。");
+                        }
+
+                        if (!response.ok) {
+                            const errData = await response.json();
+                            throw new Error(errData.error?.message || "網路請求失敗");
+                        }
+
+                        const data = await response.json();
+                        let transcript = data.text ? data.text.trim() : '';
+
+                        if (transcript) {
+                            // 過濾掉預設的佔位符字串
+                            let currentText = targetDiv.textContent.trim();
+                            if (currentText === '點此輸入...') currentText = '';
+                            
+                            targetDiv.textContent = currentText + (currentText ? '，' : '') + transcript;
+                            handleDefectInput(targetDiv, fIndex);
+                            if(typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage(); // 觸發自動暫存
+                        } else {
+                            showCustomAlert("未能辨識到任何語音，請確認麥克風是否正常收音。");
+                        }
+
+                    } catch (error) {
+                        console.error("Whisper API 錯誤:", error);
+                        showCustomAlert("語音辨識失敗：" + error.message);
+                    } finally {
+                        // 恢復按鈕預設狀態 (麥克風圖示)
+                        btn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 14.5c1.65 0 3-1.35 3-3v-6c0-1.65-1.35-3-3-3s-3 1.35-3 3v6c0 1.65 1.35 3 3 3zm4.5-3c0 2.48-2.02 4.5-4.5 4.5s-4.5-2.02-4.5-4.5H6c0 3.03 2.27 5.54 5.14 5.92V21h1.72v-3.58c2.87-.38 5.14-2.89 5.14-5.92h-1.5z"/></svg>';
+                        btn.style.pointerEvents = 'auto';
+                        // 關閉麥克風使用權限，消除網頁上的紅點標示
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                };
+
+                // 開始錄音
+                activeMediaRecorder.start();
+                btn.classList.add('recording');
+                btn.innerHTML = '🔴'; // 錄音中狀態
+
+            } catch (err) {
+                console.error("麥克風存取錯誤:", err);
+                showCustomAlert("無法存取麥克風，請檢查瀏覽器設定是否允許此網站使用麥克風。");
+            }
         };
     
         window.checkAllPass = function(fIndex) { document.querySelectorAll(`.pass-radio-f${fIndex}`).forEach(radio => { if (!radio.disabled) radio.checked = true; }); calcFailCount(fIndex); };
@@ -1763,11 +1922,12 @@ let isFocusMode = false;
                                 <div class="custom-option" data-value="環狀線東環段CF760區段標之CF762標土建工程" style="color:#E64A19; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線東環段CF760區段標之CF762標土建工程</div>
                                 <div class="custom-option" data-value="環狀線東環段CF763標土建工程" style="color:#E64A19; font-weight:bold;" onclick="selectCustomOption(this, ${fIndex})">環狀線東環段CF763標土建工程</div>
                             </div>
-                            <input type="hidden" class="proj-sel" value="">
+<input type="hidden" class="proj-sel" value="">
                         </div>
-                    </td><th>不合格數量</th><td id="fail_count_${fIndex}" class="fail-count-cell">0</td></tr>
-<tr><th>主辦機關</th><td class="org-main"></td><th>專案管理廠商</th><td contenteditable="true" class="sync-pm sync-text" oninput="syncField('sync-pm', this)"></td></tr>
-                    <tr><th>檢查地點</th><td contenteditable="true" class="sync-loc sync-text" oninput="syncField('sync-loc', this)"></td><th>檢查位置</th><td style="position:relative; vertical-align: top; padding-bottom: 25px;"><div contenteditable="true" class="sync-pos sync-text" oninput="syncField('sync-pos', this)" style="min-height: 1.5em; outline: none; word-break: break-word;"></div><div contenteditable="false" onclick="fillGPS(this)" style="position:absolute; right:8px; bottom:4px; cursor:pointer; color:#1a6bb5; font-size:16px; font-weight:bold; letter-spacing:1px; user-select:none;">GPS座標</div></td></tr>
+</td><th>不合格數量</th><td id="fail_count_${fIndex}" class="fail-count-cell">0</td></tr>
+                    <tr><th>主辦機關</th><td class="org-main"></td><th>專案管理廠商</th><td contenteditable="true" class="sync-pm sync-text" oninput="syncField('sync-pm', this)"></td></tr>
+<tr><th>監造單位</th><td class="org-super"></td><th>承攬廠商</th><td class="org-contractor"></td></tr>
+                    <tr><th>檢查地點</th><td contenteditable="true" class="sync-loc sync-text" oninput="syncField('sync-loc', this)"></td><th>檢查位置</th><td style="position:relative; vertical-align: top; padding-bottom: 25px;"><div contenteditable="true" class="sync-pos sync-text" oninput="syncField('sync-pos', this)" style="display: block; box-sizing: border-box; min-height: 1.5em; outline: none; white-space: nowrap; overflow: hidden; width: 100%;"></div><div contenteditable="false" onclick="fillGPS(this)" style="position:absolute; right:8px; bottom:4px; cursor:pointer; color:#1a6bb5; font-size:16px; font-weight:bold; letter-spacing:1px; user-select:none;">GPS座標</div></td></tr>
                 </table>
                 <div style="text-align:right; font-size:12px; color:#d32f2f; margin-bottom:5px;">向右滑動查看更多 ➔</div>
                 <div class="table-responsive">
@@ -3233,9 +3393,9 @@ window.addEventListener('load', function() {
     <!-- 歡迎訊息 -->
     <div class="chat-msg chat-msg-ai">
         <div class="chat-msg-bubble">
-          👋 您好！我是稽查表助手，能為您快速查找稽查表內容。您可以點選上方的常見提問，或直接輸入關鍵字開始搜尋：
+          👋 您好！我是稽查表助手，可協助您快速查詢稽查表內容。您可點選上方常見問題，或於對話框輸入關鍵字，即可開始搜尋：
           <ul style="margin:6px 0 0 5px; padding:0; line-height:1.5; list-style: none;">
-              <li style="margin-bottom: 6px;">💡 輸入關鍵字或編號（如：護欄、010101、CF680C、CF683、十二所、大陸），即可快速查找相關資訊。</li>
+              <li style="margin-bottom: 6px;">💡 輸入：護欄、010101、CF680C、大陸、CF683、十二所，即可快速查找相關資訊。</li>
           </ul>
         </div>
         <div class="chat-msg-time">稽查表助理</div>
@@ -3984,11 +4144,11 @@ bubbleContent = bubbleContent.replace(/\n/g, '<br>');
                 if(draft.date.d) syncDate('day', draft.date.d);
             }
             
-            // 恢復基本資訊
-            if(draft.info) {
+// 恢復基本資訊
+if(draft.info) {
                 if(draft.info.proj) updateProjectInfo(draft.info.proj);
                 if(draft.info.loc) document.querySelectorAll('.sync-loc').forEach(el => el.textContent = draft.info.loc);
-                if(draft.info.pos) document.querySelectorAll('.sync-pos').forEach(el => el.textContent = draft.info.pos);
+                if(draft.info.pos) document.querySelectorAll('.sync-pos').forEach(el => { el.textContent = draft.info.pos; window.autoFitText(el); });
                 if(draft.info.pm) document.querySelectorAll('.sync-pm').forEach(el => el.textContent = draft.info.pm);
             }
 
