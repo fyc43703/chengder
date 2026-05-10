@@ -3515,11 +3515,10 @@ window.addEventListener('load', function() {
       <button class="chat-chip" onclick="quickAsk('本稽查表有關機具規定是什麼？')">機具</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關吊車規定是什麼？')">吊車</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關「梯」規定是什麼？')">梯</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關自動電擊規定是什麼？')">自動電擊</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關電線規定是什麼？')">電線</button>
+      <button class="chat-chip" onclick="quickAsk('本稽查表010101檢查項目是什麼？')">010101</button>
+      <button class="chat-chip" onclick="quickAsk('本稽查表020104檢查項目是什麼？')">020104</button>
+      <button class="chat-chip" onclick="quickAsk('本稽查表030303檢查項目是什麼？')">030303</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關吊掛規定是什麼？')">吊掛</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關堆置規定是什麼？')">堆置</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關通風規定是什麼？')">通風</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關母索規定是什麼？')">母索</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關施工架規定是什麼？')">施工架</button>
       <button class="chat-chip chat-chip-green" onclick="quickAsk('有關CF680A資訊查詢？')">CF680A</button>
@@ -4565,57 +4564,81 @@ return responseText;
         const now = new Date();
         const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
     
-// 格式化系統回應
-let bubbleContent = escapeHtml(text);
+        // 格式化系統回應
+        let bubbleContent = escapeHtml(text);
         
         if (role === 'ai') {
-    // 💡 0. 針對 【123456】 稽查編號，加上黃色醒目標記與點擊跳轉功能
-          // 移除全形括號以消除隱形空白，加上 letter-spacing 讓數字稍微拉開，達到完美對稱
-          bubbleContent = bubbleContent.replace(
-            /【([0-9]{6})】/g, 
-            '<span onclick="(function(){ var els = document.querySelectorAll(\'.item-id-code\'); for(var i=0;i<els.length;i++){ if(els[i].textContent.trim()===\'$1\') { els[i].scrollIntoView({behavior:\'smooth\', block:\'center\'}); var tr = els[i].closest(\'tr\'); var oldBg = tr.style.backgroundColor; tr.style.transition = \'background-color 0.5s\'; tr.style.backgroundColor = \'#fff3cd\'; setTimeout(function(){ tr.style.backgroundColor = oldBg; }, 1500); break; } } })()" title="點擊跳轉至此檢查項目" style="cursor: pointer; display: inline-block; transition: transform 0.1s; background-color: #ffeb3b; color: #222; padding: 2px 7px 2px 8px; border-radius: 5px; border: 1px solid #fbc02d; box-shadow: 0 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0 6px 0 2px; font-family: monospace; font-size: 14px; letter-spacing: 1px;" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">$1</span>'
-          );
+            // 💡 0. 針對 【123456】 稽查編號，加上黃色醒目標記與點擊跳轉功能
+            // 移除全形括號以消除隱形空白，加上 letter-spacing 讓數字稍微拉開，達到完美對稱
+            bubbleContent = bubbleContent.replace(
+              /【([0-9]{6})】/g, 
+              '<span onclick="(function(){ var els = document.querySelectorAll(\'.item-id-code\'); for(var i=0;i<els.length;i++){ if(els[i].textContent.trim()===\'$1\') { els[i].scrollIntoView({behavior:\'smooth\', block:\'center\'}); var tr = els[i].closest(\'tr\'); var oldBg = tr.style.backgroundColor; tr.style.transition = \'background-color 0.5s\'; tr.style.backgroundColor = \'#fff3cd\'; setTimeout(function(){ tr.style.backgroundColor = oldBg; }, 1500); break; } } })()" title="點擊跳轉至此檢查項目" style="cursor: pointer; display: inline-block; transition: transform 0.1s; background-color: #ffeb3b; color: #222; padding: 2px 7px 2px 8px; border-radius: 5px; border: 1px solid #fbc02d; box-shadow: 0 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0 6px 0 2px; font-family: monospace; font-size: 14px; letter-spacing: 1px;" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">$1</span>'
+            );
     
-// 💡 2-a. 【必須最先處理】FIRST_ITEM 錨點，趁還沒被底框正則吃掉前替換
-// ✅ 改用獨立 div，display:block 確保佔據一行，height:0 不影響排版
+            // 💡 2-a. 【必須最先處理】FIRST_ITEM 錨點，趁還沒被底框正則吃掉前替換
+            // 改用獨立 div，display:block 確保佔據一行，height:0 不影響排版
+            bubbleContent = bubbleContent.replace(
+                /\[\[FIRST_ITEM\]\]\n?/g,
+                '<div id="qa-result-first" style="height:0;overflow:hidden;"></div>'
+            );
+
+            // 💡 1. 再處理稽查項目的藍色底框（此時 FIRST_ITEM 已變成真正的 HTML，會被包進底框內）
+            bubbleContent = bubbleContent.replace(
+                /((?:[0-9]+\.\s*)?📑 檢查項目[：:][^\n]*)\n(💰 合約扣罰[：:][^\n]*)\n?/g,
+                '<div style="background:#eef7ff; border-left:4px solid #1a5c9a; padding:10px 12px; margin:8px 0; border-radius:0 6px 6px 0; box-shadow:0 2px 4px rgba(0,0,0,0.08);">' +
+                  '<div style="color:#0f3d6a; font-size:13px; font-weight:bold; line-height:1.6; margin-bottom:8px;">$1</div>' +
+                  '<div style="display:inline-block; background:#fff5f5; border:1px solid #fc8181; color:#c53030; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:bold;">$2</div>' +
+                '</div>'
+            );
+
+            // 💡 2-b. 再處理 SCROLL_TOP_BTN 按鈕（具體標記優先）
+            bubbleContent = bubbleContent.replace(
+              /\[\[SCROLL_TOP_BTN:(\d+)\]\]/g,
+              (_, count) => '<div style="text-align:right;margin-top:8px;"><button onclick="(function(){var msgs=document.getElementById(\'chat-messages\');var el=document.getElementById(\'qa-result-first\');if(el&&msgs){msgs.scrollTop=el.getBoundingClientRect().top-msgs.getBoundingClientRect().top+msgs.scrollTop-10;}})()" style="background:#1a5c9a;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(26,92,154,0.35);display:inline-flex;align-items:center;gap:5px;" onmouseover="this.style.background=\'#154e87\'" onmouseout="this.style.background=\'#1a5c9a\'">⬆ 回到第 1 筆（共 ' + count + ' 筆）</button></div>'
+            );
+
+            // 💡 2-c. 最後才做通用關鍵字高亮（此時具體標記已處理完畢）
+            bubbleContent = bubbleContent.replace(
+              /\[\[(.*?)\]\]/g,
+              '<span style="color:#c53030; font-weight:bold; background:#fff0f0; padding:1px 4px; border-radius:4px; border:1px solid #fed7d7; margin:0 2px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">$1</span>'
+            );
+
+            // 💡 2-d. 處理情境與法規的標題樣式（粗體海軍藍、情境標號粗體黑，並強制分塊凸排）
+            // 黑洞模式：吸收「現場具體情境分析」前後的所有空白與換行，阻絕後續產生多餘的 <br>
+            bubbleContent = bubbleContent.replace(
+              /[\s\r\n]*🏗️ 現場具體情境分析[：:][\s\r\n]*/g,
+              '<div style="color:#1a5c9a; font-weight:bold; margin-top:14px; margin-bottom:6px;">🏗️ 現場具體情境分析：</div>'
+            );
+
+            // 黑洞模式：吸收每一個「情境X：」前面的所有空白與換行，完美無縫相接
+            bubbleContent = bubbleContent.replace(
+              /[\s\r\n]*(情境\d+[：:])([\s\S]*?)(?=(?:[\s\r\n]*情境\d+[：:]|[\s\r\n]*📖|$))/g,
+              function(match, p1, p2) {
+                return '<div style="display:flex; align-items:flex-start; margin-bottom:4px;"><strong style="color:#222; flex-shrink:0; margin-right:2px;">' + p1 + '</strong><div style="line-height:1.5;">' + p2.trim() + '</div></div>';
+              }
+            );
+
+            // 黑洞模式：吸收「法規條文」前後的所有空白與換行
+            bubbleContent = bubbleContent.replace(
+              /[\s\r\n]*📖 引用法規條文[：:]([^\n]*)[\s\r\n]*/g,
+              '<div style="margin-top:10px; margin-bottom:4px;"><span style="color:#1a5c9a; font-weight:bold;">📖 引用法規條文：</span>$1</div>'
+            );
+
+            // 💡 3. 換行轉 <br> (必須在 2-d 正則表達式吸收完 \n 後，才將剩餘的轉為 <br>)
+            bubbleContent = bubbleContent.replace(/\n/g, '<br>');
+
+            // 💡 4. 【終極排版】在轉為 HTML 標籤後，強制吸收所有相鄰的 <br>，徹底消除 1.75 倍行高所帶來的假空隙
+            // 處理中間的組別：吸收前後所有的 <br>，加上 16px 的上間隔與 2px 的下間隔
+            bubbleContent = bubbleContent.replace(
+              /(?:<br>)+(第\d+組)(?:<br>)+/g,
+              '<div style="color:#1a5c9a; font-weight:bold; margin-top:16px; margin-bottom:2px; line-height:1.2;">$1</div>'
+            );
+// 處理第一組（位於字串開頭）：吸收後方所有的 <br>，無頂部間距，完美緊貼
 bubbleContent = bubbleContent.replace(
-    /\[\[FIRST_ITEM\]\]\n?/g,
-    '<div id="qa-result-first" style="height:0;overflow:hidden;"></div>'
-);
-
-// 💡 1. 再處理稽查項目的藍色底框（此時 FIRST_ITEM 已變成真正的 HTML，會被包進底框內）
-bubbleContent = bubbleContent.replace(
-    /((?:[0-9]+\.\s*)?📑 檢查項目[：:][^\n]*)\n(💰 合約扣罰[：:][^\n]*)\n?/g,
-    '<div style="background:#eef7ff; border-left:4px solid #1a5c9a; padding:10px 12px; margin:8px 0; border-radius:0 6px 6px 0; box-shadow:0 2px 4px rgba(0,0,0,0.08);">' +
-      '<div style="color:#0f3d6a; font-size:13px; font-weight:bold; line-height:1.6; margin-bottom:8px;">$1</div>' +
-      '<div style="display:inline-block; background:#fff5f5; border:1px solid #fc8181; color:#c53030; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:bold;">$2</div>' +
-    '</div>'
-);
-
-        // 💡 2-b. 再處理 SCROLL_TOP_BTN 按鈕（具體標記優先）
-// 💡 2-b. 再處理 SCROLL_TOP_BTN 按鈕（具體標記優先）
-bubbleContent = bubbleContent.replace(
-          /\[\[SCROLL_TOP_BTN:(\d+)\]\]/g,
-          (_, count) => '<div style="text-align:right;margin-top:8px;"><button onclick="(function(){var msgs=document.getElementById(\'chat-messages\');var el=document.getElementById(\'qa-result-first\');if(el&&msgs){msgs.scrollTop=el.getBoundingClientRect().top-msgs.getBoundingClientRect().top+msgs.scrollTop-10;}})()" style="background:#1a5c9a;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(26,92,154,0.35);display:inline-flex;align-items:center;gap:5px;" onmouseover="this.style.background=\'#154e87\'" onmouseout="this.style.background=\'#1a5c9a\'">⬆ 回到第 1 筆（共 ' + count + ' 筆）</button></div>'
-        );
-
-        // 💡 2-c. 最後才做通用關鍵字高亮（此時具體標記已處理完畢）
-        bubbleContent = bubbleContent.replace(
-          /\[\[(.*?)\]\]/g,
-          '<span style="color:#c53030; font-weight:bold; background:#fff0f0; padding:1px 4px; border-radius:4px; border:1px solid #fed7d7; margin:0 2px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">$1</span>'
-        );
-
-        // 💡 3. 換行轉 <br>
-        bubbleContent = bubbleContent.replace(/\n/g, '<br>');
-// 2-c. 最後才做關鍵字高亮（此時 [[FIRST_ITEM]] 與 [[SCROLL_TOP_BTN]] 都已處理完畢）
-bubbleContent = bubbleContent.replace(
-  /\[\[(.*?)\]\]/g,
-  '<span style="color:#c53030; font-weight:bold; background:#fff0f0; padding:1px 4px; border-radius:4px; border:1px solid #fed7d7; margin:0 2px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">$1</span>'
-);
-
-// 💡 3. 換行轉 <br>
-bubbleContent = bubbleContent.replace(/\n/g, '<br>');
-}
+              /^(第\d+組)(?:<br>)+/g,
+              '<div style="color:#1a5c9a; font-weight:bold; margin-bottom:2px; line-height:1.2;">$1</div>'
+            );
+        }
     
         div.innerHTML = `
           <div class="chat-msg-bubble">${bubbleContent}</div>
@@ -4630,7 +4653,7 @@ bubbleContent = bubbleContent.replace(/\n/g, '<br>');
         } else {
             scrollToBottom();
         }
-      }
+    }
     
       // ── 輔助：思考動畫開關 ──
       function setThinking(on) {
