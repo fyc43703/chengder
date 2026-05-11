@@ -1171,7 +1171,6 @@ window.autoFitText = function(el) {
             const passRadio = tr.querySelector('.pass-radio');
             const passLabel = passRadio.closest('label');
 
-            // 尋找該項目是否包含需要提示回歸的字眼
             let targetSpan = null;
             tr.querySelectorAll('.col-desc span').forEach(span => {
                 if (span.textContent.includes('【為有立即發生危險之虞項目') || span.textContent.includes('【為第五點項目')) {
@@ -1182,14 +1181,35 @@ window.autoFitText = function(el) {
             if (text !== '' && text !== '無此作業項目') {
                 failRadio.checked = true; passRadio.disabled = true;
                 passLabel.style.pointerEvents = 'none'; passLabel.style.opacity = '0.3';
-                if (targetSpan) targetSpan.classList.add('flash-warning');
+                
+                if (targetSpan) {
+                    targetSpan.classList.add('flash-warning');
+                    const matchId = targetSpan.textContent.match(/\d{6}/);
+                    let warningMsg = tr.querySelector('.inline-warning-msg');
+                    
+                    if (!warningMsg && matchId) {
+                        warningMsg = document.createElement('span');
+                        warningMsg.className = 'inline-warning-msg';
+                        warningMsg.style.cssText = 'color: #d9534f; font-size: 14px; font-weight: bold; margin-left: 8px; display: inline-block; animation: flash-yellow-bg 1s infinite;';
+                        warningMsg.innerHTML = `⚠️ 請登錄於 ${matchId[0]} 項目！`;
+                        targetSpan.parentNode.insertBefore(warningMsg, targetSpan.nextSibling);
+                    }
+                }
             } else {
                 failRadio.checked = false; passRadio.disabled = false;
                 passLabel.style.pointerEvents = 'auto'; passLabel.style.opacity = '1';
-                if (targetSpan) targetSpan.classList.remove('flash-warning');
+                
+                if (targetSpan) {
+                    targetSpan.classList.remove('flash-warning');
+                    let warningMsg = tr.querySelector('.inline-warning-msg');
+                    if (warningMsg) {
+                        warningMsg.remove();
+                    }
+                }
             }
             calcFailCount(fIndex);
         };
+
     
         // 🌟 補齊遺漏的變數宣告
         let activeMediaRecorder = null;
@@ -4456,18 +4476,20 @@ const exactIdMatch = userText.match(/\d{6}/);
         let matches = [];
         
         let searchKeywords = [];
-        let corePhrases = userText.replace(/本稽查表|有關|規定|是什麼|請問|告訴我|幫我|查一下|多少|的|作業|設施|設備|人員|事項|情形|辦理|標準|符合/g, '|').split(/[|，。！？、\s]+/);
+        // ★ 修正：先去除全形引號「」與半形引號""，避免關鍵字帶著引號導致比對失敗
+        let cleanedUserText = userText.replace(/[「」『』""'']/g, '');
+        let corePhrases = cleanedUserText.replace(/本稽查表|有關|規定|是什麼|請問|告訴我|幫我|查一下|多少|的|作業|設施|設備|人員|事項|情形|辦理|標準|符合/g, '|').split(/[|，。！？、\s]+/);
         const stopWords = ["作業", "設施", "設備", "人員", "事項", "情形", "辦理", "標準", "符合"];
         
         corePhrases.forEach(phrase => {
           let p = phrase.trim();
           if (p.length >= 1 && !stopWords.includes(p)) {
-    searchKeywords.push(p);
-}
+            searchKeywords.push(p);
+          }
         });
         
         if (searchKeywords.length === 0) {
-            let clean = userText.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
+            let clean = cleanedUserText.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
             if(clean.length >= 2) searchKeywords.push(clean);
         }
     
