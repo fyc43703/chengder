@@ -3178,7 +3178,7 @@ function openAIModal() {
   document.getElementById('aiResultBox').innerHTML = '<div style="text-align:center; padding-top:40%; opacity:0.5; font-weight:600;">點擊下方「開始潤飾」按鈕由 AI 進行改寫</div>';
   document.getElementById('btnApplyAI').style.display = "none";
   
-  const savedKey = localStorage.getItem('di_groq_key');
+  const savedKey = localStorage.getItem('groqApiKey');
   if(savedKey) document.getElementById('apiKeyInput').value = savedKey;
   
   document.getElementById('aiModal').classList.add('show');
@@ -3187,7 +3187,12 @@ function closeAIModal() { document.getElementById('aiModal').classList.remove('s
 
 function saveApiKey() {
   const key = document.getElementById('apiKeyInput').value.trim();
-  if(key) { localStorage.setItem('di_groq_key', key); showToast("Groq API Key 已成功儲存於瀏覽器！🔑"); } 
+  if(key) { 
+    localStorage.setItem('groqApiKey', key); 
+    const mainInput = document.getElementById('groqApiKeyInput');
+    if(mainInput) { mainInput.value = key; mainInput.style.color = 'var(--nature-gold)'; }
+    showToast("Groq API Key 已成功儲存於瀏覽器！🔑"); 
+  } 
   else showToast("請輸入有效的 API Key！");
 }
 
@@ -3209,8 +3214,12 @@ function generateDiffHtml(original, polished) {
 }
 
 async function startAIPolish() {
-  const apiKey = document.getElementById('apiKeyInput').value.trim() || localStorage.getItem('di_groq_key');
+  const apiKey = document.getElementById('apiKeyInput').value.trim() || localStorage.getItem('groqApiKey');
   if(!apiKey) { showToast("請先在上方輸入 Groq API Key！"); document.getElementById('apiKeyInput').focus(); return; }
+
+  localStorage.setItem('groqApiKey', apiKey);
+  const mainInput = document.getElementById('groqApiKeyInput');
+  if(mainInput) { mainInput.value = apiKey; mainInput.style.color = 'var(--nature-gold)'; }
 
   const originalText = document.getElementById('aiOriginalText').value.trim();
   if(!originalText) { showToast("沒有需要潤飾的內容！"); return; }
@@ -3784,22 +3793,24 @@ function openBossViewModal() {
   autoResizeDictationBox(); 
   
   // 自動載入儲存的 API Key
-  const savedKey = localStorage.getItem('di_groq_key');
+  const savedKey = localStorage.getItem('groqApiKey');
   if(savedKey) document.getElementById('bossApiKeyInput').value = savedKey;
   
   document.getElementById('bossViewModal').classList.add('show');
 }
 
 async function generateBossSummaryAI() {
-  const apiKey = document.getElementById('bossApiKeyInput').value.trim() || localStorage.getItem('di_groq_key');
+  const apiKey = document.getElementById('bossApiKeyInput').value.trim() || localStorage.getItem('groqApiKey');
   if(!apiKey) { 
     showToast("請輸入 Groq API Key！"); 
     document.getElementById('bossApiKeyInput').focus(); 
     return; 
   }
   
-  // 同步儲存 Key，確保主畫面的 AI 潤飾功能也能共用
-  localStorage.setItem('di_groq_key', apiKey);
+  // 同步儲存 Key，確保主畫面也能共用
+  localStorage.setItem('groqApiKey', apiKey);
+  const mainInput = document.getElementById('groqApiKeyInput');
+  if(mainInput) { mainInput.value = apiKey; mainInput.style.color = 'var(--nature-gold)'; }
 
   const subject = lastParsedData.subject ? lastParsedData.subject.replace(/<[^>]*>/g, '').trim() : "";
   const content = lastParsedData.content ? lastParsedData.content.replace(/<[^>]*>/g, '').trim() : "";
@@ -3975,7 +3986,7 @@ function applyBossDictation() {
   transOriginalSpeechText = "";
   
   // 共用 Groq API 金鑰
-  const savedKey = localStorage.getItem('di_groq_key');
+  const savedKey = localStorage.getItem('groqApiKey');
   if(savedKey) document.getElementById('transApiKeyInput').value = savedKey;
   
   document.getElementById('translateModal').classList.add('show');
@@ -3987,10 +3998,12 @@ function closeTranslateModal() {
 }
 
 async function startTranslation() {
-  const apiKey = document.getElementById('transApiKeyInput').value.trim() || localStorage.getItem('di_groq_key');
+  const apiKey = document.getElementById('transApiKeyInput').value.trim() || localStorage.getItem('groqApiKey');
   if(!apiKey) { showToast("請輸入 Groq API Key！"); document.getElementById('transApiKeyInput').focus(); return; }
   
-  localStorage.setItem('di_groq_key', apiKey);
+  localStorage.setItem('groqApiKey', apiKey);
+  const mainInput = document.getElementById('groqApiKeyInput');
+  if(mainInput) { mainInput.value = apiKey; mainInput.style.color = 'var(--nature-gold)'; }
 
   const originalText = document.getElementById('transOriginalText').value.trim();
   const targetLang = document.getElementById('translateTargetLang').value;
@@ -4201,7 +4214,7 @@ function openDraftModal() {
   generatedDraftData = null;
   
   // 共用 API Key
-  const savedKey = localStorage.getItem('di_groq_key');
+  const savedKey = localStorage.getItem('groqApiKey');
   if(savedKey) document.getElementById('draftApiKeyInput').value = savedKey;
   
   document.getElementById('draftModal').classList.add('show');
@@ -4212,10 +4225,12 @@ function closeDraftModal() {
 }
 
 async function generateDraftAI() {
-  const apiKey = document.getElementById('draftApiKeyInput').value.trim() || localStorage.getItem('di_groq_key');
+  const apiKey = document.getElementById('draftApiKeyInput').value.trim() || localStorage.getItem('groqApiKey');
   if(!apiKey) { showToast("請輸入 Groq API Key！"); document.getElementById('draftApiKeyInput').focus(); return; }
   
-  localStorage.setItem('di_groq_key', apiKey);
+  localStorage.setItem('groqApiKey', apiKey);
+  const mainInput = document.getElementById('groqApiKeyInput');
+  if(mainInput) { mainInput.value = apiKey; mainInput.style.color = 'var(--nature-gold)'; }
 
   const docType = document.getElementById('draftDocType').value;
   const promptInput = document.getElementById('draftPromptInput').value.trim();
@@ -4399,9 +4414,9 @@ function applyDraftToDoc() {
 
 /* 🌐 新增功能：AI 智慧諮詢邏輯 */
 function openChatModal() {
-  const savedKey = localStorage.getItem('di_groq_key');
+  const savedKey = localStorage.getItem('groqApiKey');
   if(!savedKey) {
-    showToast("⚠️ 請先在『AI 潤飾』或『AI 起稿』中設定 Groq API Key！");
+    showToast("⚠️ 請先在『首頁右上角』設定 Groq API Key！");
     return;
   }
   document.getElementById('chatModal').classList.add('show');
@@ -4422,7 +4437,7 @@ async function sendChatMessage() {
   const inputEl = document.getElementById('chatInput');
   const chatDisplay = document.getElementById('chatDisplay');
   const userText = inputEl.value.trim();
-  const apiKey = localStorage.getItem('di_groq_key');
+  const apiKey = localStorage.getItem('groqApiKey');
 
   if(!userText) return;
   
@@ -4507,7 +4522,7 @@ function openDiagramModal() {
   document.getElementById('btnExportDiagramPNG').style.display = 'none'; // 隱藏匯出按鈕
   
   // 共用 Groq API 金鑰
-  const savedKey = localStorage.getItem('di_groq_key');
+  const savedKey = localStorage.getItem('groqApiKey');
   if(savedKey) document.getElementById('diagramApiKeyInput').value = savedKey;
   
   document.getElementById('diagramModal').classList.add('show');
@@ -4518,10 +4533,12 @@ function closeDiagramModal() {
 }
 
 async function generateDiagramAI() {
-  const apiKey = document.getElementById('diagramApiKeyInput').value.trim() || localStorage.getItem('di_groq_key');
+  const apiKey = document.getElementById('diagramApiKeyInput').value.trim() || localStorage.getItem('groqApiKey');
   if(!apiKey) { showToast("請輸入 Groq API Key！"); document.getElementById('diagramApiKeyInput').focus(); return; }
   
-  localStorage.setItem('di_groq_key', apiKey);
+  localStorage.setItem('groqApiKey', apiKey);
+  const mainInput = document.getElementById('groqApiKeyInput');
+  if(mainInput) { mainInput.value = apiKey; mainInput.style.color = 'var(--nature-gold)'; }
 
   const sourceText = document.getElementById('diagramSourceText').value.trim();
   const diagramType = document.getElementById('diagramTypeSelect').value;
@@ -4727,13 +4744,15 @@ document.getElementById('bossDictationResult')?.addEventListener('input', autoRe
 // 🚀 新增10項AI功能 - 共用 callGroqAI 函數
 // ==========================================
 async function callGroqAI(systemPrompt, userContent, resultBoxId, btnId, onSuccess) {
-  const apiKey = localStorage.getItem('di_groq_key');
+  const apiKey = localStorage.getItem('groqApiKey');
   if (!apiKey) {
     const k = prompt('請輸入 Groq API Key（可至 console.groq.com 免費申請）：');
     if (!k) return;
-    localStorage.setItem('di_groq_key', k.trim());
+    localStorage.setItem('groqApiKey', k.trim());
+    const mainInput = document.getElementById('groqApiKeyInput');
+    if(mainInput) { mainInput.value = k.trim(); mainInput.style.color = 'var(--nature-gold)'; }
   }
-  const key = localStorage.getItem('di_groq_key');
+  const key = localStorage.getItem('groqApiKey');
   const resultBox = document.getElementById(resultBoxId);
   const btn = document.getElementById(btnId);
   if (btn) btn.disabled = true;
