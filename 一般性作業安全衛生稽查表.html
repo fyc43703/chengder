@@ -2097,78 +2097,122 @@ window.getCurrentLocation = function() {
         };
     
 // =========================================================================
-// 強化版：中央氣象署 API 天氣獲取功能 (加入體感、濕度、風速、累積雨量)
+// 終極強化版：中央氣象署 API 天氣獲取 (強制排除任何儀器故障之測站)
 // =========================================================================
 window.getWeatherInfo = async function(lat, lng) {
     try {
         const apiKey = "CWA-506094DF-397E-48B4-B27F-05DB152056BB";
-        // 採用中央氣象署自動氣象站觀測資料 (O-A0003-001)
-        const url = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0003-001?Authorization=${apiKey}&format=JSON`;
-        const response = await fetch(url);
-        const data = await response.json();
+        
+        // 同時請求局屬與自動氣象站資料
+        const urls = [
+            `https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0001-001?Authorization=${apiKey}&format=JSON`,
+            `https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0003-001?Authorization=${apiKey}&format=JSON`
+        ];
 
-        if (data && data.records && data.records.Station) {
+        const responses = await Promise.all(urls.map(url => fetch(url)));
+        const datasets = await Promise.all(responses.map(res => res.json()));
+
+        let allStations = [];
+        datasets.forEach(data => {
+            if (data && data.records && data.records.Station) {
+                allStations = allStations.concat(data.records.Station);
+            }
+        });
+
+        if (allStations.length > 0) {
             let closestStation = null;
             let minDistance = Infinity;
 
-            // Haversine 公式計算兩點經緯度直線距離
             const getDistance = (lat1, lon1, lat2, lon2) => {
-                const R = 6371; // 地球半徑 (公里)
+                const R = 6371; 
                 const dLat = (lat2 - lat1) * Math.PI / 180;
                 const dLon = (lon2 - lon1) * Math.PI / 180;
                 const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
                           Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
                           Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return R * c;
+                return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
             };
 
-            // 迭代測站，找出距離目前 GPS 定位最近的氣象觀測站
-            data.records.Station.forEach(station => {
+            // 幫助函數：安全轉換數值，並將所有氣象署錯誤碼(<= -99)轉為統一的 -999
+            const parseCWAValue = (val) => {
+                const num = parseFloat(val);
+                if (isNaN(num) || num <= -99) return -999;
+                return num;
+            };
+
+            allStations.forEach(station => {
                 let sLat, sLon;
                 if (station.GeoInfo && station.GeoInfo.Coordinates) {
                     const coord = station.GeoInfo.Coordinates.find(c => c.CoordinateName === "WGS84");
                     if (coord) {
-                        sLat = coord.StationLatitude;
-                        sLon = coord.StationLongitude;
+                        sLat = parseFloat(coord.StationLatitude);
+                        sLon = parseFloat(coord.StationLongitude);
                     }
                 }
-                if (sLat !== undefined && sLon !== undefined) {
+                
+                if (sLat !== undefined && sLon !== undefined && !isNaN(sLat) && !isNaN(sLon)) {
                     const dist = getDistance(lat, lng, sLat, sLon);
-                    // 確保該測站有提供溫度資料且非感測異常值 (-99)
-                    if (dist < minDistance && station.WeatherElement && station.WeatherElement.AirTemperature !== -99) {
-                        minDistance = dist;
-                        closestStation = station;
+                    const we = station.WeatherElement;
+                    
+                    if (we) {
+                        // 轉換數值以確保判斷準確
+                        const t = parseCWAValue(we.AirTemperature);
+                        const h = parseCWAValue(we.RelativeHumidity);
+                        
+                        // 雨量的部分要特別小心，因為 -98 是合法數值(微量)
+                        let pRaw = -999;
+                        if (we.Now && we.Now.Precipitation !== undefined) {
+                            pRaw = parseFloat(we.Now.Precipitation);
+                        }
+                        
+                        // 終極審查：溫度合理、濕度合理、雨量合理
+                        // 台灣平地溫度不可能低於 -10度，所以 t > -10 即可排除錯誤
+                        const isTempValid = t > -10 && t < 50; 
+                        const isHumidValid = h >= 0 && h <= 100;
+                        const isPrecipValid = pRaw >= 0 || pRaw === -98 || pRaw === -998;
+
+                        // 只有「三種儀器都完全正常」的測站，才能參與距離比較
+                        if (dist < minDistance && isTempValid && isHumidValid && isPrecipValid) {
+                            minDistance = dist;
+                            closestStation = station;
+                        }
                     }
                 }
             });
 
             if (closestStation) {
                 const we = closestStation.WeatherElement;
-                const temp = Math.round(we.AirTemperature);
-                const humidity = Math.round(we.RelativeHumidity);
-                const windSpeed = we.WindSpeed === -99 ? 0 : we.WindSpeed;
+                const temp = Math.round(parseFloat(we.AirTemperature));
+                const humidity = Math.round(parseFloat(we.RelativeHumidity));
                 
-                // 取出當日累積雨量，若遇異常值或無資料則預設為 0
-                let rain = 0;
-                if (we.Now && typeof we.Now.Precipitation === 'number' && we.Now.Precipitation >= 0) {
-                    rain = we.Now.Precipitation;
+                let windSpeedRaw = parseFloat(we.WindSpeed);
+                const windSpeed = (isNaN(windSpeedRaw) || windSpeedRaw < 0) ? 0 : windSpeedRaw;
+                
+                let rainText = "0";
+                let rainVal = parseFloat(we.Now.Precipitation);
+                
+                if (rainVal === -98 || rainVal === -998) {
+                    rainText = "微量";
+                } else if (rainVal >= 0) {
+                    rainText = rainVal.toString();
                 }
 
-                // 根據澳洲體感溫度公式 (Apparent Temperature) 進行估算
+                // 體感溫度計算
                 const e = (humidity / 100) * 6.105 * Math.exp((17.27 * temp) / (237.7 + temp));
                 const feelsLike = Math.round(temp + 0.33 * e - 0.70 * windSpeed - 4.00);
 
+                // 天氣現象防呆
                 let weatherText = we.Weather;
-                // 部分自動測站不提供天氣現象描述，若遇到異常值則依據濕度進行防呆判定
-                if (!weatherText || weatherText === "-99" || weatherText === "") {
-                    if (humidity >= 85) weatherText = "陰天或降雨";
+                if (!weatherText || parseFloat(weatherText) < 0 || weatherText === "") {
+                    if (rainVal > 0 || rainText === "微量") weatherText = "陰有雨";
+                    else if (humidity >= 85) weatherText = "陰天或降雨";
                     else if (humidity >= 70) weatherText = "多雲或陰天";
                     else weatherText = "晴天";
                 }
 
-                // 回傳包含換行符號的雙行結構，以符合：第二行(即時氣象)、第三行(累積雨量)
-                return `(即時：${temp}°C ${weatherText} (體感${feelsLike}°C, 濕度${humidity}%))\n當日累積雨量：${rain} 毫米`;
+                const stationName = closestStation.StationName || "未知";
+
+                return `(即時：${temp}°C ${weatherText} (體感${feelsLike}°C, 濕度${humidity}%))\n當日累積雨量：${rainText} 毫米 [${stationName}測站]`;
             }
         }
     } catch (e) {
