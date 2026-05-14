@@ -1629,36 +1629,68 @@ let isFocusMode = false;
                 });
                 document.querySelectorAll('.form-page').forEach(page => page.style.display = '');
 
-                document.querySelectorAll('.checklist-table tbody').forEach(tbody => {
-                    let rows = Array.from(tbody.querySelectorAll('tr'));
-                    let currentCatCell = null;
-                    
-                    // 先把被搬移的「分類名稱」儲存格搬回原來的起始行
-                    rows.forEach(tr => {
-                        let catCell = tr.querySelector('.col-cat');
-                        if (catCell) {
-                            currentCatCell = catCell;
-                        }
-                        // 如果這行原本是起始行，但分類儲存格不見了(被搬走了)，就把它搬回來
-                        if (tr.getAttribute('data-cat-start') === 'true' && !tr.querySelector('.col-cat')) {
-                            if (currentCatCell) {
-                                tr.insertBefore(currentCatCell, tr.firstChild);
-                            }
-                        }
-                    });
-
-                    // 接著恢復所有行與儲存格的顯示與原始 rowspan
-                    rows.forEach(tr => {
-                        tr.style.display = '';
-                        Array.from(tr.children).forEach(td => td.style.display = '');
-                        let catCell = tr.querySelector('.col-cat');
-                        if (catCell && catCell.hasAttribute('data-orig-rowspan')) {
-                            catCell.rowSpan = catCell.getAttribute('data-orig-rowspan');
-                        }
-                    });
-                });
+document.querySelectorAll('.checklist-table tbody').forEach(tbody => {
+    let rows = Array.from(tbody.querySelectorAll('tr'));
+    let i = 0;
+    
+    while (i < rows.length) {
+        let tr = rows[i];
+        
+        // 如果這是分類的起始行
+        if (tr.getAttribute('data-cat-start') === 'true') {
+            let catCell = null;
+            // 往後尋找屬於這個分類的 col-cat 儲存格
+            for (let j = i; j < rows.length; j++) {
+                let cell = rows[j].querySelector('.col-cat');
+                if (cell) {
+                    catCell = cell;
+                    break;
+                }
+                // 如果遇到下一個分類的起始行，代表本分類的 col-cat 已經遺失，提早中斷
+                if (j > i && rows[j].getAttribute('data-cat-start') === 'true') {
+                    break;
+                }
             }
-        };
+            
+            if (catCell) {
+                let origRowSpan = parseInt(catCell.getAttribute('data-orig-rowspan'), 10) || 1;
+                
+                // 把分類儲存格搬回原來的起始行
+                if (catCell.parentElement !== tr) {
+                    tr.insertBefore(catCell, tr.firstChild);
+                }
+                
+                // 恢復原始的 rowspan
+                catCell.rowSpan = origRowSpan;
+                
+                // 恢復這整個分類區塊的顯示
+                let blockRows = rows.slice(i, i + origRowSpan);
+                blockRows.forEach(r => {
+                    r.style.display = '';
+                    Array.from(r.children).forEach(td => td.style.display = '');
+                });
+                
+                i += origRowSpan;
+            } else {
+                // 容錯：沒找到 catCell，直接讓這行顯示並繼續下一行
+                tr.style.display = '';
+                Array.from(tr.children).forEach(td => td.style.display = '');
+                i++;
+            }
+        } else {
+            // 若這行不是起始行，可能是容錯處理的單獨行，直接顯示
+            tr.style.display = '';
+            Array.from(tr.children).forEach(td => td.style.display = '');
+            let catCell = tr.querySelector('.col-cat');
+            if (catCell && catCell.hasAttribute('data-orig-rowspan')) {
+                catCell.rowSpan = catCell.getAttribute('data-orig-rowspan');
+            }
+            i++;
+        }
+    }
+});
+}
+};
     
         const formsData = [
             {
@@ -1918,6 +1950,8 @@ let isFocusMode = false;
                         <a href="https://drive.google.com/file/d/1cC4Q4FDTtMBDqIpV3REQcRqgd5qpil1h/view?usp=sharing" target="_blank">北市施工安全衛生須知</a>
                         <a href="https://drive.google.com/file/d/1uEk-QVp15cUpIv8VxotOenJCOGBfooPI/view?usp=sharing" target="_blank">職業安全衛生設施規則</a>
                         <a href="https://drive.google.com/file/d/1wNidop-CSg9P7nix1tw35LKqLiz5EeRV/view?usp=sharing" target="_blank">營造安全衛生設施標準</a>
+                        <a href="https://drive.google.com/file/d/1GsnJ37U-OwpenfFAc9KLvRGViDZi68Uv/view?usp=sharing" target="_blank">職業安全衛生法</a>
+                        <a href="https://drive.google.com/file/d/1E1wyzcnUJIyN2YStFARmZSh965XLrlAs/view?usp=sharing" target="_blank">職安法施行細則</a>                       
                     </div>
                 </div>
 <div class="date-row">檢查日期： <select class="date-year" onchange="syncDate('year', this.value)">${yearOpts}</select> 年 <select class="date-month" onchange="syncDate('month', this.value)">${monthOpts}</select> 月 <select class="date-day" onchange="syncDate('day', this.value)">${dayOpts}</select> 日</div>
