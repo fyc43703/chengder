@@ -5593,45 +5593,54 @@ async function generateLawEngine() {
 }
 
 function renderLawResults(data, keyword, box) {
-  const rankBadge = ['🥇','🥈','🥉'];
-  const lawCards = (data.laws || []).map((law, i) => {
-    const amendBg = law.recentAmended ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.06)';
-    const amendBorder = law.recentAmended ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.25)';
-    const amendColor = law.recentAmended ? '#EF4444' : '#10B981';
-    const amendIcon = law.recentAmended ? '⚠️' : '✅';
-    return `
-      <div style="border:1px solid var(--border-color);border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-        <div style="background:linear-gradient(to right,#1E3A8A,#1E40AF);color:white;padding:12px 18px;display:flex;align-items:center;gap:10px;">
-          <span style="font-size:20px;">${rankBadge[i]||'📌'}</span>
-          <div>
-            <div style="font-weight:900;font-size:15px;">${esc(law.lawName)} ${esc(law.article)}</div>
-            <div style="font-size:12px;opacity:0.85;margin-top:2px;">${esc(law.content)}</div>
+    const rankBadge = ['🥇','🥈','🥉'];
+    const lawCards = (data.laws || []).map((law, i) => {
+      const amendBg = law.recentAmended ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.06)';
+      const amendBorder = law.recentAmended ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.25)';
+      const amendColor = law.recentAmended ? '#EF4444' : '#10B981';
+      const amendIcon = law.recentAmended ? '⚠️' : '✅';
+      
+      // 終極解法：透過 Google 搜尋並限定 site:law.moj.gov.tw，藉由 Google 作為橋樑，徹底避開所有法學資料庫的 WAF 防火牆阻擋
+      const safeLawName = (law.lawName || "").replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
+      const searchQuery = `${safeLawName} site:law.moj.gov.tw`;
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+  
+      return `
+        <div style="border:1px solid var(--border-color);border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <div style="background:linear-gradient(to right,#1E3A8A,#1E40AF);color:white;padding:12px 18px;display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px;">${rankBadge[i]||'📌'}</span>
+            <div>
+              <div style="font-weight:900;font-size:15px;">${esc(law.lawName)} ${esc(law.article)}</div>
+              <div style="font-size:12px;opacity:0.85;margin-top:2px;">${esc(law.content)}</div>
+            </div>
+            <span style="margin-left:auto;font-size:11px;background:rgba(255,255,255,0.18);padding:3px 9px;border-radius:10px;">#${law.rank} 相關度</span>
           </div>
-          <span style="margin-left:auto;font-size:11px;background:rgba(255,255,255,0.18);padding:3px 9px;border-radius:10px;">#${law.rank} 相關度</span>
-        </div>
-        <div style="padding:14px 18px;">
-          <div style="background:rgba(30,64,175,0.06);border:1px solid rgba(30,64,175,0.2);border-radius:8px;padding:10px 14px;margin-bottom:10px;">
-            <div style="font-size:11px;font-weight:800;color:var(--apple-gray);letter-spacing:0.1em;margin-bottom:5px;">📝 標準引述格式（可直接複製）</div>
-            <div style="font-size:14px;font-weight:700;color:#1E3A8A;font-family:'Noto Serif TC',serif;cursor:pointer;" onclick="navigator.clipboard.writeText(${JSON.stringify(law.fullQuote)}).then(()=>showToast('✅ 引述格式已複製！'))" title="點擊複製">${esc(law.fullQuote)} 📋</div>
+          <div style="padding:14px 18px;">
+            <div style="background:rgba(30,64,175,0.06);border:1px solid rgba(30,64,175,0.2);border-radius:8px;padding:10px 14px;margin-bottom:10px;">
+              <div style="font-size:11px;font-weight:800;color:var(--apple-gray);letter-spacing:0.1em;margin-bottom:5px;">📝 標準引述格式（點擊右側圖示複製）</div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <a href="${searchUrl}" target="_blank" style="font-size:14px;font-weight:700;color:#1E3A8A;font-family:'Noto Serif TC',serif;text-decoration:none;border-bottom:1px dashed #1E3A8A;padding-bottom:1px;" title="透過 Google 搜尋全國法規資料庫：${esc(law.lawName)}">${esc(law.fullQuote)} 🔍</a>
+                <span style="font-size:16px;cursor:pointer;" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(law.fullQuote || "")}')).then(()=>showToast('✅ 引述格式已複製！'))" title="點擊複製引述格式">📋</span>
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--apple-gray);margin-bottom:8px;">💡 <b>關聯原因：</b>${esc(law.relevanceReason)}</div>
+            <div style="background:${amendBg};border:1px solid ${amendBorder};border-radius:8px;padding:8px 12px;font-size:12px;color:${amendColor};font-weight:700;">
+              ${amendIcon} <b>修訂狀態：</b>${esc(law.amendNote)}
+            </div>
           </div>
-          <div style="font-size:13px;color:var(--apple-gray);margin-bottom:8px;">💡 <b>關聯原因：</b>${esc(law.relevanceReason)}</div>
-          <div style="background:${amendBg};border:1px solid ${amendBorder};border-radius:8px;padding:8px 12px;font-size:12px;color:${amendColor};font-weight:700;">
-            ${amendIcon} <b>修訂狀態：</b>${esc(law.amendNote)}
-          </div>
-        </div>
-      </div>`;
-  }).join('');
-
-  box.innerHTML = `
-    <div style="background:linear-gradient(135deg,#1E3A8A,#1E40AF);color:white;border-radius:12px;padding:14px 20px;margin-bottom:16px;">
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">🔍 查詢關鍵字：${esc(keyword)}</div>
-      <div style="font-size:13px;opacity:0.9;line-height:1.6;">${esc(data.summary)}</div>
-    </div>
-    <div style="font-size:12px;color:var(--apple-gray);margin-bottom:12px;padding:8px 12px;background:rgba(245,158,11,0.08);border-radius:8px;border:1px solid rgba(245,158,11,0.2);">
-      ⚠️ 本功能推薦結果僅供參考，正式文書請務必至<a href="https://law.moj.gov.tw/" target="_blank" style="color:var(--apple-blue);font-weight:700;">全國法規資料庫</a>核對最新條文版本。
-    </div>
-    ${lawCards}`;
-}
+        </div>`;
+    }).join('');
+  
+    box.innerHTML = `
+      <div style="background:linear-gradient(135deg,#1E3A8A,#1E40AF);color:white;border-radius:12px;padding:14px 20px;margin-bottom:16px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px;">🔍 查詢關鍵字：${esc(keyword)}</div>
+        <div style="font-size:13px;opacity:0.9;line-height:1.6;">${esc(data.summary)}</div>
+      </div>
+      <div style="font-size:12px;color:var(--apple-gray);margin-bottom:12px;padding:8px 12px;background:rgba(245,158,11,0.08);border-radius:8px;border:1px solid rgba(245,158,11,0.2);">
+        ⚠️ 本功能推薦結果僅供參考，正式文書請務必至<a href="https://law.moj.gov.tw/" target="_blank" style="color:var(--apple-blue);font-weight:700;">全國法規資料庫</a>核對最新條文版本。
+      </div>
+      ${lawCards}`;
+  }
 </script>
 </body>
 </html>
