@@ -2054,7 +2054,20 @@ btnMagic.onclick = () => {
       const lines = lastParsedData.content.split('\n');
       lines.forEach(l => { const clean = l.trim(); if (clean && !clean.endsWith('。') && !clean.endsWith('：')) missingPeriods++; });
     }
-    if (missingPeriods > 0) showToast(`🌟 標點偵測已開啟！發現「說明」有 ${missingPeriods} 處段落遺漏句號。`);
+
+    // 成對符號缺漏統計（掃描主旨、說明、擬辦）
+    let unpairedCount = 0;
+    if (lastParsedData) {
+      const fieldsToCheck = [lastParsedData.subject, lastParsedData.content, lastParsedData.proposal].filter(Boolean).join('\n');
+      const issues = checkUnpairedBrackets(fieldsToCheck);
+      unpairedCount = issues.size;
+    }
+
+    const msgs = [];
+    if (missingPeriods > 0) msgs.push(`「說明」有 ${missingPeriods} 處段落遺漏句號`);
+    if (unpairedCount > 0) msgs.push(`${unpairedCount} 種符號未成對（引號或括號）`);
+
+    if (msgs.length > 0) showToast(`🌟 標點偵測已開啟！發現：${msgs.join('；')}。`);
     else showToast("🌟 標點偵測已開啟，為您標示異常公文格式！");
   } else {
     btnMagic.classList.remove('active');
@@ -2247,16 +2260,37 @@ function parseXML(text) {
     return Array.from(new Set(results)).filter(i => i).join('、');
   };
 
-  const isSign = xmlDoc.documentElement.localName === "簽" || text.includes("簽於");
+  const rootTag = xmlDoc.documentElement.localName;
+  const isSign = rootTag === "簽" || text.includes("簽於");
+  const isBianJian = rootTag === "便箋";
+  const isBianQian = rootTag === "便簽";
+  const isNoteType = isBianJian || isBianQian;
+
+  let docTypeResolved;
+  if (isSign) {
+    docTypeResolved = "簽";
+  } else if (isBianJian) {
+    docTypeResolved = "便箋";
+  } else if (isBianQian) {
+    docTypeResolved = "便簽";
+  } else {
+    docTypeResolved = getTagValue("類別") || "函";
+  }
+
   const data = {
     orgName: getTagValue("全銜") || getTagValue("發文機關") || getTagValue("簽於"),
-    docType: isSign ? "簽" : (getTagValue("類別") || "函"),
+    docType: docTypeResolved,
     docNo: getTagValue("發文字號") || getTagValue("文號") || getTagValue("於"),
     docDate: getTagValue("發文日期") || getTagValue("年月日"),
-    fileNo: getTagValue("檔號"), keepYear: "10", address: getTagValue("地址"), contact: getTagValue("承辦人"),
+    fileNo: getTagValue("檔號"), keepYear: getTagValue("保存年限") || "10", address: getTagValue("地址"), contact: getTagValue("承辦人"),
     originalCopy: cleanOrgList(getOrgListFromXML("正本")), carbonCopy: cleanOrgList(getOrgListFromXML("副本")),
     phone: "", fax: "", email: "", priority: getTagValue("速別") || "普通件", secret: getTagValue("密等及解密條件或保密期限") || "普通",
-    subject: getSec("主旨", "主旨"), content: getSec("說明", "說明"), proposal: getSec("擬辦", "擬辦"), 
+    subject: isNoteType
+      ? getSec("段落", "段落").replace(/\r?\n/g, "").replace(/\s{2,}/g, " ").trim()
+      : getSec("主旨", "主旨"),
+    content: isNoteType ? "" : getSec("說明", "說明"),
+    proposal: isNoteType ? "" : getSec("擬辦", "擬辦"),
+    noteClosing: isNoteType ? (getTagValue("此致") || getTagValue("敬陳") || "") : "",
     attachments: [], receiveOrg: cleanOrgList(getOrgListFromXML("受文者"))
   };
 
@@ -2455,7 +2489,10 @@ function handleExportDI() {
   if (!lastParsedData) return;
   const d = lastParsedData;
   const isSign = d.docType.includes("簽");
-  
+  const isBianJian = d.docType === "便箋";
+  const isBianQian = d.docType === "便簽";
+  const isNoteType = isBianJian || isBianQian;
+
   // 1. 取得 XML 用中文日期與檔名用數字日期
   const rocDateSuffix = getRocDateStr(); // 例如 1150413
   const displayDate = d.docDate || (function() {
@@ -2463,10 +2500,14 @@ function handleExportDI() {
     return `${now.getFullYear() - 1911}年${now.getMonth() + 1}月${now.getDate()}日`;
   })();
 
-  // 2. 建立 XML
+  // 2. 建立 XML 宣告與根元素
   let xml = `<?xml version="1.0" encoding="utf-8"?>\n`;
   if (isSign) {
     xml += `<!DOCTYPE 簽 SYSTEM "104_5_utf8.dtd" [\n<!ENTITY 表單 SYSTEM "" NDATA DI><!NOTATION DI SYSTEM ""><!NOTATION _X SYSTEM "">\n]>\n<簽>\n`;
+  } else if (isBianJian) {
+    xml += `<!DOCTYPE 便箋 SYSTEM "104_8_utf8.dtd" [\n<!ENTITY 表單 SYSTEM "" NDATA DI><!NOTATION DI SYSTEM ""><!NOTATION _X SYSTEM "">\n]>\n<便箋>\n`;
+  } else if (isBianQian) {
+    xml += `<!DOCTYPE 便簽 SYSTEM "104_C_utf8.dtd" [\n<!ENTITY 表單 SYSTEM "" NDATA DI><!NOTATION DI SYSTEM ""><!NOTATION _X SYSTEM "">\n]>\n<便簽>\n`;
   } else {
     xml += `<!DOCTYPE 函 SYSTEM "104_2_utf8.dtd" [\n<!ENTITY 表單 SYSTEM "" NDATA DI><!NOTATION DI SYSTEM ""><!NOTATION _X SYSTEM "">\n]>\n<函>\n`;
   }
@@ -2474,10 +2515,20 @@ function handleExportDI() {
   // 檔號、保存年限與稿面註記
   xml += `  <檔號><年度>115</年度><分類號></分類號><案次號></案次號></檔號>\n`;
   xml += `  <保存年限>${esc(d.keepYear || "10")}</保存年限>\n`;
-  xml += `  <稿面註記><擬辦方式>${isSign ? "簽稿併陳" : "以稿代簽"}</擬辦方式><決行層級>一層決行</決行層級><應用限制>開放應用</應用限制></稿面註記>\n`;
+
+  if (!isNoteType) {
+    xml += `  <稿面註記><擬辦方式>${isSign ? "簽稿併陳" : "以稿代簽"}</擬辦方式><決行層級>一層決行</決行層級><應用限制>開放應用</應用限制></稿面註記>\n`;
+  } else {
+    xml += `  <稿面註記><擬辦方式> </擬辦方式>    <應用限制> </應用限制></稿面註記>\n`;
+  }
 
   if (isSign) {
     // 簽的專屬排版標頭
+    xml += `  <於></於>\n`;
+    xml += `  <年月日>${esc(displayDate)}</年月日>\n`;
+    xml += `  <機關><全銜>${esc(d.orgName)}</全銜></機關>\n`;
+  } else if (isNoteType) {
+    // 便箋 / 便簽的共用排版標頭
     xml += `  <於></於>\n`;
     xml += `  <年月日>${esc(displayDate)}</年月日>\n`;
     xml += `  <機關><全銜>${esc(d.orgName)}</全銜></機關>\n`;
@@ -2490,7 +2541,7 @@ function handleExportDI() {
     if (d.phone) xml += `  <聯絡方式>電話：${esc(d.phone)}</聯絡方式>\n`;
     xml += `  <受文者><交換表 交換表單="表單"></交換表></受文者>\n`;
     xml += `  <發文日期><年月日>${esc(displayDate)}</年月日></發文日期>\n`;
-    
+
     let docPrefix = "北市捷工", docYear = "115", docSerial = "0000000";
     if (d.docNo) {
       const dnMatch = d.docNo.match(/(.*?)字第(\d{3})(\d+)號/);
@@ -2501,8 +2552,10 @@ function handleExportDI() {
     xml += `  <密等及解密條件或保密期限><密等>${esc(d.secret === '普通' ? '' : d.secret)}</密等><解密條件或保密期限></解密條件或保密期限></密等及解密條件或保密期限>\n`;
   }
 
-  xml += `  <附件><文字>${esc(d.attachments || "")}</文字></附件>\n`;
-  xml += `  <主旨><文字>${esc(d.subject || "")}</文字></主旨>\n`;
+  if (!isNoteType) {
+    xml += `  <附件><文字>${esc(d.attachments || "")}</文字></附件>\n`;
+    xml += `  <主旨><文字>${esc(d.subject || "")}</文字></主旨>\n`;
+  }
 
   function processSectionToXML(text, sectionName) {
     if (!text) return "";
@@ -2517,13 +2570,24 @@ function handleExportDI() {
     return res;
   }
 
-  xml += processSectionToXML(d.content, "說明：");
-  if (d.proposal) xml += processSectionToXML(d.proposal, "擬辦：");
-
-  if (isSign) {
-    xml += `  <敬陳>敬陳　局長</敬陳>\n</簽>`;
+  if (isNoteType) {
+    // 便箋 / 便簽：以段落包覆主要內文
+    xml += processSectionToXML(d.subject || d.content, "");
+    if (isBianJian) {
+      const closing = d.noteClosing || "此致　局長";
+      xml += `  <此致>${esc(closing)}</此致>\n</便箋>`;
+    } else {
+      const closing = d.noteClosing || "敬陳　局長";
+      xml += `  <敬陳>${esc(closing)}</敬陳>\n  <署名 />\n</便簽>`;
+    }
   } else {
-    xml += `  <署名 />\n</函>`;
+    xml += processSectionToXML(d.content, "說明：");
+    if (d.proposal) xml += processSectionToXML(d.proposal, "擬辦：");
+    if (isSign) {
+      xml += `  <敬陳>敬陳　局長</敬陳>\n</簽>`;
+    } else {
+      xml += `  <署名 />\n</函>`;
+    }
   }
 
   // 3. 檔名處理：[原檔名]_[民國數字日期].di
@@ -2587,6 +2651,41 @@ function toRTFUnicode(str) {
 // ==========================================
 // 渲染畫面與視覺效果邏輯
 // ==========================================
+function checkUnpairedBrackets(text) {
+  const checks = [
+    {
+      open: '「', close: '」',
+      label: '書名號單引號',
+      openMsg: '偵測到「 左引號，但缺少對應的 」右引號',
+      closeMsg: '偵測到 」右引號，但缺少對應的「 左引號'
+    },
+    {
+      open: '（', close: '）',
+      label: '全形括號',
+      openMsg: '偵測到（ 左括號，但缺少對應的 ）右括號',
+      closeMsg: '偵測到 ）右括號，但缺少對應的（ 左括號'
+    },
+    {
+      open: '(', close: ')',
+      label: '半形括號',
+      openMsg: '偵測到( 左括號，但缺少對應的 )右括號',
+      closeMsg: '偵測到 )右括號，但缺少對應的( 左括號'
+    }
+  ];
+
+  const issues = new Set();
+  for (const rule of checks) {
+    let depth = 0;
+    for (const ch of text) {
+      if (ch === rule.open) depth++;
+      else if (ch === rule.close) depth--;
+    }
+    if (depth > 0) issues.add(rule.open);
+    if (depth < 0) issues.add(rule.close);
+  }
+  return issues;
+}
+
 function renderText(text) {
   if (!text) return "";
   if (!isMagicMode) return esc(text);
@@ -2600,7 +2699,6 @@ function renderText(text) {
     "僱主": { correct: "雇主", desc: "公文統一使用「雇主」" },
     "僱員": { correct: "雇員", desc: "公文統一使用「雇員」" },
     "規畫": { correct: "規劃", desc: "公文統一使用「規劃」" },
-    "計劃": { correct: "計畫", desc: "公文統一使用「計畫」" },
     "徹底": { correct: "澈底", desc: "公文統一使用「澈底」" },
     "給與": { correct: "給予", desc: "動詞請用「給予」" },
     "盡量": { correct: "儘量", desc: "公文統一使用「儘量」" },
@@ -2609,7 +2707,6 @@ function renderText(text) {
     "獨佔": { correct: "獨占", desc: "公文統一使用「獨占」" },
     "佔有": { correct: "占有", desc: "公文統一使用「占有」" },
     "抵觸": { correct: "牴觸", desc: "公文統一使用「牴觸」" },
-    "抵觸": { correct: "牴觸", desc: "公文統一使用「牴觸」" },
     "聘雇": { correct: "聘僱", desc: "公文統一使用「聘僱」" },
     "聲請": { correct: "申請", desc: "對行政機關用「申請」" },
     "複核": { correct: "覆核", desc: "公文統一使用「覆核」" },
@@ -2617,24 +2714,40 @@ function renderText(text) {
     "復驗": { correct: "複驗", desc: "公文統一使用「複驗」" }
   };
 
-  // 正則表達式中加入了「身份」
-  const regex = /(^[？；，、。：.,/*\-+]+|[ \t\u3000]+|[\(\),]|(?:([，。、？！；：「」『』（）《》〈〉【】—～…])\2+)|安慰|記錄|捷局|、。|。、|：、|、：|。，|，。|AXAR|AXAA|捷工管處|第\s*\d+\s*頁|共\s*\d+\s*頁|11[3-7]\*+|11[3-7]\d{4,10}|AAAA|\*+|審核決行|會辦單位[：:]?|計劃|貫澈|公佈|身份|部份|佔有|僱主|聘雇|規畫|策畫|盡量|徹底|聲請|給與|複核|複查|復驗)/g;
-  
+  // 成對符號缺漏偵測（整段文字層級）
+  const unpairedChars = checkUnpairedBrackets(text);
+  const bracketRuleMap = {
+    '「': { msg: '偵測到「 左引號，但缺少對應的 」右引號' },
+    '」': { msg: '偵測到 」右引號，但缺少對應的「 左引號' },
+    '（': { msg: '偵測到（ 左括號，但缺少對應的 ）右括號' },
+    '）': { msg: '偵測到 ）右括號，但缺少對應的（ 左括號' },
+    '(': { msg: '偵測到( 左括號，但缺少對應的 )右括號' },
+    ')': { msg: '偵測到 )右括號，但缺少對應的( 左括號' }
+  };
+
+  const regex = /(^[？；，、。：.,/*\-+]+|[ \t\u3000]+|[\(\),]|(?:([ ，。、？！；：「」『』（）《》〈〉【】—～…])\2+)|安慰|記錄|捷局|、。|。、|：、|、：|。，|，。|AXAR|AXAA|捷工管處|第\s*\d+\s*頁|共\s*\d+\s*頁|11[3-7]\*+|11[3-7]\d{4,10}|AAAA|\*+|審核決行|會辦單位[：:]?|計劃|貫澈|公佈|身份|部份|佔有|僱主|聘雇|規畫|策畫|盡量|徹底|聲請|給與|複核|複查|復驗|「|」|（|）|\(|\))/g;
+
   let lastIndex = 0;
   let result = "";
   let match;
 
   while ((match = regex.exec(text)) !== null) {
     result += esc(text.substring(lastIndex, match.index));
-    
+
     let matchedWord = match[0];
     let titleMsg = "偵測到異常格式或關鍵字";
-    
+    let isUnpaired = false;
+
+    // 優先判斷：成對符號缺漏
+    if (unpairedChars.has(matchedWord) && bracketRuleMap[matchedWord]) {
+      titleMsg = `⚠️ 符號未成對：${bracketRuleMap[matchedWord].msg}`;
+      isUnpaired = true;
+    }
     // 判斷是否為公文易錯字
-    if (officialWordDict[matchedWord]) {
+    else if (officialWordDict[matchedWord]) {
       const info = officialWordDict[matchedWord];
       titleMsg = `💡 建議修正為「${info.correct}」\n說明：${info.desc}`;
-    } 
+    }
     // 其他原有的雜訊判斷
     else if (matchedWord.includes("AAAA")) {
       titleMsg = "偵測到測試字串 AAAA";
@@ -2645,8 +2758,13 @@ function renderText(text) {
     } else if (/會辦單位|審核決行/.test(matchedWord)) {
       titleMsg = "偵測到公文表單殘留文字";
     }
-    
-    result += `<span class="magic-highlight" title="${titleMsg}">${esc(matchedWord)}</span>`;
+
+    // 成對符號缺漏時採用紅色警示樣式，其餘維持原黃色
+    if (isUnpaired) {
+      result += `<span class="magic-highlight" style="background:rgba(215,0,21,0.18);border-color:#D70015;color:#D70015;" title="${titleMsg}">${esc(matchedWord)}</span>`;
+    } else {
+      result += `<span class="magic-highlight" title="${titleMsg}">${esc(matchedWord)}</span>`;
+    }
     lastIndex = regex.lastIndex;
   }
   result += esc(text.substring(lastIndex));
