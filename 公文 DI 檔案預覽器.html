@@ -1718,21 +1718,28 @@ body.font-kai .doc-paper [contenteditable="true"],
 
         <div class="controls" id="controlsBar">
           <div class="control-left">
-            <!-- 加入 title -->
-
-<!-- 加入 title (包含條列式換行) -->
-<button class="btn btn-magic" id="btnMagic" title="啟動公文格式與用字智慧檢查：
+            <!-- 加入 title (包含條列式換行) -->
+            <button class="btn btn-magic" id="btnMagic" title="啟動公文格式與用字智慧檢查：
 1. 缺漏標點：自動偵測「說明」段落結尾遺漏之全形句號。
 2. 序號錯誤：檢查公文項目編號（一、 (一) 1.）是否中斷或不連續。
 3. 易錯用字：標示公文常見錯別字並提供修正建議（如：計劃→計畫、身份→身分）。
 4. 殘留雜訊：揪出檔案轉檔時殘留之無效資訊（如頁碼、會辦單位等表單文字）。">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-            <line x1="12" y1="22.08" x2="12" y2="12"></line>
-          </svg>
-          標點偵測
-        </button>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+              標點偵測
+            </button>
+            <button class="btn btn-secondary" id="btnRemoveSpace" style="display: none;" onclick="removeSpacesFromDoc()" title="一鍵清除主旨、說明與擬辦中多餘的半形與全形空白字元，避免標點異常誤判">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 12h6"></path>
+                <path d="M20 12h-6"></path>
+                <polyline points="8 8 12 12 8 16"></polyline>
+                <polyline points="16 8 12 12 16 16"></polyline>
+              </svg>
+              移除空白
+            </button>
           </div>
           
           <div class="control-center" style="display: flex; gap: 12px;">
@@ -1917,6 +1924,7 @@ const btnExport = document.getElementById('btnExport');
 const btnExportDI = document.getElementById('btnExportDI');
 const btnPrint = document.getElementById('btnPrint');
 const btnMagic = document.getElementById('btnMagic');
+const btnRemoveSpace = document.getElementById('btnRemoveSpace');
 const previewSection = document.getElementById('previewSection');
 const docContainer = document.getElementById('docContainer');
 const parseStatus = document.getElementById('parseStatus');
@@ -2024,6 +2032,7 @@ lastParsedData = data;
     btnExportDI.style.display = "inline-flex";
     btnPrint.style.display = "inline-flex";
     btnMagic.style.display = "inline-flex";
+    btnRemoveSpace.style.display = "inline-flex";
 
     // ▼▼▼ 新增這行：替按鈕掛上抖動動畫類別 ▼▼▼
     btnMagic.classList.add('btn-attention');
@@ -2071,6 +2080,37 @@ btnMagic.onclick = () => {
   }
   if (lastParsedData) render(lastParsedData, lastRawText);
 };
+
+// 移除內文多餘空白功能
+function removeSpacesFromDoc() {
+  if (!lastParsedData) {
+    showToast("⚠️ 請先載入公文！");
+    return;
+  }
+  
+  let count = 0;
+  const fields = ['subject', 'content', 'proposal'];
+  const spaceRegex = /[ \t\u3000\xA0]+/g; 
+
+  fields.forEach(key => {
+    if (lastParsedData[key]) {
+      const original = lastParsedData[key];
+      // 替換所有空白（包含全形、半形、Tab等），但保留原本的換行格式
+      const cleaned = original.replace(spaceRegex, '');
+      if (original !== cleaned) {
+        lastParsedData[key] = cleaned;
+        count++;
+      }
+    }
+  });
+
+  if (count > 0) {
+    render(lastParsedData, lastRawText);
+    showToast("✅ 已成功移除內文多餘的空白字元！");
+  } else {
+    showToast("ℹ️ 內文中沒有發現多餘的空白字元。");
+  }
+}
 
  btnExport.onclick = handleExportRTF;
  btnExportDI.onclick = handleExportDI;
@@ -3721,6 +3761,7 @@ function restoreFromHistory(index) {
     document.getElementById('btnExportDI').style.display = "inline-flex";
     document.getElementById('btnPrint').style.display = "inline-flex";
     document.getElementById('btnMagic').style.display = "inline-flex";
+    document.getElementById('btnRemoveSpace').style.display = "inline-flex";
     
     document.getElementById('parseStatus').textContent = "✅ 已載入歷史紀錄";
     showToast("📂 已恢復先前編輯的公文！");
