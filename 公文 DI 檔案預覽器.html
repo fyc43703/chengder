@@ -1581,26 +1581,22 @@ body.font-kai .doc-paper [contenteditable="true"],
       <button class="modal-close" onclick="closeLawEngineModal()">×</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:13px;color:var(--apple-gray);margin-bottom:12px;">輸入事由關鍵字，AI 自動推薦最相關的 3 條法律條文，生成標準引述格式，並警示近期修訂情況。</p>
+      <p style="font-size:13px;color:var(--apple-gray);margin-bottom:12px;">輸入事由關鍵字，AI 將自動判斷適用領域，推薦最精準的法律條文、生成標準引述格式，並警示近期修訂情況。</p>
       <div style="background:var(--meta-bg);padding:10px 16px;border-radius:10px;border:1px solid var(--border-color);display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
         <span style="font-size:13px;font-weight:700;">🔑 金鑰：</span>
         <span style="font-size:13px;color:var(--apple-blue);font-weight:700;" id="lawEngineKeyStatus">讀取中...</span>
       </div>
-      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-        <input type="text" id="lawEngineKeyword" class="prof-input" style="flex:1;min-width:250px;" placeholder="輸入事由關鍵字，例如：公務人員差旅費、採購招標、環境影響評估...">
-        <select id="lawEngineCategory" style="padding:8px 12px;border-radius:8px;border:1px solid var(--apple-gray);background:var(--doc-bg);color:var(--text-main);outline:none;font-size:13px;font-weight:600;">
-          <option value="general">🏛️ 一般行政法規</option>
-          <option value="finance">💰 財政預算採購</option>
-          <option value="personnel">👥 人事行政</option>
-          <option value="urban">🏗️ 都市建設工程</option>
-          <option value="environment">🌱 環境保護</option>
-          <option value="social">👨‍👩‍👧 社會福利</option>
-        </select>
-        <button class="btn" id="btnGenLaw" onclick="generateLawEngine()" style="background:linear-gradient(to bottom,#1E40AF,#1E3A8A);color:white;border-color:#1E3069;box-shadow:0 4px 0 #1E3069;">
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-start;">
+        <textarea id="lawEngineKeyword" class="prof-input" style="flex:1;min-width:350px;min-height:42px;max-height:150px;resize:vertical;line-height:1.6;font-family:inherit;" placeholder="輸入事由關鍵字，例如：公務人員差旅費、採購招標、環境影響評估..."></textarea>
+        <button class="btn" id="btnGenLaw" onclick="generateLawEngine()" style="background:linear-gradient(to bottom,#1E40AF,#1E3A8A);color:white;border-color:#1E3069;box-shadow:0 4px 0 #1E3069;height:42px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           搜尋相關法條
         </button>
-        <button class="btn btn-secondary" onclick="autoFillLawKeyword()" style="font-size:12px;" title="自動從目前公文主旨擷取關鍵字">⚡ 自動擷取關鍵字</button>
+        <button class="btn btn-secondary" onclick="autoFillLawKeyword()" style="font-size:12px;height:42px;" title="自動從目前公文主旨與說明擷取關鍵字">⚡ 自動擷取全文</button>
+      </div>
+          搜尋相關法條
+        </button>
+        <button class="btn btn-secondary" onclick="autoFillLawKeyword()" style="font-size:12px;" title="自動從目前公文主旨與說明擷取關鍵字">⚡ 自動擷取關鍵字</button>
       </div>
       <div id="lawEngineResultBox" style="min-height:350px;overflow-y:auto;">
         <div style="text-align:center;padding-top:18%;opacity:0.5;font-weight:600;">輸入關鍵字後點擊搜尋，AI 將推薦最精準的法條依據</div>
@@ -5532,27 +5528,33 @@ function openLawEngineModal() {
 function closeLawEngineModal() { document.getElementById('lawEngineModal').classList.remove('show'); }
 
 function autoFillLawKeyword() {
-  if (!lastParsedData) return showToast("請先解析一份公文！");
-  const subject = (lastParsedData.subject || '').replace(/<[^>]+>/g,'').trim();
-  const keywords = subject.slice(0, 30);
-  document.getElementById('lawEngineKeyword').value = keywords;
-  showToast("✅ 已自動擷取主旨關鍵字！");
-}
+    if (!lastParsedData) return showToast("請先解析一份公文！");
+    const subject = (lastParsedData.subject || '').replace(/<[^>]+>/g,'').trim();
+    const content = (lastParsedData.content || '').replace(/<[^>]+>/g,'').trim();
+    const combinedText = subject + " " + content;
+    
+    // 移除字數截斷，直接將完整文字帶入
+    document.getElementById('lawEngineKeyword').value = combinedText;
+    
+    // 讓 textarea 高度自動適應文字長度 (最高不超過 css max-height)
+    const el = document.getElementById('lawEngineKeyword');
+    el.style.height = 'auto';
+    el.style.height = (el.scrollHeight + 2) + 'px';
+    
+    showToast("✅ 已自動擷取公文完整主旨與說明！");
+  }
 
 async function generateLawEngine() {
   const apiKey = localStorage.getItem('groqApiKey');
   if (!apiKey) return showToast("請先設定 Groq API Key！");
   const keyword = document.getElementById('lawEngineKeyword').value.trim();
   if (!keyword) { showToast("請輸入事由關鍵字！"); document.getElementById('lawEngineKeyword').focus(); return; }
-  const category = document.getElementById('lawEngineCategory').value;
   const btn = document.getElementById('btnGenLaw');
   const box = document.getElementById('lawEngineResultBox');
   btn.disabled = true;
-  box.innerHTML = '<div style="text-align:center;padding-top:15%;font-weight:700;color:var(--apple-blue);">⏳ AI 正在比對法規資料庫，推薦最精準法條...</div>';
+  box.innerHTML = '<div style="text-align:center;padding-top:15%;font-weight:700;color:var(--apple-blue);">⏳ AI 正在跨領域比對法規資料庫，推薦最適用的法條...</div>';
 
-  const categoryMap = { general:'行政程序法、政府資訊公開法、公務員服務法', finance:'政府採購法、預算法、國有財產法、會計法', personnel:'公務人員任用法、公務人員保障法、公務人員差旅費報支要點', urban:'都市計畫法、建築法、都市更新條例、大眾捷運法', environment:'環境影響評估法、空氣污染防制法、水污染防治法', social:'社會救助法、兒童及少年福利與權益保障法、身心障礙者權益保障法' };
-
-  const sys = `你是精通中華民國法律體系的資深法制專家。請根據使用者的事由關鍵字，在「${categoryMap[category]}」等相關法規中，推薦最精準的 3 條法律依據。
+  const sys = `你是精通中華民國法律體系的資深法制專家。請根據使用者的事由關鍵字，自動判斷適用的法規領域，並推薦「所有最精準且必要」的法律依據（不限數量，依實際需求完整列出）。
 
 嚴格以 JSON 格式回應：
 {
@@ -5576,7 +5578,7 @@ async function generateLawEngine() {
     const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: "llama-3.3-70b-versatile", max_tokens: 1500,
+      body: JSON.stringify({ model: "llama-3.3-70b-versatile", max_tokens: 3000,
         messages: [{ role: "system", content: sys }, { role: "user", content: `事由關鍵字：${keyword}` }] })
     });
     const data = await resp.json();
@@ -5593,14 +5595,13 @@ async function generateLawEngine() {
 }
 
 function renderLawResults(data, keyword, box) {
-    const rankBadge = ['🥇','🥈','🥉'];
+    const getBadge = (i) => ['🥇','🥈','🥉'][i] || '🏅';
     const lawCards = (data.laws || []).map((law, i) => {
       const amendBg = law.recentAmended ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.06)';
       const amendBorder = law.recentAmended ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.25)';
       const amendColor = law.recentAmended ? '#EF4444' : '#10B981';
       const amendIcon = law.recentAmended ? '⚠️' : '✅';
       
-      // 終極解法：透過 Google 搜尋並限定 site:law.moj.gov.tw，藉由 Google 作為橋樑，徹底避開所有法學資料庫的 WAF 防火牆阻擋
       const safeLawName = (law.lawName || "").replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
       const searchQuery = `${safeLawName} site:law.moj.gov.tw`;
       const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
@@ -5608,7 +5609,7 @@ function renderLawResults(data, keyword, box) {
       return `
         <div style="border:1px solid var(--border-color);border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
           <div style="background:linear-gradient(to right,#1E3A8A,#1E40AF);color:white;padding:12px 18px;display:flex;align-items:center;gap:10px;">
-            <span style="font-size:20px;">${rankBadge[i]||'📌'}</span>
+            <span style="font-size:20px;">${getBadge(i)}</span>
             <div>
               <div style="font-weight:900;font-size:15px;">${esc(law.lawName)} ${esc(law.article)}</div>
               <div style="font-size:12px;opacity:0.85;margin-top:2px;">${esc(law.content)}</div>
@@ -5640,7 +5641,7 @@ function renderLawResults(data, keyword, box) {
         ⚠️ 本功能推薦結果僅供參考，正式文書請務必至<a href="https://law.moj.gov.tw/" target="_blank" style="color:var(--apple-blue);font-weight:700;">全國法規資料庫</a>核對最新條文版本。
       </div>
       ${lawCards}`;
-  }
+}
 </script>
 </body>
 </html>
