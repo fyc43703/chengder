@@ -3591,28 +3591,25 @@ window.addEventListener('load', function() {
 <div id="chat-quick" class="chat-quick">
     <div class="chat-quick-label">常見問題快速提問</div>
     <div class="chat-chips">
+      <button class="chat-chip" style="background-color:#ffeb3b; color:#d84315; font-weight:bold; border-color:#fbc02d; box-shadow:0 1px 3px rgba(0,0,0,0.1);" onclick="quickAsk('生成報告')">📝 生成LINE總結匯報</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關開口規定是什麼？')">開口</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關護欄規定是什麼？')">護欄</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關護蓋規定是什麼？')">護蓋</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關墜落規定是什麼？')">墜落</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關上下設備規定是什麼？')">上下設備</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關局限空間規定是什麼？')">局限空間</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關「火」規定是什麼？')">火</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關安全帶規定是什麼？')">安全帶</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關防護具規定是什麼？')">防護具</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關高處規定是什麼？')">高處</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關擋土規定是什麼？')">擋土</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關1.5公尺規定是什麼？')">1.5公尺</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關2公尺作業規定是什麼？')">2公尺</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關「水」規定是什麼？')">水</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關絕緣規定是什麼？')">絕緣</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關感電規定是什麼？')">感電</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關電擊規定是什麼？')">電擊</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關漏電規定是什麼？')">漏電</button>
+      <button class="chat-chip" onclick="quickAsk('本稽查表有關墜落規定是什麼？')">墜落</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關起重規定是什麼？')">起重</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關機具規定是什麼？')">機具</button>
+      <button class="chat-chip" onclick="quickAsk('本稽查表有關「火」規定是什麼？')">火</button>
       <button class="chat-chip" onclick="quickAsk('本稽查表有關吊車規定是什麼？')">吊車</button>
-      <button class="chat-chip" onclick="quickAsk('本稽查表有關「梯」規定是什麼？')">梯</button>
+      <button class="chat-chip" onclick="quickAsk('本稽查表有關2公尺作業規定是什麼？')">2公尺</button>
+      <button class="chat-chip" onclick="quickAsk('本稽查表有關1.5公尺規定是什麼？')">1.5公尺</button>
+      <button class="chat-chip" onclick="quickAsk('本稽查表有關絕緣規定是什麼？')">絕緣</button>
+      <button class="chat-chip" onclick="quickAsk('本稽查表有關感電規定是什麼？')">感電</button>
+      <button class="chat-chip" onclick="quickAsk('本稽查表有關漏電規定是什麼？')">漏電</button>
+      <button class="chat-chip" onclick="quickAsk('本稽查表有關「水」規定是什麼？')">水</button>
       <button class="chat-chip" style="background-color:#be9af7; color:white;" onclick="quickAsk('本稽查表010101檢查項目是什麼？')">010101</button>
       <button class="chat-chip" style="background-color:#be9af7; color:white;" onclick="quickAsk('本稽查表010201檢查項目是什麼？')">010201</button>
       <button class="chat-chip" style="background-color:#be9af7; color:white;" onclick="quickAsk('本稽查表020101檢查項目是什麼？')">020101</button>
@@ -3930,40 +3927,180 @@ window.addEventListener('load', function() {
       };
     
       // ── 送出訊息 ──
-    // ── 送出訊息（改用純前端本地搜尋，不再呼叫 API） ──
-    window.sendChatMessage = async function() {
-        const input = document.getElementById('chat-input');
-        const text = input.value.trim();
-        if (!text || isThinking) return;
-    
-        // 隱藏快速提問
-        if (quickShown) {
-          document.getElementById('chat-quick').style.display = 'none';
-          quickShown = false;
-        }
-    
-        // 顯示使用者訊息
-        appendMessage('user', text);
-        input.value = '';
-        input.style.height = 'auto';
-    
-        // 顯示思考動畫 (模擬搜尋，提升體驗)
-        setThinking(true);
-    
+// ── 圖文報告下載專用函數 ──
+window.downloadReportImage = async function(btn) {
+    const card = btn.parentElement.previousElementSibling.previousElementSibling;
+    const origText = btn.innerText;
+    btn.innerText = '⏳ 處理中...';
+    btn.disabled = true;
+
+    try {
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+        const canvas = await html2canvas(card, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            useCORS: true
+        });
+        const imgData = canvas.toDataURL('image/jpeg', 0.85);
+        const link = document.createElement('a');
+        link.download = `稽查圖文報告_${new Date().getTime()}.jpg`;
+        link.href = imgData;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        btn.innerText = '✅ 下載完成';
+        btn.style.background = '#28a745';
+    } catch (err) {
+        alert('圖片產生失敗：' + err.message);
+        btn.innerText = '❌ 失敗';
+    } finally {
         setTimeout(() => {
-          // 呼叫本地強效搜尋引擎
-          const reply = localRuleSearch(text);
-    
-          setThinking(false);
-          // 顯示系統回覆
-          appendMessage('ai', reply);
-    
-          // 未開啟視窗時，顯示未讀角標
-          if (!chatOpen) {
-            document.getElementById('chat-unread').classList.remove('hidden');
+            btn.innerText = origText;
+            btn.disabled = false;
+            btn.style.background = '#1a5c9a';
+        }, 2000);
+    }
+};
+
+// ── 送出訊息（改用純前端本地搜尋，不再呼叫 API） ──
+window.sendChatMessage = async function() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text || isThinking) return;
+
+    if (quickShown) {
+      document.getElementById('chat-quick').style.display = 'none';
+      quickShown = false;
+    }
+
+    appendMessage('user', text);
+    input.value = '';
+    input.style.height = 'auto';
+
+    setThinking(true);
+
+    setTimeout(() => {
+      let reply = "";
+      let isRawHtml = false;
+
+      if (text.includes("生成報告") || text.includes("匯報摘要") || text.includes("LINE報告")) {
+          let proj = document.querySelector('.proj-sel').value || "未選擇工程";
+          let loc = document.querySelector('.sync-loc').textContent.trim() || "未填寫";
+          let pos = document.querySelector('.sync-pos').textContent.trim() || "未填寫";
+          let contractor = document.querySelector('.org-contractor').textContent.trim() || "未填寫";
+
+          let failCount = 0;
+          let totalPenalty = 0;
+          let failDetailsText = "";
+          let failDetailsHtml = "";
+
+          document.querySelectorAll('.fail-radio:checked').forEach((radio, idx) => {
+              failCount++;
+              let tr = radio.closest('tr');
+              let id = tr.querySelector('.item-id-code').textContent.trim();
+              let descRaw = tr.querySelector('.defect-desc-input').textContent.trim() || "未填寫說明";
+              let stdDesc = tr.querySelector('.col-desc').textContent;
+
+              let penalty = 5000;
+              if (id.startsWith("01") || id.startsWith("02") || id === "030103" || stdDesc.includes("為有立即發生危險之虞項目 01") || stdDesc.includes("25,000")) {
+                  penalty = 25000;
+              } else if (id === "030112" || id === "030113" || id === "030201") {
+                  penalty = 3000;
+              }
+              totalPenalty += penalty;
+
+              // 擷取該項目的照片
+              let photos = uploadedPhotosDB[id] || [];
+              if (typeof photos === 'string') photos = [photos];
+              let photoCount = photos.length;
+              let photoHtml = '';
+
+              if (photoCount > 0) {
+                  failDetailsText += `${idx + 1}. 【${id}】${descRaw} (📸 附 ${photoCount} 張照片)\n`;
+                  // 使用 flex-wrap 確保畫布匯出時照片不會被隱藏截斷
+                  photoHtml = `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">`;
+                  photos.forEach(imgBase64 => {
+                      photoHtml += `<img src="${imgBase64}" style="height:110px; width:auto; border-radius:4px; border:1px solid #ccc; object-fit:contain; background:#f9f9f9;">`;
+                  });
+                  photoHtml += `</div>`;
+              } else {
+                  failDetailsText += `${idx + 1}. 【${id}】${descRaw}\n`;
+              }
+
+              failDetailsHtml += `<div style="margin-top:10px; padding-bottom:10px; border-bottom:1px solid #eee;">
+                                      <div style="font-weight:bold; color:#c53030; font-size:14px;">${idx + 1}. 【${id}】</div>
+                                      <div style="color:#333; line-height:1.5; margin-top:4px; font-size:13px;">${descRaw}</div>
+                                      ${photoHtml}
+                                  </div>`;
+          });
+
+          let y = document.querySelector('.date-year').value;
+          let m = document.querySelector('.date-month').value;
+          let d = document.querySelector('.date-day').value;
+
+          if (failCount === 0) {
+              failDetailsText = "✅ 本次稽查無發現不合格項目，表現良好！\n";
+              failDetailsHtml = '<div style="color:#28a745; font-weight:bold; padding-top:8px; font-size:14px;">✅ 本次稽查無發現不合格項目，表現良好！</div>';
           }
-        }, 400); // 模擬 0.4 秒搜尋時間
-      };
+
+          let reportText = `📢 【安全衛生稽查速報】\n` +
+                           `📅 日期：${y}年${m}月${d}日\n` +
+                           `🏗️ 工程名稱：${proj}\n` +
+                           `🏢 承攬廠商：${contractor}\n` +
+                           `📍 檢查地點：${loc}\n` +
+                           `📌 檢查位置：${pos.replace(/\n/g, ' ')}\n` +
+                           `-----------------------\n` +
+                           `⚠️ 不合格數：${failCount} 項\n` +
+                           `💰 預估扣罰：NT$ ${totalPenalty.toLocaleString()} 元\n` +
+                           `-----------------------\n` +
+                           `📝 主要缺失內容：\n${failDetailsText}`;
+
+          let reportHtml = `
+              <div style="background:#fff; padding:16px; border-radius:8px; border:1px solid #e2e8f0; font-family:sans-serif; position:relative;">
+                  <div style="font-weight:bold; font-size:16px; margin-bottom:12px; color:#1a5c9a; border-bottom:2px solid #1a5c9a; padding-bottom:6px; display:inline-block;">📢 安全衛生稽查速報</div>
+                  <div style="line-height:1.6; color:#444; font-size:13px;">
+                      <div><b>📅 日期：</b>${y}年${m}月${d}日</div>
+                      <div><b>🏗️ 工程名稱：</b>${proj}</div>
+                      <div><b>🏢 承攬廠商：</b>${contractor}</div>
+                      <div><b>📍 檢查地點：</b>${loc}</div>
+                      <div><b>📌 檢查位置：</b>${pos.replace(/\n/g, ' ')}</div>
+                  </div>
+                  <div style="margin:12px 0; border-top:1px dashed #ccc; border-bottom:1px dashed #ccc; padding:10px 0; background:#fff5f5; border-radius:4px; text-align:center;">
+                      <div style="color:#d84315; font-weight:bold; font-size:14px; margin-bottom:4px;">⚠️ 不合格數：${failCount} 項</div>
+                      <div style="color:#d84315; font-weight:bold; font-size:14px;">💰 預估扣罰：NT$ ${totalPenalty.toLocaleString()} 元</div>
+                  </div>
+                  <div style="margin-top:10px;">
+                      <div style="font-weight:bold; margin-bottom:6px; font-size:15px; color:#0f3d6a;">📝 主要缺失內容：</div>
+                      ${failDetailsHtml}
+                  </div>
+              </div>
+              
+              <textarea style="display:none;">${reportText}</textarea>
+              
+              <div style="display:flex; gap:8px; margin-top:12px;">
+                  <button onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.value).then(()=>{let o=this.innerText; this.innerText='✅ 複製成功！'; this.style.background='#28a745'; setTimeout(()=>{this.innerText=o; this.style.background='#00C300';}, 2000);})" style="flex:1; padding:10px; background:#00C300; color:white; font-size:13px; font-weight:bold; border:none; border-radius:6px; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.15); transition:0.2s;">📋 複製文字</button>
+                  <button onclick="window.downloadReportImage(this)" style="flex:1; padding:10px; background:#1a5c9a; color:white; font-size:13px; font-weight:bold; border:none; border-radius:6px; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.15); transition:0.2s;">📸 儲存圖文</button>
+              </div>
+          `;
+
+          reply = `<div style="background:#f8fbff; border:1px solid #c5dcf0; border-radius:8px; padding:12px; margin-top:5px;">
+                      <div style="font-weight:bold; color:#1a5c9a; margin-bottom:10px;">✅ 圖文匯報摘要已生成：</div>
+                      ${reportHtml}
+                   </div>`;
+          isRawHtml = true;
+      } else {
+          reply = localRuleSearch(text);
+      }
+
+      setThinking(false);
+      appendMessage('ai', reply, isRawHtml);
+
+      if (!chatOpen) {
+        document.getElementById('chat-unread').classList.remove('hidden');
+      }
+    }, 400); 
+};
     
       // ── 清除對話 ──
       window.clearChatHistory = function() {
@@ -4653,35 +4790,34 @@ if (topMatches.length > 3) {
 return responseText;
       }
     
-      // ── 輔助：append 訊息泡泡 ──
-    // ── 輔助：append 訊息泡泡 ──
-    function appendMessage(role, text) {
-        const msgs = document.getElementById('chat-messages');
-        const div = document.createElement('div');
-        div.className = `chat-msg chat-msg-${role === 'user' ? 'user' : 'ai'}`;
-    
-        const now = new Date();
-        const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-    
-        // 格式化系統回應
-        let bubbleContent = escapeHtml(text);
+// ── 輔助：append 訊息泡泡 ──
+// ── 輔助：append 訊息泡泡 ──
+function appendMessage(role, text, isRawHtml = false) {
+    const msgs = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    div.className = `chat-msg chat-msg-${role === 'user' ? 'user' : 'ai'}`;
+
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+    let bubbleContent = "";
+
+    if (isRawHtml) {
+        bubbleContent = text;
+    } else {
+        bubbleContent = escapeHtml(text);
         
         if (role === 'ai') {
-            // 💡 0. 針對 【123456】 稽查編號，加上黃色醒目標記與點擊跳轉功能
-            // 移除全形括號以消除隱形空白，加上 letter-spacing 讓數字稍微拉開，達到完美對稱
             bubbleContent = bubbleContent.replace(
               /【([0-9]{6})】/g, 
               '<span onclick="(function(){ var els = document.querySelectorAll(\'.item-id-code\'); for(var i=0;i<els.length;i++){ if(els[i].textContent.trim()===\'$1\') { els[i].scrollIntoView({behavior:\'smooth\', block:\'center\'}); var tr = els[i].closest(\'tr\'); var oldBg = tr.style.backgroundColor; tr.style.transition = \'background-color 0.5s\'; tr.style.backgroundColor = \'#fff3cd\'; setTimeout(function(){ tr.style.backgroundColor = oldBg; }, 1500); break; } } })()" title="點擊跳轉至此檢查項目" style="cursor: pointer; display: inline-block; transition: transform 0.1s; background-color: #ffeb3b; color: #222; padding: 2px 7px 2px 8px; border-radius: 5px; border: 1px solid #fbc02d; box-shadow: 0 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0 6px 0 2px; font-family: monospace; font-size: 14px; letter-spacing: 1px;" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">$1</span>'
             );
     
-            // 💡 2-a. 【必須最先處理】FIRST_ITEM 錨點，趁還沒被底框正則吃掉前替換
-            // 改用獨立 div，display:block 確保佔據一行，height:0 不影響排版
             bubbleContent = bubbleContent.replace(
                 /\[\[FIRST_ITEM\]\]\n?/g,
                 '<div id="qa-result-first" style="height:0;overflow:hidden;"></div>'
             );
 
-            // 💡 1. 再處理稽查項目的藍色底框（此時 FIRST_ITEM 已變成真正的 HTML，會被包進底框內）
             bubbleContent = bubbleContent.replace(
                 /((?:[0-9]+\.\s*)?📑 檢查項目[：:][^\n]*)\n(💰 合約扣罰[：:][^\n]*)\n?/g,
                 '<div style="background:#eef7ff; border-left:4px solid #1a5c9a; padding:10px 12px; margin:8px 0; border-radius:0 6px 6px 0; box-shadow:0 2px 4px rgba(0,0,0,0.08);">' +
@@ -4690,26 +4826,21 @@ return responseText;
                 '</div>'
             );
 
-            // 💡 2-b. 再處理 SCROLL_TOP_BTN 按鈕（具體標記優先）
             bubbleContent = bubbleContent.replace(
               /\[\[SCROLL_TOP_BTN:(\d+)\]\]/g,
               (_, count) => '<div style="text-align:right;margin-top:8px;"><button onclick="(function(){var msgs=document.getElementById(\'chat-messages\');var el=document.getElementById(\'qa-result-first\');if(el&&msgs){msgs.scrollTop=el.getBoundingClientRect().top-msgs.getBoundingClientRect().top+msgs.scrollTop-10;}})()" style="background:#1a5c9a;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(26,92,154,0.35);display:inline-flex;align-items:center;gap:5px;" onmouseover="this.style.background=\'#154e87\'" onmouseout="this.style.background=\'#1a5c9a\'">⬆ 回到第 1 筆（共 ' + count + ' 筆）</button></div>'
             );
 
-            // 💡 2-c. 最後才做通用關鍵字高亮（此時具體標記已處理完畢）
             bubbleContent = bubbleContent.replace(
               /\[\[(.*?)\]\]/g,
               '<span style="color:#c53030; font-weight:bold; background:#fff0f0; padding:1px 4px; border-radius:4px; border:1px solid #fed7d7; margin:0 2px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">$1</span>'
             );
 
-            // 💡 2-d. 處理情境與法規的標題樣式（粗體海軍藍、情境標號粗體黑，並強制分塊凸排）
-            // 黑洞模式：吸收「現場具體情境分析」前後的所有空白與換行，阻絕後續產生多餘的 <br>
             bubbleContent = bubbleContent.replace(
               /[\s\r\n]*🏗️ 現場具體情境分析[：:][\s\r\n]*/g,
               '<div style="color:#1a5c9a; font-weight:bold; margin-top:14px; margin-bottom:6px;">🏗️ 現場具體情境分析：</div>'
             );
 
-            // 黑洞模式：吸收每一個「情境X：」前面的所有空白與換行，完美無縫相接
             bubbleContent = bubbleContent.replace(
               /[\s\r\n]*(情境\d+[：:])([\s\S]*?)(?=(?:[\s\r\n]*情境\d+[：:]|[\s\r\n]*📖|$))/g,
               function(match, p1, p2) {
@@ -4717,42 +4848,38 @@ return responseText;
               }
             );
 
-            // 黑洞模式：吸收「法規條文」前後的所有空白與換行
             bubbleContent = bubbleContent.replace(
               /[\s\r\n]*📖 引用法規條文[：:]([^\n]*)[\s\r\n]*/g,
               '<div style="margin-top:10px; margin-bottom:4px;"><span style="color:#1a5c9a; font-weight:bold;">📖 引用法規條文：</span>$1</div>'
             );
 
-            // 💡 3. 換行轉 <br> (必須在 2-d 正則表達式吸收完 \n 後，才將剩餘的轉為 <br>)
             bubbleContent = bubbleContent.replace(/\n/g, '<br>');
 
-            // 💡 4. 【終極排版】在轉為 HTML 標籤後，強制吸收所有相鄰的 <br>，徹底消除 1.75 倍行高所帶來的假空隙
-            // 處理中間的組別：吸收前後所有的 <br>，加上 16px 的上間隔與 2px 的下間隔
             bubbleContent = bubbleContent.replace(
               /(?:<br>)+(第\d+組)(?:<br>)+/g,
               '<div style="color:#1a5c9a; font-weight:bold; margin-top:16px; margin-bottom:2px; line-height:1.2;">$1</div>'
             );
-// 處理第一組（位於字串開頭）：吸收後方所有的 <br>，無頂部間距，完美緊貼
-bubbleContent = bubbleContent.replace(
+            bubbleContent = bubbleContent.replace(
               /^(第\d+組)(?:<br>)+/g,
               '<div style="color:#1a5c9a; font-weight:bold; margin-bottom:2px; line-height:1.2;">$1</div>'
             );
         }
-    
-        div.innerHTML = `
-          <div class="chat-msg-bubble">${bubbleContent}</div>
-          <div class="chat-msg-time">${role === 'user' ? '您' : '稽查表助理'} · ${timeStr}</div>
-        `;
-        msgs.appendChild(div);
-        
-        if (role === 'ai') {
-            setTimeout(() => {
-                msgs.scrollTop = div.offsetTop - 15;
-            }, 10);
-        } else {
-            scrollToBottom();
-        }
     }
+
+    div.innerHTML = `
+      <div class="chat-msg-bubble">${bubbleContent}</div>
+      <div class="chat-msg-time">${role === 'user' ? '您' : '稽查表助理'} · ${timeStr}</div>
+    `;
+    msgs.appendChild(div);
+    
+    if (role === 'ai') {
+        setTimeout(() => {
+            msgs.scrollTop = div.offsetTop - 15;
+        }, 10);
+    } else {
+        scrollToBottom();
+    }
+}
     
       // ── 輔助：思考動畫開關 ──
       function setThinking(on) {
