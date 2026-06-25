@@ -2567,7 +2567,28 @@ function handleExportDI() {
     xml += `  <地址>${esc(d.address)}</地址>\n`;
     if (d.contact) xml += `  <聯絡方式>承辦人：${esc(d.contact)}</聯絡方式>\n`;
     if (d.phone) xml += `  <聯絡方式>電話：${esc(d.phone)}</聯絡方式>\n`;
-    xml += `  <受文者><交換表 交換表單="表單"></交換表></受文者>\n`;
+    
+    // --- 替換的部分開始：動態生成正本與副本受文者 XML 結構 ---
+    let receiverXml = `  <受文者>\n`;
+    if (d.originalCopy && d.originalCopy.trim() !== "") {
+      receiverXml += `    <正本>\n`;
+      d.originalCopy.split('、').map(s => s.trim()).filter(s => s).forEach(org => {
+        receiverXml += `      <全銜>${esc(org)}</全銜>\n`;
+      });
+      receiverXml += `    </正本>\n`;
+    }
+    if (d.carbonCopy && d.carbonCopy.trim() !== "") {
+      receiverXml += `    <副本>\n`;
+      d.carbonCopy.split('、').map(s => s.trim()).filter(s => s).forEach(org => {
+        receiverXml += `      <全銜>${esc(org)}</全銜>\n`;
+      });
+      receiverXml += `    </副本>\n`;
+    }
+    receiverXml += `    <交換表 交換表單="表單"></交換表>\n`;
+    receiverXml += `  </受文者>\n`;
+    xml += receiverXml;
+    // --- 替換的部分結束 ---
+
     xml += `  <發文日期><年月日>${esc(displayDate)}</年月日></發文日期>\n`;
 
     let docPrefix = "北市捷工", docYear = "115", docSerial = "0000000";
