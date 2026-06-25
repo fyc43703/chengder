@@ -31,23 +31,38 @@
     <!-- 頂部固定區 (標題 + 搜尋列) -->
     <header class="sticky top-0 z-50 pt-6 pb-5 px-4 md:px-8 bg-[#F5F5F7]/80 backdrop-blur-xl border-b border-[#D2D2D7]/50 transition-all">
         <div class="max-w-5xl mx-auto">
-            <!-- 標題區與下載按鈕 -->
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div class="flex items-center gap-4">
+            
+            <!-- 標題區與功能按鈕 (採用 3 欄 Grid 排版確保中間絕對置中) -->
+            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-6 md:gap-4">
+                
+                <!-- 1. 左側空白 (僅在桌面版佔位，用以平衡右側按鈕寬度) -->
+                <div class="hidden md:block"></div>
+                
+                <!-- 2. 標題區 (置中) -->
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4">
                     <div class="p-3 bg-gradient-to-b from-[#2591F9] to-[#0071E3] text-white rounded-2xl shadow-md shadow-[#0071E3]/20 flex-shrink-0">
                         <i data-lucide="book-address" class="w-7 h-7"></i>
                     </div>
-                    <div>
-                        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-[#1D1D1F]">公文電子交換系統地址簿</h1>
+                    <div class="text-center md:text-left">
+                        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-[#1D1D1F] whitespace-nowrap">公文電子交換系統地址簿</h1>
                         <p class="text-[#86868B] mt-0.5 text-sm md:text-base font-medium">單位代碼與單位名稱雙向即時查詢系統</p>
                     </div>
                 </div>
                 
-                <!-- 下載地址簿按鈕 -->
-                <a href="https://drive.google.com/file/d/1CmT2cHZ4ISHRSMYJivLBdEgK9usHLvn1/view?usp=drive_link" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 bg-[#0071E3]/10 hover:bg-[#0071E3]/20 text-[#0071E3] font-medium px-5 py-2.5 rounded-full transition-all active:scale-95 flex-shrink-0">
-                    <i data-lucide="cloud-download" class="w-5 h-5"></i>
-                    <span class="text-sm md:text-base">下載地址簿</span>
-                </a>
+                <!-- 3. 右側功能按鈕 (下載與上載) -->
+                <div class="flex flex-row md:flex-col justify-center md:justify-self-end gap-2">
+                    <!-- 下載地址簿按鈕 -->
+                    <a href="https://drive.google.com/file/d/1CmT2cHZ4ISHRSMYJivLBdEgK9usHLvn1/view?usp=drive_link" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 bg-[#0071E3]/10 hover:bg-[#0071E3]/20 text-[#0071E3] font-medium px-4 py-2 rounded-full transition-all active:scale-95 flex-shrink-0 text-sm">
+                        <i data-lucide="cloud-download" class="w-4 h-4"></i>
+                        <span>下載地址簿</span>
+                    </a>
+                    <!-- 上載地址簿按鈕 -->
+                    <label class="cursor-pointer flex items-center justify-center gap-2 bg-white border border-[#D2D2D7] hover:bg-[#E5E5EA] text-[#1D1D1F] font-medium px-4 py-2 rounded-full transition-all active:scale-95 flex-shrink-0 text-sm shadow-sm mb-0">
+                        <i data-lucide="cloud-upload" class="w-4 h-4"></i>
+                        <span>上載地址簿</span>
+                        <input type="file" id="header-file-input" accept=".json" class="hidden" />
+                    </label>
+                </div>
             </div>
 
             <!-- 搜尋列與頁籤 (預設隱藏，載入資料後顯示) -->
@@ -104,7 +119,7 @@
                             id="reset-btn"
                             class="text-sm font-medium text-[#FF3B30] hover:text-white hover:bg-[#FF3B30] bg-[#FF3B30]/10 px-5 py-3.5 rounded-2xl transition-all whitespace-nowrap"
                         >
-                            重新載入
+                            清除暫存
                         </button>
                     </div>
                 </div>
@@ -143,10 +158,6 @@
                     class="hidden" 
                 />
             </label>
-
-            <div class="mt-10 text-sm font-medium text-[#86868B]">
-                沒有檔案？ <button id="load-mock-btn" class="text-[#0071E3] hover:underline transition-all">載入測試資料</button> 預覽功能
-            </div>
         </div>
 
         <!-- 狀態 2：已載入資料 - 顯示查詢結果 -->
@@ -201,9 +212,10 @@
         const favActions = document.getElementById('fav-actions');
         const favFileInput = document.getElementById('fav-file-input');
         
-        const fileInput = document.getElementById('file-input');
+        // 兩個上傳入口
+        const fileInputMain = document.getElementById('file-input');
+        const fileInputHeader = document.getElementById('header-file-input');
         const uploadBtnContent = document.getElementById('upload-btn-content');
-        const loadMockBtn = document.getElementById('load-mock-btn');
         
         const searchInput = document.getElementById('search-input');
         const clearSearchBtn = document.getElementById('clear-search-btn');
@@ -380,19 +392,17 @@
             }
         });
 
-        // 顯示錯誤訊息
+        // 顯示/隱藏錯誤訊息
         function showError(msg) {
             errorMessage.textContent = msg;
             errorContainer.classList.remove('hidden');
         }
-
-        // 隱藏錯誤訊息
         function hideError() {
             errorContainer.classList.add('hidden');
         }
 
-        // 處理檔案上傳
-        fileInput.addEventListener('change', (event) => {
+        // 處理系統地址簿檔案上傳 (支援主入口與頂部右側入口)
+        function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
@@ -402,9 +412,13 @@
             }
 
             hideError();
-            uploadBtnContent.innerHTML = `<i data-lucide="loader" class="w-5 h-5 animate-spin"></i><span class="text-lg">資料解析中...</span>`;
-            lucide.createIcons();
-            fileInput.disabled = true;
+            
+            // 若是由主畫面觸發，顯示讀取動畫
+            if (event.target === fileInputMain && uploadBtnContent) {
+                uploadBtnContent.innerHTML = `<i data-lucide="loader" class="w-5 h-5 animate-spin"></i><span class="text-lg">資料解析中...</span>`;
+                lucide.createIcons();
+            }
+            event.target.disabled = true;
 
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -416,41 +430,35 @@
                         setLoadedData(json.data);
                     } else {
                         showError('JSON 格式不符預期，應為陣列格式。');
-                        resetUploadButton();
                     }
                 } catch (err) {
                     showError('讀取檔案失敗或 JSON 格式錯誤。請確認檔案內容。');
-                    resetUploadButton();
+                } finally {
+                    resetUploadButton(event.target);
                 }
             };
             reader.onerror = () => {
                 showError('讀取檔案時發生錯誤。');
-                resetUploadButton();
+                resetUploadButton(event.target);
             };
             reader.readAsText(file);
-        });
-
-        // 恢復上傳按鈕狀態
-        function resetUploadButton() {
-            uploadBtnContent.innerHTML = `<i data-lucide="file-json" class="w-5 h-5"></i><span class="text-lg">選擇 JSON 檔案</span>`;
-            lucide.createIcons();
-            fileInput.disabled = false;
-            fileInput.value = '';
         }
 
-        // 載入測試資料
-        loadMockBtn.addEventListener('click', () => {
-            const mockData = [
-                {"orgId":"1317040011","orgName":"中山醫學大學附設醫院","statusCode":"T","updateTime":"2024-08-27 14:10:02"},
-                {"orgId":"1339060017","orgName":"中國醫藥大學北港附設醫院","statusCode":"T","updateTime":"2026-01-30 17:12:21"},
-                {"orgId":"XD26103152","orgName":"新北市議員蔡淑君服務處","statusCode":"T","updateTime":"2023-10-24 16:30:55"},
-                {"orgId":"XD26103166","orgName":"新北市議員馬見Lahuy•Ipin服務處","statusCode":"T","updateTime":"2023-10-26 17:18:38"},
-                {"orgId":"A21000000G","orgName":"臺北大眾捷運股份有限公司","statusCode":"T","updateTime":"2024-01-01 12:00:00"},
-                {"orgId":"B32000000H","orgName":"高雄捷運股份有限公司","statusCode":"T","updateTime":"2024-02-01 12:00:00"},
-                {"orgId":"200000000AU300000","orgName":"總統府第二局","statusCode":"T","updateTime":"2025-12-08 11:23:23"}
-            ];
-            setLoadedData(mockData);
-        });
+        // 綁定檔案上傳事件至兩個按鈕
+        if (fileInputMain) fileInputMain.addEventListener('change', handleFileUpload);
+        if (fileInputHeader) fileInputHeader.addEventListener('change', handleFileUpload);
+
+        // 恢復上傳按鈕狀態
+        function resetUploadButton(inputElement) {
+            if (inputElement === fileInputMain && uploadBtnContent) {
+                uploadBtnContent.innerHTML = `<i data-lucide="file-json" class="w-5 h-5"></i><span class="text-lg">選擇 JSON 檔案</span>`;
+                lucide.createIcons();
+            }
+            if (inputElement) {
+                inputElement.disabled = false;
+                inputElement.value = '';
+            }
+        }
 
         // 設定載入完成的資料與切換視圖
         function setLoadedData(data, saveToStorage = true) {
@@ -465,20 +473,24 @@
                 saveDataToDB(data).catch(e => console.error('保存資料到本地失敗:', e));
             }
             
+            // 如果是在"常用地址簿"狀態下上載新系統檔，強制切回"系統地址簿"分頁
+            if (currentTab === 'fav') {
+                switchTab('all');
+            } else {
+                renderTable();
+            }
+            
             // 自動 focus 在搜尋框
             setTimeout(() => { searchInput.focus(); }, 100);
-            
-            renderTable();
         }
 
-        // 重新載入 (重置系統)
+        // 重新載入 (清除暫存並重置系統)
         resetBtn.addEventListener('click', async () => {
             addressData = [];
             searchTerm = '';
             searchInput.value = '';
             clearSearchBtn.classList.add('hidden');
             hideError();
-            resetUploadButton();
             
             searchBarContainer.classList.add('hidden');
             searchResultsContainer.classList.add('hidden');
