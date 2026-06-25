@@ -1,11 +1,30 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公文電子交換系統地址簿</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0A0A0C', /* 更柔和的極深灰，取代純黑 */
+                            panel: '#1C1C1E',
+                            border: '#38383A',
+                            text: '#F5F5F7',
+                            muted: '#98989D',
+                            hover: '#2C2C2E'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <!-- 引入 Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -21,42 +40,66 @@
             background: #D2D2D7;
             border-radius: 10px;
         }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #48484A;
+        }
         ::-webkit-scrollbar-thumb:hover {
             background: #86868B;
         }
+        /* 隱藏歷史紀錄選單預設樣式 */
+        #search-history-dropdown {
+            display: none;
+        }
+        #search-input:focus ~ #search-history-dropdown:not(:empty) {
+            display: block;
+        }
+        #search-history-dropdown:hover {
+            display: block;
+        }
     </style>
 </head>
-<body class="min-h-screen bg-[#F5F5F7] text-[#1D1D1F] font-sans antialiased selection:bg-[#0071E3] selection:text-white">
+<body class="min-h-screen bg-[#F5F5F7] dark:bg-dark-bg text-[#1D1D1F] dark:text-dark-text font-sans antialiased selection:bg-[#0071E3] selection:text-white transition-colors duration-300">
     
     <!-- 頂部固定區 (標題 + 搜尋列) -->
-    <header class="sticky top-0 z-50 pt-6 pb-5 px-4 md:px-8 bg-[#F5F5F7]/80 backdrop-blur-xl border-b border-[#D2D2D7]/50 transition-all">
-        <div class="max-w-5xl mx-auto">
+    <header class="sticky top-0 z-40 pt-6 pb-5 px-4 md:px-8 bg-[#F5F5F7]/80 dark:bg-dark-bg/80 backdrop-blur-xl border-b border-[#D2D2D7]/50 dark:border-dark-border transition-all">
+        <div class="max-w-[1400px] mx-auto">
             
-            <!-- 標題區與功能按鈕 (採用 3 欄 Grid 排版確保中間絕對置中) -->
-            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-6 md:gap-4">
+            <!-- 標題區與功能按鈕 -->
+            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-6 md:gap-4 relative">
                 
-                <!-- 1. 左側空白 (僅在桌面版佔位，用以平衡右側按鈕寬度) -->
-                <div class="hidden md:block"></div>
+                <!-- 1. 左側暗黑模式切換 (桌面版) -->
+                <div class="hidden md:flex items-center gap-2">
+                    <button onclick="toggleTheme()" class="p-2 rounded-full bg-white dark:bg-dark-panel border border-[#D2D2D7] dark:border-dark-border text-[#1D1D1F] dark:text-dark-text hover:bg-[#E5E5EA] dark:hover:bg-dark-hover transition-colors shadow-sm">
+                        <i data-lucide="sun" id="theme-icon-light" class="w-5 h-5 hidden dark:block"></i>
+                        <i data-lucide="moon" id="theme-icon-dark" class="w-5 h-5 block dark:hidden"></i>
+                    </button>
+                    <span class="text-xs text-[#86868B] dark:text-dark-muted hidden lg:block">按 <kbd class="px-1.5 py-0.5 rounded bg-[#E5E5EA] dark:bg-dark-hover font-mono">/</kbd> 搜尋</span>
+                </div>
                 
                 <!-- 2. 標題區 (絕對置中) -->
                 <div class="flex flex-col items-center justify-center text-center">
-                    <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-[#1D1D1F] whitespace-nowrap">公文電子交換系統地址簿</h1>
-                    <p class="text-[#86868B] mt-0.5 text-sm md:text-base font-medium">單位代碼與單位名稱雙向即時查詢系統</p>
-                    <a href="https://www.good.nat.gov.tw/regcenter/download" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 text-[#0071E3] hover:text-[#0077ED] hover:underline text-sm font-medium transition-colors">
+                    <h1 class="text-2xl md:text-3xl font-semibold tracking-tight whitespace-nowrap">公文電子交換系統地址簿</h1>
+                    <p class="text-[#86868B] dark:text-dark-muted mt-0.5 text-sm md:text-base font-medium">單位代碼與單位名稱雙向即時查詢系統</p>
+                    <a href="https://www.good.nat.gov.tw/regcenter/download" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 text-[#0071E3] dark:text-[#409CFF] hover:underline text-sm font-medium transition-colors">
                         <i data-lucide="external-link" class="w-4 h-4"></i>
                         地址簿公開資訊
                     </a>
                 </div>
                 
                 <!-- 3. 右側功能按鈕 (下載與上載) -->
-                <div class="flex flex-row md:flex-col justify-center md:justify-self-end gap-2">
+                <div class="flex flex-row md:flex-col justify-center md:justify-self-end gap-2 items-center md:items-end">
+                    <!-- 手機版暗黑模式按鈕 -->
+                    <button onclick="toggleTheme()" class="md:hidden p-2 rounded-full bg-white dark:bg-dark-panel border border-[#D2D2D7] dark:border-dark-border shadow-sm">
+                        <i data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
+                        <i data-lucide="moon" class="w-4 h-4 block dark:hidden"></i>
+                    </button>
                     <!-- 下載地址簿按鈕 -->
-                    <a href="https://drive.google.com/file/d/1CmT2cHZ4ISHRSMYJivLBdEgK9usHLvn1/view?usp=drive_link" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 bg-[#0071E3]/10 hover:bg-[#0071E3]/20 text-[#0071E3] font-medium px-4 py-2 rounded-full transition-all active:scale-95 flex-shrink-0 text-sm">
+                    <a href="https://drive.google.com/file/d/1CmT2cHZ4ISHRSMYJivLBdEgK9usHLvn1/view?usp=drive_link" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 bg-[#0071E3]/10 dark:bg-[#0071E3]/20 text-[#0071E3] dark:text-[#409CFF] font-medium px-4 py-2 rounded-full transition-all hover:scale-105 active:scale-95 flex-shrink-0 text-sm">
                         <i data-lucide="cloud-download" class="w-4 h-4"></i>
                         <span>下載地址簿</span>
                     </a>
                     <!-- 上載地址簿按鈕 -->
-                    <label class="cursor-pointer flex items-center justify-center gap-2 bg-white border border-[#D2D2D7] hover:bg-[#E5E5EA] text-[#1D1D1F] font-medium px-4 py-2 rounded-full transition-all active:scale-95 flex-shrink-0 text-sm shadow-sm mb-0">
+                    <label class="cursor-pointer flex items-center justify-center gap-2 bg-white dark:bg-dark-panel border border-[#D2D2D7] dark:border-dark-border hover:bg-[#E5E5EA] dark:hover:bg-dark-hover font-medium px-4 py-2 rounded-full transition-all hover:scale-105 active:scale-95 flex-shrink-0 text-sm shadow-sm mb-0">
                         <i data-lucide="cloud-upload" class="w-4 h-4"></i>
                         <span>上載地址簿</span>
                         <input type="file" id="header-file-input" accept=".json" class="hidden" />
@@ -64,62 +107,68 @@
                 </div>
             </div>
 
-            <!-- 搜尋列與頁籤 (預設隱藏，載入資料後顯示) -->
+            <!-- 搜尋列與頁籤 -->
             <div id="search-bar-container" class="hidden mt-6 animate-fade-in">
                 
                 <!-- 頁籤與常用功能列 -->
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                     <!-- Apple 風格 Segmented Control -->
-                    <div class="flex p-1 bg-[#E5E5EA] rounded-xl shadow-inner">
-                        <button id="tab-all" onclick="switchTab('all')" class="px-5 py-1.5 rounded-lg text-sm font-semibold bg-white shadow-sm text-[#1D1D1F] transition-all">系統地址簿</button>
-                        <button id="tab-fav" onclick="switchTab('fav')" class="px-5 py-1.5 rounded-lg text-sm font-semibold text-[#86868B] hover:text-[#1D1D1F] transition-all flex items-center gap-1.5">
-                            常用地址簿 <span id="fav-count-badge" class="bg-[#86868B] text-white text-xs px-2 py-0.5 rounded-full transition-colors">0</span>
+                    <div class="flex p-1 bg-[#E5E5EA] dark:bg-dark-hover rounded-xl shadow-inner">
+                        <button id="tab-all" onclick="switchTab('all')" class="px-5 py-1.5 rounded-lg text-sm font-semibold bg-white dark:bg-dark-panel shadow-sm transition-all">系統地址簿</button>
+                        <button id="tab-fav" onclick="switchTab('fav')" class="px-5 py-1.5 rounded-lg text-sm font-semibold text-[#86868B] dark:text-dark-muted hover:text-[#1D1D1F] dark:hover:text-white transition-all flex items-center gap-1.5">
+                            常用地址簿 <span id="fav-count-badge" class="bg-[#86868B] dark:bg-dark-muted text-white text-xs px-2 py-0.5 rounded-full transition-colors">0</span>
                         </button>
                     </div>
                     
-                    <!-- 常用地址簿操作按鈕 (僅在常用分頁顯示) -->
-                    <div id="fav-actions" class="hidden flex items-center gap-2 animate-fade-in">
-                        <label class="cursor-pointer bg-white border border-[#D2D2D7] hover:bg-[#F5F5F7] text-[#1D1D1F] text-sm font-medium px-4 py-2 rounded-full transition-all flex items-center gap-2 active:scale-95 shadow-sm">
-                            <i data-lucide="upload" class="w-4 h-4"></i> 匯入
-                            <input type="file" id="fav-file-input" accept=".json" class="hidden" />
-                        </label>
-                        <button onclick="exportFavorites()" class="bg-[#0071E3] hover:bg-[#0077ED] text-white text-sm font-medium px-4 py-2 rounded-full transition-all flex items-center gap-2 active:scale-95 shadow-sm shadow-[#0071E3]/20">
-                            <i data-lucide="download" class="w-4 h-4"></i> 匯出
+                    <div class="flex items-center gap-2">
+                        <!-- 匯出當前結果按鈕 -->
+                        <button onclick="exportCurrentResults()" class="bg-white dark:bg-dark-panel border border-[#D2D2D7] dark:border-dark-border hover:bg-[#F5F5F7] dark:hover:bg-dark-hover text-sm font-medium px-4 py-2 rounded-full transition-all hover:scale-105 flex items-center gap-2 active:scale-95 shadow-sm">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> 匯出 CSV
                         </button>
+
+                        <!-- 常用地址簿操作按鈕 -->
+                        <div id="fav-actions" class="hidden flex items-center gap-2 animate-fade-in">
+                            <label class="cursor-pointer bg-white dark:bg-dark-panel border border-[#D2D2D7] dark:border-dark-border hover:bg-[#F5F5F7] dark:hover:bg-dark-hover text-sm font-medium px-4 py-2 rounded-full transition-all hover:scale-105 flex items-center gap-2 active:scale-95 shadow-sm">
+                                <i data-lucide="upload" class="w-4 h-4"></i> 匯入
+                                <input type="file" id="fav-file-input" accept=".json" class="hidden" />
+                            </label>
+                            <button onclick="exportFavorites()" class="bg-[#0071E3] hover:bg-[#0077ED] text-white text-sm font-medium px-4 py-2 rounded-full transition-all hover:scale-105 flex items-center gap-2 active:scale-95 shadow-sm shadow-[#0071E3]/20">
+                                <i data-lucide="download" class="w-4 h-4"></i> 匯出備份
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <div class="flex flex-col md:flex-row gap-4 items-center">
                     <div class="relative flex-1 w-full group">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#86868B] group-focus-within:text-[#0071E3] transition-colors">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#86868B] dark:text-dark-muted group-focus-within:text-[#0071E3] dark:group-focus-within:text-[#409CFF] transition-colors">
                             <i data-lucide="search" class="w-5 h-5"></i>
                         </div>
                         <input
                             type="text"
                             id="search-input"
-                            class="w-full pl-11 pr-10 py-3.5 bg-white border border-[#D2D2D7]/80 rounded-2xl focus:outline-none focus:ring-4 focus:ring-[#0071E3]/15 focus:border-[#0071E3] transition-all text-lg shadow-sm placeholder:text-[#86868B]/70"
-                            placeholder="輸入「單位名稱」或「單位代碼」進行查詢 (例如: 捷運、XD2610...)"
+                            autocomplete="off"
+                            class="w-full pl-11 pr-10 py-3.5 bg-[#F0F8FF] dark:bg-[#151518] border border-[#D2D2D7]/80 dark:border-dark-border rounded-2xl focus:outline-none focus:ring-4 focus:ring-[#0071E3]/15 dark:focus:ring-[#0071E3]/30 focus:border-[#0071E3] transition-all text-lg shadow-sm placeholder:text-[#86868B]/70 dark:placeholder:text-dark-muted"
+                            placeholder="輸入「單位名稱」或「單位代碼」進行查詢 (按 Enter 儲存紀錄)"
                         />
                         <button 
                             id="clear-search-btn"
-                            class="hidden absolute inset-y-0 right-0 pr-4 flex items-center text-[#86868B] hover:text-[#1D1D1F] transition-colors"
+                            class="hidden absolute inset-y-0 right-0 pr-4 flex items-center text-[#86868B] dark:text-dark-muted hover:text-[#1D1D1F] dark:hover:text-white transition-colors"
                         >
-                            <div class="bg-[#E5E5EA] rounded-full p-1 hover:bg-[#D2D2D7]">
-                                <i data-lucide="x" class="w-4 h-4 text-gray-600"></i>
+                            <div class="bg-[#E5E5EA] dark:bg-dark-hover rounded-full p-1 hover:bg-[#D2D2D7] dark:hover:bg-[#48484A]">
+                                <i data-lucide="x" class="w-4 h-4"></i>
                             </div>
                         </button>
+                        <!-- 搜尋歷史紀錄下拉選單 -->
+                        <ul id="search-history-dropdown" class="absolute z-50 w-full mt-2 bg-white dark:bg-dark-panel border border-[#D2D2D7]/80 dark:border-dark-border rounded-xl shadow-lg overflow-hidden py-1">
+                            <!-- 歷史紀錄動態生成 -->
+                        </ul>
                     </div>
                     
                     <div class="flex items-center gap-3 w-full md:w-auto">
-                        <div class="text-sm font-medium text-[#86868B] whitespace-nowrap bg-white px-4 py-3.5 rounded-2xl border border-[#D2D2D7]/80 shadow-sm">
-                            總計 <span id="total-count" class="font-semibold text-[#1D1D1F]">0</span> 筆
+                        <div class="text-sm font-medium text-[#86868B] dark:text-dark-muted whitespace-nowrap bg-white dark:bg-dark-panel px-4 py-3.5 rounded-2xl border border-[#D2D2D7]/80 dark:border-dark-border shadow-sm">
+                            總計 <span id="total-count" class="font-semibold text-[#1D1D1F] dark:text-white">0</span> 筆
                         </div>
-                        <button 
-                            id="reset-btn"
-                            class="text-sm font-medium text-[#FF3B30] hover:text-white hover:bg-[#FF3B30] bg-[#FF3B30]/10 px-5 py-3.5 rounded-2xl transition-all whitespace-nowrap"
-                        >
-                            清除暫存
-                        </button>
                     </div>
                 </div>
             </div>
@@ -127,21 +176,21 @@
     </header>
 
     <!-- 主要內容區 -->
-    <main class="max-w-5xl mx-auto p-4 md:p-8 pt-6">
+    <main class="max-w-[1400px] mx-auto p-4 md:p-8 pt-6 pb-24">
         
         <!-- 錯誤訊息 -->
-        <div id="error-container" class="hidden mb-6 p-4 bg-[#FFF2F2] border border-[#FFD1D1] text-[#FF3B30] rounded-2xl flex items-center gap-3 shadow-sm">
+        <div id="error-container" class="hidden mb-6 p-4 bg-[#FFF2F2] dark:bg-[#3B1A1A] border border-[#FFD1D1] dark:border-[#5C2B2B] text-[#FF3B30] dark:text-[#FF6961] rounded-2xl flex items-center gap-3 shadow-sm">
             <i data-lucide="alert-circle" class="w-5 h-5"></i>
             <p id="error-message" class="font-medium"></p>
         </div>
 
         <!-- 狀態 1：尚未載入資料 - 顯示上傳區 -->
-        <div id="upload-view" class="bg-white rounded-3xl shadow-sm border border-[#D2D2D7]/50 p-12 flex flex-col items-center justify-center text-center mt-4">
-            <div class="w-24 h-24 bg-[#F5F5F7] text-[#0071E3] rounded-full flex items-center justify-center mb-6 shadow-inner">
+        <div id="upload-view" class="bg-white dark:bg-dark-panel rounded-3xl shadow-sm border border-[#D2D2D7]/50 dark:border-dark-border p-12 flex flex-col items-center justify-center text-center mt-4 transition-colors">
+            <div class="w-24 h-24 bg-[#F5F5F7] dark:bg-dark-bg text-[#0071E3] dark:text-[#409CFF] rounded-full flex items-center justify-center mb-6 shadow-inner">
                 <i data-lucide="cloud-upload" class="w-12 h-12"></i>
             </div>
             <h2 class="text-2xl font-semibold mb-3 tracking-tight">載入地址簿資料</h2>
-            <p class="text-[#86868B] max-w-md mb-10 leading-relaxed">
+            <p class="text-[#86868B] dark:text-dark-muted max-w-md mb-10 leading-relaxed">
                 請選擇您手邊的「公文電子交換系統地址簿.json」檔案。資料將完全在您的瀏覽器端進行處理，不會上傳至任何伺服器。
             </p>
             
@@ -161,44 +210,88 @@
 
         <!-- 狀態 2：已載入資料 - 顯示查詢結果 -->
         <div id="search-results-container" class="hidden">
-            <div class="bg-white rounded-3xl shadow-sm border border-[#D2D2D7]/60 overflow-hidden">
-                <div class="p-4 px-6 bg-white/50 border-b border-[#D2D2D7]/50 flex items-center justify-between">
-                    <h3 class="font-semibold text-[#1D1D1F] flex items-center gap-2">
+            <div class="bg-white dark:bg-dark-panel rounded-3xl shadow-sm border border-[#D2D2D7]/60 dark:border-dark-border overflow-hidden">
+                <div class="p-4 px-6 bg-white/50 dark:bg-dark-panel/50 border-b border-[#D2D2D7]/50 dark:border-dark-border flex items-center justify-between">
+                    <h3 class="font-semibold flex items-center gap-2">
                         <i data-lucide="check-circle-2" class="w-[18px] h-[18px] text-[#34C759]"></i>
                         查詢結果
                     </h3>
-                    <span id="result-info" class="text-xs font-medium text-[#86868B] bg-[#F5F5F7] px-3 py-1 rounded-full">顯示前 50 筆預覽</span>
+                    <span id="result-info" class="text-xs font-medium text-[#86868B] dark:text-dark-muted bg-[#F5F5F7] dark:bg-dark-hover px-3 py-1 rounded-full">資料載入中...</span>
                 </div>
 
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
+                <div class="w-full">
+                    <table class="w-full text-left border-collapse table-fixed">
                         <thead>
-                            <tr class="bg-[#F5F5F7]/80 border-b border-[#D2D2D7]/50 text-[#86868B] tracking-wider">
-                                <th class="px-4 py-1 w-12 text-center" title="加入/移除常用"><i data-lucide="star" class="w-5 h-5 mx-auto"></i></th>
-                                <th class="px-6 py-1 w-1/3 text-center text-lg font-medium text-[#0071E3]">單位代碼</th>
-                                <th class="px-6 py-1 w-1/2 text-center text-lg font-medium text-[#0071E3]">單位名稱</th>
-                                <th class="px-6 py-1 w-1/6 hidden md:table-cell text-center text-lg font-medium text-[#0071E3] whitespace-nowrap">更新時間</th>
+                            <tr class="bg-[#E5E5EA]/60 dark:bg-[#2C2C2E]/60 border-b border-[#D2D2D7]/80 dark:border-[#38383A] text-[#86868B] dark:text-dark-muted text-xs uppercase tracking-widest font-bold select-none">
+                                <th class="px-4 py-1 w-12 text-center align-middle">
+                                    <input type="checkbox" id="select-all-cb" onchange="toggleSelectAll(this)" class="w-4 h-4 rounded border-gray-300 text-[#0071E3] focus:ring-[#0071E3] cursor-pointer">
+                                </th>
+                                <th class="px-2 py-1 w-12 text-center" title="加入/移除常用"><i data-lucide="star" class="w-4 h-4 mx-auto opacity-70"></i></th>
+                                <th class="px-6 py-1 w-[25%] md:w-[20%] text-center truncate cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group" onclick="handleSort('orgId')">
+                                    <div class="flex items-center justify-center gap-1.5">單位代碼 <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 sort-icon transition-colors group-hover:text-[#1D1D1F] dark:group-hover:text-white" id="sort-icon-orgId"></i></div>
+                                </th>
+                                <th class="px-6 py-1 w-auto text-center truncate cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group" onclick="handleSort('orgName')">
+                                    <div class="flex items-center justify-center gap-1.5">單位名稱 <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 sort-icon transition-colors group-hover:text-[#1D1D1F] dark:group-hover:text-white" id="sort-icon-orgName"></i></div>
+                                </th>
+                                <th class="px-6 py-1 w-[15%] hidden md:table-cell text-center truncate cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group" onclick="handleSort('updateTime')">
+                                    <div class="flex items-center justify-center gap-1.5">更新時間 <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 sort-icon transition-colors group-hover:text-[#1D1D1F] dark:group-hover:text-white" id="sort-icon-updateTime"></i></div>
+                                </th>
                             </tr>
                         </thead>
-                        <tbody id="table-body" class="divide-y divide-[#D2D2D7]/40">
+                        <!-- 替換了過渡效果 class，讓切換頁籤時平滑淡入淡出 -->
+                        <tbody id="table-body" class="divide-y divide-[#D2D2D7]/40 dark:divide-dark-border transition-opacity duration-200 ease-in-out opacity-100">
                             <!-- 資料會由 JavaScript 動態生成 -->
                         </tbody>
                     </table>
+                    
+                    <!-- 無限捲動感測器 -->
+                    <div id="infinite-scroll-sentinel" class="h-16 flex items-center justify-center text-[#86868B] dark:text-dark-muted hidden">
+                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                        <span class="ml-2 text-sm">載入更多資料...</span>
+                    </div>
                 </div>
             </div>
         </div>
-
     </main>
+
+    <!-- 批次處理浮動工具列 -->
+    <div id="batch-action-bar" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-white/90 dark:bg-dark-panel/90 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] border border-[#D2D2D7]/50 dark:border-dark-border rounded-full px-6 py-3 flex items-center gap-4 transition-all duration-300 translate-y-32 opacity-0 z-50 pointer-events-none">
+        <span class="font-medium text-sm whitespace-nowrap">已選擇 <span id="batch-count" class="text-[#0071E3] dark:text-[#409CFF] font-bold text-base">0</span> 筆</span>
+        <div class="w-px h-5 bg-[#D2D2D7] dark:bg-dark-border mx-1"></div>
+        <button onclick="batchCopy()" class="flex items-center gap-1.5 text-sm font-medium hover:text-[#0071E3] dark:hover:text-[#409CFF] transition-colors whitespace-nowrap">
+            <i data-lucide="copy" class="w-4 h-4"></i> 複製代碼
+        </button>
+        <button onclick="batchAddToFav()" class="flex items-center gap-1.5 text-sm font-medium hover:text-[#FFD60A] transition-colors whitespace-nowrap">
+            <i data-lucide="star" class="w-4 h-4"></i> 加入常用
+        </button>
+        <button onclick="clearSelection()" class="flex items-center gap-1.5 text-sm font-medium text-[#FF3B30] dark:text-[#FF6961] hover:opacity-70 transition-colors ml-2 whitespace-nowrap">
+            取消
+        </button>
+    </div>
 
     <script>
         // 初始化 Lucide 圖標
         lucide.createIcons();
 
-        // 狀態變數
+        // 系統與狀態變數
         let addressData = [];
         let favoritesData = JSON.parse(localStorage.getItem('addressBookFavorites')) || [];
+        let searchHistory = JSON.parse(localStorage.getItem('addressBookHistory')) || [];
+        
         let currentTab = 'all'; // 'all' 或 'fav'
         let searchTerm = '';
+        let currentFilteredData = []; // 存放當下篩選與排序後的完整資料
+        
+        // 排序變數
+        let sortCol = ''; // 'orgId', 'orgName', 'updateTime'
+        let sortAsc = true;
+
+        // 分頁與無限捲動
+        let currentPage = 1;
+        const ITEMS_PER_PAGE = 50;
+
+        // 批次處理
+        let selectedIds = new Set();
 
         // DOM 元素
         const uploadView = document.getElementById('upload-view');
@@ -211,23 +304,122 @@
         const favActions = document.getElementById('fav-actions');
         const favFileInput = document.getElementById('fav-file-input');
         
-        // 兩個上傳入口
         const fileInputMain = document.getElementById('file-input');
         const fileInputHeader = document.getElementById('header-file-input');
         const uploadBtnContent = document.getElementById('upload-btn-content');
         
         const searchInput = document.getElementById('search-input');
         const clearSearchBtn = document.getElementById('clear-search-btn');
-        const resetBtn = document.getElementById('reset-btn');
+        const searchHistoryDropdown = document.getElementById('search-history-dropdown');
         
         const tableBody = document.getElementById('table-body');
         const totalCount = document.getElementById('total-count');
         const resultInfo = document.getElementById('result-info');
-        
         const errorContainer = document.getElementById('error-container');
         const errorMessage = document.getElementById('error-message');
+        const sentinel = document.getElementById('infinite-scroll-sentinel');
+        
+        const selectAllCb = document.getElementById('select-all-cb');
+        const batchActionBar = document.getElementById('batch-action-bar');
+        const batchCountSpan = document.getElementById('batch-count');
 
-        // IndexedDB 儲存邏輯
+        // ================= 佈景主題 (Dark Mode) =================
+        function initTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        }
+        initTheme();
+
+        // ================= 快捷鍵支援 =================
+        document.addEventListener('keydown', (e) => {
+            // 按 / 聚焦搜尋框
+            if (e.key === '/' && document.activeElement !== searchInput) {
+                e.preventDefault();
+                searchInput.focus();
+            }
+            // 按 Esc 清除搜尋或取消聚焦
+            if (e.key === 'Escape' && document.activeElement === searchInput) {
+                if (searchInput.value) {
+                    clearSearch();
+                } else {
+                    searchInput.blur();
+                }
+            }
+        });
+
+        // ================= 搜尋歷史紀錄 =================
+        function renderSearchHistory() {
+            if (searchHistory.length === 0) {
+                searchHistoryDropdown.innerHTML = '<li class="px-4 py-3 text-sm text-[#86868B] dark:text-dark-muted text-center">無搜尋紀錄</li>';
+                return;
+            }
+            searchHistoryDropdown.innerHTML = searchHistory.map((term, index) => `
+                <li class="px-4 py-2.5 hover:bg-[#F5F5F7] dark:hover:bg-dark-hover cursor-pointer flex justify-between items-center group transition-colors" onclick="applySearchHistory('${escapeQuotes(term)}')">
+                    <div class="flex items-center gap-2 text-[#1D1D1F] dark:text-dark-text">
+                        <i data-lucide="history" class="w-4 h-4 text-[#86868B] dark:text-dark-muted"></i>
+                        <span>${escapeHTML(term)}</span>
+                    </div>
+                    <button onclick="removeSearchHistory(event, ${index})" class="text-[#86868B] hover:text-[#FF3B30] opacity-0 group-hover:opacity-100 transition-all p-1">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </li>
+            `).join('');
+            lucide.createIcons({ root: searchHistoryDropdown });
+        }
+        
+        function saveSearchHistory(term) {
+            term = term.trim();
+            if (!term) return;
+            // 移除重複並加到最前
+            searchHistory = searchHistory.filter(t => t !== term);
+            searchHistory.unshift(term);
+            if (searchHistory.length > 5) searchHistory.pop(); // 最多存 5 筆
+            localStorage.setItem('addressBookHistory', JSON.stringify(searchHistory));
+            renderSearchHistory();
+        }
+
+        window.applySearchHistory = function(term) {
+            searchInput.value = term;
+            searchTerm = term;
+            clearSearchBtn.classList.remove('hidden');
+            searchHistoryDropdown.style.display = 'none'; // 點擊後暫時隱藏
+            applyFilterAndRender();
+        };
+
+        window.removeSearchHistory = function(e, index) {
+            e.stopPropagation();
+            searchHistory.splice(index, 1);
+            localStorage.setItem('addressBookHistory', JSON.stringify(searchHistory));
+            renderSearchHistory();
+            searchInput.focus(); // 維持下拉選單開啟
+        };
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                saveSearchHistory(searchTerm);
+                searchHistoryDropdown.style.display = 'none'; // 按下 Enter 隱藏選單
+            }
+        });
+        
+        // 為了讓選單動態顯示，設定一點點 UX 控制
+        searchInput.addEventListener('focus', () => {
+            renderSearchHistory();
+            searchHistoryDropdown.style.display = ''; // 恢復 css hover 控制
+        });
+
+        // ================= IndexedDB 儲存邏輯 =================
         const DB_NAME = 'AddressBookDB';
         const STORE_NAME = 'addressDataStore';
 
@@ -246,74 +438,449 @@
         }
 
         async function saveDataToDB(data) {
-            return new Promise(async (resolve, reject) => {
-                try {
-                    const db = await openDB();
-                    const tx = db.transaction(STORE_NAME, 'readwrite');
-                    const store = tx.objectStore(STORE_NAME);
-                    store.put(data, 'addressBook');
-                    tx.oncomplete = () => resolve();
-                    tx.onerror = () => reject(tx.error);
-                } catch(e) {
-                    reject(e);
-                }
+            const db = await openDB();
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            tx.objectStore(STORE_NAME).put(data, 'addressBook');
+            return new Promise((resolve, reject) => {
+                tx.oncomplete = resolve;
+                tx.onerror = reject;
             });
         }
 
         async function loadDataFromDB() {
-            return new Promise(async (resolve, reject) => {
-                try {
-                    const db = await openDB();
-                    const tx = db.transaction(STORE_NAME, 'readonly');
-                    const store = tx.objectStore(STORE_NAME);
-                    const request = store.get('addressBook');
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                } catch(e) {
-                    reject(e);
-                }
+            const db = await openDB();
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const request = tx.objectStore(STORE_NAME).get('addressBook');
+            return new Promise((resolve, reject) => {
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
             });
         }
 
-        async function clearDataFromDB() {
-            return new Promise(async (resolve, reject) => {
-                try {
-                    const db = await openDB();
-                    const tx = db.transaction(STORE_NAME, 'readwrite');
-                    const store = tx.objectStore(STORE_NAME);
-                    store.delete('addressBook');
-                    tx.oncomplete = () => resolve();
-                    tx.onerror = () => reject(tx.error);
-                } catch(e) {
-                    reject(e);
+        // ================= 資料載入與初始化 =================
+        document.addEventListener('DOMContentLoaded', async () => {
+            updateFavCount();
+            renderSearchHistory();
+            try {
+                const savedData = await loadDataFromDB();
+                if (savedData && Array.isArray(savedData) && savedData.length > 0) {
+                    setLoadedData(savedData, false); 
                 }
-            });
+            } catch (e) {
+                console.error('從本地讀取資料失敗:', e);
+            }
+        });
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+                showError('請上傳有效的 JSON 檔案！');
+                return;
+            }
+
+            hideError();
+            
+            if (event.target === fileInputMain && uploadBtnContent) {
+                uploadBtnContent.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i><span class="text-lg">資料解析中...</span>`;
+                lucide.createIcons();
+            }
+            event.target.disabled = true;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    let dataArray = Array.isArray(json) ? json : (json.data && Array.isArray(json.data) ? json.data : null);
+                    if (dataArray) {
+                        setLoadedData(dataArray);
+                    } else {
+                        showError('JSON 格式不符預期，應為陣列格式。');
+                    }
+                } catch (err) {
+                    showError('讀取檔案失敗或 JSON 格式錯誤。請確認檔案內容。');
+                } finally {
+                    resetUploadButton(event.target);
+                }
+            };
+            reader.onerror = () => {
+                showError('讀取檔案時發生錯誤。');
+                resetUploadButton(event.target);
+            };
+            reader.readAsText(file);
         }
 
-        // ---------------- 常用地址簿功能 ----------------
+        if (fileInputMain) fileInputMain.addEventListener('change', handleFileUpload);
+        if (fileInputHeader) fileInputHeader.addEventListener('change', handleFileUpload);
+
+        function resetUploadButton(inputElement) {
+            if (inputElement === fileInputMain && uploadBtnContent) {
+                uploadBtnContent.innerHTML = `<i data-lucide="file-json" class="w-5 h-5"></i><span class="text-lg">選擇 JSON 檔案</span>`;
+                lucide.createIcons();
+            }
+            if (inputElement) {
+                inputElement.disabled = false;
+                inputElement.value = '';
+            }
+        }
+
+        function setLoadedData(data, saveToStorage = true) {
+            addressData = data;
+            
+            uploadView.classList.add('hidden');
+            searchBarContainer.classList.remove('hidden');
+            searchResultsContainer.classList.remove('hidden');
+            
+            if (saveToStorage) saveDataToDB(data).catch(console.error);
+            
+            if (currentTab === 'fav') {
+                switchTab('all');
+            } else {
+                applyFilterAndRender();
+            }
+            setTimeout(() => { searchInput.focus(); }, 100);
+        }
+
+        // ================= 搜尋與篩選邏輯 =================
+        searchInput.addEventListener('input', (e) => {
+            searchTerm = e.target.value;
+            clearSearchBtn.classList.toggle('hidden', !searchTerm);
+            applyFilterAndRender();
+        });
+
+        function clearSearch() {
+            searchTerm = '';
+            searchInput.value = '';
+            clearSearchBtn.classList.add('hidden');
+            searchInput.focus();
+            applyFilterAndRender();
+        }
+        clearSearchBtn.addEventListener('click', clearSearch);
+
+        function applyFilterAndRender() {
+            const sourceData = currentTab === 'all' ? addressData : favoritesData;
+            
+            if (!searchTerm.trim()) {
+                currentFilteredData = [...sourceData];
+            } else {
+                const lowerKeyword = searchTerm.toLowerCase();
+                currentFilteredData = sourceData.filter(item => {
+                    return (item.orgName && item.orgName.toLowerCase().includes(lowerKeyword)) || 
+                           (item.orgId && item.orgId.toLowerCase().includes(lowerKeyword));
+                });
+            }
+
+            // 應用排序
+            if (sortCol) {
+                currentFilteredData.sort((a, b) => {
+                    let valA = a[sortCol] || '';
+                    let valB = b[sortCol] || '';
+                    return sortAsc ? valA.localeCompare(valB, 'zh-TW') : valB.localeCompare(valA, 'zh-TW');
+                });
+            }
+
+            totalCount.textContent = sourceData.length.toLocaleString();
+            resultInfo.textContent = searchTerm ? `找到 ${currentFilteredData.length} 筆結果` : `共 ${currentFilteredData.length} 筆資料`;
+
+            // 重設分頁
+            currentPage = 1;
+            tableBody.innerHTML = ''; // 清空現有表格
+            renderTableRows(0, ITEMS_PER_PAGE);
+            
+            // 檢查「全選」狀態
+            updateSelectAllState();
+        }
+
+        // ================= 表格排序 =================
+        window.handleSort = function(col) {
+            if (sortCol === col) {
+                sortAsc = !sortAsc; // 切換順序
+            } else {
+                sortCol = col;
+                sortAsc = true;     // 預設升冪
+            }
+            
+            // 更新圖示
+            document.querySelectorAll('.sort-icon').forEach(icon => {
+                icon.setAttribute('data-lucide', 'arrow-up-down');
+                icon.classList.remove('text-[#0071E3]', 'dark:text-[#409CFF]');
+            });
+            const activeIcon = document.getElementById(`sort-icon-${col}`);
+            if (activeIcon) {
+                activeIcon.setAttribute('data-lucide', sortAsc ? 'arrow-up' : 'arrow-down');
+                activeIcon.classList.add('text-[#0071E3]', 'dark:text-[#409CFF]');
+            }
+            lucide.createIcons();
+
+            applyFilterAndRender();
+        }
+
+        // ================= 表格渲染與無限捲動 =================
+        function renderTableRows(startIndex, endIndex) {
+            const displayData = currentFilteredData.slice(startIndex, endIndex);
+            
+            if (displayData.length === 0 && startIndex === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-20 text-center text-[#86868B] dark:text-dark-muted">
+                            <div class="flex flex-col items-center justify-center">
+                                <div class="bg-[#F5F5F7] dark:bg-dark-hover p-4 rounded-full mb-4">
+                                    <i data-lucide="${currentTab === 'fav' && !searchTerm ? 'star-off' : 'search-x'}" class="w-8 h-8 opacity-70"></i>
+                                </div>
+                                <p class="text-lg">${currentTab === 'fav' && !searchTerm ? '常用地址簿目前是空的' : `找不到符合「<span class="font-semibold text-[#1D1D1F] dark:text-white">${escapeHTML(searchTerm)}</span>」的資料`}</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                sentinel.classList.add('hidden');
+                lucide.createIcons({ root: tableBody });
+                return;
+            }
+
+            const html = displayData.map(item => {
+                const isFav = favoritesData.some(f => f.orgId === item.orgId);
+                const isSelected = selectedIds.has(item.orgId);
+                
+                // 處理時間格式：僅擷取日期
+                const fullTime = item.updateTime ? escapeHTML(item.updateTime) : '-';
+                const shortDate = fullTime !== '-' ? fullTime.split(' ')[0] : '-';
+
+                return `
+                <tr class="hover:bg-[#F5F5F7]/80 dark:hover:bg-dark-hover transition-colors group ${isSelected ? 'bg-blue-50/50 dark:bg-[#1A2638]' : ''}">
+                    <td class="px-4 py-1 align-middle text-center relative">
+                        <!-- 微互動：Hover 時左側長出的藍色指示條 -->
+                        <div class="absolute left-0 top-0.5 bottom-0.5 w-1 bg-[#0071E3] dark:bg-[#409CFF] scale-y-0 group-hover:scale-y-100 transition-transform duration-200 origin-center rounded-r-full"></div>
+                        <input type="checkbox" value="${escapeHTML(item.orgId)}" onchange="toggleRowSelection(this)" ${isSelected ? 'checked' : ''} class="w-4 h-4 rounded border-gray-300 text-[#0071E3] focus:ring-[#0071E3] cursor-pointer">
+                    </td>
+                    <td class="px-2 py-1 align-middle text-center">
+                        <button onclick="toggleFavorite('${escapeQuotes(item.orgId)}')" class="text-[#86868B] dark:text-dark-muted hover:text-[#FFD60A] hover:scale-110 active:scale-95 transition-all p-1 outline-none" title="${isFav ? '移除常用' : '加入常用'}">
+                            <i data-lucide="star" class="w-5 h-5 ${isFav ? 'fill-[#FFD60A] text-[#FFD60A]' : 'hover:fill-[#FFD60A]/30'} transition-colors"></i>
+                        </button>
+                    </td>
+                    <td class="px-6 py-1 font-mono text-base text-[#48484A] dark:text-[#A1A1A6] align-middle tracking-tight text-center overflow-hidden">
+                        <div class="flex items-center justify-center gap-2">
+                            <span class="truncate">${highlightText(item.orgId, searchTerm)}</span>
+                            <button onclick="copyToClipboard(event, '${escapeQuotes(item.orgId)}')" class="text-[#0071E3] dark:text-[#409CFF] bg-[#0071E3]/10 dark:bg-[#409CFF]/10 hover:bg-[#0071E3]/20 active:scale-95 hover:scale-110 transition-all p-1.5 rounded-full flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="複製單位代碼">
+                                <i data-lucide="copy" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="px-6 py-1 font-medium text-lg text-[#1D1D1F] dark:text-[#F5F5F7] align-middle text-center overflow-hidden">
+                        <div class="flex items-center justify-center gap-2">
+                            <span class="truncate">${highlightText(item.orgName, searchTerm)}</span>
+                            <button onclick="copyToClipboard(event, '${escapeQuotes(item.orgName)}')" class="text-[#0071E3] dark:text-[#409CFF] bg-[#0071E3]/10 dark:bg-[#409CFF]/10 hover:bg-[#0071E3]/20 active:scale-95 hover:scale-110 transition-all p-1.5 rounded-full flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="複製單位名稱">
+                                <i data-lucide="copy" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="px-6 py-1 text-[#86868B] dark:text-dark-muted text-sm hidden md:table-cell align-middle font-medium text-center truncate cursor-help" title="${fullTime}">
+                        ${shortDate}
+                    </td>
+                </tr>
+            `}).join('');
+            
+            tableBody.insertAdjacentHTML('beforeend', html);
+            lucide.createIcons({ root: tableBody });
+
+            // 判斷是否需要顯示/隱藏無限捲動感測器
+            if (endIndex < currentFilteredData.length) {
+                sentinel.classList.remove('hidden');
+            } else {
+                sentinel.classList.add('hidden');
+            }
+        }
+
+        // Intersection Observer for Infinite Scroll
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && searchResultsContainer.classList.contains('hidden') === false) {
+                // 如果目前渲染的資料小於總過濾資料，載入下一頁
+                if (currentPage * ITEMS_PER_PAGE < currentFilteredData.length) {
+                    const startIndex = currentPage * ITEMS_PER_PAGE;
+                    currentPage++;
+                    renderTableRows(startIndex, currentPage * ITEMS_PER_PAGE);
+                    updateSelectAllState(); // 確保新載入的 checkbox 狀態正確
+                }
+            }
+        }, { rootMargin: "200px" });
+        observer.observe(sentinel);
+
+        // ================= 批次處理與多選邏輯 =================
+        window.toggleRowSelection = function(checkbox) {
+            if (checkbox.checked) {
+                selectedIds.add(checkbox.value);
+                checkbox.closest('tr').classList.add('bg-blue-50/50', 'dark:bg-[#1A2638]');
+            } else {
+                selectedIds.delete(checkbox.value);
+                checkbox.closest('tr').classList.remove('bg-blue-50/50', 'dark:bg-[#1A2638]');
+            }
+            updateBatchUI();
+            updateSelectAllState();
+        }
+
+        window.toggleSelectAll = function(checkbox) {
+            if (checkbox.checked) {
+                // 將當前過濾出的所有資料加入選擇 (如果資料破萬，避免卡頓)
+                currentFilteredData.forEach(item => selectedIds.add(item.orgId));
+            } else {
+                selectedIds.clear();
+            }
+            // 重新渲染表格以更新 checkbox UI
+            const currentRows = tableBody.querySelectorAll('tr');
+            currentRows.forEach(tr => {
+                const cb = tr.querySelector('input[type="checkbox"]');
+                if (cb) {
+                    cb.checked = checkbox.checked;
+                    if (checkbox.checked) tr.classList.add('bg-blue-50/50', 'dark:bg-[#1A2638]');
+                    else tr.classList.remove('bg-blue-50/50', 'dark:bg-[#1A2638]');
+                }
+            });
+            updateBatchUI();
+        }
+
+        function updateSelectAllState() {
+            if (currentFilteredData.length === 0) {
+                selectAllCb.checked = false;
+                selectAllCb.indeterminate = false;
+                return;
+            }
+            // 檢查當前顯示的過濾資料是否全在選取名單內
+            const allSelected = currentFilteredData.every(item => selectedIds.has(item.orgId));
+            const someSelected = currentFilteredData.some(item => selectedIds.has(item.orgId));
+            
+            selectAllCb.checked = allSelected;
+            selectAllCb.indeterminate = someSelected && !allSelected;
+        }
+
+        function updateBatchUI() {
+            batchCountSpan.textContent = selectedIds.size;
+            if (selectedIds.size > 0) {
+                batchActionBar.classList.remove('translate-y-32', 'opacity-0', 'pointer-events-none');
+            } else {
+                batchActionBar.classList.add('translate-y-32', 'opacity-0', 'pointer-events-none');
+            }
+        }
+
+        window.clearSelection = function() {
+            selectedIds.clear();
+            selectAllCb.checked = false;
+            selectAllCb.indeterminate = false;
+            // 移除高亮
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+                if(cb.closest('tr')) cb.closest('tr').classList.remove('bg-blue-50/50', 'dark:bg-[#1A2638]');
+            });
+            updateBatchUI();
+        }
+
+        window.batchCopy = function() {
+            const ids = Array.from(selectedIds).join(', ');
+            copyToClipboard(null, ids, true);
+        }
+
+        window.batchAddToFav = function() {
+            let addedCount = 0;
+            const itemsToAdd = addressData.filter(i => selectedIds.has(i.orgId));
+            
+            itemsToAdd.forEach(item => {
+                if (!favoritesData.some(f => f.orgId === item.orgId)) {
+                    favoritesData.push(item);
+                    addedCount++;
+                }
+            });
+            
+            localStorage.setItem('addressBookFavorites', JSON.stringify(favoritesData));
+            updateFavCount();
+            
+            // 顯示成功與清空選取
+            alert(`已將 ${addedCount} 筆單位成功加入常用！`);
+            clearSelection();
+            
+            // 如果在常用分頁，重繪表格
+            if (currentTab === 'fav') applyFilterAndRender();
+            else {
+                // 如果在系統分頁，更新星星圖示
+                const currentRows = tableBody.querySelectorAll('tr');
+                currentRows.forEach(tr => {
+                    const cb = tr.querySelector('input[type="checkbox"]');
+                    if (cb && selectedIds.has(cb.value)) {
+                        const starBtn = tr.querySelector('button[title="加入常用"]');
+                        if (starBtn) {
+                            starBtn.title = "移除常用";
+                            starBtn.innerHTML = `<i data-lucide="star" class="w-5 h-5 fill-[#FFD60A] text-[#FFD60A] transition-colors"></i>`;
+                            lucide.createIcons({ root: starBtn });
+                        }
+                    }
+                });
+            }
+        }
+
+        // ================= 匯出 CSV =================
+        window.exportCurrentResults = function() {
+            if (currentFilteredData.length === 0) {
+                alert("目前沒有資料可以匯出喔！");
+                return;
+            }
+            
+            // BOM for Excel to read UTF-8 properly
+            let csvContent = "\uFEFF"; 
+            csvContent += "單位代碼,單位名稱,更新時間\n"; // Header
+            
+            currentFilteredData.forEach(item => {
+                // 處理欄位內容，避免含有逗號導致換欄
+                let row = [
+                    `"${item.orgId || ''}"`,
+                    `"${(item.orgName || '').replace(/"/g, '""')}"`,
+                    `"${item.updateTime || ''}"`
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `地址簿查詢結果_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ================= 常用地址簿功能 (沿用並微調) =================
         function updateFavCount() {
             favCountBadge.textContent = favoritesData.length;
             if (favoritesData.length > 0) {
                 favCountBadge.classList.replace('bg-[#86868B]', 'bg-[#FFD60A]');
+                favCountBadge.classList.replace('dark:bg-dark-muted', 'dark:bg-[#FFD60A]');
                 favCountBadge.classList.replace('text-white', 'text-[#1D1D1F]');
             } else {
                 favCountBadge.classList.replace('bg-[#FFD60A]', 'bg-[#86868B]');
+                favCountBadge.classList.replace('dark:bg-[#FFD60A]', 'dark:bg-dark-muted');
                 favCountBadge.classList.replace('text-[#1D1D1F]', 'text-white');
             }
         }
 
-        function switchTab(tab) {
+        window.switchTab = function(tab) {
+            if (currentTab === tab) return; // 避免重複點擊同分頁
             currentTab = tab;
+            clearSelection(); // 切換分頁清空選取狀態
+            
             if (tab === 'all') {
-                tabAllBtn.className = "px-5 py-1.5 rounded-lg text-sm font-semibold bg-white shadow-sm text-[#1D1D1F] transition-all";
-                tabFavBtn.className = "px-5 py-1.5 rounded-lg text-sm font-semibold text-[#86868B] hover:text-[#1D1D1F] transition-all flex items-center gap-1.5";
+                tabAllBtn.className = "px-5 py-1.5 rounded-lg text-sm font-semibold bg-white dark:bg-dark-panel shadow-sm transition-all";
+                tabFavBtn.className = "px-5 py-1.5 rounded-lg text-sm font-semibold text-[#86868B] dark:text-dark-muted hover:text-[#1D1D1F] dark:hover:text-white transition-all flex items-center gap-1.5";
                 favActions.classList.add('hidden');
             } else {
-                tabFavBtn.className = "px-5 py-1.5 rounded-lg text-sm font-semibold bg-white shadow-sm text-[#1D1D1F] transition-all flex items-center gap-1.5";
-                tabAllBtn.className = "px-5 py-1.5 rounded-lg text-sm font-semibold text-[#86868B] hover:text-[#1D1D1F] transition-all";
+                tabFavBtn.className = "px-5 py-1.5 rounded-lg text-sm font-semibold bg-white dark:bg-dark-panel shadow-sm transition-all flex items-center gap-1.5";
+                tabAllBtn.className = "px-5 py-1.5 rounded-lg text-sm font-semibold text-[#86868B] dark:text-dark-muted hover:text-[#1D1D1F] dark:hover:text-white transition-all";
                 favActions.classList.remove('hidden');
             }
-            renderTable();
+            
+            // 頁籤切換的平滑動畫 (先透明 -> 更新內容 -> 恢復不透明)
+            tableBody.style.opacity = '0';
+            setTimeout(() => {
+                applyFilterAndRender();
+                tableBody.style.opacity = '1';
+            }, 200);
         }
 
         window.toggleFavorite = function(orgId) {
@@ -322,13 +889,28 @@
 
             const index = favoritesData.findIndex(f => f.orgId === orgId);
             if (index > -1) {
-                favoritesData.splice(index, 1); // 移除
+                favoritesData.splice(index, 1);
             } else {
-                favoritesData.push(item); // 加入
+                favoritesData.push(item);
             }
             localStorage.setItem('addressBookFavorites', JSON.stringify(favoritesData));
             updateFavCount();
-            renderTable();
+            
+            // 如果在常用頁籤，移除項目時需要重繪；如果在系統頁籤，只切換星星狀態
+            if (currentTab === 'fav') {
+                applyFilterAndRender();
+            } else {
+                // 優化：系統頁籤點擊愛心時，只就地更新圖示不重繪，提升效能體驗
+                const btn = event.currentTarget;
+                if (index > -1) {
+                    btn.title = "加入常用";
+                    btn.innerHTML = `<i data-lucide="star" class="w-5 h-5 hover:fill-[#FFD60A]/30 transition-colors"></i>`;
+                } else {
+                    btn.title = "移除常用";
+                    btn.innerHTML = `<i data-lucide="star" class="w-5 h-5 fill-[#FFD60A] text-[#FFD60A] transition-colors"></i>`;
+                }
+                lucide.createIcons({ root: btn.parentElement });
+            }
         };
 
         window.exportFavorites = function() {
@@ -363,7 +945,7 @@
                             });
                             localStorage.setItem('addressBookFavorites', JSON.stringify(favoritesData));
                             updateFavCount();
-                            renderTable();
+                            applyFilterAndRender();
                             alert(`匯入成功！共新增 ${added} 筆資料至常用地址簿。`);
                         } else {
                             alert("匯入失敗：檔案格式不符。");
@@ -371,27 +953,13 @@
                     } catch (err) {
                         alert("匯入失敗：無法解析 JSON 檔案。");
                     }
-                    favFileInput.value = ''; // 重設 input 以便重複選擇同檔案
+                    favFileInput.value = ''; 
                 };
                 reader.readAsText(file);
             });
         }
-        // ------------------------------------------------
 
-        // 頁面載入時檢查是否有暫存資料
-        document.addEventListener('DOMContentLoaded', async () => {
-            updateFavCount(); // 初始化常用地址簿數量標籤
-            try {
-                const savedData = await loadDataFromDB();
-                if (savedData && Array.isArray(savedData) && savedData.length > 0) {
-                    setLoadedData(savedData, false); 
-                }
-            } catch (e) {
-                console.error('從本地讀取資料失敗:', e);
-            }
-        });
-
-        // 顯示/隱藏錯誤訊息
+        // ================= 工具函數 =================
         function showError(msg) {
             errorMessage.textContent = msg;
             errorContainer.classList.remove('hidden');
@@ -399,137 +967,12 @@
         function hideError() {
             errorContainer.classList.add('hidden');
         }
-
-        // 處理系統地址簿檔案上傳 (支援主入口與頂部右側入口)
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-                showError('請上傳有效的 JSON 檔案！');
-                return;
-            }
-
-            hideError();
-            
-            // 若是由主畫面觸發，顯示讀取動畫
-            if (event.target === fileInputMain && uploadBtnContent) {
-                uploadBtnContent.innerHTML = `<i data-lucide="loader" class="w-5 h-5 animate-spin"></i><span class="text-lg">資料解析中...</span>`;
-                lucide.createIcons();
-            }
-            event.target.disabled = true;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const json = JSON.parse(e.target.result);
-                    if (Array.isArray(json)) {
-                        setLoadedData(json);
-                    } else if (json.data && Array.isArray(json.data)) {
-                        setLoadedData(json.data);
-                    } else {
-                        showError('JSON 格式不符預期，應為陣列格式。');
-                    }
-                } catch (err) {
-                    showError('讀取檔案失敗或 JSON 格式錯誤。請確認檔案內容。');
-                } finally {
-                    resetUploadButton(event.target);
-                }
-            };
-            reader.onerror = () => {
-                showError('讀取檔案時發生錯誤。');
-                resetUploadButton(event.target);
-            };
-            reader.readAsText(file);
-        }
-
-        // 綁定檔案上傳事件至兩個按鈕
-        if (fileInputMain) fileInputMain.addEventListener('change', handleFileUpload);
-        if (fileInputHeader) fileInputHeader.addEventListener('change', handleFileUpload);
-
-        // 恢復上傳按鈕狀態
-        function resetUploadButton(inputElement) {
-            if (inputElement === fileInputMain && uploadBtnContent) {
-                uploadBtnContent.innerHTML = `<i data-lucide="file-json" class="w-5 h-5"></i><span class="text-lg">選擇 JSON 檔案</span>`;
-                lucide.createIcons();
-            }
-            if (inputElement) {
-                inputElement.disabled = false;
-                inputElement.value = '';
-            }
-        }
-
-        // 設定載入完成的資料與切換視圖
-        function setLoadedData(data, saveToStorage = true) {
-            addressData = data;
-            totalCount.textContent = addressData.length.toLocaleString();
-            
-            uploadView.classList.add('hidden');
-            searchBarContainer.classList.remove('hidden');
-            searchResultsContainer.classList.remove('hidden');
-            
-            if (saveToStorage) {
-                saveDataToDB(data).catch(e => console.error('保存資料到本地失敗:', e));
-            }
-            
-            // 如果是在"常用地址簿"狀態下上載新系統檔，強制切回"系統地址簿"分頁
-            if (currentTab === 'fav') {
-                switchTab('all');
-            } else {
-                renderTable();
-            }
-            
-            // 自動 focus 在搜尋框
-            setTimeout(() => { searchInput.focus(); }, 100);
-        }
-
-        // 重新載入 (清除暫存並重置系統)
-        resetBtn.addEventListener('click', async () => {
-            addressData = [];
-            searchTerm = '';
-            searchInput.value = '';
-            clearSearchBtn.classList.add('hidden');
-            hideError();
-            
-            searchBarContainer.classList.add('hidden');
-            searchResultsContainer.classList.add('hidden');
-            uploadView.classList.remove('hidden');
-
-            // 同時清除本地儲存的系統資料
-            await clearDataFromDB().catch(e => console.error('清除本地資料失敗:', e));
-        });
-
-        // 搜尋輸入事件
-        searchInput.addEventListener('input', (e) => {
-            searchTerm = e.target.value;
-            
-            if (searchTerm) {
-                clearSearchBtn.classList.remove('hidden');
-            } else {
-                clearSearchBtn.classList.add('hidden');
-            }
-            
-            renderTable();
-        });
-
-        // 清除搜尋按鈕
-        clearSearchBtn.addEventListener('click', () => {
-            searchTerm = '';
-            searchInput.value = '';
-            clearSearchBtn.classList.add('hidden');
-            searchInput.focus();
-            renderTable();
-        });
-
-        // HTML 轉義防範 XSS
         function escapeHTML(str) {
             if (!str) return '';
             return String(str).replace(/[&<>'"]/g, match => ({
                 '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
             }[match]));
         }
-
-        // 關鍵字高亮處理 (Apple 風格黃色高光)
         function highlightText(text, keyword) {
             const escapedText = escapeHTML(text);
             if (!keyword.trim()) return escapedText;
@@ -540,21 +983,18 @@
             
             return parts.map(part => {
                 if (part.toLowerCase() === escapedKeyword.toLowerCase()) {
-                    return `<span class="bg-[#FFD60A]/40 text-[#1D1D1F] px-1 rounded-md font-bold">${part}</span>`;
+                    // 深色模式下確保文字夠深以維持對比度
+                    return `<span class="bg-[#FFD60A]/50 dark:bg-[#FFD60A] dark:text-[#1D1D1F] px-1 rounded-md font-bold">${part}</span>`;
                 }
                 return part;
             }).join('');
         }
-
-        // 處理引號跳脫 (供 onclick 屬性使用)
         function escapeQuotes(str) {
             if (!str) return '';
             return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         }
-
-        // 複製文字至剪貼簿 (Apple 質感回饋)
-        function copyToClipboard(event, text) {
-            event.stopPropagation();
+        function copyToClipboard(event, text, isBatch = false) {
+            if(event) event.stopPropagation();
             
             const textArea = document.createElement("textarea");
             textArea.value = text;
@@ -567,109 +1007,35 @@
             try {
                 document.execCommand('copy');
                 
-                // 視覺回饋
-                const btn = event.currentTarget;
-                const originalHTML = btn.innerHTML;
-                
-                // 變更為綠色打勾樣式
-                btn.innerHTML = `<i data-lucide="check" class="w-5 h-5 text-white"></i>`;
-                lucide.createIcons({ root: btn });
-                btn.classList.add('bg-[#34C759]', 'scale-110');
-                btn.classList.remove('bg-[#0071E3]/10', 'text-[#0071E3]');
-                
-                setTimeout(() => {
-                    btn.innerHTML = originalHTML;
+                if (isBatch) {
+                    const originalText = batchActionBar.innerHTML;
+                    batchActionBar.innerHTML = `<div class="flex items-center gap-2 text-[#34C759] font-medium"><i data-lucide="check-circle-2"></i> 已複製 ${selectedIds.size} 筆代碼</div>`;
+                    lucide.createIcons({ root: batchActionBar });
+                    setTimeout(() => {
+                        clearSelection(); // 複製完自動取消選取
+                        batchActionBar.innerHTML = originalText;
+                        lucide.createIcons({ root: batchActionBar });
+                    }, 1500);
+                } else if (event) {
+                    const btn = event.currentTarget;
+                    const originalHTML = btn.innerHTML;
+                    
+                    btn.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-white"></i>`;
                     lucide.createIcons({ root: btn });
-                    btn.classList.remove('bg-[#34C759]', 'scale-110');
-                    btn.classList.add('bg-[#0071E3]/10', 'text-[#0071E3]');
-                }, 1500);
+                    btn.classList.add('bg-[#34C759]', 'dark:bg-[#34C759]', 'scale-110');
+                    btn.classList.remove('bg-[#0071E3]/10', 'dark:bg-[#409CFF]/10', 'text-[#0071E3]', 'dark:text-[#409CFF]');
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        lucide.createIcons({ root: btn });
+                        btn.classList.remove('bg-[#34C759]', 'dark:bg-[#34C759]', 'scale-110');
+                        btn.classList.add('bg-[#0071E3]/10', 'dark:bg-[#409CFF]/10', 'text-[#0071E3]', 'dark:text-[#409CFF]');
+                    }, 1500);
+                }
             } catch (err) {
                 console.error('複製失敗', err);
             }
             document.body.removeChild(textArea);
-        }
-
-        // 渲染表格資料
-        function renderTable() {
-            let filteredData = [];
-            
-            // 決定目前的資料來源
-            const sourceData = currentTab === 'all' ? addressData : favoritesData;
-            
-            // 篩選邏輯
-            if (!searchTerm.trim()) {
-                filteredData = sourceData.slice(0, currentTab === 'fav' ? sourceData.length : 50);
-                if (currentTab === 'fav') {
-                    resultInfo.textContent = `常用地址簿共 ${favoritesData.length} 筆`;
-                } else {
-                    resultInfo.textContent = '顯示前 50 筆預覽';
-                }
-            } else {
-                const lowerKeyword = searchTerm.toLowerCase();
-                filteredData = sourceData.filter(item => {
-                    const matchName = item.orgName && item.orgName.toLowerCase().includes(lowerKeyword);
-                    const matchId = item.orgId && item.orgId.toLowerCase().includes(lowerKeyword);
-                    return matchName || matchId;
-                });
-                
-                const displayCount = (filteredData.length > 200 && currentTab === 'all') ? ' (僅顯示前 200 筆)' : '';
-                resultInfo.textContent = `找到 ${filteredData.length} 筆符合條件${displayCount}`;
-            }
-
-            const displayData = currentTab === 'fav' ? filteredData : filteredData.slice(0, 200);
-            
-            // 更新總計數字
-            totalCount.textContent = sourceData.length.toLocaleString();
-
-            if (displayData.length > 0) {
-                tableBody.innerHTML = displayData.map(item => {
-                    const isFav = favoritesData.some(f => f.orgId === item.orgId);
-                    return `
-                    <tr class="hover:bg-[#F5F5F7]/80 transition-colors group">
-                        <td class="px-4 py-1 align-middle text-center">
-                            <button onclick="toggleFavorite('${escapeQuotes(item.orgId)}')" class="text-[#86868B] hover:text-[#FFD60A] active:scale-95 transition-all p-1 outline-none" title="${isFav ? '移除常用' : '加入常用'}">
-                                <i data-lucide="star" class="w-5 h-5 ${isFav ? 'fill-[#FFD60A] text-[#FFD60A]' : 'hover:fill-[#FFD60A]/30'} transition-colors"></i>
-                            </button>
-                        </td>
-                        <td class="px-6 py-1 font-mono text-[#1D1D1F] text-lg align-middle tracking-tight text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                <span>${highlightText(item.orgId, searchTerm)}</span>
-                                <button onclick="copyToClipboard(event, '${escapeQuotes(item.orgId)}')" class="text-[#0071E3] bg-[#0071E3]/10 hover:bg-[#0071E3]/20 active:scale-95 transition-all p-1 rounded-full flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="複製單位代碼">
-                                    <i data-lucide="copy" class="w-4 h-4"></i>
-                                </button>
-                            </div>
-                        </td>
-                        <td class="px-6 py-1 font-medium text-[#1D1D1F] text-lg align-middle text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                <span>${highlightText(item.orgName, searchTerm)}</span>
-                                <button onclick="copyToClipboard(event, '${escapeQuotes(item.orgName)}')" class="text-[#0071E3] bg-[#0071E3]/10 hover:bg-[#0071E3]/20 active:scale-95 transition-all p-1 rounded-full flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="複製單位名稱">
-                                    <i data-lucide="copy" class="w-4 h-4"></i>
-                                </button>
-                            </div>
-                        </td>
-                        <td class="px-6 py-1 text-[#86868B] text-sm hidden md:table-cell align-middle font-medium text-center whitespace-nowrap">
-                            ${escapeHTML(item.updateTime) || '-'}
-                        </td>
-                    </tr>
-                `}).join('');
-                
-                lucide.createIcons({ root: tableBody });
-            } else {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="4" class="px-6 py-20 text-center text-[#86868B]">
-                            <div class="flex flex-col items-center justify-center">
-                                <div class="bg-[#F5F5F7] p-4 rounded-full mb-4">
-                                    <i data-lucide="${currentTab === 'fav' && !searchTerm ? 'star-off' : 'search-x'}" class="w-8 h-8 text-[#86868B]/70"></i>
-                                </div>
-                                <p class="text-lg">${currentTab === 'fav' && !searchTerm ? '常用地址簿目前是空的' : `找不到符合「<span class="font-semibold text-[#1D1D1F]">${escapeHTML(searchTerm)}</span>」的資料`}</p>
-                                <p class="text-sm mt-2">${currentTab === 'fav' && !searchTerm ? '點擊資料旁的星星即可加入最愛' : '請嘗試使用其他關鍵字或代碼'}</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                lucide.createIcons({ root: tableBody });
-            }
         }
     </script>
 </body>
