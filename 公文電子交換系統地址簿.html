@@ -135,11 +135,6 @@
                     
                     <div class="flex items-center justify-center gap-2 text-[#758066] dark:text-dark-muted mt-0 text-sm md:text-base font-medium">
                         機關代碼與受文者名稱雙向即時查詢
-                        <!-- 【新功能 1】背景自動同步狀態指示器 -->
-                        <div id="sync-status" class="flex items-center gap-1 text-xs bg-[#EAE3D4] dark:bg-dark-hover px-2 py-0.5 rounded-full" data-tooltip="系統開啟時會於背景自動同步政府最新資料">
-                            <i data-lucide="refresh-cw" class="w-3 h-3 animate-spin text-[#5E8027]"></i>
-                            <span>背景同步中...</span>
-                        </div>
                     </div>
 
                     <div class="flex items-center justify-center gap-3 mt-2">
@@ -493,62 +488,6 @@
         window.dismissInstructions = function() { instructionCard.classList.add('hidden'); localStorage.setItem('hideAddressBookInstructions', 'true'); };
         window.showInstructions = function() { instructionCard.classList.remove('hidden'); localStorage.setItem('hideAddressBookInstructions', 'false'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
-        // ================= 【修正】背景自動同步 (Auto-Sync) 實作真實連線 =================
-        async function autoSyncBackground() {
-            const syncStatus = document.getElementById('sync-status');
-            
-            try {
-                // 1. 設定政府開放資料的 JSON 網址 (根據截圖資訊推斷)
-                const apiUrl = 'https://www.good.nat.gov.tw/regcenter/Opendata/all_active_utf8.json'; 
-
-                // 2. 發送真實的網路請求，並設定不使用快取以取得最新資料
-                const response = await fetch(apiUrl, { cache: 'no-store' }); 
-                
-                if (!response.ok) {
-                    throw new Error(`伺服器回應錯誤: ${response.status}`);
-                }
-
-                // 3. 解析 JSON 資料
-                const jsonData = await response.json();
-                
-                // 4. 確保資料格式為陣列 (應對不同的 JSON 結構)
-                let newData = Array.isArray(jsonData) ? jsonData : (jsonData.data && Array.isArray(jsonData.data) ? jsonData.data : null);
-
-                if (newData && newData.length > 0) {
-                    // 5. 覆寫並儲存最新資料到本地 IndexedDB
-                    await saveDataToDB(newData);
-                    
-                    // 6. 更新畫面資料
-                    setLoadedData(newData, false);
-
-                    // 7. 更新 UI 狀態為成功
-                    syncStatus.innerHTML = `
-                        <i data-lucide="check-circle-2" class="w-3 h-3 text-[#5E8027]"></i>
-                        <span>已同步最新資料</span>
-                    `;
-                    syncStatus.classList.replace('bg-[#EAE3D4]', 'bg-[#5E8027]/10');
-                    syncStatus.classList.add('text-[#5E8027]', 'border', 'border-[#5E8027]/30');
-                    lucide.createIcons({ root: syncStatus });
-                } else {
-                    throw new Error('下載的資料格式不符');
-                }
-
-            } catch (error) {
-                console.warn('背景同步失敗:', error);
-                
-                // 如果失敗(例如網路斷線或 CORS 阻擋)，則顯示離線狀態，並讀取舊有資料
-                syncStatus.innerHTML = `
-                    <i data-lucide="cloud-off" class="w-3 h-3 text-[#8E9982]"></i>
-                    <span class="text-[#8E9982]">同步失敗，使用舊資料</span>
-                `;
-                syncStatus.setAttribute('data-tooltip', '無法連線至政府伺服器，已為您載入本機先前的資料');
-                lucide.createIcons({ root: syncStatus });
-                
-                // 載入本地舊資料
-                loadInitialData();
-            }
-        }
-
         // ================= IndexedDB 資料庫 =================
         const DB_NAME = 'AddressBookDB', STORE_NAME = 'addressDataStore';
         function openDB() {
@@ -576,8 +515,12 @@
             try {
                 const savedData = await loadDataFromDB();
                 if (savedData && Array.isArray(savedData) && savedData.length > 0) setLoadedData(savedData, false); 
-                else setLoadedData(defaultAddressData, false);
+                else {
+                    uploadView.classList.remove('hidden');
+                    setLoadedData(defaultAddressData, false); // 備用載入，但維持上傳區塊可見以便使用者匯入檔案
+                }
             } catch (e) {
+                uploadView.classList.remove('hidden');
                 setLoadedData(defaultAddressData, false);
             }
         }
@@ -585,7 +528,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             updateFavCount(); 
             renderSearchHistory();
-            autoSyncBackground(); // 網頁載入後啟動自動同步，完成後自動呼叫 loadInitialData 顯示資料
+            loadInitialData(); // 網頁載入後讀取本地資料
         });
 
         // ================= 檔案上傳 =================
@@ -611,7 +554,13 @@
 
         function setLoadedData(data, saveToStorage = true) {
             addressData = data;
-            uploadView.classList.add('hidden'); searchBarContainer.classList.remove('hidden');
+            
+            // 當真正有存入新資料時，隱藏上傳區塊
+            if(saveToStorage) {
+                uploadView.classList.add('hidden'); 
+            }
+            
+            searchBarContainer.classList.remove('hidden');
             if (currentViewMode === 'list') listViewContainer.classList.remove('hidden'); else treeViewContainer.classList.remove('hidden');
             if (saveToStorage) saveDataToDB(data).catch(console.error);
             if (currentTab !== 'all') switchTab('all'); else applyFilterAndRender();
@@ -728,76 +677,110 @@
             }
         }
 
-        // ================= 樹狀圖渲染邏輯 (Tree View) =================
-        function renderTreeView() {
-            // 依據機關代碼前 9 碼歸類 (政府機關多為 9 碼，處室為 11~15 碼)
-            const grouped = {};
-            currentFilteredData.forEach(item => {
-                if(!item.orgId) return;
-                const prefix = item.orgId.substring(0, 9);
-                if(!grouped[prefix]) grouped[prefix] = { parent: null, children: [] };
-                
-                // 判斷主機關
-                if(item.orgId.endsWith('.0H') || item.orgId.length === 9 || item.orgId.endsWith('A')) {
-                    if(!grouped[prefix].parent) grouped[prefix].parent = item; 
-                    else grouped[prefix].children.push(item);
-                } else {
-                    grouped[prefix].children.push(item);
-                }
-            });
-
-            if (Object.keys(grouped).length === 0) {
-                treeContent.innerHTML = `
-                    <div class="p-16 text-center flex flex-col items-center text-[#8E9982] dark:text-dark-muted">
-                        <i data-lucide="search-x" class="w-10 h-10 mb-3 opacity-50"></i>
-                        <p class="text-lg">樹狀圖模式中找不到符合條件的機關</p>
-                    </div>`;
-                lucide.createIcons({ root: treeContent }); return;
-            }
-
-            let html = '';
-            for (const prefix in grouped) {
-                const group = grouped[prefix];
-                const parentName = group.parent ? group.parent.orgName : `機關代碼系列: ${prefix}***`;
-                const parentId = group.parent ? group.parent.orgId : prefix;
-                
-                html += `
-                <details class="group bg-[#FDFCF9] dark:bg-[#1A1C18] border border-[#DECBAE]/50 dark:border-dark-border rounded-xl overflow-hidden mb-2 shadow-sm" ${group.children.length < 15 ? 'open' : ''}>
-                    <summary class="flex items-center gap-3 p-3 cursor-pointer hover:bg-[#F6F2EB] dark:hover:bg-dark-hover transition-colors select-none outline-none">
-                        <div class="p-1 rounded bg-[#EAE3D4] dark:bg-[#292B26] group-open:bg-[#5E8027] group-open:text-white text-[#5E8027] dark:text-[#8BBA43] transition-colors">
-                            <i data-lucide="chevron-right" class="w-4 h-4 transition-transform group-open:rotate-90"></i>
-                        </div>
-                        <div class="flex flex-1 items-center justify-between">
-                            <span class="font-bold text-lg text-[#33421A] dark:text-[#E8F0D6] truncate">${highlightText(parentName, searchTerm)}</span>
-                            <span class="bg-[#5E8027]/10 text-[#5E8027] text-xs px-2 py-0.5 rounded-full font-mono hidden sm:inline-block">${highlightText(parentId, searchTerm)}</span>
-                        </div>
-                    </summary>
-                    <div class="pl-9 pr-4 pb-3 pt-1 space-y-1 tree-line ml-[1.125rem] relative">
-                `;
-                
-                if(group.children.length === 0 && !group.parent) {
-                    html += `<div class="text-sm text-[#8E9982] italic py-2 pl-2">無下屬單位資料</div>`;
-                } else {
-                    if(group.parent) {
-                        html += `
-                        <div onclick="copyToClipboardWow('${group.parent.orgId}', '${group.parent.orgName}')" class="flex justify-between items-center p-2 rounded-lg hover:bg-[#5E8027]/10 cursor-pointer group/item transition-colors">
-                            <span class="text-[#5A634E] dark:text-[#A1A699] font-medium flex items-center gap-2"><i data-lucide="corner-down-right" class="w-3 h-3 text-[#8E9982]"></i> [本部/局長室] ${highlightText(group.parent.orgName, searchTerm)}</span>
-                            <span class="opacity-0 group-hover/item:opacity-100 text-[#5E8027] text-xs flex items-center gap-1 bg-white dark:bg-dark-panel px-2 py-1 rounded shadow-sm"><i data-lucide="copy" class="w-3 h-3"></i> 複製</span>
-                        </div>`;
-                    }
-                    group.children.forEach(child => {
-                        html += `
-                        <div onclick="copyToClipboardWow('${child.orgId}', '${child.orgName}')" class="flex justify-between items-center p-2 rounded-lg hover:bg-[#5E8027]/10 cursor-pointer group/item transition-colors">
-                            <span class="text-[#5A634E] dark:text-[#A1A699] text-[15px] flex items-center gap-2"><i data-lucide="minus" class="w-3 h-3 text-[#8E9982]"></i> ${highlightText(child.orgName, searchTerm)}</span>
-                            <span class="opacity-0 group-hover/item:opacity-100 text-[#5E8027] text-xs flex items-center gap-1 bg-white dark:bg-dark-panel px-2 py-1 rounded shadow-sm"><i data-lucide="copy" class="w-3 h-3"></i> 複製</span>
-                        </div>`;
-                    });
-                }
-                html += `</div></details>`;
-            }
-            treeContent.innerHTML = html;
-            lucide.createIcons({ root: treeContent });
+// ================= 樹狀圖渲染邏輯 (Tree View) 效能優化版 =================
+function renderTreeView() {
+    // 依據機關代碼前 9 碼歸類
+    const grouped = {};
+    currentFilteredData.forEach(item => {
+        if(!item.orgId) return;
+        const prefix = item.orgId.substring(0, 9);
+        if(!grouped[prefix]) grouped[prefix] = { parent: null, children: [] };
+        
+        // 判斷主機關
+        if(item.orgId.endsWith('.0H') || item.orgId.length === 9 || item.orgId.endsWith('A')) {
+            if(!grouped[prefix].parent) grouped[prefix].parent = item; 
+            else grouped[prefix].children.push(item);
+        } else {
+            grouped[prefix].children.push(item);
         }
+    });
+
+    const groupKeys = Object.keys(grouped);
+
+    if (groupKeys.length === 0) {
+        treeContent.innerHTML = `
+            <div class="p-16 text-center flex flex-col items-center text-[#8E9982] dark:text-dark-muted">
+                <i data-lucide="search-x" class="w-10 h-10 mb-3 opacity-50"></i>
+                <p class="text-lg">樹狀圖模式中找不到符合條件的機關</p>
+            </div>`;
+        lucide.createIcons({ root: treeContent }); 
+        return;
+    }
+
+    // --- 【效能優化 1】防呆機制：資料量過大時限制渲染數量 ---
+    const MAX_GROUPS = 150; // 若無搜尋條件，最多只顯示 150 個主機關分類
+    let isTruncated = false;
+    let keysToRender = groupKeys;
+
+    if (!searchTerm.trim() && groupKeys.length > MAX_GROUPS) {
+        keysToRender = groupKeys.slice(0, MAX_GROUPS);
+        isTruncated = true;
+    }
+
+    // --- 【效能優化 2】將圖示預先轉為純字串，避免 lucide.createIcons 遍歷數萬個節點導致當機 ---
+    const svgChevron = `<svg class="w-4 h-4 transition-transform group-open:rotate-90" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`;
+    const svgCorner = `<svg class="w-3 h-3 text-[#8E9982]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 10 20 15 15 20"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg>`;
+    const svgMinus = `<svg class="w-3 h-3 text-[#8E9982]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" x2="19" y1="12" y2="12"/></svg>`;
+    const svgCopy = `<svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+
+    let html = '';
+    
+    for (const prefix of keysToRender) {
+        const group = grouped[prefix];
+        const parentName = group.parent ? group.parent.orgName : `機關代碼系列: ${prefix}***`;
+        const parentId = group.parent ? group.parent.orgId : prefix;
+        
+        // --- 【效能優化 3】在無搜尋條件且子項目多的情況下預設收合 ---
+        const isOpen = (searchTerm.trim() !== '' || group.children.length < 5) ? 'open' : '';
+
+        // 加入 content-visibility: auto 提升瀏覽器渲染效能
+        html += `
+        <details class="group bg-[#FDFCF9] dark:bg-[#1A1C18] border border-[#DECBAE]/50 dark:border-dark-border rounded-xl overflow-hidden mb-2 shadow-sm" style="content-visibility: auto;" ${isOpen}>
+            <summary class="flex items-center gap-3 p-3 cursor-pointer hover:bg-[#F6F2EB] dark:hover:bg-dark-hover transition-colors select-none outline-none">
+                <div class="p-1 rounded bg-[#EAE3D4] dark:bg-[#292B26] group-open:bg-[#5E8027] group-open:text-white text-[#5E8027] dark:text-[#8BBA43] transition-colors flex-shrink-0">
+                    ${svgChevron}
+                </div>
+                <div class="flex flex-1 items-center justify-between overflow-hidden">
+                    <span class="font-bold text-lg text-[#33421A] dark:text-[#E8F0D6] truncate pr-2">${highlightText(parentName, searchTerm)}</span>
+                    <span class="bg-[#5E8027]/10 text-[#5E8027] text-xs px-2 py-0.5 rounded-full font-mono hidden sm:inline-block flex-shrink-0">${highlightText(parentId, searchTerm)}</span>
+                </div>
+            </summary>
+            <div class="pl-9 pr-4 pb-3 pt-1 space-y-1 tree-line ml-[1.125rem] relative">
+        `;
+        
+        if(group.children.length === 0 && !group.parent) {
+            html += `<div class="text-sm text-[#8E9982] italic py-2 pl-2">無下屬單位資料</div>`;
+        } else {
+            if(group.parent) {
+                html += `
+                <div onclick="copyToClipboardWow('${group.parent.orgId}', '${group.parent.orgName}')" class="flex justify-between items-center p-2 rounded-lg hover:bg-[#5E8027]/10 cursor-pointer group/item transition-colors">
+                    <span class="text-[#5A634E] dark:text-[#A1A699] font-medium flex items-center gap-2 truncate">${svgCorner} [本部/局長室] ${highlightText(group.parent.orgName, searchTerm)}</span>
+                    <span class="opacity-0 group-hover/item:opacity-100 text-[#5E8027] text-xs flex items-center gap-1 bg-white dark:bg-dark-panel px-2 py-1 rounded shadow-sm flex-shrink-0">${svgCopy} 複製</span>
+                </div>`;
+            }
+            group.children.forEach(child => {
+                html += `
+                <div onclick="copyToClipboardWow('${child.orgId}', '${child.orgName}')" class="flex justify-between items-center p-2 rounded-lg hover:bg-[#5E8027]/10 cursor-pointer group/item transition-colors">
+                    <span class="text-[#5A634E] dark:text-[#A1A699] text-[15px] flex items-center gap-2 truncate">${svgMinus} ${highlightText(child.orgName, searchTerm)}</span>
+                    <span class="opacity-0 group-hover/item:opacity-100 text-[#5E8027] text-xs flex items-center gap-1 bg-white dark:bg-dark-panel px-2 py-1 rounded shadow-sm flex-shrink-0">${svgCopy} 複製</span>
+                </div>`;
+            });
+        }
+        html += `</div></details>`;
+    }
+
+    if (isTruncated) {
+        html += `
+        <div class="text-center py-6 text-[#8E9982] bg-[#F6F2EB]/50 dark:bg-dark-hover/50 rounded-xl border border-[#DECBAE]/30 dark:border-dark-border mt-4">
+            <svg class="w-6 h-6 inline-block mb-2 text-[#5E8027]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <p class="font-medium text-[#5E8027]">資料量龐大，已為您隱藏部分結果，以防網頁卡頓。</p>
+            <p class="text-sm mt-1">請利用上方<strong class="mx-1 text-[#33421A] dark:text-white">搜尋列</strong>輸入機關名稱或代碼來精確查找。</p>
+        </div>`;
+    }
+
+    treeContent.innerHTML = html;
+    // 移除了 lucide.createIcons({ root: treeContent }) 因為我們已經改用靜態 SVG 了
+}
 
         // ================= 列表模式渲染 (List View) =================
         window.handleSort = function(col) {
