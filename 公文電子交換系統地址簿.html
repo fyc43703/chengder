@@ -493,31 +493,58 @@
         window.dismissInstructions = function() { instructionCard.classList.add('hidden'); localStorage.setItem('hideAddressBookInstructions', 'true'); };
         window.showInstructions = function() { instructionCard.classList.remove('hidden'); localStorage.setItem('hideAddressBookInstructions', 'false'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
-        // ================= 【修復】背景自動同步 (Auto-Sync) =================
+        // ================= 【修正】背景自動同步 (Auto-Sync) 實作真實連線 =================
         async function autoSyncBackground() {
             const syncStatus = document.getElementById('sync-status');
             
             try {
-                // 模擬網路請求時間 1.5 秒
-                await new Promise(resolve => setTimeout(resolve, 1500)); 
+                // 1. 設定政府開放資料的 JSON 網址 (根據截圖資訊推斷)
+                const apiUrl = 'https://www.good.nat.gov.tw/regcenter/Opendata/all_active_utf8.json'; 
+
+                // 2. 發送真實的網路請求，並設定不使用快取以取得最新資料
+                const response = await fetch(apiUrl, { cache: 'no-store' }); 
                 
-                // 【修復】避免使用 querySelector('i')，直接重寫 innerHTML 讓 Lucide 重新渲染
-                syncStatus.innerHTML = `
-                    <i data-lucide="check-circle-2" class="w-3 h-3 text-[#5E8027]"></i>
-                    <span>已同步最新資料</span>
-                `;
-                syncStatus.classList.replace('bg-[#EAE3D4]', 'bg-[#5E8027]/10');
-                syncStatus.classList.add('text-[#5E8027]', 'border', 'border-[#5E8027]/30');
-                lucide.createIcons({ root: syncStatus });
+                if (!response.ok) {
+                    throw new Error(`伺服器回應錯誤: ${response.status}`);
+                }
+
+                // 3. 解析 JSON 資料
+                const jsonData = await response.json();
                 
-                loadInitialData(); 
+                // 4. 確保資料格式為陣列 (應對不同的 JSON 結構)
+                let newData = Array.isArray(jsonData) ? jsonData : (jsonData.data && Array.isArray(jsonData.data) ? jsonData.data : null);
+
+                if (newData && newData.length > 0) {
+                    // 5. 覆寫並儲存最新資料到本地 IndexedDB
+                    await saveDataToDB(newData);
+                    
+                    // 6. 更新畫面資料
+                    setLoadedData(newData, false);
+
+                    // 7. 更新 UI 狀態為成功
+                    syncStatus.innerHTML = `
+                        <i data-lucide="check-circle-2" class="w-3 h-3 text-[#5E8027]"></i>
+                        <span>已同步最新資料</span>
+                    `;
+                    syncStatus.classList.replace('bg-[#EAE3D4]', 'bg-[#5E8027]/10');
+                    syncStatus.classList.add('text-[#5E8027]', 'border', 'border-[#5E8027]/30');
+                    lucide.createIcons({ root: syncStatus });
+                } else {
+                    throw new Error('下載的資料格式不符');
+                }
+
             } catch (error) {
-                // 如果失敗則顯示離線狀態
+                console.warn('背景同步失敗:', error);
+                
+                // 如果失敗(例如網路斷線或 CORS 阻擋)，則顯示離線狀態，並讀取舊有資料
                 syncStatus.innerHTML = `
                     <i data-lucide="cloud-off" class="w-3 h-3 text-[#8E9982]"></i>
-                    <span class="text-[#8E9982]">使用本機離線資料</span>
+                    <span class="text-[#8E9982]">同步失敗，使用舊資料</span>
                 `;
+                syncStatus.setAttribute('data-tooltip', '無法連線至政府伺服器，已為您載入本機先前的資料');
                 lucide.createIcons({ root: syncStatus });
+                
+                // 載入本地舊資料
                 loadInitialData();
             }
         }
