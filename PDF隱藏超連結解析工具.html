@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF 隱藏超連結解析工具</title>
+    <!-- 引入 PDF.js 核心函式庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .upload-container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .custom-file-upload {
+            border: 2px dashed #3498db;
+            color: #3498db;
+            background-color: #f0f8ff;
+            display: inline-block;
+            padding: 15px 30px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .custom-file-upload:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #e67e22;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            display: none; /* 預設隱藏，有資料才顯示 */
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #2c3e50;
+            color: #fff;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        a {
+            color: #2980b9;
+            text-decoration: none;
+            word-break: break-all;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .summary {
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>PDF 隱藏超連結解析工具</h1>
+    
+    <div class="upload-container">
+        <p>請上傳您的 PDF 檔案，系統將自動提取隱藏在文字背後的下載連結。</p>
+        <label class="custom-file-upload">
+            <input type="file" id="pdf-upload" accept="application/pdf" />
+            📁 點擊這裡選擇 PDF 檔案
+        </label>
+        <div id="status"></div>
+    </div>
+
+    <div id="summary" class="summary"></div>
+
+    <table id="result-table">
+        <thead>
+            <tr>
+                <th style="width: 10%">頁碼</th>
+                <th style="width: 90%">解析出的實際連結 (URL)</th>
+            </tr>
+        </thead>
+        <tbody id="result-body">
+            <!-- 解析結果會透過 JS 填入這裡 -->
+        </tbody>
+    </table>
+
+    <script>
+        // 設定 PDF.js Worker 的路徑
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        document.getElementById('pdf-upload').addEventListener('change', async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.type !== 'application/pdf') {
+                alert('請上傳 PDF 格式的檔案！');
+                return;
+            }
+
+            const statusEl = document.getElementById('status');
+            const summaryEl = document.getElementById('summary');
+            const tableEl = document.getElementById('result-table');
+            const tbodyEl = document.getElementById('result-body');
+
+            statusEl.innerText = '正在讀取檔案與解析中，請稍候...';
+            tbodyEl.innerHTML = '';
+            tableEl.style.display = 'none';
+            summaryEl.innerText = '';
+
+            try {
+                // 將檔案轉換為 ArrayBuffer
+                const arrayBuffer = await file.arrayBuffer();
+                
+                // 載入 PDF
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                const pdfDocument = await loadingTask.promise;
+                
+                let totalLinks = 0;
+
+                // 遍歷每一頁
+                for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+                    const page = await pdfDocument.getPage(pageNum);
+                    
+                    // 獲取該頁的所有標註(Annotations)，超連結屬於這部分
+                    const annotations = await page.getAnnotations();
+                    
+                    // 過濾出 subtype 為 'Link' 且帶有 url 的項目
+                    const links = annotations.filter(anno => anno.subtype === 'Link' && anno.url);
+
+                    links.forEach(linkObj => {
+                        totalLinks++;
+                        // 建立表格行
+                        const tr = document.createElement('tr');
+                        
+                        const tdPage = document.createElement('td');
+                        tdPage.innerText = `第 ${pageNum} 頁`;
+                        
+                        const tdUrl = document.createElement('td');
+                        const a = document.createElement('a');
+                        a.href = linkObj.url;
+                        a.target = '_blank'; // 開啟新分頁
+                        a.innerText = linkObj.url;
+                        tdUrl.appendChild(a);
+
+                        tr.appendChild(tdPage);
+                        tr.appendChild(tdUrl);
+                        tbodyEl.appendChild(tr);
+                    });
+                }
+
+                if (totalLinks > 0) {
+                    statusEl.innerText = '解析完成！';
+                    statusEl.style.color = '#27ae60';
+                    summaryEl.innerText = `共找到 ${totalLinks} 個實際連結：`;
+                    tableEl.style.display = 'table';
+                } else {
+                    statusEl.innerText = '解析完成，但這份 PDF 中沒有找到任何超連結。';
+                    statusEl.style.color = '#c0392b';
+                }
+
+            } catch (error) {
+                console.error('PDF 解析失敗:', error);
+                statusEl.innerText = '檔案解析失敗，檔案可能損毀或受到加密保護。';
+                statusEl.style.color = '#c0392b';
+            }
+        });
+    </script>
+</body>
+</html>
