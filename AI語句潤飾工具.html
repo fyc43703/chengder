@@ -368,6 +368,7 @@
             const DEFAULT_MODEL_NAME = 'openai/gpt-oss-120b';
             // 保留提示詞與輸入文字的額度，避免 8,000 TPM 方案因單次請求過大而遭 413 拒絕。
             const MAX_OUTPUT_TOKENS = 4096;
+            const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 
             const allUIElements = {
                 mainAppContainer: document.getElementById('main-app-container'),
@@ -406,6 +407,7 @@
             ];
             
             let toastTimer;
+            let activeRequestController = null;
             
             initializeTheme();
             initializeSettings();
@@ -485,6 +487,12 @@
                 const file = event.target.files[0];
                 if (!file) return;
 
+                if (file.size > MAX_FILE_SIZE_BYTES) {
+                    showToast('檔案過大，請選擇小於 15 MB 的檔案。', 'error');
+                    event.target.value = '';
+                    return;
+                }
+
                 const { inputText, inputCharCount } = allUIElements;
                 const fileName = file.name.toLowerCase();
 
@@ -522,18 +530,20 @@
                             return numA - numB;
                         });
 
-                        let slideTexts = [];
+                        const slideTexts = [];
                         for (const slideFile of slideFiles) {
                             const slideXml = await zip.file(slideFile).async('string');
                             const parser = new DOMParser();
                             const xmlDoc = parser.parseFromString(slideXml, 'text/xml');
-                            const textNodes = xmlDoc.getElementsByTagName('a:t');
-                            let slideText = '';
-                            for (let i = 0; i < textNodes.length; i++) {
-                                slideText += textNodes[i].textContent;
-                            }
-                            slideText = slideText.replace(/<\/a:p>/g, '\n');
-                            slideTexts.push(slideText.trim());
+                            const parseError = xmlDoc.querySelector('parsererror');
+                            if (parseError) throw new Error(`無法解析投影片：${slideFile}`);
+                            const paragraphs = Array.from(xmlDoc.getElementsByTagName('a:p'));
+                            const slideText = paragraphs
+                                .map(paragraph => Array.from(paragraph.getElementsByTagName('a:t'))
+                                    .map(node => node.textContent || '').join(''))
+                                .filter(Boolean)
+                                .join('\n');
+                            if (slideText) slideTexts.push(slideText);
                         }
                         text = slideTexts.join('\n\n');
                     } else {
@@ -575,11 +585,75 @@
                 return clone.textContent || '';
             }
 
+            function renderDiffHtml(container, html) {
+                const template = document.createElement('template');
+                template.innerHTML = html;
+                const fragment = document.createDocumentFragment();
+
+                const appendSafeNodes = (source, target) => {
+                    source.childNodes.forEach(node => {
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            target.appendChild(document.createTextNode(node.textContent || ''));
+                        } else if (node.nodeType === Node.ELEMENT_NODE) {
+                            const tagName = node.tagName.toLowerCase();
+                            if (tagName === 'del' || tagName === 'ins') {
+                                const span = document.createElement('span');
+                                span.className = tagName === 'del' ? 'diff-removed' : 'diff-added';
+                                appendSafeNodes(node, span);
+                                target.appendChild(span);
+                            } else {
+                                appendSafeNodes(node, target);
+                            }
+                        }
+                    });
+                };
+
+                appendSafeNodes(template.content, fragment);
+                container.replaceChildren(fragment);
+            }
+
+            function renderExplanation(container, text) {
+                const fragment = document.createDocumentFragment();
+                const parts = text.split(/(\*\*[^*]+\*\*)/g);
+                parts.forEach(part => {
+                    if (part.startsWith('**') && part.endsWith('**')) {
+                        const strong = document.createElement('strong');
+                        strong.textContent = part.slice(2, -2);
+                        fragment.appendChild(strong);
+                    } else {
+                        fragment.appendChild(document.createTextNode(part));
+                    }
+                });
+                container.replaceChildren(fragment);
+            }
+
+            function showOutputError(message) {
+                const { outputText, explanationOutput } = allUIElements;
+                outputText.replaceChildren();
+                const title = document.createElement('span');
+                title.className = 'diff-removed';
+                title.textContent = '發生錯誤：';
+                const details = document.createElement('pre');
+                details.className = 'whitespace-pre-wrap text-sm';
+                details.textContent = message;
+                outputText.append(title, details);
+                explanationOutput.textContent = `發生錯誤：${message}`;
+            }
+
+            function showLoading(container) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex justify-center items-center h-full';
+                const spinner = document.createElement('div');
+                spinner.className = 'lds-dual-ring';
+                wrapper.appendChild(spinner);
+                container.replaceChildren(wrapper);
+            }
+
             function clearContent() {
                 const { inputText, outputText, explanationOutput, inputCharCount, outputCharCount } = allUIElements;
                 inputText.value = '';
-                outputText.innerHTML = '';
-                explanationOutput.innerHTML = '此處將顯示 AI 對潤飾內容的說明。';
+                outputText.replaceChildren();
+                explanationOutput.textContent = '此處將顯示 AI 對潤飾內容的說明。';
                 updateCharCount(inputText, inputCharCount);
                 updateCharCount(outputText, outputCharCount);
                 showToast("內容已全部清除", "success");
@@ -667,11 +741,13 @@
                     const rtfContent = convertToRtfUnicode(cleanText);
                     const blob = new Blob([rtfContent], { type: 'application/rtf' });
                     const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
+                    const objectUrl = URL.createObjectURL(blob);
+                    link.href = objectUrl;
                     link.download = filename;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
+                    URL.revokeObjectURL(objectUrl);
                     showToast("文件匯出成功!", "success");
                 } else {
                     showToast("沒有內容可以匯出。", "error");
@@ -699,9 +775,8 @@
                 }
 
                 disableUI();
-                const loadingHTML = '<div class="flex justify-center items-center h-full"><div class="lds-dual-ring"></div></div>';
-                outputText.innerHTML = loadingHTML;
-                explanationOutput.innerHTML = loadingHTML;
+                showLoading(outputText);
+                showLoading(explanationOutput);
                 
                 const selectedStyle = polishStyleSelect.value;
                 const isGenerationMode = generationModes.includes(selectedStyle);
@@ -744,7 +819,10 @@
                     userContentText = `原文:\n"""\n${originalText}\n"""\n\n請嚴格依照以下兩項指示處理原文:\n\n指示一 (產生差異HTML):\n${formattingInstruction}\n\n指示二 (產生說明文字):\n${explanationInstruction}`;
                 }
 
+                let requestTimeout;
                 try {
+                    activeRequestController = new AbortController();
+                    requestTimeout = setTimeout(() => activeRequestController?.abort(), 90000);
                     // Groq API (OpenAI Compatible) Request Payload
                     const payload = {
                         messages: [
@@ -762,11 +840,14 @@
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${currentApiKey}`
                         },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(payload),
+                        signal: activeRequestController.signal
                     });
 
+                    clearTimeout(requestTimeout);
+
                     if (!response.ok) {
-                        const errorData = await response.json();
+                        const errorData = await response.json().catch(() => ({}));
                         let errorMsg = `請求失敗 (狀態碼 ${response.status}): ${errorData.error?.message || '未知錯誤'}`;
                         let userFriendlyTip = "";
 
@@ -812,21 +893,16 @@
                                 .replace(/\*(.*?)\*/g, '$1');
                             
                             outputText.textContent = cleanedText;
-                            explanationOutput.innerHTML = '';
+                            explanationOutput.replaceChildren();
                         } else {
                             let cleanedText = rawText.replace(/^```(html|)\s*\n/, '').replace(/\n```\s*$/, '').trim();
                             const parts = cleanedText.split('---EXPLANATION---');
                             const polishedHtml = parts[0] ? parts[0].trim() : 'AI未能生成有效的潤飾結果。';
                             let explanationText = parts[1] ? parts[1].trim() : 'AI未能提供相關說明。';
                             
-                            explanationText = explanationText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-                            const styledHtml = polishedHtml
-                                .replace(/<del>([\s\S]*?)<\/del>/g, '<span class="diff-removed">$1</span>')
-                                .replace(/<ins>([\s\S]*?)<\/ins>/g, '<span class="diff-added">$1</span>');
-                            
-                            outputText.innerHTML = styledHtml;
-                            explanationOutput.innerHTML = explanationText;
+                            // 僅保留模型回應中的文字與 <del>/<ins> 差異標籤，避免執行不可信 HTML。
+                            renderDiffHtml(outputText, polishedHtml);
+                            renderExplanation(explanationOutput, explanationText);
                         }
                     } else {
                         const apiErrorMsg = 'API 未返回有效的結果,請稍後再試。';
@@ -835,10 +911,13 @@
                     }
 
                 } catch (error) {
-                    const errorMsg = `<span class="diff-removed">發生錯誤:</span><pre class="whitespace-pre-wrap text-sm">${error.message}</pre>`;
-                    outputText.innerHTML = errorMsg;
-                    explanationOutput.innerHTML = errorMsg;
+                    const message = error.name === 'AbortError'
+                        ? '請求逾時（90 秒），請縮短文字或稍後再試。'
+                        : error.message;
+                    showOutputError(message);
                 } finally {
+                    clearTimeout(requestTimeout);
+                    activeRequestController = null;
                     enableUI();
                     if (isGenerationMode) {
                         updateCharCount(outputText, outputCharCount);
@@ -918,7 +997,7 @@
                     e.stopPropagation();
                     inputText.classList.remove('drag-over');
                     const file = e.dataTransfer.files[0];
-                    if (file && file.type.match('text.*')) {
+                    if (file && file.size <= MAX_FILE_SIZE_BYTES && (file.type.match('text.*') || file.name.toLowerCase().endsWith('.txt'))) {
                         const reader = new FileReader();
                         reader.onload = (event) => {
                             inputText.value = event.target.result;
@@ -926,6 +1005,8 @@
                             showToast("檔案已成功載入！", "success");
                         };
                         reader.readAsText(file);
+                    } else if (file && file.size > MAX_FILE_SIZE_BYTES) {
+                        showToast('檔案過大，請選擇小於 15 MB 的檔案。', 'error');
                     } else {
                         showToast("檔案格式錯誤，請拖曳 .txt 檔案。", "error");
                     }
