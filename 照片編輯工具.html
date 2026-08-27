@@ -571,6 +571,8 @@
         let cropOrigin = { x: 0, y: 0 };
         let isColorPicking = false;
         let gridCanvas, isGridVisible = false;
+        let isRestoringState = false;
+        const MAX_HISTORY_STATES = 50;
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
 
@@ -592,20 +594,26 @@
             return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); };
         }
         const debouncedSaveState = debounce(saveState, 300);
+        const debouncedAdvancedAdjustments = debounce(handleAdvancedAdjustments, 100);
+        const debouncedEffectAdjustments = debounce(handleEffectAdjustments, 100);
 
         // --- History Management ---
         function saveState() {
-            if (canvas.isRendering) return;
+            if (!canvas || isRestoringState) return;
             const state = JSON.stringify(canvas.toJSON(['selectable', 'evented', 'id', 'name']));
+            if (history[historyIndex] === state) return;
             history = history.slice(0, historyIndex + 1);
             history.push(state);
-            historyIndex++;
+            if (history.length > MAX_HISTORY_STATES) history.shift();
+            historyIndex = history.length - 1;
+            document.getElementById('undo-btn').disabled = historyIndex <= 0;
         }
 
         function undo() {
             if (historyIndex > 0) {
                 historyIndex--;
                 const state = history[historyIndex];
+                isRestoringState = true;
                 canvas.loadFromJSON(state, () => {
                     img = canvas.getObjects().find(obj => obj.name === 'background');
                     if (img) {
@@ -614,6 +622,8 @@
                     canvas.renderAll();
                     updateSliders(); 
                     renderLayerPanel();
+                    isRestoringState = false;
+                    document.getElementById('undo-btn').disabled = historyIndex <= 0;
                 });
             }
         }
@@ -694,12 +704,12 @@
             document.getElementById('theme-toggle').addEventListener('click', toggleTheme); 
 
             ['brightness', 'contrast', 'saturation', 'hue', 'temperature'].forEach(id => {
-                 document.getElementById(`${id}-slider`).addEventListener('input', () => debounce(handleAdvancedAdjustments, 100)());
+                 document.getElementById(`${id}-slider`).addEventListener('input', debouncedAdvancedAdjustments);
             });
 
             ['clarity', 'pixelate', 'vignette', 'noise'].forEach(id => {
                 const slider = document.getElementById(`${id}-slider`);
-                if (slider) slider.addEventListener('input', () => debounce(handleEffectAdjustments, 100)());
+                if (slider) slider.addEventListener('input', debouncedEffectAdjustments);
             });
             
             document.getElementById('font-family').addEventListener('change', updateTextOptions);
@@ -712,9 +722,9 @@
                 'selection:created': (e) => { updateObjectActionButtons(e); renderLayerPanel(); },
                 'selection:updated': (e) => { updateObjectActionButtons(e); renderLayerPanel(); },
                 'selection:cleared': (e) => { updateObjectActionButtons(e); renderLayerPanel(); },
-                'object:modified': () => { debouncedSaveState(); renderLayerPanel(); },
-                'object:added': () => { debouncedSaveState(); renderLayerPanel(); },
-                'object:removed': () => { debouncedSaveState(); renderLayerPanel(); },
+                'object:modified': () => { if (!isRestoringState) debouncedSaveState(); renderLayerPanel(); },
+                'object:added': () => { if (!isRestoringState) debouncedSaveState(); renderLayerPanel(); },
+                'object:removed': () => { if (!isRestoringState) debouncedSaveState(); renderLayerPanel(); },
                 'mouse:move': handleColorPickerMove
             });
             
@@ -759,7 +769,7 @@
                 const target = e.target.closest('[title]');
                 if (!target || !target.title) return;
                 currentTarget = target;
-                tooltip.innerHTML = currentTarget.title;
+                tooltip.textContent = currentTarget.title;
                 tooltip.classList.remove('hidden');
                 currentTarget.setAttribute('data-title', currentTarget.title);
                 currentTarget.title = '';
@@ -845,9 +855,10 @@
                 }
             }
 
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (event) => resolve(event.target.result);
+                reader.onerror = () => reject(reader.error || new Error('檔案讀取失敗'));
                 reader.readAsDataURL(processedFile);
             });
         }
@@ -1001,21 +1012,66 @@
         function ungroupObjects() { const activeObj = canvas.getActiveObject(); if (!activeObj || activeObj.type !== 'group') return; activeObj.toActiveSelection(); canvas.requestRenderAll(); }
         function handleObjectRotation(e) { const activeObject = canvas.getActiveObject(); if (activeObject) { const angle = parseInt(e.target.value, 10); activeObject.set('angle', angle).setCoords(); canvas.renderAll(); document.getElementById('object-rotate-value').innerText = `${angle}°`; } }
 
-        function handleKeyDown(e) { const activeObject = canvas.getActiveObject(); if (!activeObject || activeObject.isEditing) return; const step = e.shiftKey ? 10 : 1; let moved = false; switch (e.key) { case 'ArrowUp': activeObject.top -= step; moved = true; break; case 'ArrowDown': activeObject.top += step; moved = true; break; case 'ArrowLeft': activeObject.left -= step; moved = true; break; case 'ArrowRight': activeObject.left += step; moved = true; break; } if (moved) { e.preventDefault(); activeObject.setCoords(); canvas.renderAll(); debouncedSaveState(); return; } if (e.ctrlKey || e.metaKey) { if (['c', 'x', 'v', 'z'].includes(e.key.toLowerCase())) e.preventDefault(); switch(e.key.toLowerCase()) { case 'c': handleCopy(); break; case 'x': handleCut(); break; case 'v': handlePaste(); break; case 'z': undo(); break; } } else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); handleDeleteObject(); } }
+        function handleKeyDown(e) {
+            const target = e.target;
+            const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target?.isContentEditable;
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !isTyping) {
+                e.preventDefault();
+                undo();
+                return;
+            }
+            const activeObject = canvas.getActiveObject();
+            if (!activeObject || activeObject.isEditing || isTyping) return;
+            if (e.ctrlKey || e.metaKey) {
+                const key = e.key.toLowerCase();
+                if (['c', 'x', 'v'].includes(key)) e.preventDefault();
+                if (key === 'c') handleCopy();
+                else if (key === 'x') handleCut();
+                else if (key === 'v') handlePaste();
+                return;
+            }
+            const step = e.shiftKey ? 10 : 1;
+            const movement = { ArrowUp: [0, -step], ArrowDown: [0, step], ArrowLeft: [-step, 0], ArrowRight: [step, 0] }[e.key];
+            if (movement) {
+                e.preventDefault();
+                activeObject.set({ left: activeObject.left + movement[0], top: activeObject.top + movement[1] }).setCoords();
+                canvas.requestRenderAll();
+                debouncedSaveState();
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault();
+                handleDeleteObject();
+            }
+        }
         
-        function resetImageState() { if (img) { img.filters = []; img.applyFilters(); img.set({ flipX: false, flipY: false }); } ['brightness', 'contrast', 'saturation', 'hue', 'temperature'].forEach(id => document.getElementById(`${id}-slider`).value = 0); const panel = document.getElementById('effects-adjustment-panel'); panel.classList.add('hidden'); ['clarity', 'pixelate', 'vignette', 'noise'].forEach(id => document.getElementById(`${id}-control`).classList.add('hidden')); canvas.renderAll(); }
+        function resetImageState() { if (img) { img.filters = []; img.applyFilters(); img.set({ flipX: false, flipY: false, angle: 0 }); } ['brightness', 'contrast', 'saturation', 'hue', 'temperature'].forEach(id => document.getElementById(`${id}-slider`).value = 0); document.getElementById('rotate-slider').value = 0; document.getElementById('rotate-value').textContent = '0°'; const panel = document.getElementById('effects-adjustment-panel'); panel.classList.add('hidden'); ['clarity', 'pixelate', 'vignette', 'noise'].forEach(id => document.getElementById(`${id}-control`).classList.add('hidden')); canvas.renderAll(); }
         function handleReset(addToHistory = true) { if (originalImageSrc) { resetImageState(); fitImageToCanvas(); if (addToHistory) saveState(); } }
         function handleDownload() {
             const format = document.getElementById('download-format').value;
+            const resolution = document.getElementById('download-resolution').value;
+            const [targetWidth, targetHeight] = resolution === 'original'
+                ? [canvas.getWidth(), canvas.getHeight()]
+                : resolution.split('x').map(Number);
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = Math.max(1, Math.round(targetWidth));
+            exportCanvas.height = Math.max(1, Math.round(targetHeight));
+            const exportContext = exportCanvas.getContext('2d');
+            if (format === 'jpeg' || format === 'pdf') {
+                exportContext.fillStyle = '#ffffff';
+                exportContext.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+            }
+            const scale = Math.min(exportCanvas.width / canvas.getWidth(), exportCanvas.height / canvas.getHeight());
+            const drawWidth = canvas.getWidth() * scale;
+            const drawHeight = canvas.getHeight() * scale;
+            exportContext.drawImage(canvas.lowerCanvasEl, (exportCanvas.width - drawWidth) / 2, (exportCanvas.height - drawHeight) / 2, drawWidth, drawHeight);
             const link = document.createElement('a');
             if (format === 'pdf') {
                 const { jsPDF } = window.jspdf;
-                const imgData = canvas.toDataURL({format: 'jpeg', quality: 1.0});
-                const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'landscape' : 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
-                pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+                const imgData = exportCanvas.toDataURL('image/jpeg', 1.0);
+                const pdf = new jsPDF({ orientation: targetWidth > targetHeight ? 'landscape' : 'portrait', unit: 'px', format: [targetWidth, targetHeight] });
+                pdf.addImage(imgData, 'JPEG', 0, 0, targetWidth, targetHeight);
                 pdf.save('edited-photo.pdf');
             } else if (format === 'svg') {
-                const svgData = canvas.toSVG();
+                const svgData = canvas.toSVG({ width: targetWidth, height: targetHeight, viewBox: { x: 0, y: 0, width: canvas.getWidth(), height: canvas.getHeight() } });
                 const blob = new Blob([svgData], { type: 'image/svg+xml' });
                 link.href = URL.createObjectURL(blob);
                 link.download = `edited-photo.svg`;
@@ -1023,7 +1079,7 @@
                 URL.revokeObjectURL(link.href);
             } else {
                 const fileExtension = format === 'jpeg' ? 'jpg' : format;
-                link.href = canvas.toDataURL({ format: format, quality: 1.0 });
+                link.href = exportCanvas.toDataURL(`image/${format}`, 1.0);
                 link.download = `edited-photo.${fileExtension}`;
                 link.click();
             }
@@ -1097,7 +1153,7 @@
             if (objects.length === 0) { layerList.innerHTML = `<div class="p-2 text-muted text-center">沒有物件</div>`; return; }
             layerList.innerHTML = objects.map((obj, index) => {
                 let name = '物件', icon = 'fa-shapes';
-                if (obj.isType('i-text')) { name = obj.text.substring(0, 10) || '文字'; icon = 'fa-font'; }
+                if (obj.isType('i-text')) { name = escapeHtml(obj.text.substring(0, 10) || '文字'); icon = 'fa-font'; }
                 else if (obj.isType('image')) { name = '圖片'; icon = 'fa-image'; }
                 else if (obj.isType('group')) { name = `群組 (${obj.size()})`; icon = 'fa-object-group'; }
                 const isActive = activeObjects.includes(obj); const isLocked = obj.lockMovementX; const totalObjects = objects.length;
@@ -1107,8 +1163,31 @@
                     </div>`;
             }).join('');
         }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+        }
         
-        function handleSystemPaste(e) { /* ... stub ... */ }
+        function handleSystemPaste(e) {
+            if (!canvas || document.activeElement?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;
+            const imageItem = Array.from(e.clipboardData?.items || []).find(item => item.type.startsWith('image/'));
+            if (!imageItem) return;
+            const file = imageItem.getAsFile();
+            if (!file) return;
+            e.preventDefault();
+            const reader = new FileReader();
+            reader.onload = event => {
+                fabric.Image.fromURL(event.target.result, pastedImage => {
+                    const maxWidth = Math.max(1, canvas.getWidth() * 0.5);
+                    const maxHeight = Math.max(1, canvas.getHeight() * 0.5);
+                    const scale = Math.min(1, maxWidth / pastedImage.width, maxHeight / pastedImage.height);
+                    pastedImage.scale(scale).set({ id: Date.now() });
+                    canvas.add(pastedImage).centerObject(pastedImage).setActiveObject(pastedImage).requestRenderAll();
+                });
+            };
+            reader.onerror = () => alert('無法讀取剪貼簿中的圖片。');
+            reader.readAsDataURL(file);
+        }
 
         // Collapsed functions for brevity
         enterFsViewer = function() { if (!img) return; const overlay = document.getElementById('fullscreen-overlay'); const fsImage = document.getElementById('fullscreen-image'); const zoomInBtn = document.getElementById('zoom-in-fs'); const zoomOutBtn = document.getElementById('zoom-out-fs'); let scale = 1, isPanning = false, start = { x: 0, y: 0 }, translate = { x: 0, y: 0 }; fsImage.src = canvas.toDataURL({ format: 'png', quality: 1.0 }); overlay.classList.remove('hidden'); overlay.classList.add('flex'); const updateTransform = () => { fsImage.style.transform = `translate(${translate.x}px, ${translate.y}px) scale(${scale})`; }; const handleMouseDown = e => { e.preventDefault(); isPanning = true; start = { x: e.clientX - translate.x, y: e.clientY - translate.y }; fsImage.classList.add('grabbing'); }; const handleMouseMove = e => { if (!isPanning) return; e.preventDefault(); translate.x = e.clientX - start.x; translate.y = e.clientY - start.y; updateTransform(); }; const handleMouseUp = () => { isPanning = false; fsImage.classList.remove('grabbing'); }; const handleWheel = (e) => { e.preventDefault(); scale += e.deltaY * -0.001; scale = Math.min(Math.max(.125, scale), 8); updateTransform(); }; const exitFs = () => { overlay.classList.add('hidden'); overlay.classList.remove('flex'); fsImage.removeEventListener('mousedown', handleMouseDown); window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); overlay.removeEventListener('wheel', handleWheel); overlay.removeEventListener('click', exitFsOnClick); document.removeEventListener('keydown', exitFsOnEsc); }; const exitFsOnClick = (e) => { if (e.target === overlay) exitFs(); }; const exitFsOnEsc = (e) => { if (e.key === "Escape") exitFs(); }; zoomInBtn.onclick = () => { scale = Math.min(8, scale * 1.2); updateTransform(); }; zoomOutBtn.onclick = () => { scale = Math.max(0.125, scale / 1.2); updateTransform(); }; fsImage.addEventListener('mousedown', handleMouseDown); window.addEventListener('mousemove', handleMouseMove); window.addEventListener('mouseup', handleMouseUp); overlay.addEventListener('wheel', handleWheel); overlay.addEventListener('click', exitFsOnClick); document.addEventListener('keydown', exitFsOnEsc); updateTransform(); }
