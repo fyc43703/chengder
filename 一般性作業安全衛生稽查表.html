@@ -2978,37 +2978,50 @@ window.addEventListener('load', function() {
             const apiKey = await getApiKey(); // ← 這裡加上 await
             if (!apiKey) return null;
     
-            const requestBody = {
-                model: modelName,
-                messages: messages,
-                temperature: 0.1
-            };
-            if (isJsonMode) {
-                requestBody.response_format = { type: "json_object" };
-            }
-    
+            const modelCandidates = [...new Set([
+                modelName,
+                'openai/gpt-oss-20b',
+                'llama-3.1-8b-instant'
+            ].filter(Boolean))];
+
             try {
-                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-    
-                if (response.status === 401) {
-                    userGroqApiKey = null;
-                    const inp = document.getElementById('groq-key-input');
-                    if (inp) inp.value = '';
-                    onGroqKeyInput('');
-                    throw new Error("API Key 無效或已過期，請重新輸入正確的 Groq API Key。");
+                for (let i = 0; i < modelCandidates.length; i++) {
+                    const requestBody = {
+                        model: modelCandidates[i],
+                        messages: messages,
+                        temperature: 0.1
+                    };
+                    if (isJsonMode) requestBody.response_format = { type: "json_object" };
+
+                    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (response.status === 401) {
+                        userGroqApiKey = null;
+                        const inp = document.getElementById('groq-key-input');
+                        if (inp) inp.value = '';
+                        onGroqKeyInput('');
+                        throw new Error("API Key 無效或已過期，請重新輸入正確的 Groq API Key。");
+                    }
+
+                    const data = await response.json();
+                    if (response.ok && data.choices?.[0]?.message?.content) {
+                        return data.choices[0].message.content;
+                    }
+
+                    const errorMessage = data.error?.message || `Groq API 請求失敗（HTTP ${response.status}）`;
+                    const canTryNextModel = response.status === 400 &&
+                        /model.*(does not exist|access|permission|decommissioned|not found)/i.test(errorMessage);
+                    if (!canTryNextModel || i === modelCandidates.length - 1) {
+                        throw new Error(errorMessage);
+                    }
                 }
-    
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
-                return data.choices[0].message.content;
-    
             } catch (error) {
                 console.error(error);
                 showCustomAlert("❌ AI 運算失敗：" + error.message);
@@ -3103,7 +3116,7 @@ window.addEventListener('load', function() {
             try {
                 const result = await callGroqAPI(
                     [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                    'llama-3.3-70b-versatile',
+                    'openai/gpt-oss-20b',
                     true
                 );
     
