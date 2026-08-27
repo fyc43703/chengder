@@ -147,7 +147,7 @@
         .podcast-header { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
         .podcast-header img { width: 3rem; height: 3rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4); flex-shrink: 0; }
         .podcast-episodes { display: flex; flex-direction: column; gap: 0; flex-grow: 1; overflow-y: auto; }
-        .episode-item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; }
+        .episode-item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer; }
         .episode-item .font-semibold { color: var(--color-text-secondary); }
         .episode-thumbnail-btn { position: relative; width: 2rem; height: 2rem; border-radius: 0.25rem; flex-shrink: 0; cursor: pointer; overflow: hidden; }
         .episode-thumbnail-btn img { width: 100%; height: 100%; object-fit: cover; }
@@ -1209,6 +1209,8 @@
                         trackId:      item.querySelector('guid')?.textContent || audioUrl,
                         trackName:    item.querySelector('title')?.textContent || 'Untitled',
                         episodeUrl:   audioUrl,
+                        podcastCollectionId: podcastInfo.collectionId,
+                        _source:      'rss',
                         releaseDate:  item.querySelector('pubDate')?.textContent || new Date().toISOString(),
                         description:  item.querySelector('description')?.textContent || '',
                         artworkUrl60: item.querySelector('itunes\\:image')?.getAttribute('href') || podcastInfo.artworkUrl60,
@@ -1266,6 +1268,8 @@
                                 trackId:       item.trackId || item.episodeGuid || item.episodeUrl,
                                 trackName:     item.trackName || '未命名單集',
                                 episodeUrl:    item.episodeUrl,
+                                podcastCollectionId: collectionId,
+                                _source:       'itunes',
                                 releaseDate:   item.releaseDate || new Date().toISOString(),
                                 description:   item.description || item.shortDescription || '',
                                 artworkUrl60:  item.artworkUrl60 || podcastInfo.artworkUrl60,
@@ -1284,6 +1288,45 @@
                 throw new Error(`Apple 各區商店均無單集（${failures.join('；')}）`);
             }
 
+            // PodcastIndex 會回傳 RSS enclosure 的實際音檔網址，不需透過文字 RSS 代理。
+            async function fetchEpisodesFromPodcastIndex(podcastInfo) {
+                let feedId = podcastInfo._source === 'podcastindex' ? podcastInfo.collectionId : null;
+                if (!feedId && podcastInfo.feedUrl) {
+                    const lookup = await fetchWithTimeout(
+                        `https://api.podcastindex.org/api/1.0/podcasts/byfeedurl?url=${encodeURIComponent(podcastInfo.feedUrl)}`,
+                        { headers: piAuthHeaders(), timeout: 12000 }
+                    );
+                    if (!lookup.ok) throw new Error(`PodcastIndex feed lookup status ${lookup.status}`);
+                    const lookupData = await lookup.json();
+                    feedId = lookupData.feed?.id;
+                }
+                if (!feedId) throw new Error('此節目沒有可用的 PodcastIndex feed ID');
+                const response = await fetchWithTimeout(
+                    `https://api.podcastindex.org/api/1.0/episodes/byfeedid?id=${encodeURIComponent(feedId)}&max=100`,
+                    { headers: piAuthHeaders(), timeout: 12000 }
+                );
+                if (!response.ok) throw new Error(`PodcastIndex status ${response.status}`);
+                const data = await response.json();
+                const episodes = (data.items || []).map(item => {
+                    if (!item.enclosureUrl) return null;
+                    return {
+                        trackId: item.guid || item.id || item.enclosureUrl,
+                        trackName: item.title || '未命名單集',
+                        episodeUrl: item.enclosureUrl,
+                        podcastCollectionId: podcastInfo.collectionId,
+                        _source: 'podcastindex',
+                        releaseDate: item.datePublished ? new Date(item.datePublished * 1000).toISOString() : new Date().toISOString(),
+                        description: item.description || '',
+                        artworkUrl60: item.image || podcastInfo.artworkUrl60,
+                        artworkUrl600: item.image || podcastInfo.artworkUrl600,
+                        duration: item.duration || 0,
+                        fileSize: item.enclosureLength || 0,
+                    };
+                }).filter(Boolean);
+                if (!episodes.length) throw new Error('PodcastIndex 未返回可播放單集');
+                return episodes;
+            }
+
             async function fetchEpisodes(collectionId) {
                 if (isFetchingDetails) return;
                 isFetchingDetails = true;
@@ -1298,20 +1341,26 @@
                     renderPodcastShell(podcastInfo);
                     let episodes;
                     try {
-                        episodes = await fetchEpisodesFromITunes(collectionId, podcastInfo);
-                        console.info('[Episodes] iTunes API 載入成功，無需 RSS 代理');
-                    } catch (itunesError) {
-                        console.warn('[Episodes] iTunes API 無法取得單集，改讀 RSS：', itunesError.message);
+                        episodes = await fetchEpisodesFromPodcastIndex(podcastInfo);
+                        console.info('[Episodes] PodcastIndex 原始音檔清單載入成功');
+                    } catch (piError) {
                         try {
                             episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
+                            console.warn('[Episodes] PodcastIndex 失敗，改用 RSS：', piError.message);
                         } catch (rssError) {
-                            throw new Error(`Apple 與 RSS 皆無法載入此節目。Apple：${itunesError.message}；RSS：${rssError.message}`);
+                            try {
+                                episodes = await fetchEpisodesFromITunes(collectionId, podcastInfo);
+                                console.warn('[Episodes] RSS 失敗，改用 Apple 備援：', rssError.message);
+                            } catch (itunesError) {
+                                throw new Error(`PodcastIndex、RSS 與 Apple 皆無法載入此節目。PodcastIndex：${piError.message}；RSS：${rssError.message}；Apple：${itunesError.message}`);
+                            }
                         }
                     }
                     if (collectionCache[collectionId]) {
                         collectionCache[collectionId].episodes = episodes;
                     }
                     populateEpisodesList(episodes, podcastInfo);
+
                 } catch (error) {
                     domElements.podcastDetailView.innerHTML = `<div class="text-center text-[var(--color-text-secondary)] m-auto"><p class="font-bold text-lg mb-2">哎呀！節目資訊載入失敗了</p><p class="text-sm" id="feed-error-message"></p><p class="text-xs mt-2">可能是對方的伺服器有點問題，或是您的網路不太穩定。請稍後再試試看。</p></div>`;
                     document.getElementById('feed-error-message').textContent = error.message;
@@ -1440,7 +1489,11 @@
                 domElements.podcastDetailView.querySelectorAll('.episode-item').forEach(item => {
                     const ep = episodes.find(e => e.trackId === item.dataset.episodeId);
                     if (!ep) return;
-                    item.querySelector('.episode-main-content').addEventListener('click', () => playEpisode(ep, podcast.artistName, episodes));
+                    // 整列皆可點擊播放；縮圖與操作按鈕各自保留原本的功能。
+                    item.addEventListener('click', (e) => {
+                        if (e.target.closest('.episode-thumbnail-btn, .episode-item-actions')) return;
+                        playEpisode(ep, podcast.artistName, episodes);
+                    });
                     item.querySelector('.episode-thumbnail-btn').addEventListener('click', (e) => { e.stopPropagation(); openEpisodeModal(ep, podcast, episodes); });
                     item.querySelector('.download-action-link')?.addEventListener('click', (e) => e.stopPropagation());
                     
@@ -1778,7 +1831,9 @@
             };
             
             const playEpisode = (episode, host, playlist) => {
-                if (playerState.currentEpisode?.trackId === episode.trackId) {
+                // RSS GUID 不保證跨節目唯一；以實際音檔網址判斷，避免切換節目時
+                // 誤將另一集視為目前播放的同一集而只執行暫停。
+                if (playerState.currentEpisode?.episodeUrl === episode.episodeUrl) {
                     togglePlayPause();
                     return;
                 }
@@ -1798,17 +1853,20 @@
                     _playbackAttempt: 'direct'
                 };
 
-                audio.src = episode.episodeUrl;
-                
                 const progressData = getPlaybackProgress();
                 const savedProgress = progressData[episode.trackId];
-                if (savedProgress && savedProgress.currentTime < savedProgress.duration * 0.95) {
-                    audio.currentTime = savedProgress.currentTime;
-                } else {
-                    audio.currentTime = 0;
-                }
-
-                audio.play().catch(e => console.error("Initial play() was interrupted or failed.", e));
+                const resumeAt = savedProgress && savedProgress.currentTime < savedProgress.duration * 0.95
+                    ? savedProgress.currentTime : 0;
+                audio.pause();
+                audio.src = episode.episodeUrl;
+                audio.load();
+                audio.addEventListener('loadedmetadata', () => {
+                    if (resumeAt > 0) audio.currentTime = resumeAt;
+                }, { once: true });
+                audio.play().catch(e => {
+                    console.error('Initial play() failed.', e);
+                    showToast('音訊尚未能開始播放，請稍候再試。', 'error');
+                });
                 syncPlayerUI();
             };
 
