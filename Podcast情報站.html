@@ -152,6 +152,9 @@
         .episode-thumbnail-btn { position: relative; width: 2rem; height: 2rem; border-radius: 0.25rem; flex-shrink: 0; cursor: pointer; overflow: hidden; }
         .episode-thumbnail-btn img { width: 100%; height: 100%; object-fit: cover; }
         .episode-main-content { flex: 1; display: flex; align-items: center; gap: 0.75rem; overflow: hidden; cursor: pointer;}
+        .search-keyword-badge { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 9999px; background: #fff3cd; color: #7a4b00; font-size: 0.8rem; font-weight: 700; }
+        .search-keyword-highlight { background: #ffbd2e; color: #211600; padding: 0 0.16em; border-radius: 0.2rem; font-weight: 700; }
+        .episode-search-context { margin-top: 0.15rem; color: #a35f00; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .episode-number { width: 2.5rem; text-align: right; padding-right: 1rem; color: var(--color-text-secondary); flex-shrink: 0; font-size: 0.875rem; }
         .episode-item:hover { background-color: var(--color-surface-hover); }
         .episode-item.is-listened .font-semibold, .episode-item.is-listened .text-secondary-color { color: var(--color-text-secondary); opacity: 0.6; }
@@ -347,7 +350,7 @@
                 <div class="flex-1 text-center">
                     <h1 class="text-2xl font-bold">Podcast 導航站</h1>
                     <p class="text-sm text-[var(--color-text-primary)]">Podcasts 搜尋使用 Apple iTunes Search API ，能隨時聆聽豐富多元的主題節目，並提供下載音訊檔功能</p>
-                    <p class="text-xs text-gray-500 mt-1">製作者：陳政德　·　版本 2026.08.27-r5（搜尋與單集 JSONP 相容版）</p>
+                    <p class="text-xs text-gray-500 mt-1">製作者：陳政德　·　版本 2026.08.27</p>
                 </div>
                 <button id="theme-toggle-btn" title="切換主題"></button>
             </div>
@@ -655,12 +658,18 @@
                 'TV & Film':'<svg class="genre-icon" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g15" x1="24" y1="3.6" x2="24" y2="44.4" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5c6bc0"/><stop offset="1" stop-color="#303f9f"/></linearGradient></defs><path fill="url(#g15)" d="M37.9 3.6H10.1C7.8 3.6 6 5.4 6 7.6v32.8c0 2.2 1.8 4 4.1 4h27.8c2.3 0 4.1-1.8 4.1-4V7.6c0-2.2-1.8-4-4.1-4z"/><path d="M16.5 14h-5.4v5.4h5.4V14zm0 8.1h-5.4v5.4h5.4v-5.4zm0 8.1h-5.4v5.4h5.4v-5.4zm8.1-16.2h-5.4v5.4h5.4V14zm0 8.1h-5.4v5.4h5.4v-5.4zm0 8.1h-5.4v5.4h5.4v-5.4zm8.1-16.2h-5.4v5.4h5.4V14zm0 8.1h-5.4v5.4h5.4v-5.4zm0 8.1h-5.4v5.4h5.4v-5.4z" fill="#fff"/></svg>',
             };
 
+            // Keep one explicit HTML audio element for the lifetime of the page.
+            // This is more reliable than the browser default when the page is opened
+            // directly from disk, especially for remote podcast MP3 streams.
             const audio = new Audio();
+            audio.preload = 'auto';
+            audio.playsInline = true;
             const collectionCache = {};
             let playerState = { currentEpisode: null, playlist: [], currentIndex: -1, isPlaying: false, _playbackAttempt: 'direct' };
             let isFavoritesFilterActive = false;
             let isFetchingDetails = false;
             let lastProgressUpdateTime = 0;
+            let lastVolume = 0.5;
             let currentViewSource = 'sidebar';
             let searchState = { term: '', results: [], currentIndex: -1, offset: 0, limit: 50 };
             
@@ -694,6 +703,48 @@
             const saveCollection = (collection) => localStorage.setItem('podcastCollection', JSON.stringify(collection));
             const getSavedEpisodes = () => JSON.parse(localStorage.getItem('savedEpisodes') || '[]');
             const saveSavedEpisodes = (episodes) => localStorage.setItem('savedEpisodes', JSON.stringify(episodes));
+            // dataset attributes are always strings, while Apple and PodcastIndex
+            // can return numeric track IDs. Compare their stable string form.
+            const sameTrackId = (left, right) => left != null && right != null && String(left) === String(right);
+            const escapeHTML = (value) => String(value || '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+            const highlightSearchTerm = (value, term) => {
+                const text = String(value || '');
+                const keyword = String(term || '').trim();
+                if (!keyword) return escapeHTML(text);
+
+                const lowerText = text.toLocaleLowerCase();
+                const lowerKeyword = keyword.toLocaleLowerCase();
+                let result = '', cursor = 0, matchIndex;
+                while ((matchIndex = lowerText.indexOf(lowerKeyword, cursor)) !== -1) {
+                    result += escapeHTML(text.slice(cursor, matchIndex));
+                    result += `<mark class="search-keyword-highlight">${escapeHTML(text.slice(matchIndex, matchIndex + keyword.length))}</mark>`;
+                    cursor = matchIndex + keyword.length;
+                }
+                return result + escapeHTML(text.slice(cursor));
+            };
+            const plainText = (value) => String(value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            const episodeMatchesSearch = (episode, term) => {
+                const keyword = String(term || '').trim().toLocaleLowerCase();
+                if (!keyword) return false;
+                return `${episode.trackName || ''} ${plainText(episode.description)}`.toLocaleLowerCase().includes(keyword);
+            };
+            const orderEpisodesForSearch = (episodes, term) => {
+                if (!String(term || '').trim()) return episodes;
+                const matched = [], others = [];
+                episodes.forEach(episode => (episodeMatchesSearch(episode, term) ? matched : others).push(episode));
+                return matched.concat(others);
+            };
+            const getEpisodeSearchExcerpt = (episode, term) => {
+                const description = plainText(episode.description);
+                const keyword = String(term || '').trim();
+                const index = description.toLocaleLowerCase().indexOf(keyword.toLocaleLowerCase());
+                if (index === -1) return '';
+                const start = Math.max(0, index - 24);
+                const end = Math.min(description.length, index + keyword.length + 42);
+                return `${start ? '…' : ''}${description.slice(start, end)}${end < description.length ? '…' : ''}`;
+            };
             const getPlaybackProgress = () => JSON.parse(localStorage.getItem('playbackProgress') || '{}');
             const savePlaybackProgress = (episodeId, currentTime, duration) => {
                 if (!episodeId || !duration) return;
@@ -1289,7 +1340,7 @@
             }
 
             // PodcastIndex 會回傳 RSS enclosure 的實際音檔網址，不需透過文字 RSS 代理。
-            async function fetchEpisodesFromPodcastIndex(podcastInfo) {
+            async function fetchEpisodesFromPodcastIndex(podcastInfo, maxEpisodes = 100) {
                 let feedId = podcastInfo._source === 'podcastindex' ? podcastInfo.collectionId : null;
                 if (!feedId && podcastInfo.feedUrl) {
                     const lookup = await fetchWithTimeout(
@@ -1302,7 +1353,7 @@
                 }
                 if (!feedId) throw new Error('此節目沒有可用的 PodcastIndex feed ID');
                 const response = await fetchWithTimeout(
-                    `https://api.podcastindex.org/api/1.0/episodes/byfeedid?id=${encodeURIComponent(feedId)}&max=100`,
+                    `https://api.podcastindex.org/api/1.0/episodes/byfeedid?id=${encodeURIComponent(feedId)}&max=${encodeURIComponent(maxEpisodes)}`,
                     { headers: piAuthHeaders(), timeout: 12000 }
                 );
                 if (!response.ok) throw new Error(`PodcastIndex status ${response.status}`);
@@ -1327,6 +1378,33 @@
                 return episodes;
             }
 
+            async function fetchEpisodesForSearch(collectionId, podcastInfo) {
+                // Search API results may match a historical episode. Each provider
+                // exposes a different depth of catalogue, so merge their results.
+                const results = await Promise.allSettled([
+                    // PodcastIndex supports up to 1,000 episodes per request. Load
+                    // the deeper history before sorting so matches past row 50 can
+                    // be promoted into the visible list.
+                    fetchEpisodesFromPodcastIndex(podcastInfo, 1000),
+                    parseFeed(podcastInfo.feedUrl, podcastInfo),
+                    fetchEpisodesFromITunes(collectionId, podcastInfo),
+                ]);
+                const episodes = [];
+                const knownUrls = new Set();
+                results.forEach(result => {
+                    if (result.status !== 'fulfilled') return;
+                    result.value.forEach(episode => {
+                        const key = String(episode.episodeUrl || '').trim();
+                        if (key && !knownUrls.has(key)) {
+                            knownUrls.add(key);
+                            episodes.push(episode);
+                        }
+                    });
+                });
+                if (!episodes.length) throw new Error('所有單集來源均無法載入');
+                return orderEpisodesForSearch(episodes, searchState.term);
+            }
+
             async function fetchEpisodes(collectionId) {
                 if (isFetchingDetails) return;
                 isFetchingDetails = true;
@@ -1340,19 +1418,23 @@
                     const podcastInfo = await getPodcastInfo(collectionId);
                     renderPodcastShell(podcastInfo);
                     let episodes;
-                    try {
-                        episodes = await fetchEpisodesFromPodcastIndex(podcastInfo);
-                        console.info('[Episodes] PodcastIndex 原始音檔清單載入成功');
-                    } catch (piError) {
+                    if (currentViewSource === 'search' && searchState.term.trim()) {
+                        episodes = await fetchEpisodesForSearch(collectionId, podcastInfo);
+                    } else {
                         try {
-                            episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
-                            console.warn('[Episodes] PodcastIndex 失敗，改用 RSS：', piError.message);
-                        } catch (rssError) {
+                            episodes = await fetchEpisodesFromPodcastIndex(podcastInfo);
+                            console.info('[Episodes] PodcastIndex 原始音檔清單載入成功');
+                        } catch (piError) {
                             try {
-                                episodes = await fetchEpisodesFromITunes(collectionId, podcastInfo);
-                                console.warn('[Episodes] RSS 失敗，改用 Apple 備援：', rssError.message);
-                            } catch (itunesError) {
-                                throw new Error(`PodcastIndex、RSS 與 Apple 皆無法載入此節目。PodcastIndex：${piError.message}；RSS：${rssError.message}；Apple：${itunesError.message}`);
+                                episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
+                                console.warn('[Episodes] PodcastIndex 失敗，改用 RSS：', piError.message);
+                            } catch (rssError) {
+                                try {
+                                    episodes = await fetchEpisodesFromITunes(collectionId, podcastInfo);
+                                    console.warn('[Episodes] RSS 失敗，改用 Apple 備援：', rssError.message);
+                                } catch (itunesError) {
+                                    throw new Error(`PodcastIndex、RSS 與 Apple 皆無法載入此節目。PodcastIndex：${piError.message}；RSS：${rssError.message}；Apple：${itunesError.message}`);
+                                }
                             }
                         }
                     }
@@ -1375,6 +1457,10 @@
                 const btnText = isCollected ? '✓ 已收藏' : '收藏';
                 const btnColor = isCollected ? '#6c757d' : '#27C93F';
                 const btnDisabled = isCollected ? 'disabled' : '';
+                const searchKeyword = currentViewSource === 'search' ? searchState.term.trim() : '';
+                const searchContextHTML = searchKeyword
+                    ? `<div class="search-keyword-badge"><i class="fas fa-magnifying-glass"></i> 搜尋關鍵字：${escapeHTML(searchKeyword)}<span id="search-keyword-match-count"></span></div>`
+                    : '';
                 
                 let navHeaderHTML = '';
                 if (currentViewSource === 'search') {
@@ -1407,6 +1493,7 @@
                             <p class="text-sm mt-1 truncate">${podcast.artistName}</p>
                         </div>
                     </div>
+                    ${searchContextHTML}
                     <div class="flex items-center justify-between mt-4 mb-2">
                         <h2 class="text-xl font-bold">最新單集</h2>
                         <div class="flex items-center gap-4">
@@ -1445,16 +1532,27 @@
                 const escapeAttr = (str) => String(str || '').replace(/"/g, '&quot;');
                 const progressData = getPlaybackProgress();
                 const savedEpisodes = getSavedEpisodes();
+                const searchKeyword = currentViewSource === 'search' ? searchState.term : '';
+                const orderedEpisodes = orderEpisodesForSearch(episodes, searchKeyword);
+                const matchingEpisodeCount = orderedEpisodes.filter(ep => episodeMatchesSearch(ep, searchKeyword)).length;
+                const searchBadge = document.getElementById('search-keyword-match-count');
+                if (searchBadge && searchKeyword.trim()) {
+                    searchBadge.textContent = matchingEpisodeCount
+                        ? `・找到 ${matchingEpisodeCount} 個相關單集，已置頂`
+                        : '・此批載入的單集未含此關鍵字';
+                }
 
-                const episodesHTML = episodes.slice(0, 50).map((ep, index) => {
+                const episodesHTML = orderedEpisodes.slice(0, 50).map((ep, index) => {
                     const durationFormatted = formatDuration(ep.duration);
                     const sizeFormatted = formatFileSize(ep.fileSize);
                     
                     const progress = progressData[ep.trackId];
                     const progressPercent = progress && progress.duration ? (progress.currentTime / progress.duration) * 100 : 0;
                     const isListened = progressPercent > 95;
-                    const isSaved = savedEpisodes.some(savedEp => savedEp.trackId === ep.trackId);
+                    const isSaved = savedEpisodes.some(savedEp => sameTrackId(savedEp.trackId, ep.trackId));
                     const savedIconClass = isSaved ? 'fas' : 'far';
+                    const descriptionMatch = searchKeyword && !String(ep.trackName || '').toLocaleLowerCase().includes(searchKeyword.trim().toLocaleLowerCase());
+                    const searchExcerpt = descriptionMatch ? getEpisodeSearchExcerpt(ep, searchKeyword) : '';
 
                     return `
                     <div class="episode-item ${isListened ? 'is-listened' : ''}" data-episode-id="${escapeAttr(ep.trackId)}">
@@ -1465,7 +1563,8 @@
                         </div>
                         <div class="episode-main-content">
                              <div class="flex-1 overflow-hidden">
-                                <div class="font-semibold truncate text-sm" title="${escapeAttr(ep.trackName)}">${ep.trackName}</div>
+                                <div class="font-semibold truncate text-sm" title="${escapeAttr(ep.trackName)}">${highlightSearchTerm(ep.trackName, searchKeyword)}</div>
+                                ${searchExcerpt ? `<div class="episode-search-context">內容提及：${highlightSearchTerm(searchExcerpt, searchKeyword)}</div>` : ''}
                             </div>
                         </div>
                         <div class="episode-metadata flex items-center gap-4">
@@ -1487,21 +1586,21 @@
                 placeholder.outerHTML = `<div class="podcast-episodes">${episodesHTML}</div>`;
 
                 domElements.podcastDetailView.querySelectorAll('.episode-item').forEach(item => {
-                    const ep = episodes.find(e => e.trackId === item.dataset.episodeId);
+                    const ep = orderedEpisodes.find(e => sameTrackId(e.trackId, item.dataset.episodeId));
                     if (!ep) return;
                     // 整列皆可點擊播放；縮圖與操作按鈕各自保留原本的功能。
                     item.addEventListener('click', (e) => {
                         if (e.target.closest('.episode-thumbnail-btn, .episode-item-actions')) return;
-                        playEpisode(ep, podcast.artistName, episodes);
+                        playEpisode(ep, podcast.artistName, orderedEpisodes);
                     });
-                    item.querySelector('.episode-thumbnail-btn').addEventListener('click', (e) => { e.stopPropagation(); openEpisodeModal(ep, podcast, episodes); });
+                    item.querySelector('.episode-thumbnail-btn').addEventListener('click', (e) => { e.stopPropagation(); openEpisodeModal(ep, podcast, orderedEpisodes); });
                     item.querySelector('.download-action-link')?.addEventListener('click', (e) => e.stopPropagation());
                     
                     const infoBtn = item.querySelector('.info-action-btn');
                     if(infoBtn) {
                         infoBtn.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            openEpisodeModal(ep, podcast, episodes);
+                            openEpisodeModal(ep, podcast, orderedEpisodes);
                         });
                     }
 
@@ -1539,7 +1638,7 @@
 
             const saveEpisodeToggle = (episode, podcastInfo) => {
                 let savedEpisodes = getSavedEpisodes();
-                const existingIndex = savedEpisodes.findIndex(e => e.trackId === episode.trackId);
+                const existingIndex = savedEpisodes.findIndex(e => sameTrackId(e.trackId, episode.trackId));
                 const saveBtn = document.querySelector(`.episode-item[data-episode-id="${CSS.escape(String(episode.trackId))}"] .save-episode-btn`);
 
                 if (existingIndex > -1) {
@@ -1776,7 +1875,7 @@
                     tr.querySelector('.remove-saved-btn').addEventListener('click', (e) => {
                         e.stopPropagation();
                         let currentSaved = getSavedEpisodes();
-                        currentSaved = currentSaved.filter(saved => saved.trackId !== ep.trackId);
+                        currentSaved = currentSaved.filter(saved => !sameTrackId(saved.trackId, ep.trackId));
                         saveSavedEpisodes(currentSaved);
                         showToast('已移除儲存的單集', 'error');
                         renderSavedEpisodes();
@@ -1838,6 +1937,12 @@
                     return;
                 }
 
+                const sourceUrl = String(episode.episodeUrl || '').trim();
+                if (!/^https:\/\//i.test(sourceUrl)) {
+                    showToast('這一集沒有可播放的安全音訊網址。', 'error');
+                    return;
+                }
+
                 const episodeItem = document.querySelector(`.episode-item[data-episode-id="${CSS.escape(String(episode.trackId))}"]`);
                 const spinnerContainer = episodeItem?.querySelector('.episode-thumbnail-btn .loading-spinner-overlay');
                 
@@ -1858,14 +1963,19 @@
                 const resumeAt = savedProgress && savedProgress.currentTime < savedProgress.duration * 0.95
                     ? savedProgress.currentTime : 0;
                 audio.pause();
-                audio.src = episode.episodeUrl;
+                // Assign the verified source immediately inside the click handler so
+                // browsers retain the user-gesture permission needed for playback.
+                audio.src = sourceUrl;
                 audio.load();
                 audio.addEventListener('loadedmetadata', () => {
                     if (resumeAt > 0) audio.currentTime = resumeAt;
                 }, { once: true });
                 audio.play().catch(e => {
                     console.error('Initial play() failed.', e);
-                    showToast('音訊尚未能開始播放，請稍候再試。', 'error');
+                    if (spinnerContainer) spinnerContainer.style.display = 'none';
+                    playerState.isPlaying = false;
+                    syncPlayerUI();
+                    showToast('瀏覽器暫時無法開始播放；請再點一次該單集重試。', 'error');
                 });
                 syncPlayerUI();
             };
@@ -2031,7 +2141,7 @@
                 domElements.soundIconContainer.innerHTML = soundIconSVG;
                 
                 const savedSettings = getPlayerSettings();
-                let lastVolume = savedSettings.lastVolume || 0.5;
+                lastVolume = savedSettings.lastVolume || 0.5;
                 audio.volume = savedSettings.volume !== undefined ? savedSettings.volume : 0.5;
                 audio.playbackRate = savedSettings.playbackRate || 1.0;
                 playerState.isRepeating = savedSettings.isRepeating || false;
