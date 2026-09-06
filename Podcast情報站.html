@@ -2,14 +2,15 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://itunes.apple.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' https: data: blob:; media-src 'self' https: blob:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
     <title>Podcast導航站</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2eTDRqN5yI61Rz5oVn2uW/yTzQ1LzW4zLh1tM5hY6k8n+rE8f/a5iK4Xg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" xintegrity="sha512-TelkP3PCMJv+QzVYLEBBcMh5yGzBscUAc3Jy/BSoJxyD/GxFMLRxEunHk+KdaNf1rBzmSAUGeBCDOKWIDmbpGA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" integrity="sha512-TelkP3PCMJv+viMWynjKcvLsQzx6dJHvIGhfqzFtZKgAjKM1YPqcwzzDEoTc/BHjf43PcPzTQOjuTr4YdE8lNQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         /* 自定義樣式 */
         :root {
@@ -545,11 +546,11 @@
         </div>
     </footer>
     
-    <div id="modal-overlay">
-        <div id="episode-modal">
-            <button id="modal-close-btn" title="關閉"><i class="fas fa-times"></i></button>
+    <div id="modal-overlay" role="presentation">
+        <div id="episode-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-description" tabindex="-1">
+            <button id="modal-close-btn" title="關閉" aria-label="關閉單集資訊"><i class="fas fa-times"></i></button>
             <div class="flex items-start gap-4 flex-shrink-0">
-                <img id="modal-artwork" src="" class="w-24 h-24 rounded-lg flex-shrink-0">
+                <img id="modal-artwork" src="" alt="單集封面" class="w-24 h-24 rounded-lg flex-shrink-0">
                 <div class="flex-1">
                     <p id="modal-date" class="text-xs text-gray-400 mb-1"></p>
                     <h3 id="modal-title" class="text-lg font-bold"></h3>
@@ -627,11 +628,8 @@
             const moonIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25c0 5.385 4.365 9.75 9.75 9.75 2.572 0 4.92-.99 6.697-2.648z" /></svg>`;
             
             // ── API 設定 ──────────────────────────────────────────────────
-            // PodcastIndex API（免費、開放、無需代理）
-            // 申請：https://api.podcastindex.org/  申請後填入下方
-            const PI_KEY    = 'FKUTHRF7UNSJPTAD7TN7';   // API Key
-            const PI_SECRET = 'rXbZa6J$xreGnAMHKqpPafH5aTz8cBdPHDxN#Bcf'; // API Secret
-            // iTunes API 直連（現代瀏覽器允許，作為備援）
+            // 此純前端版本只使用不需私密金鑰的 Apple lookup/JSONP 與公開 RSS。
+            // 若日後接入 PodcastIndex，簽章請放在後端或 serverless function，切勿放入瀏覽器。
             const ITUNES_BASE = 'https://itunes.apple.com';
             // RSS 免費代理：分散單一服務斷線/被擋的風險。
             // 公開代理不適合傳送私密或需驗證的資料。
@@ -667,7 +665,9 @@
             const collectionCache = {};
             let playerState = { currentEpisode: null, playlist: [], currentIndex: -1, isPlaying: false, _playbackAttempt: 'direct' };
             let isFavoritesFilterActive = false;
-            let isFetchingDetails = false;
+            let activeDetailsController = null;
+            let detailsRequestId = 0;
+            let searchRequestId = 0;
             let lastProgressUpdateTime = 0;
             let lastVolume = 0.5;
             let currentViewSource = 'sidebar';
@@ -699,16 +699,48 @@
                 }, 3000);
             };
 
-            const getCollection = () => JSON.parse(localStorage.getItem('podcastCollection') || '[]');
-            const saveCollection = (collection) => localStorage.setItem('podcastCollection', JSON.stringify(collection));
-            const getSavedEpisodes = () => JSON.parse(localStorage.getItem('savedEpisodes') || '[]');
-            const saveSavedEpisodes = (episodes) => localStorage.setItem('savedEpisodes', JSON.stringify(episodes));
+            const readStorageJson = (key, fallback) => {
+                try {
+                    const raw = localStorage.getItem(key);
+                    if (raw === null) return fallback;
+                    const value = JSON.parse(raw);
+                    return Array.isArray(fallback) ? (Array.isArray(value) ? value : fallback) : (value && typeof value === 'object' ? value : fallback);
+                } catch (error) {
+                    console.warn(`本機資料「${key}」無法讀取，已使用預設值。`, error);
+                    return fallback;
+                }
+            };
+            const writeStorageJson = (key, value) => {
+                try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+                catch (error) { console.error(`本機資料「${key}」無法儲存。`, error); showToast('本機儲存空間不足或不可用，變更未保存。', 'error'); return false; }
+            };
+            const readStorageString = (key, fallback = '') => {
+                try { return localStorage.getItem(key) ?? fallback; }
+                catch (error) { console.warn(`本機設定「${key}」無法讀取。`, error); return fallback; }
+            };
+            const writeStorageString = (key, value) => {
+                try { localStorage.setItem(key, value); return true; }
+                catch (error) { console.error(`本機設定「${key}」無法儲存。`, error); showToast('本機儲存空間不足或不可用，設定未保存。', 'error'); return false; }
+            };
+            const getCollection = () => readStorageJson('podcastCollection', []);
+            const saveCollection = (collection) => writeStorageJson('podcastCollection', collection);
+            const getSavedEpisodes = () => readStorageJson('savedEpisodes', []);
+            const saveSavedEpisodes = (episodes) => writeStorageJson('savedEpisodes', episodes);
             // dataset attributes are always strings, while Apple and PodcastIndex
             // can return numeric track IDs. Compare their stable string form.
             const sameTrackId = (left, right) => left != null && right != null && String(left) === String(right);
             const escapeHTML = (value) => String(value || '')
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+            const escapeAttr = escapeHTML;
+            const safeHttpsUrl = (value, fallback = '') => {
+                try { const url = new URL(String(value || '')); return url.protocol === 'https:' ? url.href : fallback; }
+                catch (_) { return fallback; }
+            };
+            const safeDateText = value => {
+                const date = new Date(value);
+                return Number.isNaN(date.getTime()) ? '日期未知' : date.toLocaleDateString('sv-SE');
+            };
             const highlightSearchTerm = (value, term) => {
                 const text = String(value || '');
                 const keyword = String(term || '').trim();
@@ -745,15 +777,15 @@
                 const end = Math.min(description.length, index + keyword.length + 42);
                 return `${start ? '…' : ''}${description.slice(start, end)}${end < description.length ? '…' : ''}`;
             };
-            const getPlaybackProgress = () => JSON.parse(localStorage.getItem('playbackProgress') || '{}');
+            const getPlaybackProgress = () => readStorageJson('playbackProgress', {});
             const savePlaybackProgress = (episodeId, currentTime, duration) => {
                 if (!episodeId || !duration) return;
                 const progressData = getPlaybackProgress();
                 progressData[episodeId] = { currentTime, duration };
-                localStorage.setItem('playbackProgress', JSON.stringify(progressData));
+                writeStorageJson('playbackProgress', progressData);
             };
             
-            const getPlayerSettings = () => JSON.parse(localStorage.getItem('playerSettings') || '{}');
+            const getPlayerSettings = () => readStorageJson('playerSettings', {});
             const savePlayerSettings = () => {
                 const settings = {
                     volume: audio.volume,
@@ -761,7 +793,7 @@
                     isRepeating: playerState.isRepeating,
                     lastVolume: lastVolume 
                 };
-                localStorage.setItem('playerSettings', JSON.stringify(settings));
+                writeStorageJson('playerSettings', settings);
             };
             
             const downloadCollectionAsRtf = () => {
@@ -815,13 +847,13 @@
                     const genre = escapeHTML(podcast.primaryGenreName || 'N/A');
                     const name = escapeHTML(podcast.collectionName || 'N/A');
                     const artist = escapeHTML(podcast.artistName || 'N/A');
-                    const artworkUrl = podcast.artworkUrl60 || 'https://placehold.co/40x40/f5f5f7/333?text=NA';
-                    const podcastLink = escapeHTML(podcast.collectionViewUrl || '#');
+                    const artworkUrl = safeHttpsUrl(podcast.artworkUrl60, 'https://placehold.co/40x40/f5f5f7/333?text=NA');
+                    const podcastLink = safeHttpsUrl(podcast.collectionViewUrl, '#');
                     
                     htmlContent += `
                         <tr data-collection-name="${name}" data-artist-name="${artist}">
                            <td>${genre}</td>
-                           <td><img src="${artworkUrl}" alt="icon" class="podcast-icon"></td>
+                           <td><img src="${escapeHTML(artworkUrl)}" alt="icon" class="podcast-icon"></td>
                            <td>${name}</td>
                            <td>${artist}</td>
                            <td><a href="${podcastLink}" target="_blank">收聽頁面</a></td>
@@ -837,6 +869,7 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
                 showToast("節目表 HTML 檔案匯出成功！", "success");
             };
 
@@ -862,6 +895,7 @@
                     const existingIds = new Set(currentCollection.map(p => p.collectionId));
                     let addedCount = 0;
                     let failedCount = 0;
+                    let duplicateCount = 0;
 
                     const importPromises = Array.from(rows).map(row => {
                         const collectionName = row.dataset.collectionName;
@@ -870,33 +904,8 @@
                         
                         const searchTerm = `${collectionName} ${artistName}`;
 
-                        // ① PodcastIndex 搜尋
-                        return fetchWithTimeout(
-                            `https://api.podcastindex.org/api/1.0/search/byterm?q=${encodeURIComponent(searchTerm)}&max=5&pretty`,
-                            { headers: piAuthHeaders(), timeout: 12000 }
-                        ).then(res => res.json())
-                        .then(piData => {
-                            if (piData.feeds && piData.feeds.length > 0) {
-                                const best = piData.feeds.find(f => f.title === collectionName) || piData.feeds[0];
-                                return normalizePIResult(best);
-                            }
-                            throw new Error('PI 無結果');
-                        })
-                        .catch(() => {
-                            // ② 備援：iTunes JSONP（直接雙擊 HTML 也可用）
-                            return fetchJsonp(`${ITUNES_BASE}/search?term=${encodeURIComponent(searchTerm)}&entity=podcast&limit=5`)
-                                .then(data => {
-                                    if (data.results && data.results.length > 0) {
-                                        const bestMatch = data.results.find(p => p.collectionName === collectionName && p.artistName === artistName);
-                                        return bestMatch || data.results[0];
-                                    }
-                                    return null;
-                                })
-                                .catch(err => {
-                                    console.error('匯入搜尋失敗:', collectionName, err);
-                                    return null;
-                                });
-                        });
+                        return fetchJsonp(`${ITUNES_BASE}/search?term=${encodeURIComponent(searchTerm)}&entity=podcast&limit=5`)
+                            .then(data => data.results?.find(p => p.collectionName === collectionName && p.artistName === artistName) || data.results?.[0] || null);
                     });
 
                     const results = await Promise.allSettled(importPromises);
@@ -909,7 +918,7 @@
                                 newPodcasts.push({ ...podcast, addedAt: Date.now(), isFavorite: false });
                                 existingIds.add(podcast.collectionId);
                                 addedCount++;
-                            }
+                            } else duplicateCount++;
                         } else {
                             failedCount++;
                         }
@@ -922,7 +931,7 @@
                         domElements.defaultView.style.display = 'none';
                     }
 
-                    showToast(`匯入完成！成功新增 ${addedCount} 個節目，失敗 ${failedCount} 個。`, 'success');
+                    showToast(`匯入完成：新增 ${addedCount}、重複 ${duplicateCount}、找不到或失敗 ${failedCount}。`, failedCount ? 'error' : 'success');
                     event.target.value = '';
                 };
                 reader.readAsText(file);
@@ -968,7 +977,7 @@
                         const header = document.createElement('h3');
                         header.className = 'sidebar-genre-header';
                         const iconSVG = GENRE_ICONS[genre] || GENRE_ICONS['Default'];
-                        header.innerHTML = `${iconSVG}<span class="genre-text">${genre}</span>`;
+                        header.innerHTML = `${iconSVG}<span class="genre-text">${escapeHTML(genre)}</span>`;
                         domElements.sidebarItemsContainer.appendChild(header);
 
                         const podcastsInGenre = groupedByGenre[genre];
@@ -1035,16 +1044,18 @@
             function renderCollectionItem(podcast) {
                 const item = document.createElement('div');
                 item.className = 'sidebar-item';
-                item.dataset.id = podcast.collectionId;
-                item.title = `${podcast.collectionName} - ${podcast.artistName}`;
+                item.dataset.id = String(podcast.collectionId || '');
+                item.title = `${podcast.collectionName || ''} - ${podcast.artistName || ''}`;
+                item.setAttribute('role', 'button');
+                item.tabIndex = 0;
                 const trashSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.144-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.057-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>`;
                 const heartIconClass = podcast.isFavorite ? 'fas' : 'far';
                 item.innerHTML = `
                     <span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>
-                    <img src="${podcast.artworkUrl600}" alt="${podcast.collectionName}" class="w-12 h-12 rounded-lg flex-shrink-0">
+                    <img src="${escapeAttr(safeHttpsUrl(podcast.artworkUrl600, 'https://placehold.co/48x48/222/fff?text=Pod'))}" alt="${escapeAttr(podcast.collectionName)}" class="w-12 h-12 rounded-lg flex-shrink-0">
                     <div class="flex-1 overflow-hidden sidebar-item__text-wrapper">
-                        <div class="font-semibold text-sm">${podcast.collectionName}</div>
-                        <div class="text-xs text-gray-400 truncate">${podcast.artistName}</div>
+                        <div class="font-semibold text-sm">${escapeHTML(podcast.collectionName)}</div>
+                        <div class="text-xs text-gray-400 truncate">${escapeHTML(podcast.artistName)}</div>
                     </div>
                     <div class="sidebar-item-actions">
                         <button class="sidebar-action-btn fav-btn ${podcast.isFavorite ? 'is-favorite' : ''}" title="標記為最愛"><i class="${heartIconClass} fa-heart"></i></button>
@@ -1057,6 +1068,7 @@
                     currentViewSource = 'sidebar';
                     fetchEpisodes(podcast.collectionId);
                 });
+                item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); item.click(); } });
                 const [favBtn, deleteBtn] = item.querySelectorAll('.sidebar-action-btn');
                 favBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFavoriteStatus(podcast.collectionId); });
                 deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); removeFromCollection(podcast.collectionId); });
@@ -1071,34 +1083,6 @@
                 }
             }
             
-            // ── PodcastIndex 工具函式 ──────────────────────────────────────
-            function piAuthHeaders() {
-                const apiHeaderTime = Math.floor(Date.now() / 1000);
-                const hash = CryptoJS.SHA1(PI_KEY + PI_SECRET + apiHeaderTime).toString();
-                return {
-                    'X-Auth-Date':  String(apiHeaderTime),
-                    'X-Auth-Key':   PI_KEY,
-                    'Authorization': hash,
-                    'User-Agent':   'PodcastApp/1.0'
-                };
-            }
-
-            // 將 PodcastIndex 結果正規化為 iTunes 相容格式
-            function normalizePIResult(feed) {
-                return {
-                    collectionId:      feed.id,
-                    collectionName:    feed.title,
-                    artistName:        feed.author || feed.ownerName || '',
-                    artworkUrl60:      feed.artwork || feed.image || '',
-                    artworkUrl600:     feed.artwork || feed.image || '',
-                    feedUrl:           feed.url,
-                    primaryGenreName:  (feed.categories && Object.values(feed.categories)[0]) || 'Podcast',
-                    trackCount:        feed.episodeCount || 0,
-                    collectionViewUrl: feed.link || '',
-                    _source:           'podcastindex'
-                };
-            }
-
             async function searchPodcasts(term, newOffset = 0) {
                 const showView = (v) => { document.querySelectorAll('#main-content > div').forEach(d => d.style.display = 'none'); document.getElementById(v).style.display='flex'; };
                 if (!term) { 
@@ -1110,6 +1094,7 @@
                 container.innerHTML = `<div class="w-full flex justify-center mt-8 col-span-full"><div class="spinner"></div></div>`;
                 document.getElementById('search-pagination-controls').innerHTML = '';
 
+                const requestId = ++searchRequestId;
                 let results = [];
                 let searchError = null;
                 try {
@@ -1123,6 +1108,8 @@
                     searchError = itErr;
                     console.error('[Search] iTunes JSONP 失敗：', itErr.message);
                 }
+
+                if (requestId !== searchRequestId) return;
 
                 searchState.term = term;
                 searchState.offset = newOffset;
@@ -1140,12 +1127,15 @@
                     const isCollected = collection.some(p => p.collectionId === podcast.collectionId);
                     const item = document.createElement('div');
                     item.className = 'search-result-item';
-                    item.innerHTML = `<button class="add-to-fav-btn ${isCollected ? 'is-favorite' : ''}" data-id="${podcast.collectionId}" title="加入/移除收藏"><i class="fa-heart ${isCollected ? 'fas' : 'far'}"></i></button><img src="${podcast.artworkUrl600}" class="w-full rounded-lg mb-1 shadow-lg"><span class="font-bold text-sm truncate w-full" title="${podcast.collectionName}">${podcast.collectionName}</span><span class="text-xs text-gray-400 truncate w-full" title="${podcast.artistName}">${podcast.artistName}</span>`;
+                    item.setAttribute('role', 'button');
+                    item.tabIndex = 0;
+                    item.innerHTML = `<button class="add-to-fav-btn ${isCollected ? 'is-favorite' : ''}" data-id="${escapeAttr(podcast.collectionId)}" title="加入/移除收藏"><i class="fa-heart ${isCollected ? 'fas' : 'far'}"></i></button><img src="${escapeAttr(safeHttpsUrl(podcast.artworkUrl600, 'https://placehold.co/300x300/222/fff?text=Pod'))}" alt="${escapeAttr(podcast.collectionName)}" class="w-full rounded-lg mb-1 shadow-lg"><span class="font-bold text-sm truncate w-full" title="${escapeAttr(podcast.collectionName)}">${escapeHTML(podcast.collectionName)}</span><span class="text-xs text-gray-400 truncate w-full" title="${escapeAttr(podcast.artistName)}">${escapeHTML(podcast.artistName)}</span>`;
                     item.addEventListener('click', () => {
                         currentViewSource = 'search';
                         searchState.currentIndex = index;
                         fetchEpisodes(podcast.collectionId);
                     });
+                    item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); item.click(); } });
                     const favBtn = item.querySelector('.add-to-fav-btn');
                     favBtn.addEventListener('click', (e) => { e.stopPropagation(); favBtn.classList.contains('is-favorite') ? removeFromCollection(podcast.collectionId) : addToCollection(podcast); });
                     container.appendChild(item);
@@ -1153,7 +1143,7 @@
                 renderPaginationControls();
             }
             
-            async function getPodcastInfo(collectionId) {
+            async function getPodcastInfo(collectionId, signal) {
                 if (collectionCache[collectionId] && collectionCache[collectionId].feedUrl) return collectionCache[collectionId];
 
                 // ① 若來源是 PodcastIndex，資料已包含 feedUrl，可直接使用快取中的節目物件
@@ -1169,58 +1159,53 @@
                     return fromCollection;
                 }
 
-                // ② 嘗試 PodcastIndex lookup by iTunes ID
-                try {
-                    const piRes = await fetchWithTimeout(
-                        `https://api.podcastindex.org/api/1.0/podcasts/byitunesid?id=${collectionId}&pretty`,
-                        { headers: piAuthHeaders(), timeout: 12000 }
-                    );
-                    if (!piRes.ok) throw new Error(`PI status ${piRes.status}`);
-                    const piData = await piRes.json();
-                    if (piData.feed && piData.feed.url) {
-                        const info = normalizePIResult(piData.feed);
-                        collectionCache[collectionId] = info;
-                        return info;
-                    }
-                    throw new Error('PodcastIndex 未返回有效 feed');
-                } catch (piErr) {
-                    console.warn('[GetInfo] PodcastIndex 失敗，改用 iTunes 直連：', piErr.message);
-                }
-
-                // ③ 備援：iTunes lookup JSONP
-                const itData = await fetchJsonp(`${ITUNES_BASE}/lookup?id=${encodeURIComponent(collectionId)}`, 12000);
+                // Apple lookup JSONP 可在直接雙擊開啟的 file:// 模式使用。
+                const itData = await fetchJsonp(`${ITUNES_BASE}/lookup?id=${encodeURIComponent(collectionId)}`, 12000, signal);
                 if (itData.resultCount === 0 || !itData.results[0].feedUrl) throw new Error('iTunes 找不到此 Podcast 或缺少 Feed URL。');
                 collectionCache[collectionId] = itData.results[0];
                 return itData.results[0];
             }
             
             async function fetchWithTimeout(resource, options = {}) {
-                const { timeout = 10000 } = options;
+                const { timeout = 10000, signal: externalSignal, ...fetchOptions } = options;
                 const controller = new AbortController();
                 const id = setTimeout(() => controller.abort(), timeout);
+                const abortFromParent = () => controller.abort();
+                externalSignal?.addEventListener('abort', abortFromParent, { once: true });
                 try {
-                    const response = await fetch(resource, { ...options, signal: controller.signal });
+                    const response = await fetch(resource, { ...fetchOptions, signal: controller.signal });
                     return response;
                 } catch (error) {
                     if (error.name === 'AbortError') throw new Error(`請求超時 (超過 ${timeout/1000} 秒)`);
                     throw error;
                 } finally {
                     clearTimeout(id);
+                    externalSignal?.removeEventListener('abort', abortFromParent);
                 }
             }
 
             // iTunes Search API 支援 JSONP，可避免 file:// 頁面的 CORS fetch 限制。
-            function fetchJsonp(resource, timeout = 12000) {
+            function fetchJsonp(resource, timeout = 12000, signal) {
                 return new Promise((resolve, reject) => {
                     const callbackName = `itunesJsonp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
                     const script = document.createElement('script');
                     const separator = resource.includes('?') ? '&' : '?';
                     let settled = false;
+                    let timer;
                     const cleanup = () => {
                         clearTimeout(timer);
                         script.remove();
+                        signal?.removeEventListener('abort', onAbort);
                         try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
                     };
+                    const onAbort = () => {
+                        if (settled) return;
+                        settled = true;
+                        cleanup();
+                        reject(new DOMException('請求已取消', 'AbortError'));
+                    };
+                    if (signal?.aborted) return onAbort();
+                    signal?.addEventListener('abort', onAbort, { once: true });
                     window[callbackName] = data => {
                         if (settled) return;
                         settled = true;
@@ -1233,7 +1218,7 @@
                         cleanup();
                         reject(new Error('Apple JSONP 連線失敗'));
                     };
-                    const timer = setTimeout(() => {
+                    timer = setTimeout(() => {
                         if (settled) return;
                         settled = true;
                         cleanup();
@@ -1274,7 +1259,7 @@
                 return episodes;
             }
 
-            async function parseFeed(feedUrl, podcastInfo) {
+            async function parseFeed(feedUrl, podcastInfo, signal) {
                 if (!/^https?:\/\//i.test(feedUrl || '')) throw new Error('Feed URL 格式不正確。');
                 const candidates = [
                     { name: '直連', url: feedUrl },
@@ -1285,6 +1270,7 @@
                     try {
                         const res = await fetchWithTimeout(candidate.url, {
                             timeout: 12000,
+                            signal,
                             headers: { Accept: 'application/rss+xml, application/xml, text/xml, */*' },
                         });
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1302,7 +1288,7 @@
             }
 
             // Apple 官方 API 可直接回傳 Podcast 單集，不需 CORS 代理。
-            async function fetchEpisodesFromITunes(collectionId, podcastInfo) {
+            async function fetchEpisodesFromITunes(collectionId, podcastInfo, signal) {
                 const storefronts = ['tw', 'us', ''];
                 const failures = [];
                 for (const country of storefronts) {
@@ -1310,7 +1296,7 @@
                         const countryParam = country ? `&country=${country}` : '';
                         const url = `${ITUNES_BASE}/lookup?id=${encodeURIComponent(collectionId)}&entity=podcastEpisode&limit=200${countryParam}`;
                         // JSONP 對 http(s) 與直接雙擊開啟的 file:// 模式都適用。
-                        const data = await fetchJsonp(url, 12000);
+                        const data = await fetchJsonp(url, 12000, signal);
                         const episodes = (data.results || []).filter(item =>
                             item.wrapperType === 'podcastEpisode' || item.kind === 'podcast-episode'
                         ).map(item => {
@@ -1339,55 +1325,11 @@
                 throw new Error(`Apple 各區商店均無單集（${failures.join('；')}）`);
             }
 
-            // PodcastIndex 會回傳 RSS enclosure 的實際音檔網址，不需透過文字 RSS 代理。
-            async function fetchEpisodesFromPodcastIndex(podcastInfo, maxEpisodes = 100) {
-                let feedId = podcastInfo._source === 'podcastindex' ? podcastInfo.collectionId : null;
-                if (!feedId && podcastInfo.feedUrl) {
-                    const lookup = await fetchWithTimeout(
-                        `https://api.podcastindex.org/api/1.0/podcasts/byfeedurl?url=${encodeURIComponent(podcastInfo.feedUrl)}`,
-                        { headers: piAuthHeaders(), timeout: 12000 }
-                    );
-                    if (!lookup.ok) throw new Error(`PodcastIndex feed lookup status ${lookup.status}`);
-                    const lookupData = await lookup.json();
-                    feedId = lookupData.feed?.id;
-                }
-                if (!feedId) throw new Error('此節目沒有可用的 PodcastIndex feed ID');
-                const response = await fetchWithTimeout(
-                    `https://api.podcastindex.org/api/1.0/episodes/byfeedid?id=${encodeURIComponent(feedId)}&max=${encodeURIComponent(maxEpisodes)}`,
-                    { headers: piAuthHeaders(), timeout: 12000 }
-                );
-                if (!response.ok) throw new Error(`PodcastIndex status ${response.status}`);
-                const data = await response.json();
-                const episodes = (data.items || []).map(item => {
-                    if (!item.enclosureUrl) return null;
-                    return {
-                        trackId: item.guid || item.id || item.enclosureUrl,
-                        trackName: item.title || '未命名單集',
-                        episodeUrl: item.enclosureUrl,
-                        podcastCollectionId: podcastInfo.collectionId,
-                        _source: 'podcastindex',
-                        releaseDate: item.datePublished ? new Date(item.datePublished * 1000).toISOString() : new Date().toISOString(),
-                        description: item.description || '',
-                        artworkUrl60: item.image || podcastInfo.artworkUrl60,
-                        artworkUrl600: item.image || podcastInfo.artworkUrl600,
-                        duration: item.duration || 0,
-                        fileSize: item.enclosureLength || 0,
-                    };
-                }).filter(Boolean);
-                if (!episodes.length) throw new Error('PodcastIndex 未返回可播放單集');
-                return episodes;
-            }
-
-            async function fetchEpisodesForSearch(collectionId, podcastInfo) {
-                // Search API results may match a historical episode. Each provider
-                // exposes a different depth of catalogue, so merge their results.
+            async function fetchEpisodesForSearch(collectionId, podcastInfo, signal) {
+                // 深度搜尋僅在使用者進入搜尋結果後啟動，並行合併公開 RSS 與 Apple 資料。
                 const results = await Promise.allSettled([
-                    // PodcastIndex supports up to 1,000 episodes per request. Load
-                    // the deeper history before sorting so matches past row 50 can
-                    // be promoted into the visible list.
-                    fetchEpisodesFromPodcastIndex(podcastInfo, 1000),
-                    parseFeed(podcastInfo.feedUrl, podcastInfo),
-                    fetchEpisodesFromITunes(collectionId, podcastInfo),
+                    parseFeed(podcastInfo.feedUrl, podcastInfo, signal),
+                    fetchEpisodesFromITunes(collectionId, podcastInfo, signal),
                 ]);
                 const episodes = [];
                 const knownUrls = new Set();
@@ -1406,8 +1348,10 @@
             }
 
             async function fetchEpisodes(collectionId) {
-                if (isFetchingDetails) return;
-                isFetchingDetails = true;
+                activeDetailsController?.abort();
+                const controller = new AbortController();
+                activeDetailsController = controller;
+                const requestId = ++detailsRequestId;
                 const showView = (v) => { 
                     domElements.mainContent.querySelectorAll(':scope > div').forEach(d => d.style.display = 'none');
                     domElements[v].style.display = 'flex'; 
@@ -1415,39 +1359,31 @@
                 showView('podcastDetailView');
                 
                 try {
-                    const podcastInfo = await getPodcastInfo(collectionId);
+                    const podcastInfo = await getPodcastInfo(collectionId, controller.signal);
+                    if (requestId !== detailsRequestId) return;
                     renderPodcastShell(podcastInfo);
                     let episodes;
                     if (currentViewSource === 'search' && searchState.term.trim()) {
-                        episodes = await fetchEpisodesForSearch(collectionId, podcastInfo);
+                        episodes = await fetchEpisodesForSearch(collectionId, podcastInfo, controller.signal);
                     } else {
-                        try {
-                            episodes = await fetchEpisodesFromPodcastIndex(podcastInfo);
-                            console.info('[Episodes] PodcastIndex 原始音檔清單載入成功');
-                        } catch (piError) {
-                            try {
-                                episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
-                                console.warn('[Episodes] PodcastIndex 失敗，改用 RSS：', piError.message);
-                            } catch (rssError) {
-                                try {
-                                    episodes = await fetchEpisodesFromITunes(collectionId, podcastInfo);
-                                    console.warn('[Episodes] RSS 失敗，改用 Apple 備援：', rssError.message);
-                                } catch (itunesError) {
-                                    throw new Error(`PodcastIndex、RSS 與 Apple 皆無法載入此節目。PodcastIndex：${piError.message}；RSS：${rssError.message}；Apple：${itunesError.message}`);
-                                }
-                            }
+                        try { episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo, controller.signal); }
+                        catch (rssError) {
+                            try { episodes = await fetchEpisodesFromITunes(collectionId, podcastInfo, controller.signal); }
+                            catch (itunesError) { throw new Error(`RSS 與 Apple 皆無法載入此節目。RSS：${rssError.message}；Apple：${itunesError.message}`); }
                         }
                     }
+                    if (requestId !== detailsRequestId) return;
                     if (collectionCache[collectionId]) {
                         collectionCache[collectionId].episodes = episodes;
                     }
                     populateEpisodesList(episodes, podcastInfo);
 
                 } catch (error) {
+                    if (error.name === 'AbortError' || requestId !== detailsRequestId) return;
                     domElements.podcastDetailView.innerHTML = `<div class="text-center text-[var(--color-text-secondary)] m-auto"><p class="font-bold text-lg mb-2">哎呀！節目資訊載入失敗了</p><p class="text-sm" id="feed-error-message"></p><p class="text-xs mt-2">可能是對方的伺服器有點問題，或是您的網路不太穩定。請稍後再試試看。</p></div>`;
                     document.getElementById('feed-error-message').textContent = error.message;
                 } finally {
-                    isFetchingDetails = false;
+                    if (requestId === detailsRequestId) activeDetailsController = null;
                 }
             }
 
@@ -1484,13 +1420,13 @@
                 domElements.podcastDetailView.innerHTML = `
                     ${navHeaderHTML}
                     <div class="podcast-header">
-                        <img src="${podcast.artworkUrl600}" alt="${podcast.collectionName} cover" title="${tooltipText}">
+                        <img src="${escapeAttr(safeHttpsUrl(podcast.artworkUrl600, 'https://placehold.co/300x300/222/fff?text=Pod'))}" alt="${escapeAttr(podcast.collectionName)} cover" title="${escapeAttr(tooltipText)}">
                         <div class="flex-1 overflow-hidden">
                             <div class="flex items-center gap-4">
-                                <h1 class="text-xl font-bold truncate">${podcast.collectionName}</h1>
+                                <h1 class="text-xl font-bold truncate">${escapeHTML(podcast.collectionName)}</h1>
                                 <button id="add-to-collection-btn" style="background-color: ${btnColor};" class="text-white font-bold py-1 px-3 rounded-full text-sm ml-4 flex-shrink-0" ${btnDisabled}>${btnText}</button>
                             </div>
-                            <p class="text-sm mt-1 truncate">${podcast.artistName}</p>
+                            <p class="text-sm mt-1 truncate">${escapeHTML(podcast.artistName)}</p>
                         </div>
                     </div>
                     ${searchContextHTML}
@@ -1529,7 +1465,6 @@
             function populateEpisodesList(episodes, podcast) {
                 const placeholder = document.getElementById('episodes-placeholder');
                 if (!placeholder) return;
-                const escapeAttr = (str) => String(str || '').replace(/"/g, '&quot;');
                 const progressData = getPlaybackProgress();
                 const savedEpisodes = getSavedEpisodes();
                 const searchKeyword = currentViewSource === 'search' ? searchState.term : '';
@@ -1547,7 +1482,7 @@
                     const sizeFormatted = formatFileSize(ep.fileSize);
                     
                     const progress = progressData[ep.trackId];
-                    const progressPercent = progress && progress.duration ? (progress.currentTime / progress.duration) * 100 : 0;
+                    const progressPercent = progress && progress.duration ? Math.max(0, Math.min(100, (progress.currentTime / progress.duration) * 100)) : 0;
                     const isListened = progressPercent > 95;
                     const isSaved = savedEpisodes.some(savedEp => sameTrackId(savedEp.trackId, ep.trackId));
                     const savedIconClass = isSaved ? 'fas' : 'far';
@@ -1555,10 +1490,10 @@
                     const searchExcerpt = descriptionMatch ? getEpisodeSearchExcerpt(ep, searchKeyword) : '';
 
                     return `
-                    <div class="episode-item ${isListened ? 'is-listened' : ''}" data-episode-id="${escapeAttr(ep.trackId)}">
+                    <div class="episode-item ${isListened ? 'is-listened' : ''}" data-episode-id="${escapeAttr(ep.trackId)}" role="button" tabindex="0">
                         <span class="episode-number">${index + 1}</span>
                         <div class="episode-thumbnail-btn">
-                           <img src="${ep.artworkUrl60 || podcast.artworkUrl60}" alt="Episode thumbnail">
+                            <img src="${escapeAttr(safeHttpsUrl(ep.artworkUrl60 || podcast.artworkUrl60, 'https://placehold.co/60x60/222/fff?text=Pod'))}" alt="單集封面">
                            <div class="loading-spinner-overlay"><div class="small-spinner"></div></div>
                         </div>
                         <div class="episode-main-content">
@@ -1570,13 +1505,13 @@
                         <div class="episode-metadata flex items-center gap-4">
                             <span class="text-xs text-[var(--color-text-secondary)] whitespace-nowrap w-16 text-right">${sizeFormatted || '--- MB'}</span>
                             <span class="text-xs text-[var(--color-text-secondary)] whitespace-nowrap w-12 text-right">${durationFormatted || '--:--'}</span>
-                            <span class="episode-date">${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</span>
+                            <span class="episode-date">${safeDateText(ep.releaseDate)}</span>
                         </div>
                         <div class="episode-item-actions">
                             <button class="episode-action-btn info-action-btn" title="查看單集說明"><i class="fas fa-info-circle"></i></button>
                             <button class="episode-action-btn save-episode-btn ${isSaved ? 'is-saved' : ''}" title="儲存/取消儲存單集"><i class="${savedIconClass} fa-bookmark"></i></button>
                             <button class="episode-action-btn share-action-btn" title="分享連結"><i class="fas fa-share-alt"></i></button>
-                            <a href="${ep.episodeUrl}" download="${escapeAttr(ep.trackName)}.mp3" class="episode-action-btn download-action-link" title="下載"><i class="fas fa-download"></i></a>
+                            <a href="${escapeAttr(safeHttpsUrl(ep.episodeUrl))}" download="${escapeAttr(ep.trackName)}.mp3" class="episode-action-btn download-action-link" title="下載"><i class="fas fa-download"></i></a>
                         </div>
                         <div class="sound-icon-container">${soundIconSVG}</div>
                         <div class="episode-progress-bar-container">
@@ -1593,6 +1528,7 @@
                         if (e.target.closest('.episode-thumbnail-btn, .episode-item-actions')) return;
                         playEpisode(ep, podcast.artistName, orderedEpisodes);
                     });
+                    item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); item.click(); } });
                     item.querySelector('.episode-thumbnail-btn').addEventListener('click', (e) => { e.stopPropagation(); openEpisodeModal(ep, podcast, orderedEpisodes); });
                     item.querySelector('.download-action-link')?.addEventListener('click', (e) => e.stopPropagation());
                     
@@ -1723,11 +1659,11 @@
                     `;
                     htmlContent += `
                         <tr ${dataAttributes}>
-                           <td><img src="${ep.artworkUrl60 || ep.podcastArtworkUrl600}" alt="artwork" class="episode-artwork"></td>
+                            <td><img src="${escapeHTML(safeHttpsUrl(ep.artworkUrl60 || ep.podcastArtworkUrl600, 'https://placehold.co/60x60/222/fff?text=Pod'))}" alt="artwork" class="episode-artwork"></td>
                            <td>${escapeHTML(ep.trackName)}</td>
                            <td>${escapeHTML(ep.podcastArtistName)}</td>
                            <td>${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</td>
-                           <td><a href="${escapeHTML(ep.episodeUrl)}" target="_blank">收聽/下載</a></td>
+                            <td><a href="${escapeHTML(safeHttpsUrl(ep.episodeUrl, '#'))}" target="_blank" rel="noopener noreferrer">收聽/下載</a></td>
                         </tr>`;
                 });
                 
@@ -1740,6 +1676,7 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
                 
                 showToast("已存單集列表 HTML 檔案匯出成功！", "success");
             };
@@ -1766,11 +1703,12 @@
 
                     rows.forEach(row => {
                         const trackId = row.dataset.trackId;
-                        if (trackId && !existingTrackIds.has(trackId)) {
+                        const episodeUrl = safeHttpsUrl(row.dataset.episodeUrl);
+                        if (trackId && episodeUrl && !existingTrackIds.has(trackId)) {
                             const importedEpisode = {
                                 trackId: trackId,
                                 trackName: row.dataset.trackName,
-                                episodeUrl: row.dataset.episodeUrl,
+                                episodeUrl,
                                 releaseDate: row.dataset.releaseDate,
                                 description: row.dataset.description,
                                 artworkUrl60: row.dataset.artworkUrl600,
@@ -1850,10 +1788,10 @@
                 savedEpisodes.forEach(ep => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td class="col-title"><div class="flex items-center gap-3"><img src="${ep.artworkUrl600 || ep.artworkUrl60}" class="saved-episode-artwork"><span class="saved-episode-title" title="${escapeAttr(ep.trackName)}">${ep.trackName}</span></div></td>
-                        <td class="col-podcast"><span class="saved-episode-artist">${ep.podcastArtistName}</span></td>
-                        <td class="col-date"><span>${new Date(ep.releaseDate).toLocaleDateString('sv-SE')}</span></td>
-                        <td class="col-actions"><div class="flex items-center justify-between"><div class="flex items-center gap-1"><button class="play-saved-btn action-link" title="收聽">收聽</button><span class="text-[var(--color-text-secondary)]">/</span><a href="${ep.episodeUrl}" download="${escapeAttr(ep.trackName)}.mp3" class="download-saved-btn action-link" title="下載單集">下載</a></div><button class="remove-saved-btn" title="移除"><i class="fas fa-times-circle"></i></button></div></td>`;
+                        <td class="col-title"><div class="flex items-center gap-3"><img src="${escapeAttr(safeHttpsUrl(ep.artworkUrl600 || ep.artworkUrl60, 'https://placehold.co/60x60/222/fff?text=Pod'))}" class="saved-episode-artwork" alt="單集封面"><span class="saved-episode-title" title="${escapeAttr(ep.trackName)}">${escapeHTML(ep.trackName)}</span></div></td>
+                        <td class="col-podcast"><span class="saved-episode-artist">${escapeHTML(ep.podcastArtistName)}</span></td>
+                        <td class="col-date"><span>${safeDateText(ep.releaseDate)}</span></td>
+                        <td class="col-actions"><div class="flex items-center justify-between"><div class="flex items-center gap-1"><button class="play-saved-btn action-link" title="收聽">收聽</button><span class="text-[var(--color-text-secondary)]">/</span><a href="${escapeAttr(safeHttpsUrl(ep.episodeUrl))}" download="${escapeAttr(ep.trackName)}.mp3" class="download-saved-btn action-link" title="下載單集">下載</a></div><button class="remove-saved-btn" title="移除"><i class="fas fa-times-circle"></i></button></div></td>`;
 
                     tr.querySelector('.download-saved-btn').addEventListener('click', (e) => e.stopPropagation());
                     tr.querySelector('.play-saved-btn').addEventListener('click', async (e) => {
@@ -1890,14 +1828,22 @@
                 container.appendChild(table);
             };
             
+            let modalReturnFocus = null;
+            const closeEpisodeModal = () => {
+                domElements.modalOverlay.style.display = 'none';
+                modalReturnFocus?.focus?.();
+                modalReturnFocus = null;
+            };
             function openEpisodeModal(episode, podcast, playlist) {
-                document.getElementById('modal-artwork').src = episode.artworkUrl600 || podcast.artworkUrl600;
-                document.getElementById('modal-date').textContent = new Date(episode.releaseDate).toLocaleDateString();
+                modalReturnFocus = document.activeElement;
+                document.getElementById('modal-artwork').src = safeHttpsUrl(episode.artworkUrl600 || podcast.artworkUrl600, 'https://placehold.co/300x300/222/fff?text=Pod');
+                document.getElementById('modal-date').textContent = safeDateText(episode.releaseDate);
                 document.getElementById('modal-title').textContent = episode.trackName;
                 document.getElementById('modal-artist').textContent = podcast.artistName;
-                document.getElementById('modal-description').innerHTML = episode.description;
-                domElements.modalPlayBtn.onclick = () => { playEpisode(episode, podcast.artistName, playlist); domElements.modalOverlay.style.display = 'none'; };
+                document.getElementById('modal-description').textContent = plainText(episode.description) || '此單集沒有提供說明。';
+                domElements.modalPlayBtn.onclick = () => { playEpisode(episode, podcast.artistName, playlist); closeEpisodeModal(); };
                 domElements.modalOverlay.style.display = 'flex';
+                domElements.modalPlayBtn.focus();
             }
 
             const syncPlayerUI = () => {
@@ -1953,7 +1899,7 @@
                     ...playerState,
                     currentEpisode: { ...episode, artistName: host },
                     playlist: playlist,
-                    currentIndex: playlist.findIndex(e => e.trackId === episode.trackId),
+                    currentIndex: playlist.findIndex(e => sameTrackId(e.trackId, episode.trackId)),
                     isPlaying: true,
                     _playbackAttempt: 'direct'
                 };
@@ -2106,8 +2052,8 @@
             };
 
             function initialize() {
-                const savedNickname = localStorage.getItem('podcastNickname');
-                const welcomeSkipped = localStorage.getItem('welcomeSkipped');
+                const savedNickname = readStorageString('podcastNickname');
+                const welcomeSkipped = readStorageString('welcomeSkipped');
 
                 if (savedNickname) {
                     updateLibraryTitle(savedNickname);
@@ -2122,7 +2068,7 @@
                         e.preventDefault();
                         const nickname = domElements.nicknameInput.value.trim();
                         if (nickname) {
-                            localStorage.setItem('podcastNickname', nickname);
+                            writeStorageString('podcastNickname', nickname);
                             updateLibraryTitle(nickname);
                             domElements.welcomeModalOverlay.style.display = 'none';
                         } else {
@@ -2133,7 +2079,7 @@
 
                 if(domElements.skipWelcomeBtn) {
                     domElements.skipWelcomeBtn.addEventListener('click', () => {
-                        localStorage.setItem('welcomeSkipped', 'true');
+                        writeStorageString('welcomeSkipped', 'true');
                         domElements.welcomeModalOverlay.style.display = 'none';
                     });
                 }
@@ -2296,22 +2242,23 @@
                     const currentIndex = modes.indexOf(currentModeForCycle);
                     sortMode = modes[(currentIndex + 1) % modes.length];
                     
-                    localStorage.setItem('podcastSortMode', sortMode);
+                    writeStorageString('podcastSortMode', sortMode);
                     updateSortUI();
                     loadCollection();
                 });
 
                 
-                const applyTheme = (theme) => { document.documentElement.setAttribute('data-theme', theme); domElements.themeToggleBtn.innerHTML = theme === 'dark' ? sunIconSVG : moonIconSVG; localStorage.setItem('theme', theme); };
+                const applyTheme = (theme) => { document.documentElement.setAttribute('data-theme', theme); domElements.themeToggleBtn.innerHTML = theme === 'dark' ? sunIconSVG : moonIconSVG; writeStorageString('theme', theme); };
                 domElements.themeToggleBtn.addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
                 
-                domElements.modalCloseBtn.addEventListener('click', () => domElements.modalOverlay.style.display = 'none');
-                domElements.modalOverlay.addEventListener('click', (e) => { if (e.target === domElements.modalOverlay) domElements.modalOverlay.style.display = 'none'; });
+                domElements.modalCloseBtn.addEventListener('click', closeEpisodeModal);
+                domElements.modalOverlay.addEventListener('click', (e) => { if (e.target === domElements.modalOverlay) closeEpisodeModal(); });
 
                 domElements.searchInput.addEventListener('input', () => domElements.clearSearchBtn.style.display = domElements.searchInput.value ? 'block' : 'none');
                 domElements.clearSearchBtn.addEventListener('click', () => { domElements.searchInput.value = ''; domElements.searchInput.focus(); domElements.clearSearchBtn.style.display = 'none'; });
 
                 document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && domElements.modalOverlay.style.display === 'flex') { closeEpisodeModal(); return; }
                     if(document.activeElement === domElements.searchInput || document.activeElement === domElements.localSearchInput) return;
                     if(e.code === 'Space') { e.preventDefault(); togglePlayPause(); }
                     if(e.code === 'ArrowRight') { e.preventDefault(); domElements.skipForwardBtn.click(); }
@@ -2325,8 +2272,8 @@
                 domElements.importSavedEpisodesInput.addEventListener('change', handleSavedEpisodesImport);
 
 
-                applyTheme(localStorage.getItem('theme') || 'dark');
-                sortMode = localStorage.getItem('podcastSortMode') || 'manual';
+                applyTheme(readStorageString('theme', 'dark'));
+                sortMode = readStorageString('podcastSortMode', 'manual');
                 loadCollection();
                 initializeSorting();
                 syncPlayerUI();
