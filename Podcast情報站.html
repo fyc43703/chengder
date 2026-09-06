@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" integrity="sha512-TelkP3PCMJv+viMWynjKcvLsQzx6dJHvIGhfqzFtZKgAjKM1YPqcwzzDEoTc/BHjf43PcPzTQOjuTr4YdE8lNQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="vendor/jszip.min.js"></script>
     <script src="vendor/docx.iife.js"></script>
     <style>
         /* 自定義樣式 */
@@ -413,10 +414,6 @@
                                 <i class="fas fa-route"></i>
                                 聽感續播地圖
                             </button>
-                            <button class="tab-btn" data-tab="tab-semantic-search">
-                                <i class="fas fa-wand-magic-sparkles"></i>
-                                問 Podcast
-                            </button>
                             <button class="tab-btn" data-tab="tab-daily-brief">
                                 <i class="fas fa-sun"></i>
                                 今日精華
@@ -513,17 +510,6 @@
                              <div id="tab-listening-map" class="tab-panel">
                                 <div id="listening-map-content" class="listening-map" aria-live="polite"></div>
                              </div>
-                             <div id="tab-semantic-search" class="tab-panel">
-                                <div class="intro-title"><i class="fas fa-wand-magic-sparkles"></i> 問 Podcast</div>
-                                <p class="intro-text">匯入單集逐字稿後，直接問「退休金怎麼規劃？」或「哪一集談到 AI 代理人？」；結果會定位到命中的時間段。</p>
-                                <div class="intelligence-toolbar">
-                                    <button id="import-transcript-btn" class="intelligence-button secondary"><i class="fas fa-file-import"></i> 匯入逐字稿 JSON</button>
-                                    <input id="semantic-query-input" class="intelligence-input" placeholder="問問您的 Podcast，例如：哪一集談到焦慮？">
-                                    <button id="semantic-search-btn" class="intelligence-button">開始尋找</button>
-                                </div>
-                                <p id="semantic-status" class="intelligence-status">請透過本機智慧服務開啟此功能。</p>
-                                <div id="semantic-results"></div>
-                             </div>
                              <div id="tab-daily-brief" class="tab-panel">
                                 <div class="intro-title"><i class="fas fa-sun"></i> 今天值得聽的 3 集</div>
                                 <p class="intro-text">依您的續播位置、回聽習慣、收藏內容與已建立的語意索引，挑出現在最適合聽的節目。</p>
@@ -560,7 +546,6 @@
     </div>
     <input type="file" id="import-rtf-input" hidden accept=".html">
     <input type="file" id="import-saved-episodes-input" hidden accept=".html">
-    <input type="file" id="import-transcript-input" hidden accept=".json,application/json">
 
     <footer class="player" id="player">
         <div class="player-info">
@@ -685,12 +670,6 @@
                 importRtfInput: document.getElementById('import-rtf-input'),
                 importSavedEpisodesInput: document.getElementById('import-saved-episodes-input'),
                 listeningMapContent: document.getElementById('listening-map-content'),
-                importTranscriptInput: document.getElementById('import-transcript-input'),
-                importTranscriptBtn: document.getElementById('import-transcript-btn'),
-                semanticQueryInput: document.getElementById('semantic-query-input'),
-                semanticSearchBtn: document.getElementById('semantic-search-btn'),
-                semanticStatus: document.getElementById('semantic-status'),
-                semanticResults: document.getElementById('semantic-results'),
                 generateDailyBriefBtn: document.getElementById('generate-daily-brief-btn'),
                 dailyBriefResults: document.getElementById('daily-brief-results'),
             };
@@ -895,11 +874,39 @@
                     if (entry) playEpisode(entry, entry.podcastArtistName, [entry]);
                 }));
             };
-            const apiRequest = async (path, body) => {
-                const response = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const getTranscriptIndex = () => readStorageJson('localTranscriptIndex', []);
+            const saveTranscriptIndex = segments => {
+                try { writeStorageJson('localTranscriptIndex', segments); }
+                catch { throw new Error('逐字稿內容太大，無法存入瀏覽器。請將檔案拆成較小的單集後再匯入。'); }
+            };
+            const queryTerms = query => {
+                const normalized = String(query || '').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+                const chineseBigrams = [...normalized].flatMap((character, index, all) => index < all.length - 1 ? [character + all[index + 1]] : []);
+                const latinTerms = String(query || '').toLocaleLowerCase().match(/[a-z0-9]+/g) || [];
+                return [...new Set([...chineseBigrams, ...latinTerms].filter(term => term.length >= 2))];
+            };
+            const searchLocalTranscript = query => {
+                const normalizedQuery = String(query || '').toLocaleLowerCase();
+                const terms = queryTerms(query);
+                return getTranscriptIndex().map(segment => {
+                    const haystack = `${segment.trackName} ${segment.podcastArtistName} ${segment.text}`.toLocaleLowerCase();
+                    const score = terms.reduce((total, term) => total + (haystack.includes(term) ? 1 : 0), haystack.includes(normalizedQuery) ? 4 : 0);
+                    return { ...segment, score };
+                }).filter(segment => segment.score > 0).sort((a, b) => b.score - a.score || a.startSeconds - b.startSeconds).slice(0, 8);
+            };
+            const askGroqDirectly = async (query, citations, groqApiKey) => {
+                const evidence = citations.map((item, index) => `[${index + 1}] ${item.trackName}｜${formatSearchTime(item.startSeconds)}\n${item.text}`).join('\n\n');
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'openai/gpt-oss-20b', temperature: 0.2, max_completion_tokens: 500, messages: [
+                        { role: 'system', content: '你是 Podcast 逐字稿助理。只根據來源段落，以繁體中文直接回答；資料不足時要明確說明，不可杜撰。' },
+                        { role: 'user', content: `問題：${query}\n\n來源段落：\n${evidence}` }
+                    ] })
+                });
                 const payload = await response.json().catch(() => ({}));
-                if (!response.ok) throw new Error(payload.error || '智慧服務暫時無法回應。');
-                return payload;
+                if (!response.ok) throw new Error(payload.error?.message || `Groq API 無法回應（${response.status}）。`);
+                return payload.choices?.[0]?.message?.content || 'Groq 未返回文字回答。';
             };
             const formatSearchTime = seconds => formatTime(Number(seconds) || 0);
             const playIntelligenceResult = result => {
@@ -912,7 +919,7 @@
             };
             const renderSemanticResults = (results, mode) => {
                 if (!results.length) { domElements.semanticResults.innerHTML = '<div class="intelligence-result">找不到相符段落。請先匯入逐字稿，或換一種問法。</div>'; return; }
-                domElements.semanticResults.innerHTML = `<p class="intelligence-status">${mode === 'semantic' ? '語意索引結果' : '尚未設定 API key，目前以關鍵字備援搜尋'}</p>${results.map((result, index) => `<article class="intelligence-result"><strong>${escapeHTML(result.trackName)}</strong><span class="intelligence-status"> · ${escapeHTML(result.podcastArtistName)}</span><p>${escapeHTML(result.text)}</p><button class="intelligence-button semantic-play-btn" data-index="${index}"><i class="fas fa-play"></i> 從 ${formatSearchTime(result.startSeconds)} 播放</button></article>`).join('')}`;
+                domElements.semanticResults.innerHTML = `<p class="intelligence-status">${mode === 'semantic' ? '來源段落' : '瀏覽器本機索引結果'}</p>${results.map((result, index) => `<article class="intelligence-result"><strong>${escapeHTML(result.trackName)}</strong><span class="intelligence-status"> · ${escapeHTML(result.podcastArtistName)}</span><p>${escapeHTML(result.text)}</p><button class="intelligence-button semantic-play-btn" data-index="${index}"><i class="fas fa-play"></i> 從 ${formatSearchTime(result.startSeconds)} 播放</button></article>`).join('')}`;
                 domElements.semanticResults.querySelectorAll('.semantic-play-btn').forEach(button => button.addEventListener('click', () => playIntelligenceResult(results[Number(button.dataset.index)])));
             };
             const searchSemanticIndex = async () => {
@@ -921,21 +928,77 @@
                 domElements.semanticStatus.textContent = '正在理解問題並比對逐字稿…';
                 domElements.semanticResults.innerHTML = '';
                 try {
-                    const payload = await apiRequest('/api/search', { query });
-                    domElements.semanticStatus.textContent = payload.mode === 'semantic' ? '已用語意索引找出最相關段落。' : '目前使用本機關鍵字備援；設定 API key 後可啟用語意搜尋。';
-                    renderSemanticResults(payload.results, payload.mode);
-                } catch (error) { domElements.semanticStatus.textContent = `無法搜尋：${error.message}`; }
+                    const citations = searchLocalTranscript(query);
+                    if (!citations.length) throw new Error('找不到相符段落。請確認已匯入逐字稿，或換一種問法。');
+                    const groqApiKey = domElements.groqApiKeyInput.value.trim();
+                    if (groqApiKey) {
+                        const answer = await askGroqDirectly(query, citations, groqApiKey);
+                        domElements.semanticStatus.textContent = 'Groq 已根據本機逐字稿回答，並附上可播放的來源段落。';
+                        domElements.semanticResults.innerHTML = `<article class="intelligence-result"><strong>回答</strong><p>${escapeHTML(answer)}</p></article>`;
+                        const citationsContainer = document.createElement('div');
+                        domElements.semanticResults.appendChild(citationsContainer);
+                        const previous = domElements.semanticResults;
+                        domElements.semanticResults = citationsContainer;
+                        renderSemanticResults(citations, 'semantic');
+                        domElements.semanticResults = previous;
+                    } else {
+                        domElements.semanticStatus.textContent = '已從此瀏覽器的逐字稿找出最相關段落；填入 Groq API Key 可取得自然語言摘要。';
+                        renderSemanticResults(citations, 'local');
+                    }
+                } catch (error) { domElements.semanticStatus.textContent = `無法搜尋：${error.message}`; showToast(error.message, 'error'); }
+            };
+            const parsePlainTextTranscript = content => {
+                const source = String(content || '').replace(/\r\n/g, '\n');
+                const getHeader = label => source.match(new RegExp(`^${label}：\\s*(.+)$`, 'm'))?.[1]?.trim() || '';
+                const lines = source.split('\n');
+                const markerIndex = lines.findIndex(line => line.includes('───'));
+                const body = markerIndex >= 0 ? lines.slice(markerIndex + 1).join('\n').trim() : source.trim();
+                const toSeconds = stamp => { const [minutes, seconds] = stamp.split(':').map(Number); return minutes * 60 + seconds; };
+                const timed = [...body.matchAll(/^\[(\d{1,3}:\d{2})\]\s*(.+)$/gm)].map((match, index, all) => ({ startSeconds: toSeconds(match[1]), endSeconds: index < all.length - 1 ? toSeconds(all[index + 1][1]) : 0, text: match[2] }));
+                const trackName = getHeader('單集') || '未命名逐字稿';
+                const seed = `${trackName}:${getHeader('音檔')}`;
+                const trackId = `text-${Array.from(seed).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0)}`;
+                return { episode: { trackId, trackName, podcastArtistName: getHeader('節目'), episodeUrl: getHeader('音檔') }, segments: timed.length ? timed : [{ startSeconds: 0, endSeconds: 0, text: body }] };
+            };
+            const extractTextFromWord = async file => {
+                if (!window.JSZip) throw new Error('Word 匯入元件尚未載入，請確認 vendor/jszip.min.js 檔案存在。');
+                const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+                const documentXml = zip.file('word/document.xml');
+                if (!documentXml) throw new Error('此 Word 檔不是有效的 .docx 文件。');
+                const xml = new DOMParser().parseFromString(await documentXml.async('text'), 'application/xml');
+                if (xml.querySelector('parsererror')) throw new Error('無法讀取 Word 文件內容。');
+                const wordNs = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+                const paragraphs = Array.from(xml.getElementsByTagNameNS(wordNs, 'p')).map(paragraph =>
+                    Array.from(paragraph.getElementsByTagNameNS(wordNs, 't')).map(node => node.textContent || '').join('').trim()
+                ).filter(Boolean);
+                if (!paragraphs.length) throw new Error('Word 文件沒有可匯入的文字內容。');
+                return paragraphs.join('\n');
             };
             const importTranscript = async event => {
                 const file = event.target.files?.[0];
                 if (!file) return;
                 domElements.semanticStatus.textContent = '正在讀取逐字稿並建立索引…';
                 try {
-                    const payload = JSON.parse(await file.text());
-                    const result = await apiRequest('/api/transcripts', payload);
-                    domElements.semanticStatus.textContent = `已建立 ${result.indexed} 段${result.semantic ? '語意' : '關鍵字'}索引；現在可以直接提問。`;
+                    const extension = file.name.toLocaleLowerCase().split('.').pop();
+                    const source = extension === 'docx' ? await extractTextFromWord(file) : await file.text();
+                    const payload = parsePlainTextTranscript(source);
+                    const episode = payload.episode || {};
+                    const segments = (payload.segments || []).filter(segment => String(segment.text || '').trim()).slice(0, 500).map((segment, index) => ({
+                        id: `${episode.trackId || file.name}:${index}`,
+                        trackId: episode.trackId || file.name,
+                        trackName: episode.trackName || file.name.replace(/\.[^.]+$/, ''),
+                        podcastArtistName: episode.podcastArtistName || '',
+                        episodeUrl: safeHttpsUrl(episode.episodeUrl),
+                        startSeconds: Math.max(0, Number(segment.startSeconds) || 0),
+                        endSeconds: Math.max(0, Number(segment.endSeconds) || 0),
+                        text: String(segment.text).trim()
+                    }));
+                    if (!segments.length) throw new Error('逐字稿沒有可建立索引的文字。');
+                    const existing = getTranscriptIndex().filter(segment => segment.trackId !== segments[0].trackId);
+                    saveTranscriptIndex([...existing, ...segments].slice(-1500));
+                    domElements.semanticStatus.textContent = `已匯入 ${segments.length} 段逐字稿並建立本機索引；現在可以直接提問。`;
                     showToast('逐字稿匯入完成！');
-                } catch (error) { domElements.semanticStatus.textContent = `匯入失敗：${error.message}`; showToast('逐字稿匯入失敗。', 'error'); }
+                } catch (error) { domElements.semanticStatus.textContent = `匯入失敗：${error.message}`; showToast(error.message, 'error'); }
                 finally { event.target.value = ''; }
             };
             const renderDailyBrief = recommendations => {
@@ -945,17 +1008,20 @@
             };
             const generateDailyBrief = async () => {
                 domElements.dailyBriefResults.innerHTML = '<div class="intelligence-result">正在整理今天最適合的聲音旅程…</div>';
-                try {
-                    const payload = await apiRequest('/api/daily-brief', { listeningMap: getListeningMap(), savedEpisodes: getSavedEpisodes() });
-                    renderDailyBrief(payload.recommendations || []);
-                } catch (error) { domElements.dailyBriefResults.innerHTML = `<div class="intelligence-result">無法生成今日精華：${escapeHTML(error.message)}<br>請使用 <code>npm start</code> 後從本機網址開啟 app。</div>`; }
+                const history = Object.values(getListeningMap()).filter(item => item?.episodeUrl);
+                const saved = getSavedEpisodes();
+                const candidates = [...history, ...saved].filter((item, index, all) => item?.episodeUrl && all.findIndex(other => String(other.trackId) === String(item.trackId)) === index);
+                const recommendations = candidates.map(item => {
+                    const progress = item.duration ? (item.lastPosition || 0) / item.duration : 0;
+                    const score = (progress > 0 && progress < .95 ? 100 : 0) + ((item.playCount || 0) >= 2 ? 30 : 0) + (saved.some(entry => String(entry.trackId) === String(item.trackId)) ? 10 : 0);
+                    const reason = progress > 0 && progress < .95 ? `您上次停在 ${formatTime(item.lastPosition || 0)}，現在最適合接著聽。` : '這是您主動保存的內容，適合排入今天的聆聽清單。';
+                    return { ...item, score, reason };
+                }).sort((a, b) => b.score - a.score).slice(0, 3);
+                renderDailyBrief(recommendations);
             };
-            const checkIntelligenceService = async () => {
-                try {
-                    const response = await fetch('/api/health');
-                    const health = await response.json();
-                    domElements.semanticStatus.textContent = health.semanticSearch ? `智慧服務已連線：${health.embeddingModel} 語意索引已啟用。` : '智慧服務已連線；尚未設定 API key，目前可匯入逐字稿並使用關鍵字備援。';
-                } catch { domElements.semanticStatus.textContent = '請執行 npm start，並從 http://localhost:3100 開啟 app 以啟用智慧功能。'; }
+            const checkIntelligenceService = () => {
+                const count = getTranscriptIndex().length;
+                domElements.semanticStatus.textContent = count ? `本機已建立 ${count} 段逐字稿索引；可直接提問。` : '請匯入文字檔或 Word 逐字稿，建立瀏覽器內的私有索引。';
             };
             
             const getPlayerSettings = () => readStorageJson('playerSettings', {});
@@ -2261,6 +2327,8 @@
             };
 
             function initialize() {
+                // 問 Podcast 已移除；清除舊版本留下的逐字稿與 API key，避免保留不再使用的資料。
+                try { localStorage.removeItem('localTranscriptIndex'); localStorage.removeItem('groqApiKey'); } catch { /* localStorage 無法使用時略過 */ }
                 const savedNickname = readStorageString('podcastNickname');
                 const welcomeSkipped = readStorageString('welcomeSkipped');
 
@@ -2486,10 +2554,6 @@
                 domElements.importRtfBtn.addEventListener('click', () => domElements.importRtfInput.click());
                 domElements.importRtfInput.addEventListener('change', handleCollectionImport);
                 domElements.importSavedEpisodesInput.addEventListener('change', handleSavedEpisodesImport);
-                domElements.importTranscriptBtn.addEventListener('click', () => domElements.importTranscriptInput.click());
-                domElements.importTranscriptInput.addEventListener('change', importTranscript);
-                domElements.semanticSearchBtn.addEventListener('click', searchSemanticIndex);
-                domElements.semanticQueryInput.addEventListener('keydown', event => { if (event.key === 'Enter') searchSemanticIndex(); });
                 domElements.generateDailyBriefBtn.addEventListener('click', generateDailyBrief);
 
 
@@ -2500,7 +2564,6 @@
                 syncPlayerUI();
                 domElements.mainContent.querySelectorAll(':scope > div').forEach(d => d.style.display = 'none');
                 domElements.defaultView.style.display = 'flex';
-                checkIntelligenceService();
 
                 const tabButtons = document.querySelectorAll('.tab-btn');
                 const tabPanels = document.querySelectorAll('.tab-panel');
@@ -2515,9 +2578,6 @@
                         }
                         if (targetTab === 'tab-listening-map') {
                             renderListeningMap();
-                        }
-                        if (targetTab === 'tab-semantic-search') {
-                            checkIntelligenceService();
                         }
                         if (targetTab === 'tab-daily-brief') {
                             generateDailyBrief();
