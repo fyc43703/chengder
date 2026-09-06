@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" integrity="sha512-TelkP3PCMJv+viMWynjKcvLsQzx6dJHvIGhfqzFtZKgAjKM1YPqcwzzDEoTc/BHjf43PcPzTQOjuTr4YdE8lNQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="vendor/docx.iife.js"></script>
     <style>
         /* 自定義樣式 */
         :root {
@@ -72,9 +73,9 @@
         .play-pause-btn:active { transform: scale(0.95); }
         .play-pause-btn i { color: #A0C4FF; font-size: 0.875rem; }
         .progress-container { display: flex; align-items: center; gap: 0.5rem; width: 100%; }
-        #download-btn { display: none; color: #27C93F; }
-        #download-btn.is-visible { display: inline-block; }
-        #download-btn:hover { color: #22a936; }
+        #download-btn, #download-description-btn { display: none; color: #27C93F; background: transparent; border: none; cursor: pointer; padding: 0; }
+        #download-btn.is-visible, #download-description-btn.is-visible { display: inline-block; }
+        #download-btn:hover, #download-description-btn:hover { color: #22a936; }
 
         /* 側邊欄 */
         .sidebar { background-color: var(--color-surface); border-radius: 0.5rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.25rem; overflow-y: auto; }
@@ -244,6 +245,31 @@
         .intro-text li { margin-bottom: 1.75rem; }
         .intro-text .li-sub-text { padding-left: 1.75rem; margin-top: 0.5rem; }
         .intro-text .li-sub-text p { margin-bottom: 0.75rem; }
+
+        /* 聽感續播地圖 */
+        .listening-map { display: grid; gap: 1rem; }
+        .listening-map-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+        .listening-map-stat { background: var(--color-surface-hover); border-radius: 0.75rem; padding: 1rem; }
+        .listening-map-stat strong { display: block; color: #A0C4FF; font-size: 1.4rem; }
+        .listening-map-list { display: grid; gap: 0.75rem; }
+        .listening-map-card { width: 100%; display: grid; grid-template-columns: 56px 1fr auto; gap: 0.9rem; align-items: center; background: var(--color-surface-hover); color: var(--color-text-primary); border: 1px solid transparent; border-radius: 0.75rem; padding: 0.75rem; text-align: left; cursor: pointer; }
+        .listening-map-card:hover, .listening-map-card:focus-visible { border-color: #A0C4FF; outline: none; }
+        .listening-map-art { width: 56px; height: 56px; border-radius: 0.5rem; object-fit: cover; }
+        .listening-map-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .listening-map-meta { color: var(--color-text-secondary); font-size: 0.8rem; margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .listening-buckets { display: flex; gap: 2px; margin-top: 0.6rem; }
+        .listening-bucket { height: 6px; flex: 1; background: rgba(160, 196, 255, 0.2); border-radius: 999px; }
+        .listening-bucket.is-heard { background: #A0C4FF; }
+        .listening-map-action { color: #A0C4FF; font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
+        .listening-map-empty { padding: 2.5rem 1rem; color: var(--color-text-secondary); text-align: center; }
+        @media (max-width: 640px) { .listening-map-summary { grid-template-columns: 1fr; } .listening-map-card { grid-template-columns: 48px 1fr; } .listening-map-art { width: 48px; height: 48px; } .listening-map-action { grid-column: 2; } }
+        .intelligence-toolbar { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1rem 0; }
+        .intelligence-input { flex: 1 1 300px; padding: 0.75rem 1rem; border: 1px solid var(--color-interactive-element); color: var(--color-text-primary); background: var(--color-surface-hover); border-radius: 0.5rem; }
+        .intelligence-button { border: none; border-radius: 0.5rem; padding: 0.75rem 1rem; color: white; font-weight: 700; cursor: pointer; background: #007AFF; }
+        .intelligence-button.secondary { background: #505255; }
+        .intelligence-result { padding: 1rem; background: var(--color-surface-hover); border-radius: 0.75rem; margin-top: 0.75rem; }
+        .intelligence-result p { color: var(--color-text-secondary); line-height: 1.7; margin: 0.5rem 0; }
+        .intelligence-status { color: var(--color-text-secondary); font-size: 0.85rem; }
         
         /* Toast 通知樣式 */
         #toast-container { position: fixed; bottom: calc(var(--player-height) + 1rem); left: 50%; transform: translateX(-50%); z-index: 2000; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; pointer-events: none; }
@@ -383,6 +409,18 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                                 已存單集
                             </button>
+                            <button class="tab-btn" data-tab="tab-listening-map">
+                                <i class="fas fa-route"></i>
+                                聽感續播地圖
+                            </button>
+                            <button class="tab-btn" data-tab="tab-semantic-search">
+                                <i class="fas fa-wand-magic-sparkles"></i>
+                                問 Podcast
+                            </button>
+                            <button class="tab-btn" data-tab="tab-daily-brief">
+                                <i class="fas fa-sun"></i>
+                                今日精華
+                            </button>
                         </div>
                 
                         <div class="tabs-content">
@@ -451,7 +489,7 @@
                                 <div class="intro-section">
                                     <div class="intro-icon">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12" fill="none" viewBox="0 0 48 48"><path d="M24 44.4C12.7 44.4 3.6 35.3 3.6 24S12.7 3.6 24 3.6s20.4 9.1 20.4 20.4-9.1 20.4-20.4 20.4z" fill="#757575"/><path d="M24 10.4c-7.5 0-13.6 3-13.6 6.8v1.8c0 3.7 6.1 6.8 13.6 6.8s13.6-3 13.6-6.8v-1.8c0-3.7-6.1-6.8-13.6-6.8zm0 13.6c-7.5 0-13.6-3-13.6-6.8v3.6c0 3.7 6.1 6.8 13.6 6.8s13.6-3 13.6-6.8v-3.6c0 3.7-6.1 6.8-13.6 6.8zm0 9.1c-7.5 0-13.6-3-13.6-6.8v3.6c0 3.8 6.1 6.8 13.6 6.8s13.6-3 13.6-6.8v-3.6c0 3.8-6.1 6.8-13.6 6.8z" fill="#fff"/></svg>
-                                    </div>
+                             </div>
                                     <div>
                                         <div class="intro-title">關於媒體庫的儲存</div>
                                         <p class="intro-text">
@@ -471,8 +509,28 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div id="tab-saved-episodes" class="tab-panel">
+                             </div>
+                             <div id="tab-listening-map" class="tab-panel">
+                                <div id="listening-map-content" class="listening-map" aria-live="polite"></div>
+                             </div>
+                             <div id="tab-semantic-search" class="tab-panel">
+                                <div class="intro-title"><i class="fas fa-wand-magic-sparkles"></i> 問 Podcast</div>
+                                <p class="intro-text">匯入單集逐字稿後，直接問「退休金怎麼規劃？」或「哪一集談到 AI 代理人？」；結果會定位到命中的時間段。</p>
+                                <div class="intelligence-toolbar">
+                                    <button id="import-transcript-btn" class="intelligence-button secondary"><i class="fas fa-file-import"></i> 匯入逐字稿 JSON</button>
+                                    <input id="semantic-query-input" class="intelligence-input" placeholder="問問您的 Podcast，例如：哪一集談到焦慮？">
+                                    <button id="semantic-search-btn" class="intelligence-button">開始尋找</button>
+                                </div>
+                                <p id="semantic-status" class="intelligence-status">請透過本機智慧服務開啟此功能。</p>
+                                <div id="semantic-results"></div>
+                             </div>
+                             <div id="tab-daily-brief" class="tab-panel">
+                                <div class="intro-title"><i class="fas fa-sun"></i> 今天值得聽的 3 集</div>
+                                <p class="intro-text">依您的續播位置、回聽習慣、收藏內容與已建立的語意索引，挑出現在最適合聽的節目。</p>
+                                <div class="intelligence-toolbar"><button id="generate-daily-brief-btn" class="intelligence-button">生成今日精華</button></div>
+                                <div id="daily-brief-results"></div>
+                             </div>
+                             <div id="tab-saved-episodes" class="tab-panel">
                                  <div class="intro-section">
                                     <div class="intro-icon">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12" fill="none" viewBox="0 0 48 48"><path fill="#FFBD2E" d="M37.3 6H10.7C8.1 6 6 8.1 6 10.7v26.6C6 39.9 8.1 42 10.7 42h26.6c2.6 0 4.7-2.1 4.7-4.7V10.7C42 8.1 39.9 6 37.3 6z"></path><path fill="#FFF" d="m29.5 13.5-5.5 5.5-5.5-5.5-2.5 2.5 5.5 5.5-5.5 5.5 2.5 2.5 5.5-5.5 5.5 5.5 2.5-2.5-5.5-5.5 5.5-5.5z"></path><path fill="#fff" d="M15.4 34.6V13.4h5.2v21.2h-5.2z"></path></svg>
@@ -502,6 +560,7 @@
     </div>
     <input type="file" id="import-rtf-input" hidden accept=".html">
     <input type="file" id="import-saved-episodes-input" hidden accept=".html">
+    <input type="file" id="import-transcript-input" hidden accept=".json,application/json">
 
     <footer class="player" id="player">
         <div class="player-info">
@@ -538,6 +597,9 @@
             <a id="download-btn" href="#" download title="下載音檔">
                 <i class="fas fa-download text-base"></i>
             </a>
+            <button id="download-description-btn" title="下載目前單集說明 Word 文件" aria-label="下載目前單集說明 Word 文件">
+                <i class="fas fa-file-lines text-base"></i>
+            </button>
             <div id="volume-container" class="relative flex items-center">
                 <button id="volume-icon-btn" class="simple-control-btn mr-1"><i class="fas fa-volume-high text-base"></i></button>
                 <span id="volume-tooltip">30%</span>
@@ -590,6 +652,7 @@
                 currentTimeEl: document.getElementById('current-time'),
                 durationEl: document.getElementById('duration'),
                 downloadBtn: document.getElementById('download-btn'),
+                downloadDescriptionBtn: document.getElementById('download-description-btn'),
                 playbackRateBtn: document.getElementById('playback-rate-btn'),
                 playbackRateText: document.getElementById('playback-rate-text'),
                 repeatBtn: document.getElementById('repeat-btn'),
@@ -621,6 +684,15 @@
                 importRtfBtn: document.getElementById('import-rtf-btn'),
                 importRtfInput: document.getElementById('import-rtf-input'),
                 importSavedEpisodesInput: document.getElementById('import-saved-episodes-input'),
+                listeningMapContent: document.getElementById('listening-map-content'),
+                importTranscriptInput: document.getElementById('import-transcript-input'),
+                importTranscriptBtn: document.getElementById('import-transcript-btn'),
+                semanticQueryInput: document.getElementById('semantic-query-input'),
+                semanticSearchBtn: document.getElementById('semantic-search-btn'),
+                semanticStatus: document.getElementById('semantic-status'),
+                semanticResults: document.getElementById('semantic-results'),
+                generateDailyBriefBtn: document.getElementById('generate-daily-brief-btn'),
+                dailyBriefResults: document.getElementById('daily-brief-results'),
             };
 
             const soundIconSVG = `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect class="sound-wave sound-wave-1" x="4" y="8" width="4" height="8" rx="1"></rect><rect class="sound-wave sound-wave-2" x="10" y="5" width="4" height="14" rx="1"></rect><rect class="sound-wave sound-wave-3" x="16" y="8" width="4" height="8" rx="1"></rect></svg>`;
@@ -663,7 +735,7 @@
             audio.preload = 'auto';
             audio.playsInline = true;
             const collectionCache = {};
-            let playerState = { currentEpisode: null, playlist: [], currentIndex: -1, isPlaying: false, _playbackAttempt: 'direct' };
+            let playerState = { currentEpisode: null, playlist: [], currentIndex: -1, isPlaying: false, _playbackAttempt: 'direct', mapSessionRecorded: false };
             let isFavoritesFilterActive = false;
             let activeDetailsController = null;
             let detailsRequestId = 0;
@@ -726,6 +798,11 @@
             const saveCollection = (collection) => writeStorageJson('podcastCollection', collection);
             const getSavedEpisodes = () => readStorageJson('savedEpisodes', []);
             const saveSavedEpisodes = (episodes) => writeStorageJson('savedEpisodes', episodes);
+            const getListeningMap = () => readStorageJson('listeningMap', {});
+            const saveListeningMap = map => {
+                const newest = Object.values(map).sort((a, b) => (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0)).slice(0, 100);
+                return writeStorageJson('listeningMap', Object.fromEntries(newest.map(item => [String(item.trackId), item])));
+            };
             // dataset attributes are always strings, while Apple and PodcastIndex
             // can return numeric track IDs. Compare their stable string form.
             const sameTrackId = (left, right) => left != null && right != null && String(left) === String(right);
@@ -783,6 +860,102 @@
                 const progressData = getPlaybackProgress();
                 progressData[episodeId] = { currentTime, duration };
                 writeStorageJson('playbackProgress', progressData);
+            };
+            const updateListeningMap = (episode, currentTime, duration, isStarting = false) => {
+                if (!episode?.trackId || !Number.isFinite(duration) || duration <= 0) return;
+                const map = getListeningMap();
+                const key = String(episode.trackId);
+                const entry = map[key] || { trackId: episode.trackId, playCount: 0, heardBuckets: [] };
+                const bucket = Math.min(19, Math.max(0, Math.floor((currentTime / duration) * 20)));
+                entry.trackName = String(episode.trackName || '未命名單集');
+                entry.podcastArtistName = String(episode.artistName || episode.podcastArtistName || '');
+                entry.episodeUrl = safeHttpsUrl(episode.episodeUrl);
+                entry.artworkUrl600 = safeHttpsUrl(episode.artworkUrl600 || episode.artworkUrl60);
+                entry.duration = duration;
+                entry.lastPosition = Math.max(0, Math.min(duration, currentTime));
+                entry.lastPlayedAt = Date.now();
+                entry.heardBuckets = Array.from(new Set([...(Array.isArray(entry.heardBuckets) ? entry.heardBuckets : []), bucket])).filter(n => n >= 0 && n < 20);
+                if (isStarting) entry.playCount = (entry.playCount || 0) + 1;
+                map[key] = entry;
+                saveListeningMap(map);
+            };
+            const renderListeningMap = () => {
+                const container = domElements.listeningMapContent;
+                if (!container) return;
+                const entries = Object.values(getListeningMap()).filter(item => safeHttpsUrl(item.episodeUrl)).sort((a, b) => (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0));
+                if (!entries.length) {
+                    container.innerHTML = '<div class="listening-map-empty"><i class="fas fa-headphones-alt text-3xl mb-3"></i><p class="font-bold">您的聽感地圖正在等待第一段旅程</p><p class="text-sm mt-1">播放任一單集後，這裡會記住您的進度、回聽與未聽區段。</p></div>';
+                    return;
+                }
+                const resumable = entries.filter(item => item.lastPosition > 0 && item.lastPosition < item.duration * 0.95).length;
+                const replayed = entries.filter(item => (item.playCount || 0) >= 2).length;
+                container.innerHTML = `<div><div class="intro-title"><i class="fas fa-route"></i> 聽感續播地圖</div><p class="intro-text">從上次停下的地方繼續；淡色區段是還沒走過的聲音旅程。</p></div><div class="listening-map-summary"><div class="listening-map-stat"><strong>${entries.length}</strong><span>已記錄單集</span></div><div class="listening-map-stat"><strong>${resumable}</strong><span>等待續播</span></div><div class="listening-map-stat"><strong>${replayed}</strong><span>常回聽單集</span></div></div><div class="listening-map-list">${entries.slice(0, 12).map(entry => { const heard = new Set(entry.heardBuckets || []); const progress = entry.duration ? Math.round((entry.lastPosition / entry.duration) * 100) : 0; const label = progress >= 95 ? '已聽完，再聽一次' : `從 ${formatTime(entry.lastPosition)} 繼續`; return `<button class="listening-map-card" data-track-id="${escapeAttr(entry.trackId)}"><img class="listening-map-art" src="${escapeAttr(entry.artworkUrl600 || 'https://placehold.co/56x56/222/fff?text=Pod')}" alt="單集封面"><span><span class="listening-map-title">${escapeHTML(entry.trackName)}</span><span class="listening-map-meta">${escapeHTML(entry.podcastArtistName)} · 上次停在 ${formatTime(entry.lastPosition)}／${formatTime(entry.duration)}${entry.playCount >= 2 ? ' · 常回聽' : ''}</span><span class="listening-buckets">${Array.from({ length: 20 }, (_, i) => `<i class="listening-bucket ${heard.has(i) ? 'is-heard' : ''}"></i>`).join('')}</span></span><span class="listening-map-action">${label}</span></button>`; }).join('')}</div>`;
+                container.querySelectorAll('.listening-map-card').forEach(button => button.addEventListener('click', () => {
+                    const entry = getListeningMap()[button.dataset.trackId];
+                    if (entry) playEpisode(entry, entry.podcastArtistName, [entry]);
+                }));
+            };
+            const apiRequest = async (path, body) => {
+                const response = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(payload.error || '智慧服務暫時無法回應。');
+                return payload;
+            };
+            const formatSearchTime = seconds => formatTime(Number(seconds) || 0);
+            const playIntelligenceResult = result => {
+                const progress = getPlaybackProgress();
+                if (result.trackId && result.startSeconds > 0) {
+                    progress[result.trackId] = { currentTime: result.startSeconds, duration: result.duration || 1 };
+                    writeStorageJson('playbackProgress', progress);
+                }
+                playEpisode(result, result.podcastArtistName, [result]);
+            };
+            const renderSemanticResults = (results, mode) => {
+                if (!results.length) { domElements.semanticResults.innerHTML = '<div class="intelligence-result">找不到相符段落。請先匯入逐字稿，或換一種問法。</div>'; return; }
+                domElements.semanticResults.innerHTML = `<p class="intelligence-status">${mode === 'semantic' ? '語意索引結果' : '尚未設定 API key，目前以關鍵字備援搜尋'}</p>${results.map((result, index) => `<article class="intelligence-result"><strong>${escapeHTML(result.trackName)}</strong><span class="intelligence-status"> · ${escapeHTML(result.podcastArtistName)}</span><p>${escapeHTML(result.text)}</p><button class="intelligence-button semantic-play-btn" data-index="${index}"><i class="fas fa-play"></i> 從 ${formatSearchTime(result.startSeconds)} 播放</button></article>`).join('')}`;
+                domElements.semanticResults.querySelectorAll('.semantic-play-btn').forEach(button => button.addEventListener('click', () => playIntelligenceResult(results[Number(button.dataset.index)])));
+            };
+            const searchSemanticIndex = async () => {
+                const query = domElements.semanticQueryInput.value.trim();
+                if (!query) { showToast('請先輸入想問 Podcast 的問題。', 'error'); return; }
+                domElements.semanticStatus.textContent = '正在理解問題並比對逐字稿…';
+                domElements.semanticResults.innerHTML = '';
+                try {
+                    const payload = await apiRequest('/api/search', { query });
+                    domElements.semanticStatus.textContent = payload.mode === 'semantic' ? '已用語意索引找出最相關段落。' : '目前使用本機關鍵字備援；設定 API key 後可啟用語意搜尋。';
+                    renderSemanticResults(payload.results, payload.mode);
+                } catch (error) { domElements.semanticStatus.textContent = `無法搜尋：${error.message}`; }
+            };
+            const importTranscript = async event => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                domElements.semanticStatus.textContent = '正在讀取逐字稿並建立索引…';
+                try {
+                    const payload = JSON.parse(await file.text());
+                    const result = await apiRequest('/api/transcripts', payload);
+                    domElements.semanticStatus.textContent = `已建立 ${result.indexed} 段${result.semantic ? '語意' : '關鍵字'}索引；現在可以直接提問。`;
+                    showToast('逐字稿匯入完成！');
+                } catch (error) { domElements.semanticStatus.textContent = `匯入失敗：${error.message}`; showToast('逐字稿匯入失敗。', 'error'); }
+                finally { event.target.value = ''; }
+            };
+            const renderDailyBrief = recommendations => {
+                if (!recommendations.length) { domElements.dailyBriefResults.innerHTML = '<div class="intelligence-result">先播放、續播或儲存幾集內容；今日精華就會開始懂您的節奏。</div>'; return; }
+                domElements.dailyBriefResults.innerHTML = recommendations.map((item, index) => `<article class="intelligence-result"><strong>${index + 1}. ${escapeHTML(item.trackName)}</strong><span class="intelligence-status"> · ${escapeHTML(item.podcastArtistName)}</span><p>${escapeHTML(item.reason)}</p><button class="intelligence-button daily-play-btn" data-index="${index}"><i class="fas fa-play"></i> 現在聽</button></article>`).join('');
+                domElements.dailyBriefResults.querySelectorAll('.daily-play-btn').forEach(button => button.addEventListener('click', () => playIntelligenceResult(recommendations[Number(button.dataset.index)])));
+            };
+            const generateDailyBrief = async () => {
+                domElements.dailyBriefResults.innerHTML = '<div class="intelligence-result">正在整理今天最適合的聲音旅程…</div>';
+                try {
+                    const payload = await apiRequest('/api/daily-brief', { listeningMap: getListeningMap(), savedEpisodes: getSavedEpisodes() });
+                    renderDailyBrief(payload.recommendations || []);
+                } catch (error) { domElements.dailyBriefResults.innerHTML = `<div class="intelligence-result">無法生成今日精華：${escapeHTML(error.message)}<br>請使用 <code>npm start</code> 後從本機網址開啟 app。</div>`; }
+            };
+            const checkIntelligenceService = async () => {
+                try {
+                    const response = await fetch('/api/health');
+                    const health = await response.json();
+                    domElements.semanticStatus.textContent = health.semanticSearch ? `智慧服務已連線：${health.embeddingModel} 語意索引已啟用。` : '智慧服務已連線；尚未設定 API key，目前可匯入逐字稿並使用關鍵字備援。';
+                } catch { domElements.semanticStatus.textContent = '請執行 npm start，並從 http://localhost:3100 開啟 app 以啟用智慧功能。'; }
             };
             
             const getPlayerSettings = () => readStorageJson('playerSettings', {});
@@ -1681,6 +1854,39 @@
                 showToast("已存單集列表 HTML 檔案匯出成功！", "success");
             };
 
+            const downloadCurrentEpisodeDescription = async () => {
+                const episode = playerState.currentEpisode;
+                if (!episode) { showToast('請先播放一個單集，再下載單集說明。', 'error'); return; }
+                if (!window.docx) { showToast('Word 文件元件尚未載入，請確認 vendor/docx.iife.js 檔案存在。', 'error'); return; }
+                const safeName = String(episode.trackName || 'podcast-description').replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80);
+                const { Document, Packer, Paragraph, TextRun, HeadingLevel } = window.docx;
+                const label = (name, value) => new Paragraph({ children: [new TextRun({ text: `${name}：`, bold: true }), new TextRun(String(value || ''))] });
+                const wordDocument = new Document({
+                    sections: [{
+                        children: [
+                            new Paragraph({ text: '單集說明', heading: HeadingLevel.TITLE }),
+                            label('單集', episode.trackName || '未命名單集'),
+                            label('節目', episode.artistName || episode.podcastArtistName || ''),
+                            label('音檔', safeHttpsUrl(episode.episodeUrl)),
+                            label('長度', formatTime(Number(audio.duration) || Number(episode.duration) || 0)),
+                            label('發布日期', safeDateText(episode.releaseDate)),
+                            label('匯出時間', new Date().toLocaleString('zh-TW')),
+                            new Paragraph({ text: '單集說明', heading: HeadingLevel.HEADING_1 }),
+                            new Paragraph({ text: plainText(episode.description) || '此單集未提供說明。' })
+                        ]
+                    }]
+                });
+                const blob = await Packer.toBlob(wordDocument);
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${safeName}-單集說明.docx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+                showToast('已下載單集說明 Word 文件。');
+            };
+
             function handleSavedEpisodesImport(event) {
                 const file = event.target.files[0];
                 if (!file) return;
@@ -1860,12 +2066,14 @@
                     domElements.downloadBtn.href = currentEpisode.episodeUrl;
                     domElements.downloadBtn.setAttribute('download', `${(currentEpisode.trackName || 'download').replace(/[/\\?%*:|"<>]/g, '-')}.mp3`);
                     domElements.downloadBtn.classList.add('is-visible');
+                    domElements.downloadDescriptionBtn.classList.add('is-visible');
                 } else {
                     domElements.playerTitle.textContent = '尚未播放任何內容';
                     domElements.playerTitle.title = '尚未播放任何內容';
                     domElements.playerArtist.textContent = '';
                     domElements.playerAlbumArt.src = 'https://placehold.co/40x40/222/fff?text=Pod';
                     domElements.downloadBtn.classList.remove('is-visible');
+                    domElements.downloadDescriptionBtn.classList.remove('is-visible');
                 }
                 domElements.soundIconContainer.classList.toggle('is-playing-icon', isPlaying && !!currentEpisode);
                 document.querySelector('.episode-item.is-playing-item')?.classList.remove('is-playing-item');
@@ -1901,7 +2109,8 @@
                     playlist: playlist,
                     currentIndex: playlist.findIndex(e => sameTrackId(e.trackId, episode.trackId)),
                     isPlaying: true,
-                    _playbackAttempt: 'direct'
+                    _playbackAttempt: 'direct',
+                    mapSessionRecorded: false
                 };
 
                 const progressData = getPlaybackProgress();
@@ -2134,7 +2343,11 @@
                     const playingItem = document.querySelector('.episode-item.is-playing-item');
                     if(playingItem) {
                        const spinnerContainer = playingItem.querySelector('.episode-thumbnail-btn .loading-spinner-overlay');
-                       if (spinnerContainer) spinnerContainer.style.display = 'none';
+                        if (spinnerContainer) spinnerContainer.style.display = 'none';
+                    }
+                    if (playerState.currentEpisode && Number.isFinite(audio.duration) && audio.duration > 0) {
+                        updateListeningMap(playerState.currentEpisode, audio.currentTime, audio.duration, !playerState.mapSessionRecorded);
+                        playerState.mapSessionRecorded = true;
                     }
                 });
                 audio.addEventListener('pause', () => { playerState.isPlaying = false; syncPlayerUI(); });
@@ -2142,6 +2355,7 @@
                     if (playerState.currentEpisode) {
                         const { trackId } = playerState.currentEpisode;
                         savePlaybackProgress(trackId, audio.duration, audio.duration);
+                        updateListeningMap(playerState.currentEpisode, audio.duration, audio.duration);
                         const epItem = document.querySelector(`.episode-item[data-episode-id="${CSS.escape(String(trackId))}"]`);
                         if (epItem) {
                            epItem.classList.add('is-listened');
@@ -2186,6 +2400,7 @@
                         const now = Date.now();
                         if (now - lastProgressUpdateTime > 2000) {
                             savePlaybackProgress(currentEpisode.trackId, currentTime, duration);
+                            updateListeningMap(currentEpisode, currentTime, duration);
                             lastProgressUpdateTime = now;
                         }
                         
@@ -2206,6 +2421,7 @@
                 domElements.searchBtn.addEventListener('click', () => searchPodcasts(domElements.searchInput.value));
                 domElements.searchInput.addEventListener('keypress', (e) => e.key === 'Enter' && searchPodcasts(e.target.value));
                 domElements.playPauseBtn.addEventListener('click', togglePlayPause);
+                domElements.downloadDescriptionBtn.addEventListener('click', downloadCurrentEpisodeDescription);
                 domElements.skipBackwardBtn.addEventListener('click', () => audio.currentTime = Math.max(0, audio.currentTime - 15));
                 domElements.skipForwardBtn.addEventListener('click', () => audio.currentTime = Math.min(audio.duration, audio.currentTime + 15));
                 domElements.progressBar.addEventListener('click', (e) => { if (audio.duration) audio.currentTime = (e.offsetX / e.currentTarget.offsetWidth) * audio.duration; });
@@ -2270,6 +2486,11 @@
                 domElements.importRtfBtn.addEventListener('click', () => domElements.importRtfInput.click());
                 domElements.importRtfInput.addEventListener('change', handleCollectionImport);
                 domElements.importSavedEpisodesInput.addEventListener('change', handleSavedEpisodesImport);
+                domElements.importTranscriptBtn.addEventListener('click', () => domElements.importTranscriptInput.click());
+                domElements.importTranscriptInput.addEventListener('change', importTranscript);
+                domElements.semanticSearchBtn.addEventListener('click', searchSemanticIndex);
+                domElements.semanticQueryInput.addEventListener('keydown', event => { if (event.key === 'Enter') searchSemanticIndex(); });
+                domElements.generateDailyBriefBtn.addEventListener('click', generateDailyBrief);
 
 
                 applyTheme(readStorageString('theme', 'dark'));
@@ -2279,6 +2500,7 @@
                 syncPlayerUI();
                 domElements.mainContent.querySelectorAll(':scope > div').forEach(d => d.style.display = 'none');
                 domElements.defaultView.style.display = 'flex';
+                checkIntelligenceService();
 
                 const tabButtons = document.querySelectorAll('.tab-btn');
                 const tabPanels = document.querySelectorAll('.tab-panel');
@@ -2290,6 +2512,15 @@
                         const targetTab = button.dataset.tab;
                         if (targetTab === 'tab-saved-episodes') {
                             renderSavedEpisodes();
+                        }
+                        if (targetTab === 'tab-listening-map') {
+                            renderListeningMap();
+                        }
+                        if (targetTab === 'tab-semantic-search') {
+                            checkIntelligenceService();
+                        }
+                        if (targetTab === 'tab-daily-brief') {
+                            generateDailyBrief();
                         }
                         tabPanels.forEach(panel => {
                             panel.classList.remove('active');
