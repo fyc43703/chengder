@@ -3,137 +3,52 @@
   const CLIENT_ID = '834974194833-onn2a51uddmjf458ced478ivis0fb5f1.apps.googleusercontent.com';
   const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.events.readonly';
   const FOLDER_MIME = 'application/vnd.google-apps.folder';
-  let token = '';
-
+  const esc = (v = '') => String(v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  let token = '', shownMonth = new Date(2026, 8, 1);
   const state = () => eval('({ notes, selected })');
-  const monthStart = '2026-09-01T00:00:00+08:00';
-  const monthEnd = '2026-10-01T00:00:00+08:00';
-  const minguoDay = () => `115-09-${String(state().selected || 13).padStart(2, '0')}`;
-  const authHeaders = () => ({ Authorization: `Bearer ${token}` });
-  const safe = (value = '') => String(value).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const setSelected = d => eval(`selected = ${Number(d)}`);
+  const ledger = {};
+  Object.entries(state().notes).forEach(([d, v]) => ledger[`2026-09-${String(d).padStart(2, '0')}`] = [...v]);
+  const monthKey = () => `${shownMonth.getFullYear()}-${String(shownMonth.getMonth()+1).padStart(2,'0')}`;
+  const pickedKey = () => `${monthKey()}-${String(state().selected).padStart(2,'0')}`;
+  const minguo = () => `${shownMonth.getFullYear()-1911}-${String(shownMonth.getMonth()+1).padStart(2,'0')}-${String(state().selected).padStart(2,'0')}`;
+  const label = () => `${shownMonth.getFullYear()} 年 ${shownMonth.getMonth()+1} 月`;
+  const api = async (url, opt = {}) => { const r = await fetch(url, { ...opt, headers: { Authorization: `Bearer ${token}`, ...(opt.headers || {}) } }); if (!r.ok) throw new Error((await r.json().catch(()=>({}))).error?.message || 'Google 服務暫時無法完成要求'); return r.status === 204 ? null : r.json(); };
 
-  async function api(url, options = {}) {
-    const response = await fetch(url, { ...options, headers: { ...authHeaders(), ...(options.headers || {}) } });
-    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error?.message || 'Google 服務暫時無法完成要求');
-    return response.status === 204 ? null : response.json();
+  function renderCalendar() {
+    const cal = document.getElementById('calendar'); cal.innerHTML = '';
+    for (let i=0;i<new Date(shownMonth.getFullYear(),shownMonth.getMonth(),1).getDay();i++) cal.insertAdjacentHTML('beforeend','<div class="day empty"></div>');
+    const last = new Date(shownMonth.getFullYear(),shownMonth.getMonth()+1,0).getDate();
+    for (let d=1;d<=last;d++) { const key=`${monthKey()}-${String(d).padStart(2,'0')}`, events=(ledger[key]||[]).slice(0,2).map(n=>`<div class="event ${esc(n.kind||'blue')}" title="${esc(n.title)}">${esc(n.title)}</div>`).join(''); cal.insertAdjacentHTML('beforeend',`<div class="day ${d===state().selected?'selected':''}" onclick="pick(${d})"><span class="date">${d}</span>${events}</div>`); }
+    while(cal.children.length%7) cal.insertAdjacentHTML('beforeend','<div class="day empty"></div>');
+    document.querySelector('.topbar h1').textContent=`${shownMonth.getMonth()+1}月 ${shownMonth.getFullYear()}`; document.querySelector('.cal-head h2').textContent=label();
   }
-
-  async function findOrCreateFolder(name, parentId) {
-    const q = [`name = '${name.replace(/'/g, "\\'")}'`, `mimeType = '${FOLDER_MIME}'`, 'trashed = false'];
-    if (parentId) q.push(`'${parentId}' in parents`);
-    const found = await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q.join(' and '))}&fields=files(id,name)&pageSize=20`);
-    if (found.files?.length) return found.files[0].id;
-    const body = { name, mimeType: FOLDER_MIME };
-    if (parentId) body.parents = [parentId];
-    return (await api('https://www.googleapis.com/drive/v3/files', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).id;
+  function renderAgenda() {
+    const d=state().selected, data=ledger[pickedKey()]||[];
+    document.getElementById('agendaTitle').textContent='當日行程'; document.getElementById('dateLabel').textContent=`民國 ${shownMonth.getFullYear()-1911} 年 ${shownMonth.getMonth()+1} 月 ${d} 日`; document.getElementById('editorDate').textContent=`儲存到民國 ${shownMonth.getFullYear()-1911} 年 ${shownMonth.getMonth()+1} 月 ${d} 日`;
+    document.getElementById('noteList').innerHTML=data.length?data.map(n=>`<article class="note"><div class="note-top"><span class="dot ${esc(n.kind||'blue')}"></span>${esc(n.title)}</div><small>${esc(n.time||'全天')}　${esc(n.detail||'尚未加入備註')}</small><div class="tags">${String(n.tags||'記事').split('　').map(x=>`<span>${esc(x)}</span>`).join('')}</div>${n.file?`<div class="attachment">📎 ${esc(n.file)}</div>`:''}</article>`).join(''):'<p style="color:#7a8799;font-size:14px;margin-top:22px">這天還沒有行程。<br>也可以直接新增記事。</p>';
+    document.querySelector('.drive-path b').textContent=`Google Drive／我的記事簿／${minguo()}`;
   }
-
-  async function dateFolder() {
-    const root = await findOrCreateFolder('我的記事簿');
-    return findOrCreateFolder(minguoDay(), root);
-  }
-
-  async function uploadFile(folderId, file, title = file.name) {
-    const boundary = `notebook_${Date.now()}`;
-    const meta = { name: title, parents: [folderId] };
-    const body = new Blob([
-      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n`,
-      `--${boundary}\r\nContent-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`, file, `\r\n--${boundary}--`
-    ], { type: `multipart/related; boundary=${boundary}` });
-    return api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body });
-  }
-
-  async function saveToDrive(note) {
-    const folderId = await dateFolder();
-    const markdown = `# ${note.title}\n\n日期：民國 ${minguoDay()}\n時間：${note.time || '未設定'}\n重要性：${note.kind || '一般'}\n\n${note.detail || ''}\n`;
-    await uploadFile(folderId, new File([markdown], `${note.title}.md`, { type: 'text/markdown;charset=utf-8' }));
-    const files = [...document.getElementById('file').files];
-    for (const file of files) await uploadFile(folderId, file);
-  }
+  window.renderCalendar=renderCalendar; window.renderAgenda=renderAgenda; window.pick=d=>{setSelected(d);renderCalendar();renderAgenda();};
 
   async function importCalendar() {
-    const data = await api(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(monthStart)}&timeMax=${encodeURIComponent(monthEnd)}`);
-    const notebook = state().notes;
-    for (let day = 1; day <= 30; day += 1) notebook[day] = (notebook[day] || []).filter(note => !note.calendarImport);
-    let count = 0;
-    for (const event of data.items || []) {
-      const rawDate = event.start?.date || event.start?.dateTime;
-      if (!rawDate) continue;
-      const day = event.start?.date ? Number(rawDate.slice(8, 10)) : new Date(rawDate).getDate();
-      if (day < 1 || day > 30) continue;
-      (notebook[day] ??= []).push({
-        title: event.summary || '未命名行程',
-        time: event.start?.dateTime ? new Date(event.start.dateTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }) : '全天',
-        kind: 'blue', detail: event.description || event.location || 'Google 日曆行程', tags: '日曆匯入', calendarImport: true
-      });
-      count += 1;
-    }
-    window.renderCalendar(); window.renderAgenda();
-    window.showToast(count ? `已匯入本月 ${count} 筆 Google 日曆行程` : '本月沒有 Google 日曆行程');
+    const first=new Date(shownMonth.getFullYear(),shownMonth.getMonth(),1), next=new Date(shownMonth.getFullYear(),shownMonth.getMonth()+1,1), prefix=`${monthKey()}-`;
+    const data=await api(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(first.toISOString())}&timeMax=${encodeURIComponent(next.toISOString())}`);
+    Object.keys(ledger).filter(k=>k.startsWith(prefix)).forEach(k=>ledger[k]=ledger[k].filter(n=>!n.calendarImport)); let count=0;
+    for(const e of data.items||[]) { const raw=e.start?.date||e.start?.dateTime; if(!raw) continue; const key=e.start?.date?raw:`${prefix}${String(new Date(raw).getDate()).padStart(2,'0')}`; if(!key.startsWith(prefix))continue; (ledger[key]??=[]).push({title:e.summary||'未命名行程',time:e.start?.dateTime?new Date(e.start.dateTime).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false}):'全天',kind:'blue',detail:e.description||e.location||'Google 日曆行程',tags:'日曆匯入',calendarImport:true}); count++; }
+    renderCalendar();renderAgenda();window.showToast(count?`已匯入 ${label()}的 ${count} 筆行程`:`${label()}沒有 Google 日曆行程`);
   }
+  window.connectDrive=()=>{if(!window.google?.accounts?.oauth2)return window.showToast('Google 授權元件載入中，請稍後再試'); google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:async r=>{if(r.error)return window.showToast('Google 授權未完成');token=r.access_token;document.getElementById('driveState').textContent='Google Drive 已連結';try{await importCalendar()}catch(e){window.showToast(`已連結，但日曆匯入失敗：${e.message}`)}}}).requestAccessToken({prompt:'consent'});};
 
-  async function searchDrive(query) {
-    const q = `fullText contains '${query.replace(/'/g, "\\'")}' and trashed = false`;
-    const result = await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,modifiedTime,webViewLink)&pageSize=10`);
-    return result.files || [];
-  }
-
-  window.connectDrive = () => {
-    if (!window.google?.accounts?.oauth2) { window.showToast('Google 授權元件載入中，請稍後再試'); return; }
-    const client = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID, scope: SCOPES,
-      callback: async response => {
-        if (response.error) { window.showToast('Google 授權未完成'); return; }
-        token = response.access_token;
-        document.getElementById('driveState').textContent = 'Google Drive 已連結';
-        try { await importCalendar(); } catch (error) { window.showToast(`已連結，但日曆匯入失敗：${error.message}`); }
-      }
-    });
-    client.requestAccessToken({ prompt: 'consent' });
-  };
-
-  const originalPick = window.pick;
-  window.pick = d => originalPick(d);
-  const originalSave = window.saveNote;
-  window.saveNote = async () => {
-    const title = document.getElementById('title').value.trim();
-    if (!title) return originalSave();
-    if (!token) { window.showToast('請先連結 Google Drive，再儲存記事'); return; }
-    const note = { title, time: document.getElementById('time').value, kind: document.getElementById('priority').value, detail: document.getElementById('detail').value };
-    const button = document.querySelector('#editor button:last-child');
-    if (button) button.disabled = true;
-    try {
-      await saveToDrive(note);
-      const target = state().selected || 13;
-      state().notes[target] ??= [];
-      state().notes[target].push({ ...note, file: [...document.getElementById('file').files].map(f => f.name).join('、'), tags: '記事' });
-      window.closeEditor(); window.renderCalendar(); window.renderAgenda();
-      document.getElementById('title').value = ''; document.getElementById('detail').value = ''; document.getElementById('file').value = '';
-      window.showToast(`已同步到 Google Drive／我的記事簿／${minguoDay()}`);
-    } catch (error) { window.showToast(`儲存失敗：${error.message}`); }
-    finally { if (button) button.disabled = false; }
-  };
-  const originalSearch = window.searchNotes;
-  window.searchNotes = async () => {
-    const query = document.getElementById('search').value.trim();
-    if (query.length < 2) return originalSearch();
-    if (!token) { window.showToast('請先連結 Google Drive，才能搜尋雲端記事'); return; }
-    try {
-      const files = await searchDrive(query);
-      window.showToast(files.length ? `雲端找到：${files.map(f => safe(f.name)).join('、')}` : '雲端沒有符合的記事');
-    } catch (error) { window.showToast(`搜尋失敗：${error.message}`); }
-  };
-  const style = document.createElement('style');
-  style.textContent = '.day{min-width:0;overflow:hidden}.event{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.calendar-refresh{border:1px solid #bfd2f5;background:#fff;color:#1755af;border-radius:8px;font-weight:700;padding:7px 10px;cursor:pointer;font-size:12px;margin-right:8px}.calendar-refresh:disabled{opacity:.55;cursor:wait}';
-  document.head.appendChild(style);
-  const refresh = document.createElement('button');
-  refresh.type = 'button'; refresh.className = 'calendar-refresh'; refresh.textContent = '↻ 匯入本月';
-  refresh.addEventListener('click', async () => {
-    if (!token) { window.showToast('請先連結 Google Drive，再匯入日曆'); return; }
-    refresh.disabled = true;
-    try { await importCalendar(); } catch (error) { window.showToast(`匯入失敗：${error.message}`); }
-    finally { refresh.disabled = false; }
-  });
-  document.querySelector('.cal-head')?.insertBefore(refresh, document.querySelector('.cal-head .arrow:last-child'));
+  async function folder(name,parent) { const q=[`name = '${name.replace(/'/g,"\\'")}'`,`mimeType = '${FOLDER_MIME}'`,'trashed = false'];if(parent)q.push(`'${parent}' in parents`);const hit=await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q.join(' and '))}&fields=files(id)&pageSize=1`);if(hit.files?.[0])return hit.files[0].id;return(await api('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:FOLDER_MIME,...(parent?{parents:[parent]}:{})})})).id; }
+  async function upload(parent,file,name=file.name) { const b=`notebook_${Date.now()}`,meta={name,parents:[parent]},body=new Blob([`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n`,`--${b}\r\nContent-Type: ${file.type||'application/octet-stream'}\r\n\r\n`,file,`\r\n--${b}--`],{type:`multipart/related; boundary=${b}`});return api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${b}`},body}); }
+  window.saveNote=async()=>{const title=document.getElementById('title').value.trim();if(!title)return window.showToast('請先輸入記事標題');if(!token)return window.showToast('請先連結 Google Drive，再儲存記事');const note={title,time:document.getElementById('time').value,kind:document.getElementById('priority').value,detail:document.getElementById('detail').value};try{const root=await folder('我的記事簿'),day=await folder(minguo(),root),md=`# ${title}\n\n日期：民國 ${minguo()}\n時間：${note.time}\n\n${note.detail||''}\n`;await upload(day,new File([md],`${title}.md`,{type:'text/markdown;charset=utf-8'}));for(const f of document.getElementById('file').files)await upload(day,f);(ledger[pickedKey()]??=[]).push({...note,file:[...document.getElementById('file').files].map(f=>f.name).join('、'),tags:'記事'});window.closeEditor();renderCalendar();renderAgenda();document.getElementById('title').value='';document.getElementById('detail').value='';document.getElementById('file').value='';window.showToast(`已同步到 Google Drive／我的記事簿／${minguo()}`)}catch(e){window.showToast(`儲存失敗：${e.message}`)}};
+  window.searchNotes=async()=>{const q=document.getElementById('search').value.trim();if(q.length<2)return;if(!token)return window.showToast('請先連結 Google Drive，才能搜尋雲端記事');try{const data=await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`fullText contains '${q.replace(/'/g,"\\'")}' and trashed = false`)}&fields=files(name)&pageSize=10`);window.showToast(data.files?.length?`雲端找到：${data.files.map(f=>f.name).join('、')}`:'雲端沒有符合的記事')}catch(e){window.showToast(`搜尋失敗：${e.message}`)}};
+  const changeMonth=delta=>{shownMonth=new Date(shownMonth.getFullYear(),shownMonth.getMonth()+delta,1);setSelected(1);renderCalendar();renderAgenda();if(token)importCalendar().catch(e=>window.showToast(`匯入失敗：${e.message}`));};document.querySelector('[aria-label="上個月"]')?.addEventListener('click',()=>changeMonth(-1));document.querySelector('[aria-label="下個月"]')?.addEventListener('click',()=>changeMonth(1));
+  const css='.day{min-width:0;overflow:hidden}.event{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.calendar-refresh{border:1px solid #bfd2f5;background:#fff;color:#1755af;border-radius:8px;font-weight:700;padding:7px 10px;cursor:pointer;font-size:12px;margin-right:8px}.sidebar-toggle,.agenda-toggle{position:fixed;z-index:10;border:1px solid #bfd2f5;background:#fff;color:#1755af;border-radius:50%;width:32px;height:32px;cursor:pointer;box-shadow:0 2px 8px #1232}.sidebar-toggle{left:232px;top:50%}.agenda-toggle{right:304px;top:50%}.app.sidebar-collapsed{grid-template-columns:72px minmax(0,1fr)}.sidebar-collapsed .sidebar{padding:20px 8px}.sidebar-collapsed .brand{font-size:0;margin:0 10px 38px}.sidebar-collapsed .nav a{font-size:0;justify-content:center;padding:11px 5px}.sidebar-collapsed .mini{display:none}.content.agenda-collapsed{grid-template-columns:minmax(0,1fr) 0}.agenda.agenda-collapsed{width:0;padding:0;border:0;overflow:hidden}.app.sidebar-collapsed~.sidebar-toggle{left:56px}.content.agenda-collapsed~.agenda-toggle{right:10px}@media(max-width:900px){.sidebar-toggle,.agenda-toggle{display:none}}';const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+  const refresh=document.createElement('button');refresh.type='button';refresh.className='calendar-refresh';refresh.textContent='↻ 匯入本月';refresh.onclick=()=>!token?window.showToast('請先連結 Google Drive，再匯入日曆'):importCalendar().catch(e=>window.showToast(`匯入失敗：${e.message}`));document.querySelector('.cal-head')?.insertBefore(refresh,document.querySelector('[aria-label="下個月"]'));
+  const left=document.createElement('button');left.className='sidebar-toggle';left.title='收合／展開左側欄';left.textContent='‹';document.body.appendChild(left);left.onclick=()=>{const app=document.querySelector('.app');app.classList.toggle('sidebar-collapsed');left.textContent=app.classList.contains('sidebar-collapsed')?'›':'‹'};
+  const right=document.createElement('button');right.className='agenda-toggle';right.title='收合／展開今日行程';right.textContent='›';document.body.appendChild(right);right.onclick=()=>{const c=document.querySelector('.content'),a=document.querySelector('.agenda');c.classList.toggle('agenda-collapsed');a.classList.toggle('agenda-collapsed');const closed=a.classList.contains('agenda-collapsed');right.textContent=closed?'‹':'›';right.style.right=closed?'10px':'304px'};
+  renderCalendar();renderAgenda();
 })();
 
