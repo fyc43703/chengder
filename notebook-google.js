@@ -6,7 +6,8 @@
   let token = '';
 
   const state = () => eval('({ notes, selected })');
-  const dayIso = () => `2026-09-${String(state().selected || 13).padStart(2, '0')}`;
+  const monthStart = '2026-09-01T00:00:00+08:00';
+  const monthEnd = '2026-10-01T00:00:00+08:00';
   const minguoDay = () => `115-09-${String(state().selected || 13).padStart(2, '0')}`;
   const authHeaders = () => ({ Authorization: `Bearer ${token}` });
   const safe = (value = '') => String(value).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -51,19 +52,24 @@
   }
 
   async function importCalendar() {
-    const start = new Date(`${dayIso()}T00:00:00+08:00`).toISOString();
-    const end = new Date(`${dayIso()}T23:59:59+08:00`).toISOString();
-    const data = await api(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(start)}&timeMax=${encodeURIComponent(end)}`);
-    const target = state().selected || 13;
-    const old = (state().notes[target] || []).filter(n => !n.calendarImport);
-    const events = (data.items || []).map(event => ({
-      title: event.summary || '未命名行程',
-      time: event.start?.dateTime ? new Date(event.start.dateTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }) : '全天',
-      kind: 'blue', detail: event.description || event.location || 'Google 日曆行程', tags: '日曆匯入', calendarImport: true
-    }));
-    state().notes[target] = [...old, ...events];
+    const data = await api(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(monthStart)}&timeMax=${encodeURIComponent(monthEnd)}`);
+    const notebook = state().notes;
+    for (let day = 1; day <= 30; day += 1) notebook[day] = (notebook[day] || []).filter(note => !note.calendarImport);
+    let count = 0;
+    for (const event of data.items || []) {
+      const rawDate = event.start?.date || event.start?.dateTime;
+      if (!rawDate) continue;
+      const day = event.start?.date ? Number(rawDate.slice(8, 10)) : new Date(rawDate).getDate();
+      if (day < 1 || day > 30) continue;
+      (notebook[day] ??= []).push({
+        title: event.summary || '未命名行程',
+        time: event.start?.dateTime ? new Date(event.start.dateTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }) : '全天',
+        kind: 'blue', detail: event.description || event.location || 'Google 日曆行程', tags: '日曆匯入', calendarImport: true
+      });
+      count += 1;
+    }
     window.renderCalendar(); window.renderAgenda();
-    window.showToast(events.length ? `已匯入 ${events.length} 筆 Google 日曆行程` : '這天沒有 Google 日曆行程');
+    window.showToast(count ? `已匯入本月 ${count} 筆 Google 日曆行程` : '本月沒有 Google 日曆行程');
   }
 
   async function searchDrive(query) {
@@ -87,7 +93,7 @@
   };
 
   const originalPick = window.pick;
-  window.pick = async d => { originalPick(d); if (token) { try { await importCalendar(); } catch (_) {} } };
+  window.pick = d => originalPick(d);
   const originalSave = window.saveNote;
   window.saveNote = async () => {
     const title = document.getElementById('title').value.trim();
@@ -117,5 +123,17 @@
       window.showToast(files.length ? `雲端找到：${files.map(f => safe(f.name)).join('、')}` : '雲端沒有符合的記事');
     } catch (error) { window.showToast(`搜尋失敗：${error.message}`); }
   };
+  const style = document.createElement('style');
+  style.textContent = '.day{min-width:0;overflow:hidden}.event{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.calendar-refresh{border:1px solid #bfd2f5;background:#fff;color:#1755af;border-radius:8px;font-weight:700;padding:7px 10px;cursor:pointer;font-size:12px;margin-right:8px}.calendar-refresh:disabled{opacity:.55;cursor:wait}';
+  document.head.appendChild(style);
+  const refresh = document.createElement('button');
+  refresh.type = 'button'; refresh.className = 'calendar-refresh'; refresh.textContent = '↻ 匯入本月';
+  refresh.addEventListener('click', async () => {
+    if (!token) { window.showToast('請先連結 Google Drive，再匯入日曆'); return; }
+    refresh.disabled = true;
+    try { await importCalendar(); } catch (error) { window.showToast(`匯入失敗：${error.message}`); }
+    finally { refresh.disabled = false; }
+  });
+  document.querySelector('.cal-head')?.insertBefore(refresh, document.querySelector('.cal-head .arrow:last-child'));
 })();
 
