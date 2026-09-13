@@ -40,7 +40,7 @@
   const minguo = () => `${shownMonth.getFullYear()-1911}-${String(shownMonth.getMonth()+1).padStart(2,'0')}-${String(state().selected).padStart(2,'0')}`;
   const label = () => `${shownMonth.getFullYear()} 年 ${shownMonth.getMonth()+1} 月`;
   const isToday = day => { const now = new Date(); return shownMonth.getFullYear() === now.getFullYear() && shownMonth.getMonth() === now.getMonth() && day === now.getDate(); };
-  const api = async (url, opt = {}) => { const r = await fetch(url, { ...opt, headers: { Authorization: `Bearer ${token}`, ...(opt.headers || {}) } }); if (!r.ok) throw new Error((await r.json().catch(()=>({}))).error?.message || 'Google 服務暫時無法完成要求'); return r.status === 204 ? null : r.json(); };
+  const api = async (url, opt = {}) => { const r = await fetch(url, { ...opt, headers: { Authorization: `Bearer ${token}`, ...(opt.headers || {}) } }); if (!r.ok) throw new Error((await r.json().catch(()=>({}))).error?.message || 'Google 服務暫時無法完成要求'); if(r.status===204)return null;return (r.headers.get('content-type')||'').includes('application/json')?r.json():r.text(); };
 
   function renderCalendar() {
     const cal = document.getElementById('calendar'); cal.innerHTML = '';
@@ -51,7 +51,7 @@
     document.querySelector('.topbar h1').textContent=`${shownMonth.getFullYear()-1911}年${shownMonth.getMonth()+1}月 - 我的雲端硬碟記事簿`; document.querySelector('.cal-head h2').textContent=label();
   }
   const driveFileLink=id=>`https://drive.google.com/open?id=${encodeURIComponent(id)}`;
-  const renderAgendaAttachments=n=>{const files=n.driveAttachments||[];if(files.length)return `<div class="attachment">📎 ${files.map(file=>`<a href="${driveFileLink(file.id)}" target="_blank" rel="noopener" title="在 Google Drive 開啟：${esc(file.name)}">${esc(file.name)}</a>`).join('　')}</div>`;return n.file?`<div class="attachment">📎 ${esc(n.file)}</div>`:'';};
+  const renderAgendaAttachments=n=>{const files=n.driveAttachments||[];if(files.length)return `<div class="attachment attachment-links"><span>📎 附件</span><ul>${files.map(file=>`<li><a href="${driveFileLink(file.id)}" target="_blank" rel="noopener" title="在 Google Drive 開啟：${esc(file.name)}">${esc(file.name)}</a></li>`).join('')}</ul></div>`;return n.file?`<div class="attachment">📎 ${esc(n.file)}</div>`:'';};
   function renderAgenda() {
     const d=state().selected, data=ledger[pickedKey()]||[];
     document.getElementById('agendaTitle').textContent='當日行程'; document.getElementById('dateLabel').textContent=`民國 ${shownMonth.getFullYear()-1911} 年 ${shownMonth.getMonth()+1} 月 ${d} 日`; document.getElementById('editorDate').textContent=`儲存到民國 ${shownMonth.getFullYear()-1911} 年 ${shownMonth.getMonth()+1} 月 ${d} 日`;
@@ -77,13 +77,15 @@
     for(const folderItem of folders.files||[]){
       const match=folderItem.name.match(/^(\d{3})-(\d{2})-(\d{2})(?:_(.*))?$/);if(!match)continue;
       const key=`${Number(match[1])+1911}-${match[2]}-${match[3]}`;if(!key.startsWith(prefix))continue;
-      const noteQuery=`'${folderItem.id}' in parents and name contains '.md' and trashed = false`;
       const result=await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`'${folderItem.id}' in parents and trashed = false`)}&fields=files(id,name,mimeType)&pageSize=100`);
       if(!cleared.has(key)){ledger[key]=(ledger[key]||[]).filter(item=>!item.driveImport);cleared.add(key);}
       const files=result.files||[], attachments=files.filter(file=>!file.name.toLowerCase().endsWith('.md'));
       for(const file of files.filter(file=>file.name.toLowerCase().endsWith('.md'))){
-        const title=file.name.replace(/\.md$/i,'')||match[4]||folderItem.name;
-        (ledger[key]??=[]).push({title,time:'全天',kind:'green',detail:'已從 Google Drive 記事目錄載入',file:attachments.map(item=>item.name).join('、'),driveAttachments:attachments,tags:'雲端記事',driveImport:true});count++;
+        let text='';try{text=await api(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`)}catch(_){ }
+        const raw=String(text||''), title=(raw.match(/^#\s*(.+)$/m)?.[1]||file.name.replace(/\.md$/i,'')||match[4]||folderItem.name).trim();
+        const time=(raw.match(/^時間：\s*(.+)$/m)?.[1]||'全天').trim(), location=(raw.match(/^地點：\s*(.+)$/m)?.[1]||'').trim();
+        const detail=raw.replace(/^#\s*.+\r?\n?/m,'').replace(/^日期：.*\r?\n?/m,'').replace(/^時間：.*\r?\n?/m,'').replace(/^地點：.*\r?\n?/m,'').trim();
+        (ledger[key]??=[]).push({title,time,kind:'green',detail:detail||'沒有補充說明',location:location==='未設定'?'':location,file:attachments.map(item=>item.name).join('、'),driveAttachments:attachments,tags:'雲端記事',driveImport:true});count++;
       }
     }
     renderCalendar();renderAgenda();if(count)window.showToast(`已載入 ${count} 筆雲端記事到月曆`);
@@ -117,6 +119,7 @@
   const left=document.createElement('button');left.className='sidebar-toggle';left.title='收合／展開左側欄';left.textContent='‹';document.body.appendChild(left);left.onclick=()=>{const app=document.querySelector('.app');app.classList.toggle('sidebar-collapsed');left.textContent=app.classList.contains('sidebar-collapsed')?'›':'‹'};
   const right=document.createElement('button');right.className='agenda-toggle';right.title='收合／展開今日行程';right.textContent='›';document.body.appendChild(right);right.onclick=()=>{const c=document.querySelector('.content'),a=document.querySelector('.agenda');c.classList.toggle('agenda-collapsed');a.classList.toggle('agenda-collapsed');right.textContent=a.classList.contains('agenda-collapsed')?'‹':'›'};
   document.querySelector('.nav a:nth-child(1)')?.setAttribute('title','月曆與每日記事');document.querySelector('.nav a:nth-child(2)')?.setAttribute('title','搜尋記事、OCR 與雲端檔案');document.querySelector('.nav a:nth-child(3)')?.setAttribute('title','附件預覽、篩選與快速開啟');document.querySelector('.nav a:nth-child(4)')?.setAttribute('title','偏好設定與顯示選項');
+  const attachmentLinkStyle=document.createElement('style');attachmentLinkStyle.textContent='.attachment-links{margin-top:8px}.attachment-links>span{display:block;color:#52627c;font-size:13px;font-weight:700}.attachment-links ul{margin:4px 0 0;padding-left:20px}.attachment-links li{margin:4px 0;line-height:1.4}.attachment-links a{color:#126bc0;text-decoration:underline;word-break:break-word}';document.head.appendChild(attachmentLinkStyle);
   renderCalendar();renderAgenda();
 })();
 
