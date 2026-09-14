@@ -57,6 +57,34 @@
       item.setAttribute('aria-label', label);
     });
 
+    const cloudDrive = document.createElement('a');
+    cloudDrive.className = 'cloud-drive-shortcut';
+    cloudDrive.href = 'https://drive.google.com/drive/u/0/folders/1sy5PoJLoeO5KcGi803230em3M2wE3cXH';
+    cloudDrive.target = '_blank'; cloudDrive.rel = 'noopener';
+    cloudDrive.title = '開啟我的記事簿雲端硬碟資料夾';
+    cloudDrive.innerHTML = '<svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="driveG" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#20c997"/><stop offset="1" stop-color="#2878e8"/></linearGradient></defs><path d="M17 7h14l10 17H27L17 7Z" fill="url(#driveG)"/><path d="m17 7 10 17L17 41 7 24 17 7Z" fill="#ffcc5c"/><path d="M17 41h20l4-17H27L17 41Z" fill="#5c7cf0"/><path d="M7 24h34" stroke="white" stroke-width="2" opacity=".9"/></svg><span>雲端硬碟</span>';
+    nav.append(cloudDrive);
+
+    const connectButton = drive?.querySelector('.connect');
+    const driveState = drive?.querySelector('#driveState');
+    const updateDrivePrompt = () => connectButton?.classList.toggle('drive-needs-attention', !/已連結/.test(driveState?.textContent || ''));
+    updateDrivePrompt();
+    if (driveState) new MutationObserver(updateDrivePrompt).observe(driveState, { childList: true, characterData: true, subtree: true });
+
+    const refreshButton = document.querySelector('.calendar-refresh');
+    if (refreshButton) {
+      refreshButton.title = '匯入目前月份的 Google 日曆行程';
+      const importCurrentMonth = refreshButton.onclick;
+      refreshButton.onclick = () => {
+        if (!/已連結/.test(driveState?.textContent || '')) {
+          window.alert('請先確認已連結 Google Drive，才能下載 Google 日曆資訊。');
+          return;
+        }
+        return importCurrentMonth?.();
+      };
+    }
+    document.querySelectorAll('[aria-label]').forEach(item => { if (!item.title) item.title = item.getAttribute('aria-label'); });
+
     const noteList = document.getElementById('noteList');
     const separateNotes = () => noteList?.querySelectorAll('.note').forEach(note => {
       const detail = note.querySelector('small');
@@ -86,6 +114,8 @@
       .notebook-toolbar .nav a:hover{transform:translateY(-2px);box-shadow:0 7px 14px rgba(38,91,171,.16)}
       .notebook-toolbar .nav a svg{width:29px;height:29px;filter:drop-shadow(0 3px 3px rgba(40,73,150,.25));flex:none}
       .notebook-toolbar .nav a span{font-size:15px;font-weight:700}
+      .notebook-toolbar .cloud-drive-shortcut{display:flex;align-items:center;gap:8px;margin-left:4px;padding:8px 12px;border-radius:10px;color:#245c89;text-decoration:none;font-weight:800;white-space:nowrap}.notebook-toolbar .cloud-drive-shortcut:hover{background:#eaf7f2;transform:translateY(-2px)}.notebook-toolbar .cloud-drive-shortcut svg{width:29px;height:29px;filter:drop-shadow(0 3px 3px rgba(40,73,150,.22))}.notebook-toolbar .cloud-drive-shortcut span{font-size:15px}
+      .drive-needs-attention{animation:drivePulse 1.05s ease-in-out infinite;transform-origin:center}@keyframes drivePulse{0%,100%{transform:scale(1);box-shadow:0 7px 16px rgba(43,85,217,.28)}50%{transform:scale(1.07);box-shadow:0 10px 24px rgba(43,85,217,.52)}}
       .agenda{position:relative!important;height:min(580px,calc(100vh - 188px))!important;min-height:0!important;display:flex!important;flex-direction:column;overflow:hidden!important}
       .agenda #noteList{flex:1 1 auto;min-height:0;overflow-y:auto;padding:0 8px 0 0;scrollbar-width:thin;scrollbar-color:#85aef0 #edf3fd}
       .agenda #noteList::-webkit-scrollbar{width:9px}.agenda #noteList::-webkit-scrollbar-track{background:#edf3fd;border-radius:10px}.agenda #noteList::-webkit-scrollbar-thumb{background:linear-gradient(#90c7ff,#706be9);border-radius:10px}
@@ -96,6 +126,7 @@
       .calendar-card{background:linear-gradient(145deg,rgba(238,246,255,.9),rgba(252,245,255,.9))!important}
       .calendar-card .cal-head{padding:8px 18px!important;min-height:58px;background:linear-gradient(90deg,rgba(220,238,255,.76),rgba(248,236,255,.76));border-radius:16px 16px 0 0}
       .calendar-card .cal-head h2{font-size:22px!important;font-weight:900;color:#213754;letter-spacing:.04em}.calendar-card .cal-head .arrow{width:40px;height:40px;font-size:27px!important;font-weight:900;color:#245692;background:linear-gradient(145deg,#fff,#e7f0ff);box-shadow:0 4px 10px rgba(50,90,160,.14)}
+      .calendar-scale{font-size:15px!important;font-weight:900!important;color:#314f78!important}.calendar-scale select{font-size:16px!important;font-weight:900!important;padding:7px 11px!important}
       .calendar-card .week{background:rgba(231,241,255,.55)}.calendar-card .week span{font-size:16px!important;font-weight:900;color:#344f75}
       .calendar-card .days{grid-auto-rows:minmax(94px,auto)!important;align-items:stretch}.calendar-card .days .day{height:auto!important;min-height:94px}
       #calendar .day:not(.empty){background:linear-gradient(145deg,rgba(255,255,255,.86),rgba(241,247,255,.86))!important}
