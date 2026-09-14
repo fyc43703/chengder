@@ -207,10 +207,13 @@
   const CACHE_KEY = 'notebookLedgerV1';
   const saveLedger = () => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(ledger)); } catch (_) { } };
   const restoreLedger = () => { try { const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); Object.entries(cached).forEach(([day, items]) => { if (Array.isArray(items)) ledger[day] = items; }); } catch (_) { } };
+  const mergeDuplicateDriveNotes = () => Object.keys(ledger).forEach(day => { const retained = (ledger[day] || []).filter(item => !item.driveImport); for (const cloudNote of (ledger[day] || []).filter(item => item.driveImport)) { const localNote = retained.find(item => !item.calendarImport && item.title === cloudNote.title && item.time === cloudNote.time); if (localNote) { localNote.driveAttachments = cloudNote.driveAttachments; localNote.file = cloudNote.file || localNote.file; localNote.location = localNote.location || cloudNote.location; localNote.detail = localNote.detail || cloudNote.detail; } else retained.push(cloudNote); } ledger[day] = retained; });
   const attachmentStore = new Map();
   const demoTitles = new Set(['工程專案進度會議','整理現場照片','客戶會議','安全教育訓練','繳交月報初稿']);
   Object.entries(state().notes).forEach(([d, v]) => { const kept = v.filter(item => !demoTitles.has(item.title)); if (kept.length) ledger[`2026-09-${String(d).padStart(2, '0')}`] = [...kept]; });
   restoreLedger();
+  mergeDuplicateDriveNotes();
+  saveLedger();
   window.addEventListener('pagehide', saveLedger);
   const monthKey = () => `${shownMonth.getFullYear()}-${String(shownMonth.getMonth()+1).padStart(2,'0')}`;
   const pickedKey = () => `${monthKey()}-${String(state().selected).padStart(2,'0')}`;
@@ -263,7 +266,7 @@
         const raw=String(text||''), title=(raw.match(/^#\s*(.+)$/m)?.[1]||file.name.replace(/\.md$/i,'')||match[4]||folderItem.name).trim();
         const time=(raw.match(/^時間：\s*(.+)$/m)?.[1]||'全天').trim(), location=(raw.match(/^地點：\s*(.+)$/m)?.[1]||'').trim();
         const detail=raw.replace(/^#\s*.+\r?\n?/m,'').replace(/^日期：.*\r?\n?/m,'').replace(/^時間：.*\r?\n?/m,'').replace(/^地點：.*\r?\n?/m,'').trim();
-        (ledger[key]??=[]).push({title,time,kind:'green',detail:detail||'沒有補充說明',location:location==='未設定'?'':location,file:attachments.map(item=>item.name).join('、'),driveAttachments:attachments,tags:'雲端記事',driveImport:true});count++;
+        const existingNote=(ledger[key]??=[]).find(item=>!item.calendarImport&&!item.driveImport&&item.title===title&&item.time===time);if(existingNote){existingNote.driveAttachments=attachments;existingNote.file=attachments.map(item=>item.name).join('、')||existingNote.file;existingNote.location=existingNote.location||(location==='未設定'?'':location);existingNote.detail=existingNote.detail||detail;}else{(ledger[key]??=[]).push({title,time,kind:'green',detail:detail||'沒有補充說明',location:location==='未設定'?'':location,file:attachments.map(item=>item.name).join('、'),driveAttachments:attachments,tags:'雲端記事',driveImport:true});count++;}
       }
     }
     saveLedger();renderCalendar();renderAgenda();if(count)window.showToast(`已載入 ${count} 筆雲端記事到月曆`);
