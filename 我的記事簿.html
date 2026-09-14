@@ -94,8 +94,8 @@
       .agenda .note-top{padding-bottom:5px;border-bottom:1px solid #e7eef8}.agenda .note small{display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;line-height:1.55;margin:7px 0!important}
       .agenda .note.expanded small{display:block!important}.agenda .note .tags{margin-top:7px}.note-expand{border:0;background:transparent;color:#356fbe;font-size:12px;font-weight:700;padding:1px 0 3px;cursor:pointer}.note-expand:hover{text-decoration:underline}
       .calendar-card{background:linear-gradient(145deg,rgba(238,246,255,.9),rgba(252,245,255,.9))!important}
-      .calendar-card .cal-head{background:linear-gradient(90deg,rgba(220,238,255,.76),rgba(248,236,255,.76));border-radius:16px 16px 0 0}
-      .calendar-card .cal-head h2{font-size:23px!important;font-weight:900;color:#213754;letter-spacing:.04em}.calendar-card .cal-head .arrow{width:46px;height:46px;font-size:30px!important;font-weight:900;color:#245692;background:linear-gradient(145deg,#fff,#e7f0ff);box-shadow:0 4px 10px rgba(50,90,160,.14)}
+      .calendar-card .cal-head{padding:8px 18px!important;min-height:58px;background:linear-gradient(90deg,rgba(220,238,255,.76),rgba(248,236,255,.76));border-radius:16px 16px 0 0}
+      .calendar-card .cal-head h2{font-size:22px!important;font-weight:900;color:#213754;letter-spacing:.04em}.calendar-card .cal-head .arrow{width:40px;height:40px;font-size:27px!important;font-weight:900;color:#245692;background:linear-gradient(145deg,#fff,#e7f0ff);box-shadow:0 4px 10px rgba(50,90,160,.14)}
       .calendar-card .week{background:rgba(231,241,255,.55)}.calendar-card .week span{font-size:16px!important;font-weight:900;color:#344f75}
       .calendar-card .days{grid-auto-rows:minmax(94px,auto)!important;align-items:stretch}.calendar-card .days .day{height:auto!important;min-height:94px}
       #calendar .day:not(.empty){background:linear-gradient(145deg,rgba(255,255,255,.86),rgba(241,247,255,.86))!important}
@@ -132,9 +132,14 @@
   const state = () => eval('({ notes, selected })');
   const setSelected = d => eval(`selected = ${Number(d)}`);
   const ledger = {};
+  const CACHE_KEY = 'notebookLedgerV1';
+  const saveLedger = () => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(ledger)); } catch (_) { } };
+  const restoreLedger = () => { try { const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); Object.entries(cached).forEach(([day, items]) => { if (Array.isArray(items)) ledger[day] = items; }); } catch (_) { } };
   const attachmentStore = new Map();
   const demoTitles = new Set(['工程專案進度會議','整理現場照片','客戶會議','安全教育訓練','繳交月報初稿']);
   Object.entries(state().notes).forEach(([d, v]) => { const kept = v.filter(item => !demoTitles.has(item.title)); if (kept.length) ledger[`2026-09-${String(d).padStart(2, '0')}`] = [...kept]; });
+  restoreLedger();
+  window.addEventListener('pagehide', saveLedger);
   const monthKey = () => `${shownMonth.getFullYear()}-${String(shownMonth.getMonth()+1).padStart(2,'0')}`;
   const pickedKey = () => `${monthKey()}-${String(state().selected).padStart(2,'0')}`;
   const minguo = () => `${shownMonth.getFullYear()-1911}-${String(shownMonth.getMonth()+1).padStart(2,'0')}-${String(state().selected).padStart(2,'0')}`;
@@ -165,7 +170,7 @@
     const data=await api(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(first.toISOString())}&timeMax=${encodeURIComponent(next.toISOString())}`);
     Object.keys(ledger).filter(k=>k.startsWith(prefix)).forEach(k=>ledger[k]=ledger[k].filter(n=>!n.calendarImport)); let count=0;
     for(const e of data.items||[]) { const raw=e.start?.date||e.start?.dateTime; if(!raw || hiddenCalendarEvents.has(e.id)) continue; const key=e.start?.date?raw:`${prefix}${String(new Date(raw).getDate()).padStart(2,'0')}`; if(!key.startsWith(prefix))continue; (ledger[key]??=[]).push({title:e.summary||'未命名行程',time:e.start?.dateTime?new Date(e.start.dateTime).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false}):'全天',kind:'blue',detail:e.description||e.location||'Google 日曆行程',tags:'日曆匯入',calendarImport:true,calendarEventId:e.id}); count++; }
-    renderCalendar();renderAgenda();window.showToast(count?`已匯入 ${label()}的 ${count} 筆行程`:`${label()}沒有 Google 日曆行程`);
+    saveLedger();renderCalendar();renderAgenda();window.showToast(count?`已匯入 ${label()}的 ${count} 筆行程`:`${label()}沒有 Google 日曆行程`);
   }
   async function importDriveNotes(){
     const rootQuery="name = '我的記事簿' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
@@ -188,7 +193,7 @@
         (ledger[key]??=[]).push({title,time,kind:'green',detail:detail||'沒有補充說明',location:location==='未設定'?'':location,file:attachments.map(item=>item.name).join('、'),driveAttachments:attachments,tags:'雲端記事',driveImport:true});count++;
       }
     }
-    renderCalendar();renderAgenda();if(count)window.showToast(`已載入 ${count} 筆雲端記事到月曆`);
+    saveLedger();renderCalendar();renderAgenda();if(count)window.showToast(`已載入 ${count} 筆雲端記事到月曆`);
   }
   const authorizeDrive=(prompt='consent')=>{if(!window.google?.accounts?.oauth2)return window.showToast('Google 授權元件載入中，請稍後再試'); google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:async r=>{if(r.error){if(prompt==='none'){token='';localStorage.removeItem('notebookGoogleToken');document.getElementById('driveState').textContent='尚未連結帳戶';return}return window.showToast('Google 授權未完成')}token=r.access_token;localStorage.setItem('notebookGoogleToken',token);document.getElementById('driveState').textContent='Google Drive 已連結';try{await importCalendar();await importDriveNotes()}catch(e){window.showToast(`已連結，但雲端記事匯入失敗：${e.message}`)}}}).requestAccessToken({prompt});};
   window.connectDrive=()=>authorizeDrive('consent');
