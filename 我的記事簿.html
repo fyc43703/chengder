@@ -57,16 +57,24 @@
       item.setAttribute('aria-label', label);
     });
 
-    const agenda = document.querySelector('.agenda');
     const noteList = document.getElementById('noteList');
-    if (agenda && noteList && !agenda.querySelector('.agenda-scroll-controls')) {
-      const controls = document.createElement('div');
-      controls.className = 'agenda-scroll-controls';
-      controls.innerHTML = '<button type="button" aria-label="向上捲動">↑</button><button type="button" aria-label="向下捲動">↓</button>';
-      const [up, down] = controls.querySelectorAll('button');
-      up.addEventListener('click', () => noteList.scrollBy({ top: -180, behavior: 'smooth' }));
-      down.addEventListener('click', () => noteList.scrollBy({ top: 180, behavior: 'smooth' }));
-      agenda.append(controls);
+    const separateNotes = () => noteList?.querySelectorAll('.note').forEach(note => {
+      const detail = note.querySelector('small');
+      if (!detail || detail.textContent.trim().length < 74 || note.querySelector('.note-expand')) return;
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'note-expand'; button.textContent = '展開內容';
+      detail.insertAdjacentElement('afterend', button);
+    });
+    if (noteList) {
+      separateNotes();
+      new MutationObserver(separateNotes).observe(noteList, { childList: true });
+      noteList.addEventListener('click', event => {
+        const button = event.target.closest('.note-expand');
+        if (!button) return;
+        const note = button.closest('.note');
+        const expanded = note.classList.toggle('expanded');
+        button.textContent = expanded ? '收合內容' : '展開內容';
+      });
     }
 
     const layoutStyle = document.createElement('style');
@@ -79,12 +87,12 @@
       .notebook-toolbar .nav a svg{width:29px;height:29px;filter:drop-shadow(0 3px 3px rgba(40,73,150,.25));flex:none}
       .notebook-toolbar .nav a span{font-size:15px;font-weight:700}
       .agenda{position:relative!important;height:min(580px,calc(100vh - 188px))!important;min-height:0!important;display:flex!important;flex-direction:column;overflow:hidden!important}
-      .agenda #noteList{flex:1 1 auto;min-height:0;overflow-y:auto;padding:0 22px 0 0;scrollbar-width:thin;scrollbar-color:#85aef0 #edf3fd}
+      .agenda #noteList{flex:1 1 auto;min-height:0;overflow-y:auto;padding:0 8px 0 0;scrollbar-width:thin;scrollbar-color:#85aef0 #edf3fd}
       .agenda #noteList::-webkit-scrollbar{width:9px}.agenda #noteList::-webkit-scrollbar-track{background:#edf3fd;border-radius:10px}.agenda #noteList::-webkit-scrollbar-thumb{background:linear-gradient(#90c7ff,#706be9);border-radius:10px}
       .agenda .drive-path{flex:0 0 auto;margin-top:12px!important}
-      .agenda-scroll-controls{position:absolute;right:8px;top:138px;display:flex;flex-direction:column;gap:6px;z-index:3}
-      .agenda-scroll-controls button{width:27px;height:27px;border:0;border-radius:9px;background:linear-gradient(145deg,#e5f2ff,#e8e4ff);color:#315fa6;font-weight:900;font-size:17px;line-height:1;cursor:pointer;box-shadow:0 3px 8px rgba(61,88,160,.16)}
-      .agenda-scroll-controls button:hover{filter:brightness(1.04);transform:translateY(-1px)}
+      .agenda .note{margin:9px 1px!important;padding:11px 12px!important;border:1px solid #dce8fa!important;border-radius:12px;background:linear-gradient(145deg,#fff,#f5f9ff);box-shadow:0 3px 10px rgba(51,84,137,.08)}
+      .agenda .note-top{padding-bottom:5px;border-bottom:1px solid #e7eef8}.agenda .note small{display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;line-height:1.55;margin:7px 0!important}
+      .agenda .note.expanded small{display:block!important}.agenda .note .tags{margin-top:7px}.note-expand{border:0;background:transparent;color:#356fbe;font-size:12px;font-weight:700;padding:1px 0 3px;cursor:pointer}.note-expand:hover{text-decoration:underline}
       .calendar-card{background:linear-gradient(145deg,rgba(238,246,255,.9),rgba(252,245,255,.9))!important}
       .calendar-card .cal-head{background:linear-gradient(90deg,rgba(220,238,255,.76),rgba(248,236,255,.76));border-radius:16px 16px 0 0}
       .calendar-card .week{background:rgba(231,241,255,.55)}
@@ -92,7 +100,7 @@
       #calendar .day:nth-child(7n+1):not(.empty),#calendar .day:nth-child(7n):not(.empty){background:linear-gradient(145deg,rgba(255,247,250,.92),rgba(245,241,255,.88))!important}
       #calendar .day:nth-child(7n+3):not(.empty),#calendar .day:nth-child(7n+5):not(.empty){background:linear-gradient(145deg,rgba(244,251,255,.92),rgba(239,247,255,.88))!important}
       #calendar .day.selected{background:linear-gradient(145deg,#e0efff,#eee8ff)!important}
-      @media(max-width:900px){.notebook-toolbar{display:flex!important}.notebook-toolbar .mini{margin-left:auto!important}.agenda{height:520px!important}.agenda-scroll-controls{top:140px}}
+      @media(max-width:900px){.notebook-toolbar{display:flex!important}.notebook-toolbar .mini{margin-left:auto!important}.agenda{height:520px!important}}
       @media(max-width:620px){.notebook-toolbar .mini{width:100%;justify-content:space-between;border-left:0!important;border-top:1px solid #dce5f0;padding:9px 0 0!important}.notebook-toolbar .nav a{padding:7px 9px!important}.notebook-toolbar .nav a svg{width:25px;height:25px}.notebook-toolbar .nav a span{font-size:13px}}
     `;
     document.head.append(layoutStyle);
