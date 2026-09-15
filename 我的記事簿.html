@@ -566,5 +566,81 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 </script>
+<style>
+  .ai-page{display:none;position:fixed;inset:0;z-index:220;background:rgba(233,240,249,.82);backdrop-filter:blur(9px);padding:4vh 5vw;overflow:auto}
+  .ai-page.show{display:block}.ai-panel{position:relative;max-width:1180px;margin:auto;background:#fff;border-radius:24px;padding:30px;box-shadow:0 24px 70px rgba(27,54,93,.25)}
+  .ai-panel h2{margin:0;color:#174f94}.ai-panel>p{color:#60718a;margin:7px 0 22px}.ai-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.ai-action{border:1px solid #d5e3f6;background:linear-gradient(145deg,#fff,#f2f8ff);border-radius:14px;padding:16px;text-align:left;cursor:pointer;color:#1b477c;font:inherit;font-weight:800}.ai-action span{display:block;color:#6d7d94;font-size:12px;font-weight:400;margin-top:5px;line-height:1.45}.ai-action:hover,.ai-action.active{border-color:#397bd0;background:#e9f3ff;box-shadow:0 6px 16px rgba(30,92,174,.14)}.ai-input{width:100%;min-height:100px;margin-top:18px;border:1px solid #d5e0ee;border-radius:12px;padding:12px;font:inherit;resize:vertical}.ai-controls{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}.ai-run,.ai-copy{border:0;border-radius:9px;padding:10px 15px;font:inherit;font-weight:800;cursor:pointer}.ai-run{background:#1767c5;color:#fff}.ai-copy{background:#eaf1fa;color:#29547d}.ai-status{color:#61738d;font-size:13px}.ai-result{display:none;white-space:pre-wrap;margin-top:18px;border-radius:14px;padding:18px;background:#f6faff;border:1px solid #d7e7fa;line-height:1.75;color:#233b59}.ai-result.show{display:block}.ai-limit{margin-top:10px;color:#78879b;font-size:12px}@media(max-width:760px){.ai-page{padding:18px 12px}.ai-panel{padding:22px 16px}.ai-grid{grid-template-columns:1fr}}
+</style>
+<script>
+(() => {
+  const features = [
+    ['summary','☀️ 今日重點摘要','將所選日期的行程與記事濃縮為重點、優先順序與下一步。'],
+    ['meeting','📝 會議紀錄整理','把記事整理為議題、決議、待辦、負責角色與期限。'],
+    ['attachment','📎 附件重點擷取','依記事、附件名稱與已擷取文字產生摘要與待確認事項。'],
+    ['polish','✍️ 筆記續寫與潤稿','將片段紀錄改寫成條理清楚、可直接使用的正式內容。'],
+    ['decision','🧭 決策脈絡整理','從相關記事整理背景、選項、依據、已決議及待決事項。'],
+    ['knowledge','📚 個人知識庫摘要','依全部本機記事，建立主題化的知識摘要與快速索引。']
+  ];
+  let selectedFeature = 'summary';
+  const readSettings = () => { try { return JSON.parse(localStorage.getItem('notebookSettingsV1') || '{}'); } catch (_) { return {}; } };
+  const esc = value => String(value || '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const selectedDate = () => {
+    const heading = document.querySelector('.cal-head h2')?.textContent.match(/(\d+)\s*年\s*(\d+)\s*月/);
+    const day = document.querySelector('#calendar .day.selected .date')?.textContent;
+    return heading && day ? `${heading[1]}-${String(heading[2]).padStart(2,'0')}-${String(day).padStart(2,'0')}` : '';
+  };
+  const notes = () => { try { return JSON.parse(localStorage.getItem('notebookLedgerV1') || '{}'); } catch (_) { return {}; } };
+  const noteText = (items, includeFiles = true) => items.map((item,index) => [`【記事 ${index+1}】`, `標題：${item.title||'未命名'}`, `時間：${item.time||'未設定'}`, item.location ? `地點：${item.location}` : '', `內容：${item.detail||'無'}`, includeFiles && item.file ? `附件：${item.file}` : '', item.tags ? `標籤：${item.tags}` : ''].filter(Boolean).join('\n')).join('\n\n');
+  const contextFor = type => {
+    const all = notes(), date = selectedDate(), daily = all[date] || [];
+    const scope = type === 'decision' || type === 'knowledge' ? Object.entries(all).map(([day, items]) => `【${day}】\n${noteText(items)}`).join('\n\n') : noteText(daily);
+    return { date, daily, scope };
+  };
+  const instructions = {
+    summary: '請以繁體中文製作「今日重點摘要」。先列三至五項重點，再列依優先順序排序的待辦與建議下一步。若資料不足，明確標註待確認事項。',
+    meeting: '請以繁體中文將內容整理成正式會議紀錄，格式包括：會議主題、討論重點、決議、待辦事項（含建議負責角色與期限）、待確認事項。不得自行虛構事實。',
+    attachment: '請以繁體中文摘要附件相關資訊與記事內容，列出：附件清單、已知重點、可能需確認的內容、建議閱讀／處理順序。僅可依提供的文字和檔名推論；若附件沒有可讀文字，請清楚說明無法直接讀取檔案內容。',
+    polish: '請以繁體中文潤飾並適度續寫內容，使其結構清楚、語氣專業。保留已知事實，不得杜撰；請輸出可直接貼回記事簿的版本。',
+    decision: '請以繁體中文整理決策脈絡：背景、已知事實、討論／選項、已決議、尚未決定、建議下一步。請標註資訊來自哪些日期的記事，且不可虛構。',
+    knowledge: '請以繁體中文將資料歸納為個人知識庫：依主題分類，列出每個主題的核心知識、相關日期／記事、常見待辦與待補資料。避免重複並保留可追溯性。'
+  };
+  const panel = document.createElement('section');
+  panel.id = 'aiInsightPage'; panel.className = 'ai-page';
+  panel.innerHTML = `<div class="ai-panel"><button class="search-close" type="button" aria-label="關閉 AI 智慧洞察">×</button><h2>✦ AI 智慧洞察</h2><p>以既有 Gemini API Key 分析目前記事；送出前請確認內容可提供給 Gemini。</p><div class="ai-grid">${features.map(([id,name,desc]) => `<button type="button" class="ai-action" data-ai="${id}">${name}<span>${desc}</span></button>`).join('')}</div><textarea class="ai-input" id="aiExtra" placeholder="可補充分析指令，或貼上附件內文；「附件重點擷取」無法直接讀取 PDF／PPT 時尤其適用。"></textarea><div class="ai-controls"><button type="button" class="ai-run">開始 AI 分析</button><button type="button" class="ai-copy">複製結果</button><span class="ai-status"></span></div><div class="ai-result" aria-live="polite"></div><div class="ai-limit">分析範圍：今日類功能使用目前選取日期；「決策脈絡」與「個人知識庫」使用本機快取的全部記事。</div></div>`;
+  document.body.appendChild(panel);
+  const result = panel.querySelector('.ai-result'), status = panel.querySelector('.ai-status'), run = panel.querySelector('.ai-run');
+  const choose = id => { selectedFeature = id; panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); };
+  panel.querySelectorAll('.ai-action').forEach(button => button.addEventListener('click', () => choose(button.dataset.ai)));
+  panel.querySelector('.search-close').addEventListener('click', () => panel.classList.remove('show'));
+  panel.querySelector('.ai-copy').addEventListener('click', async () => { if (!result.textContent.trim()) return; try { await navigator.clipboard.writeText(result.textContent); status.textContent = '已複製結果'; } catch (_) { status.textContent = '無法自動複製，請手動選取文字'; } });
+  run.addEventListener('click', async () => {
+    const apiKey = readSettings().geminiKey;
+    if (!apiKey) { status.textContent = '請先在「設定」填入 Gemini API Key。'; return; }
+    const { date, daily, scope } = contextFor(selectedFeature), extra = panel.querySelector('#aiExtra').value.trim();
+    if (!scope.trim() && !extra) { status.textContent = '目前沒有可分析的記事；請選擇含記事的日期或輸入補充文字。'; return; }
+    const heading = features.find(item => item[0] === selectedFeature)[1];
+    const prompt = `${instructions[selectedFeature]}\n\n功能：${heading}\n${date ? `目前選取日期：${date}` : ''}\n\n【記事資料】\n${scope || '無'}\n\n【使用者補充】\n${extra || '無'}`;
+    run.disabled = true; run.textContent = 'AI 分析中…'; status.textContent = '正在分析記事內容…'; result.classList.remove('show');
+    try {
+      const model = 'gemini-3.6-flash';
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{parts:[{text:prompt}]}]}) });
+      const data = await response.json();
+      if (!response.ok || data.error) throw new Error(data?.error?.message || `HTTP ${response.status}`);
+      const text = data?.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
+      if (!text) throw new Error('Gemini 沒有傳回可用結果。');
+      result.textContent = text; result.classList.add('show'); status.textContent = '分析完成';
+    } catch (error) { status.textContent = `分析失敗：${error.message}`; }
+    finally { run.disabled = false; run.textContent = '開始 AI 分析'; }
+  });
+  const addNav = () => {
+    const nav = document.querySelector('.notebook-toolbar .nav') || document.querySelector('.sidebar .nav');
+    if (!nav || document.getElementById('aiInsightNav')) return;
+    const link = document.createElement('a'); link.id = 'aiInsightNav'; link.href = '#'; link.title = 'AI 智慧洞察'; link.setAttribute('aria-label','AI 智慧洞察'); link.innerHTML = '<span class="ai-nav-icon">✦</span><span>AI 智慧洞察</span>';
+    link.addEventListener('click', event => { event.preventDefault(); choose(selectedFeature); panel.classList.add('show'); }); nav.appendChild(link);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addNav); else addNav();
+  const style = document.createElement('style'); style.textContent = '.ai-nav-icon{display:inline-grid;place-items:center;width:29px;height:29px;border-radius:9px;background:linear-gradient(135deg,#735ce5,#17a2b8);color:#fff;font-size:20px;box-shadow:0 3px 7px rgba(90,75,190,.28)}'; document.head.appendChild(style);
+})();
+</script>
 </body>
 </html>
