@@ -676,15 +676,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const replacementExportButton = exportButton.cloneNode(true);
   exportButton.replaceWith(replacementExportButton);
   const normaliseExportText = text => text.replace(/\r/g, '').replace(/([。！？])(?=\s*(?:\*\*|議題|[一二三四五六七八九十]+、))/g, '$1\n\n');
+  const inlineMarkdown = value => {
+    const parts = [], pattern = /(\*{2,3})(.+?)\1/g; let last = 0, match;
+    while ((match = pattern.exec(value))) { if (match.index > last) parts.push({ text:value.slice(last, match.index), bold:false }); parts.push({ text:match[2], bold:true }); last = pattern.lastIndex; }
+    if (last < value.length) parts.push({ text:value.slice(last), bold:false });
+    return parts.length ? parts : [{ text:'', bold:false }];
+  };
+  const markdownLines = text => normaliseExportText(text).split('\n').map(raw => {
+    if (/^\s*---+\s*$/.test(raw)) return { blank:true };
+    const heading = raw.match(/^\s{0,3}#{1,6}\s+(.+)$/), list = raw.match(/^\s*[-*+]\s+(.+)$/);
+    const value = heading ? heading[1] : list ? '• ' + list[1] : raw;
+    return { blank:!value.trim(), heading:!!heading, list:!!list, tokens:inlineMarkdown(value) };
+  });
+  const plainMarkdownText = text => markdownLines(text).map(line => line.blank ? '' : line.tokens.map(token => token.text).join('')).join('\n');
+  const inlineHtml = tokens => tokens.map(token => token.bold ? '<strong>' + esc(token.text) + '</strong>' : esc(token.text)).join('');
+  const markdownHtml = text => markdownLines(text).map(line => line.blank ? '<div class="gap"></div>' : line.heading ? '<h2>' + inlineHtml(line.tokens) + '</h2>' : line.list ? '<p class="list">' + inlineHtml(line.tokens) + '</p>' : '<p>' + inlineHtml(line.tokens) + '</p>').join('');
   const textToRtf = text => {
     let output = '{\\rtf1\\ansi\\uc1\\deff0{\\fonttbl{\\f0 Microsoft JhengHei;}}\\f0\\fs24\n';
-    for (const char of normaliseExportText(text)) {
-      if (char === '\n') { output += '\\par\n'; continue; }
-      if (char === '\\') { output += '\\\\'; continue; }
-      if (char === '{' || char === '}') { output += '\\' + char; continue; }
-      const code = char.codePointAt(0);
-      output += code < 128 ? char : '\\u' + (code > 32767 ? code - 65536 : code) + '?';
-    }
+    const encode = value => { let encoded = ''; for (const char of value) { if (char === '\\') encoded += '\\\\'; else if (char === '{' || char === '}') encoded += '\\' + char; else { const code = char.codePointAt(0); encoded += code < 128 ? char : '\\u' + (code > 32767 ? code - 65536 : code) + '?'; } } return encoded; };
+    markdownLines(text).forEach(line => { if (line.blank) { output += '\\par\n'; return; } if (line.heading) output += '\\fs30\\b '; line.tokens.forEach(token => { if (token.bold) output += '\\b '; output += encode(token.text); if (token.bold) output += '\\b0 '; }); if (line.heading) output += '\\b0\\fs24 '; output += '\\par\n'; });
     return output + '}';
   };
   const exportPdfWithParagraphs = async (text, name) => {
@@ -701,6 +711,25 @@ document.addEventListener('DOMContentLoaded', () => {
     lines.forEach(line => { const step = line === null ? lineHeight * .8 : lineHeight; if (y + step > height - margin) { savePage(); newCanvasPage(); } if (line !== null) ctx.fillText(line, margin, y); y += step; });
     savePage(); pdf.save(name + '.pdf');
   };
+  const exportMarkdownPdf = async (text, name) => {
+    await loadScript('aiJsPdfMarkdown', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' }), canvas = document.createElement('canvas'), width = 1240, height = 1754, margin = 88, lineHeight = 34;
+    canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext('2d'), rows = [];
+    markdownLines(text).forEach(source => {
+      if (source.blank) { rows.push(null); return; }
+      const chars = source.tokens.flatMap(token => [...token.text].map(char => ({ char, bold:token.bold || source.heading })));
+      let row = [], rowWidth = 0;
+      chars.forEach(item => { ctx.font = (item.bold ? 'bold ' : '') + (source.heading ? '28px' : '24px') + ' "Microsoft JhengHei", Arial'; const charWidth = ctx.measureText(item.char).width; if (rowWidth + charWidth > width - margin * 2 && row.length) { rows.push({ items:row, heading:source.heading }); row = []; rowWidth = 0; } row.push(item); rowWidth += charWidth; });
+      rows.push({ items:row, heading:source.heading });
+    });
+    let page = 0, y = margin;
+    const newPage = () => { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); ctx.fillStyle = '#1f3655'; y = margin; };
+    const save = () => { if (page) pdf.addPage(); pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297); page++; };
+    newPage();
+    rows.forEach(row => { const step = row === null ? lineHeight * .8 : (row.heading ? 42 : lineHeight); if (y + step > height - margin) { save(); newPage(); } if (row) { let x = margin, active = null, textRun = ''; const paint = () => { if (!textRun) return; ctx.font = (active ? 'bold ' : '') + (row.heading ? '28px' : '24px') + ' "Microsoft JhengHei", Arial'; ctx.fillText(textRun, x, y); x += ctx.measureText(textRun).width; textRun = ''; }; row.items.forEach(item => { if (active !== null && active !== item.bold) paint(); active = item.bold; textRun += item.char; }); paint(); } y += step; });
+    save(); pdf.save(name + '.pdf');
+  };
   replacementExportButton.addEventListener('click', async () => {
     const text = result.textContent.trim(), format = exportFormat.value;
     if (!text) { status.textContent = '請先完成 AI 分析，再匯出結果。'; return; }
@@ -711,6 +740,25 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (format === 'rtf') download(new Blob([textToRtf(text)], { type:'application/rtf;charset=utf-8' }), name + '.rtf');
       else if (format === 'docx') { await loadScript('aiDocxWriterFixed', 'https://unpkg.com/docx@8.5.0/build/index.umd.js'); const paragraphs = formatted.split('\n').map(line => new window.docx.Paragraph({ children:[new window.docx.TextRun(line)] })); download(await window.docx.Packer.toBlob(new window.docx.Document({ sections:[{ children:paragraphs }] })), name + '.docx'); }
       else await exportPdfWithParagraphs(text, name);
+      status.textContent = '已匯出 ' + format.toUpperCase() + ' 檔案。';
+    } catch (error) { status.textContent = '匯出失敗：' + error.message; }
+  });
+  const finalExportButton = replacementExportButton.cloneNode(true);
+  replacementExportButton.replaceWith(finalExportButton);
+  finalExportButton.addEventListener('click', async () => {
+    const text = result.textContent.trim(), format = exportFormat.value;
+    if (!text) { status.textContent = '請先完成 AI 分析，再匯出結果。'; return; }
+    const name = safeFileName(), lines = markdownLines(text);
+    try {
+      if (format === 'txt') download(new Blob([plainMarkdownText(text)], { type:'text/plain;charset=utf-8' }), name + '.txt');
+      else if (format === 'md') download(new Blob([text], { type:'text/markdown;charset=utf-8' }), name + '.md');
+      else if (format === 'html') download(new Blob(['<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>AI 分析結果</title><style>body{font-family:"Microsoft JhengHei",Arial;line-height:1.7;padding:24px;color:#1f2937}h2{font-size:1.15em;margin:1.2em 0 .4em}.list{margin:.25em 0}.gap{height:.7em}</style><body>' + markdownHtml(text) + '</body></html>'], { type:'text/html;charset=utf-8' }), name + '.html');
+      else if (format === 'rtf') download(new Blob([textToRtf(text)], { type:'application/rtf;charset=utf-8' }), name + '.rtf');
+      else if (format === 'docx') {
+        await loadScript('aiDocxWriterMarkdown', 'https://unpkg.com/docx@8.5.0/build/index.umd.js');
+        const paragraphs = lines.map(line => new window.docx.Paragraph({ spacing:{ after:line.blank ? 100 : 180 }, children:line.blank ? [] : line.tokens.map(token => new window.docx.TextRun({ text:token.text, bold:token.bold || line.heading, size:line.heading ? 28 : 24 })) }));
+        download(await window.docx.Packer.toBlob(new window.docx.Document({ sections:[{ children:paragraphs }] })), name + '.docx');
+      } else await exportMarkdownPdf(text, name);
       status.textContent = '已匯出 ' + format.toUpperCase() + ' 檔案。';
     } catch (error) { status.textContent = '匯出失敗：' + error.message; }
   });
