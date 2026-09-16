@@ -574,11 +574,11 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 (() => {
   const features = [
-    ['summary','☀️ 今日重點摘要','將所選日期的行程與記事濃縮為重點、優先順序與下一步。'],
+    ['proofread','錯別字辨識','審閱文件的錯別字、標點符號、語法、措辭及格式。'],
     ['meeting','📝 會議紀錄整理','貼上會議紀錄文字或開啟檔案，整理為結構化議題摘要。'],
     ['polish','✍️ 筆記續寫與潤稿','貼上文字或開啟檔案，潤飾為臺灣公部門常用的正式語氣。']
   ];
-  let selectedFeature = 'summary';
+  let selectedFeature = 'proofread';
   const readSettings = () => { try { return JSON.parse(localStorage.getItem('notebookSettingsV1') || '{}'); } catch (_) { return {}; } };
   const esc = value => String(value || '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const selectedDate = () => {
@@ -593,7 +593,32 @@ document.addEventListener('DOMContentLoaded', () => {
     return { date, scope: noteText(daily) };
   };
   const instructions = {
-    summary: '請以繁體中文製作「今日重點摘要」。先列三至五項重點，再列依優先順序排序的待辦與建議下一步。若資料不足，明確標註待確認事項。',
+    proofread: [
+      '你是一位資深的中文系教授，擁有二十年以上的文字編輯與學術審稿經驗，專精於現代漢語語法、修辭學、文獻編校及出版規範。請以嚴謹、細緻且具建設性的態度，全面審閱使用者提供的文件，找出錯誤與可改善之處，並提出具體修正建議。',
+      '',
+      '【審查範圍】請逐項檢視下列六個面向，缺一不可：',
+      '1. 錯別字：同音異字、形近字誤植、簡繁轉換殘留錯誤或異體字使用不一致。',
+      '2. 標點符號：全形／半形混用、頓號／逗號／分號、引號／括號／破折號成對使用、句末標點遺漏或重複。',
+      '3. 語法結構：主謂賓搭配、病句、冗贅、歧義、邏輯錯位、成分殘缺或贅餘，以及時態、量詞、虛詞使用。',
+      '4. 措辭用語：用詞精確性、口語與書面語混雜、語域一致性、專業術語／人名／地名／機構名稱統一性、語氣不當或用詞重複。',
+      '5. 格式體例：標題層級、編號、項目符號、字型、字級、對齊、行距、圖表、註腳、引用格式、數字書寫與日期格式一致性。',
+      '6. 邏輯與連貫性：段落承接、語意斷裂、前後矛盾或重複、主旨與論點鋪陳。',
+      '',
+      '【工作方法】逐句逐段審閱，不略讀、不跳段。每個問題都須標示原文、問題類型、修正建議及修正理由。將問題區分為「錯誤（須修正）」與「建議（可優化）」。以最小幅度調整為原則，保留原意；除非使用者要求全面改寫，不得擅自更動原文風格與語氣。完成後提供簡短總評。',
+      '',
+      '【輸出格式】',
+      '【問題 1】',
+      '原文：〔引用原文片段〕',
+      '類型：〔錯別字／標點／語法／措辭／格式／邏輯〕',
+      '建議：〔修正後文字〕',
+      '說明：〔簡要說明錯誤原因或優化理由〕',
+      '',
+      '全部項目列出後，附上：',
+      '【總評】',
+      '〔對文件整體品質、常見問題類型、修改優先建議的綜合說明〕',
+      '',
+      '【注意事項】若文件篇幅較長，可先說明將分段審閱，並在每段完成後標示「第 X 段審閱完畢」。若涉及法律、醫學、科技等專業領域，須特別留意該領域慣用術語的正確性與一致性，不可僅憑一般語感判斷。若原文語意模糊或使用者意圖不明，應主動提出詢問，不可自行臆測後修改。'
+    ].join('\n'),
     meeting: `您現在是臺北市政府捷運工程局資深會議紀錄承辦人員，請將會議紀錄逐字稿整理為結構化的議題摘要報告，以條列式方式具體呈現如下：
 議題數量與編號：整理出 30 項核心議題，每項議題需加註序號（例如：議題一、議題二……）。
 議題內容結構：每項議題應包含如下
@@ -652,7 +677,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const uiStyle = document.createElement('style');
   uiStyle.textContent = '.ai-controls{width:100%}.ai-control-tools{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ai-processing{display:none;position:absolute;inset:0;z-index:5;border-radius:24px;background:rgba(244,249,255,.8);backdrop-filter:blur(3px);align-items:center;justify-content:center}.ai-processing.show{display:flex}.ai-processing-box{min-width:270px;padding:24px 30px;background:#fff;border:1px solid #cfe0f4;border-radius:16px;box-shadow:0 18px 42px rgba(25,69,119,.2);text-align:center;color:#234f83}.ai-processing-box i{display:block;width:30px;height:30px;margin:0 auto 12px;border:4px solid #d7e7f9;border-top-color:#1767c5;border-radius:50%;animation:aiSpin .8s linear infinite}.ai-processing-box b,.ai-processing-box span{display:block}.ai-processing-box span{margin-top:6px;color:#6a7c95;font-size:13px}@keyframes aiSpin{to{transform:rotate(360deg)}}@media(max-width:620px){.ai-control-tools{margin-left:0;width:100%}}';
   document.head.appendChild(uiStyle);
-  const choose = id => { selectedFeature = id; const directInput = id === 'meeting' || id === 'polish'; panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; input.placeholder = directInput ? '請貼上要處理的會議紀錄或文字內容…' : '可補充分析指令。'; limit.textContent = directInput ? '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : '分析範圍：今日重點摘要使用目前選取日期的記事。'; };
+  const choose = id => { selectedFeature = id; const directInput = id === 'proofread' || id === 'meeting' || id === 'polish'; panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; input.placeholder = directInput ? '請貼上要處理的文件或文字內容…' : '可補充分析指令。'; limit.textContent = directInput ? '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : ''; };
+  choose(selectedFeature);
   panel.querySelectorAll('.ai-action').forEach(button => button.addEventListener('click', () => choose(button.dataset.ai)));
   panel.querySelector('.search-close').addEventListener('click', () => panel.classList.remove('show'));
   panel.querySelector('.ai-copy').addEventListener('click', async () => { if (!result.textContent.trim()) return; try { await navigator.clipboard.writeText(result.textContent); status.textContent = '已複製結果'; } catch (_) { status.textContent = '無法自動複製，請手動選取文字'; } });
@@ -765,7 +791,7 @@ document.addEventListener('DOMContentLoaded', () => {
   run.addEventListener('click', async () => {
     const apiKey = readSettings().geminiKey;
     if (!apiKey) { status.textContent = '請先在「設定」填入 Gemini API Key。'; return; }
-    const { date, scope } = contextFor(), extra = input.value.trim(), directInput = selectedFeature === 'meeting' || selectedFeature === 'polish';
+    const { date, scope } = contextFor(), extra = input.value.trim(), directInput = selectedFeature === 'proofread' || selectedFeature === 'meeting' || selectedFeature === 'polish';
     if (directInput && !extra) { status.textContent = '請貼上要處理的文字，或開啟一份可讀文字檔。'; return; }
     if (!directInput && !scope.trim() && !extra) { status.textContent = '目前沒有可分析的記事；請選擇含記事的日期或輸入補充文字。'; return; }
     const heading = features.find(item => item[0] === selectedFeature)[1];
