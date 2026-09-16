@@ -575,8 +575,8 @@ document.addEventListener('DOMContentLoaded', () => {
 (() => {
   const features = [
     ['summary','☀️ 今日重點摘要','將所選日期的行程與記事濃縮為重點、優先順序與下一步。'],
-    ['meeting','📝 會議紀錄整理','貼上會議紀錄文字或開啟文字檔，整理為結構化議題摘要。'],
-    ['polish','✍️ 筆記續寫與潤稿','貼上文字或開啟文字檔，潤飾為臺灣公部門常用的正式語氣。']
+    ['meeting','📝 會議紀錄整理','貼上會議紀錄文字或開啟檔案，整理為結構化議題摘要。'],
+    ['polish','✍️ 筆記續寫與潤稿','貼上文字或開啟檔案，潤飾為臺灣公部門常用的正式語氣。']
   ];
   let selectedFeature = 'summary';
   const readSettings = () => { try { return JSON.parse(localStorage.getItem('notebookSettingsV1') || '{}'); } catch (_) { return {}; } };
@@ -641,9 +641,17 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   const panel = document.createElement('section');
   panel.id = 'aiInsightPage'; panel.className = 'ai-page';
-  panel.innerHTML = `<div class="ai-panel"><button class="search-close" type="button" aria-label="關閉 AI 智慧洞察">×</button><h2>✦ AI 智慧洞察</h2><p>以既有 Gemini API Key 進行分析；送出前請確認內容可提供給 Gemini。</p><div class="ai-grid">${features.map(([id,name,desc]) => `<button type="button" class="ai-action" data-ai="${id}">${name}<span>${desc}</span></button>`).join('')}</div><textarea class="ai-input" id="aiExtra" placeholder="選擇功能後，在此貼上要處理的文字。"></textarea><div class="ai-file" id="aiFileArea" hidden><label for="aiSourceFile">📎 開啟檔案</label><input id="aiSourceFile" type="file" accept=".doc,.docx,.rtf,.pdf,.txt,.md,.html,.htm,.csv,.json,.log,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/rtf,application/pdf,text/plain,text/markdown,text/html"><small id="aiFileName">支援 DOC、DOCX、RTF、PDF、TXT、MD、HTML 等檔案；檔案文字會帶入上方欄位。</small><div class="ai-file-actions"><button type="button" id="aiClearFile">清除檔案</button><button type="button" id="aiReloadFile">重新開啟檔案</button></div></div><div class="ai-controls"><button type="button" class="ai-run">開始 AI 分析</button><button type="button" class="ai-copy">複製結果</button><select class="ai-export-select" id="aiExportFormat" aria-label="匯出格式"><option value="docx">DOCX</option><option value="rtf">RTF</option><option value="pdf">PDF</option><option value="txt">TXT</option><option value="md">MD</option><option value="html">HTML</option></select><button type="button" class="ai-export">匯出結果</button><span class="ai-status"></span></div><div class="ai-result" aria-live="polite"></div><div class="ai-limit" id="aiLimit">分析範圍：今日重點摘要使用目前選取日期的記事。</div></div>`;
+  panel.innerHTML = `<div class="ai-panel"><button class="search-close" type="button" aria-label="關閉 AI 智慧解析">×</button><h2>✦ AI 智慧解析</h2><div class="ai-grid">${features.map(([id,name,desc]) => `<button type="button" class="ai-action" data-ai="${id}">${name}：<span>${desc}</span></button>`).join('')}</div><textarea class="ai-input" id="aiExtra" placeholder="選擇功能後，在此貼上要處理的文字。"></textarea><div class="ai-file" id="aiFileArea" hidden><label for="aiSourceFile">📎 開啟檔案</label><input id="aiSourceFile" type="file" accept=".doc,.docx,.rtf,.pdf,.txt,.md,.html,.htm,.csv,.json,.log,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/rtf,application/pdf,text/plain,text/markdown,text/csv,text/html"><small id="aiFileName">支援 DOC、DOCX、RTF、PDF、TXT、MD、HTML 等檔案；檔案文字會帶入上方欄位。</small><div class="ai-file-actions"><button type="button" id="aiClearFile">清除檔案</button><button type="button" id="aiReloadFile">重新開啟檔案</button></div></div><div class="ai-controls"><button type="button" class="ai-run">開始 AI 分析</button><button type="button" class="ai-copy">複製結果</button><select class="ai-export-select" id="aiExportFormat" aria-label="匯出格式"><option value="docx">DOCX</option><option value="rtf">RTF</option><option value="pdf">PDF</option><option value="txt">TXT</option><option value="md">MD</option><option value="html">HTML</option></select><button type="button" class="ai-export">匯出結果</button><span class="ai-status"></span></div><div class="ai-result" aria-live="polite"></div><div class="ai-limit" id="aiLimit">分析範圍：今日重點摘要使用目前選取日期的記事。</div></div>`;
   document.body.appendChild(panel);
   const result = panel.querySelector('.ai-result'), status = panel.querySelector('.ai-status'), run = panel.querySelector('.ai-run'), input = panel.querySelector('#aiExtra'), fileArea = panel.querySelector('#aiFileArea'), fileInput = panel.querySelector('#aiSourceFile'), fileName = panel.querySelector('#aiFileName'), limit = panel.querySelector('#aiLimit'), exportFormat = panel.querySelector('#aiExportFormat');
+  const controls = panel.querySelector('.ai-controls'), copyButton = panel.querySelector('.ai-copy'), exportButton = panel.querySelector('.ai-export'), controlTools = document.createElement('div'), processing = document.createElement('div');
+  copyButton.textContent = '複製文字';
+  controlTools.className = 'ai-control-tools'; controlTools.append(copyButton, exportFormat, exportButton); controls.appendChild(controlTools);
+  processing.className = 'ai-processing'; processing.setAttribute('role', 'status'); processing.setAttribute('aria-live', 'assertive'); processing.innerHTML = '<div class="ai-processing-box"><i></i><b>正在處理文字</b><span>AI 正在整理您提供的內容，請稍候…</span></div>'; panel.querySelector('.ai-panel').appendChild(processing);
+  const setProcessing = show => processing.classList.toggle('show', show);
+  const uiStyle = document.createElement('style');
+  uiStyle.textContent = '.ai-controls{width:100%}.ai-control-tools{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ai-processing{display:none;position:absolute;inset:0;z-index:5;border-radius:24px;background:rgba(244,249,255,.8);backdrop-filter:blur(3px);align-items:center;justify-content:center}.ai-processing.show{display:flex}.ai-processing-box{min-width:270px;padding:24px 30px;background:#fff;border:1px solid #cfe0f4;border-radius:16px;box-shadow:0 18px 42px rgba(25,69,119,.2);text-align:center;color:#234f83}.ai-processing-box i{display:block;width:30px;height:30px;margin:0 auto 12px;border:4px solid #d7e7f9;border-top-color:#1767c5;border-radius:50%;animation:aiSpin .8s linear infinite}.ai-processing-box b,.ai-processing-box span{display:block}.ai-processing-box span{margin-top:6px;color:#6a7c95;font-size:13px}@keyframes aiSpin{to{transform:rotate(360deg)}}@media(max-width:620px){.ai-control-tools{margin-left:0;width:100%}}';
+  document.head.appendChild(uiStyle);
   const choose = id => { selectedFeature = id; const directInput = id === 'meeting' || id === 'polish'; panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; input.placeholder = directInput ? '請貼上要處理的會議紀錄或文字內容…' : '可補充分析指令。'; limit.textContent = directInput ? '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : '分析範圍：今日重點摘要使用目前選取日期的記事。'; };
   panel.querySelectorAll('.ai-action').forEach(button => button.addEventListener('click', () => choose(button.dataset.ai)));
   panel.querySelector('.search-close').addEventListener('click', () => panel.classList.remove('show'));
@@ -665,6 +673,47 @@ document.addEventListener('DOMContentLoaded', () => {
   const rtfEscape = value => value.replace(/\\/g, '\\\\').replace(/[{}]/g, '\\$&').replace(/\n/g, '\\par\n');
   const exportPdf = async (text, name) => { await loadScript('aiJsPdf', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }), width = 1240, height = 1754, margin = 88, lineHeight = 34, canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.font = '24px "Microsoft JhengHei", Arial'; const wrap = line => { if (!line) return ['']; const lines = [], chars = [...line]; let current = ''; chars.forEach(char => { if (ctx.measureText(current + char).width > width - margin * 2 && current) { lines.push(current); current = char; } else current += char; }); if (current) lines.push(current); return lines; }; const lines = text.split('\\n').flatMap(wrap); let page = 0, y = margin; const paintPage = () => { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); ctx.fillStyle = '#1f3655'; ctx.font = '24px "Microsoft JhengHei", Arial'; y = margin; }; const savePage = () => { const image = canvas.toDataURL('image/png'); if (page) pdf.addPage(); pdf.addImage(image, 'PNG', 0, 0, 210, 297); page++; }; paintPage(); lines.forEach(line => { if (y > height - margin) { savePage(); paintPage(); } ctx.fillText(line, margin, y); y += lineHeight; }); savePage(); pdf.save(`${name}.pdf`); };
   panel.querySelector('.ai-export').addEventListener('click', async () => { const text = result.textContent.trim(), format = exportFormat.value; if (!text) { status.textContent = '請先完成 AI 分析，再匯出結果。'; return; } const name = safeFileName(); try { if (format === 'txt' || format === 'md') download(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${name}.${format}`); else if (format === 'html') download(new Blob([`<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>AI 分析結果</title><body style="font-family:Microsoft JhengHei,Arial;white-space:pre-wrap;line-height:1.7">${esc(text)}</body></html>`], { type: 'text/html;charset=utf-8' }), `${name}.html`); else if (format === 'rtf') download(new Blob([`{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Microsoft JhengHei;}}\\f0\\fs24 ${rtfEscape(text)}}`], { type: 'application/rtf' }), `${name}.rtf`); else if (format === 'docx') { await loadScript('aiDocxWriter', 'https://unpkg.com/docx@8.5.0/build/index.umd.js'); const paragraphs = text.split('\\n').map(line => new window.docx.Paragraph({ children: [new window.docx.TextRun(line)] })); const blob = await window.docx.Packer.toBlob(new window.docx.Document({ sections: [{ children: paragraphs }] })); download(blob, `${name}.docx`); } else await exportPdf(text, name); status.textContent = `已匯出 ${format.toUpperCase()} 檔案。`; } catch (error) { status.textContent = `匯出失敗：${error.message}`; } });
+  const replacementExportButton = exportButton.cloneNode(true);
+  exportButton.replaceWith(replacementExportButton);
+  const normaliseExportText = text => text.replace(/\r/g, '').replace(/([。！？])(?=\s*(?:\*\*|議題|[一二三四五六七八九十]+、))/g, '$1\n\n');
+  const textToRtf = text => {
+    let output = '{\\rtf1\\ansi\\uc1\\deff0{\\fonttbl{\\f0 Microsoft JhengHei;}}\\f0\\fs24\n';
+    for (const char of normaliseExportText(text)) {
+      if (char === '\n') { output += '\\par\n'; continue; }
+      if (char === '\\') { output += '\\\\'; continue; }
+      if (char === '{' || char === '}') { output += '\\' + char; continue; }
+      const code = char.codePointAt(0);
+      output += code < 128 ? char : '\\u' + (code > 32767 ? code - 65536 : code) + '?';
+    }
+    return output + '}';
+  };
+  const exportPdfWithParagraphs = async (text, name) => {
+    await loadScript('aiJsPdfFixed', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' }), canvas = document.createElement('canvas'), width = 1240, height = 1754, margin = 88, lineHeight = 34;
+    canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext('2d'); ctx.font = '24px "Microsoft JhengHei", Arial';
+    const wrap = value => { if (!value) return [null]; const result = [], chars = [...value]; let line = ''; chars.forEach(char => { if (ctx.measureText(line + char).width > width - margin * 2 && line) { result.push(line); line = char; } else line += char; }); if (line) result.push(line); return result; };
+    const lines = normaliseExportText(text).split('\n').flatMap(wrap);
+    let page = 0, y = margin;
+    const newCanvasPage = () => { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); ctx.fillStyle = '#1f3655'; ctx.font = '24px "Microsoft JhengHei", Arial'; y = margin; };
+    const savePage = () => { if (page) pdf.addPage(); pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297); page++; };
+    newCanvasPage();
+    lines.forEach(line => { const step = line === null ? lineHeight * .8 : lineHeight; if (y + step > height - margin) { savePage(); newCanvasPage(); } if (line !== null) ctx.fillText(line, margin, y); y += step; });
+    savePage(); pdf.save(name + '.pdf');
+  };
+  replacementExportButton.addEventListener('click', async () => {
+    const text = result.textContent.trim(), format = exportFormat.value;
+    if (!text) { status.textContent = '請先完成 AI 分析，再匯出結果。'; return; }
+    const name = safeFileName(), formatted = normaliseExportText(text);
+    try {
+      if (format === 'txt' || format === 'md') download(new Blob([formatted], { type:'text/plain;charset=utf-8' }), name + '.' + format);
+      else if (format === 'html') download(new Blob(['<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>AI 分析結果</title><body style="font-family:Microsoft JhengHei,Arial;white-space:pre-wrap;line-height:1.7">' + esc(formatted) + '</body></html>'], { type:'text/html;charset=utf-8' }), name + '.html');
+      else if (format === 'rtf') download(new Blob([textToRtf(text)], { type:'application/rtf;charset=utf-8' }), name + '.rtf');
+      else if (format === 'docx') { await loadScript('aiDocxWriterFixed', 'https://unpkg.com/docx@8.5.0/build/index.umd.js'); const paragraphs = formatted.split('\n').map(line => new window.docx.Paragraph({ children:[new window.docx.TextRun(line)] })); download(await window.docx.Packer.toBlob(new window.docx.Document({ sections:[{ children:paragraphs }] })), name + '.docx'); }
+      else await exportPdfWithParagraphs(text, name);
+      status.textContent = '已匯出 ' + format.toUpperCase() + ' 檔案。';
+    } catch (error) { status.textContent = '匯出失敗：' + error.message; }
+  });
   run.addEventListener('click', async () => {
     const apiKey = readSettings().geminiKey;
     if (!apiKey) { status.textContent = '請先在「設定」填入 Gemini API Key。'; return; }
@@ -673,7 +722,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!directInput && !scope.trim() && !extra) { status.textContent = '目前沒有可分析的記事；請選擇含記事的日期或輸入補充文字。'; return; }
     const heading = features.find(item => item[0] === selectedFeature)[1];
     const prompt = directInput ? `${instructions[selectedFeature]}\n\n功能：${heading}\n\n【使用者提供的原始文字】\n${extra}` : `${instructions[selectedFeature]}\n\n功能：${heading}\n${date ? `目前選取日期：${date}` : ''}\n\n【記事資料】\n${scope || '無'}\n\n【使用者補充】\n${extra || '無'}`;
-    run.disabled = true; run.textContent = 'AI 分析中…'; status.textContent = directInput ? '正在處理提供的文字…' : '正在分析記事內容…'; result.classList.remove('show');
+    run.disabled = true; run.textContent = 'AI 分析中…'; status.textContent = directInput ? '正在處理提供的文字…' : '正在分析記事內容…'; result.classList.remove('show'); setProcessing(true);
     try {
       const model = 'gemini-3.6-flash';
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{parts:[{text:prompt}]}]}) });
@@ -683,12 +732,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!text) throw new Error('Gemini 沒有傳回可用結果。');
       result.textContent = text; result.classList.add('show'); status.textContent = '分析完成';
     } catch (error) { status.textContent = `分析失敗：${error.message}`; }
-    finally { run.disabled = false; run.textContent = '開始 AI 分析'; }
+    finally { setProcessing(false); run.disabled = false; run.textContent = '開始 AI 分析'; }
   });
   const addNav = () => {
     const nav = document.querySelector('.notebook-toolbar .nav') || document.querySelector('.sidebar .nav');
     if (!nav || document.getElementById('aiInsightNav')) return;
-    const link = document.createElement('a'); link.id = 'aiInsightNav'; link.href = '#'; link.title = 'AI 智慧洞察'; link.setAttribute('aria-label','AI 智慧洞察'); link.innerHTML = '<span class="ai-nav-icon">✦</span><span>AI 智慧洞察</span>';
+    const link = document.createElement('a'); link.id = 'aiInsightNav'; link.href = '#'; link.title = 'AI 智慧解析'; link.setAttribute('aria-label','AI 智慧解析'); link.innerHTML = '<span class="ai-nav-icon">✦</span><span>AI 智慧解析</span>';
     link.addEventListener('click', event => { event.preventDefault(); choose(selectedFeature); panel.classList.add('show'); }); nav.appendChild(link);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addNav); else addNav();
