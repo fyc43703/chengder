@@ -780,24 +780,44 @@ document.addEventListener('DOMContentLoaded', () => {
     lines.forEach(line => { const step = line === null ? lineHeight * .8 : lineHeight; if (y + step > height - margin) { savePage(); newCanvasPage(); } if (line !== null) ctx.fillText(line, margin, y); y += step; });
     savePage(); pdf.save(name + '.pdf');
   };
+  // 以原生文字與嵌入字型產生 PDF；不可再將頁面繪製成 PNG，否則純文字文件會異常膨脹。
+  const nativePdfFontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf';
+  let nativePdfFontBase64;
+  const toBase64 = buffer => {
+    const bytes = new Uint8Array(buffer), size = 0x8000; let binary = '';
+    for (let i = 0; i < bytes.length; i += size) binary += String.fromCharCode(...bytes.subarray(i, i + size));
+    return btoa(binary);
+  };
+  const loadNativePdfFont = async pdf => {
+    if (!nativePdfFontBase64) {
+      const response = await fetch(nativePdfFontUrl);
+      if (!response.ok) throw new Error('繁中字型載入失敗，請確認網路連線後再試。');
+      nativePdfFontBase64 = toBase64(await response.arrayBuffer());
+    }
+    pdf.addFileToVFS('NotoSansTC-Export.ttf', nativePdfFontBase64);
+    pdf.addFont('NotoSansTC-Export.ttf', 'NotoSansTC', 'normal', 'Identity-H');
+    pdf.setFont('NotoSansTC', 'normal');
+  };
   const exportMarkdownPdf = async (text, name) => {
-    await loadScript('aiJsPdfMarkdown', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-    const pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' }), canvas = document.createElement('canvas'), width = 1240, height = 1754, margin = 88, lineHeight = 34;
-    canvas.width = width; canvas.height = height;
-    const ctx = canvas.getContext('2d'), rows = [];
-    markdownLines(text).forEach(source => {
-      if (source.blank) { rows.push(null); return; }
-      const chars = source.tokens.flatMap(token => [...token.text].map(char => ({ char, bold:token.bold || source.heading })));
-      let row = [], rowWidth = 0;
-      chars.forEach(item => { ctx.font = (item.bold ? 'bold ' : '') + (source.heading ? '28px' : '24px') + ' "Microsoft JhengHei", Arial'; const charWidth = ctx.measureText(item.char).width; if (rowWidth + charWidth > width - margin * 2 && row.length) { rows.push({ items:row, heading:source.heading }); row = []; rowWidth = 0; } row.push(item); rowWidth += charWidth; });
-      rows.push({ items:row, heading:source.heading });
+    await loadScript('aiJsPdfNativeText', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4', compress:true, putOnlyUsedFonts:true });
+    await loadNativePdfFont(pdf);
+    const margin = 16, pageHeight = 297, contentWidth = 210 - margin * 2, bottom = pageHeight - margin;
+    let y = margin;
+    const nextPage = () => { pdf.addPage(); y = margin; };
+    const writeLine = (value, heading = false) => {
+      const fontSize = heading ? 14 : 10.5, lineHeight = fontSize * 0.55;
+      pdf.setFont('NotoSansTC', 'normal'); pdf.setFontSize(fontSize); pdf.setTextColor(heading ? 23 : 31, heading ? 79 : 54, heading ? 148 : 85);
+      const lines = pdf.splitTextToSize(value, contentWidth);
+      lines.forEach(line => { if (y + lineHeight > bottom) nextPage(); pdf.text(line, margin, y, { baseline:'top' }); y += lineHeight; });
+    };
+    markdownLines(text).forEach(row => {
+      if (row.blank) { y += 3; if (y > bottom) nextPage(); return; }
+      writeLine(row.tokens.map(token => token.text).join(''), row.heading);
+      y += row.heading ? 2.4 : 1.2;
     });
-    let page = 0, y = margin;
-    const newPage = () => { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); ctx.fillStyle = '#1f3655'; y = margin; };
-    const save = () => { if (page) pdf.addPage(); pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297); page++; };
-    newPage();
-    rows.forEach(row => { const step = row === null ? lineHeight * .8 : (row.heading ? 42 : lineHeight); if (y + step > height - margin) { save(); newPage(); } if (row) { let x = margin, active = null, textRun = ''; const paint = () => { if (!textRun) return; ctx.font = (active ? 'bold ' : '') + (row.heading ? '28px' : '24px') + ' "Microsoft JhengHei", Arial'; ctx.fillText(textRun, x, y); x += ctx.measureText(textRun).width; textRun = ''; }; row.items.forEach(item => { if (active !== null && active !== item.bold) paint(); active = item.bold; textRun += item.char; }); paint(); } y += step; });
-    save(); pdf.save(name + '.pdf');
+    pdf.setProperties({ title:'AI 分析結果', subject:'AI 智慧解析匯出結果', author:'我的記事簿' });
+    pdf.save(name + '.pdf');
   };
   replacementExportButton.addEventListener('click', async () => {
     const text = result.textContent.trim(), format = exportFormat.value;
