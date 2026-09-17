@@ -183,7 +183,7 @@
 </head>
 <body><div class="app">
   <aside class="sidebar"><div class="brand"><span class="logo">▤</span>我的記事簿</div><nav class="nav"><a class="active" href="#">▦　日曆</a><a href="#" onclick="showToast('搜尋功能已在右上角啟用')">⌕　搜尋記事</a><a href="#" onclick="showToast('附件會依日期集中管理')">▱　我的附件</a><a href="#" onclick="showToast('設定功能即將提供')">⚙　設定</a></nav><div class="mini"><b>Google Drive</b><div class="drive" id="driveState">尚未連結帳戶</div><button class="connect" onclick="connectDrive()">連結 Google Drive</button></div></aside>
-  <main class="main"><header class="topbar"><div><h1>九月 2026</h1><p>用顏色標示重要度，讓一天的準備事項一眼清楚。</p></div><input id="search" class="search" placeholder="搜尋記事、附件或關鍵字…" oninput="searchNotes()"></header>
+  <main class="main"><header class="topbar"><div><h1>九月 2026</h1><p>整合 Google 日曆、Google Drive 與 Gemini AI，可管理記事、附件與行程，並支援語音輸入、文字辨識及 AI 智慧解析。</p></div><input id="search" class="search" placeholder="搜尋記事、附件或關鍵字…" oninput="searchNotes()"></header>
   <section class="content"><div class="calendar-card"><div class="cal-head"><button class="arrow" aria-label="上個月">‹</button><h2>2026 年 9 月</h2><button class="arrow" aria-label="下個月">›</button></div><div class="week"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div class="days" id="calendar"></div><div class="legend"><span><i style="background:#ed5863"></i>重要</span><span><i style="background:#e9a23a"></i>較重要</span><span><i style="background:#438be0"></i>一般</span><span><i style="background:#23a66c"></i>已完成</span></div></div>
   <aside class="agenda"><h2 id="agendaTitle">今日行程</h2><div class="date-label" id="dateLabel">2026 年 9 月 13 日，星期日</div><button class="add" onclick="openEditor()">＋ 新增記事</button><div id="noteList"></div><div class="drive-path">☁ 儲存位置<br><b>Google Drive／我的記事簿／115-09-13</b></div></aside></section></main></div>
   <div class="modal" id="editor"><div class="dialog"><h2>新增記事</h2><p id="editorDate">儲存到民國 115 年 9 月 13 日</p><div class="field"><label>標題</label><input id="title" placeholder="例如：專案進度會議"></div><div class="row"><div class="field"><label>時間</label><input id="time" type="time" value="10:00"></div><div class="field"><label>重要程度</label><select id="priority"><option value="red">重要</option><option value="amber">較重要</option><option value="blue" selected>一般</option></select></div></div><div class="field"><label>會前注意事項</label><textarea id="detail" placeholder="輸入需要準備、確認或提醒自己的事項…"></textarea></div><div class="field"><label>附件</label><div class="drop">📎 選擇 PDF、圖片或文件　<input id="file" type="file" multiple></div></div><div class="modal-actions"><button class="cancel" onclick="closeEditor()">取消</button><button class="save" onclick="saveNote()">儲存記事</button></div></div></div>
@@ -818,5 +818,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const style = document.createElement('style'); style.textContent = '.ai-nav-icon{display:inline-grid;place-items:center;width:29px;height:29px;border-radius:9px;background:linear-gradient(135deg,#735ce5,#17a2b8);color:#fff;font-size:20px;box-shadow:0 3px 7px rgba(90,75,190,.28)}'; document.head.appendChild(style);
 })();
 </script>
+<style>
+  /* 主標題下方的應用程式說明。 */
+  .topbar{min-height:76px!important;align-items:flex-start!important}
+  .topbar>div:first-child{display:flex;flex-direction:column;align-items:center;text-align:center}
+  .topbar h1{position:static!important;left:auto!important;transform:none!important;width:auto!important}
+  .topbar p{display:block!important;max-width:760px;margin:5px 0 0!important;color:#63738c!important;font-size:13px!important;line-height:1.55!important}
+
+  /* 導航平時僅顯示圖示；滑過後展開名稱並以該圖示的主色作為提示底色。 */
+  .notebook-toolbar .nav a,
+  .notebook-toolbar .cloud-drive-shortcut{gap:0!important;overflow:hidden;transition:width .2s ease,transform .18s ease,box-shadow .18s ease,background .18s ease,color .18s ease!important}
+  .notebook-toolbar .nav a:not(#aiInsightNav)>span,
+  .notebook-toolbar .cloud-drive-shortcut>span,
+  .notebook-toolbar #aiInsightNav>span:last-child{max-width:0;opacity:0;overflow:hidden;white-space:nowrap;transition:max-width .2s ease,opacity .15s ease;margin-left .2s ease}
+  .notebook-toolbar .nav a:hover:not(#aiInsightNav)>span,
+  .notebook-toolbar .cloud-drive-shortcut:hover>span,
+  .notebook-toolbar #aiInsightNav:hover>span:last-child{max-width:120px;opacity:1;margin-left:8px}
+  .notebook-toolbar .nav a:hover,
+  .notebook-toolbar .cloud-drive-shortcut:hover{color:#fff!important;box-shadow:0 7px 14px rgba(38,91,171,.24)!important}
+  .notebook-toolbar .nav a:nth-child(1):hover{background:linear-gradient(135deg,#24c6ff,#4b4ee8)!important}
+  .notebook-toolbar .nav a:nth-child(2):hover{background:linear-gradient(135deg,#55d6a9,#0784c9)!important}
+  .notebook-toolbar .nav a:nth-child(3):hover{background:linear-gradient(135deg,#ffd765,#f26b5a)!important}
+  .notebook-toolbar .nav a:nth-child(4):hover{background:linear-gradient(135deg,#bd7bff,#5a56dc)!important}
+  .notebook-toolbar .cloud-drive-shortcut:hover{background:linear-gradient(135deg,#20c997,#2878e8)!important}
+  .notebook-toolbar #aiInsightNav:hover{background:linear-gradient(135deg,#735ce5,#17a2b8)!important}
+  .notebook-toolbar .nav a:hover svg{filter:brightness(0) invert(1) drop-shadow(0 2px 2px rgba(0,0,0,.16))!important}
+  .notebook-toolbar #aiInsightNav:hover .ai-nav-icon{background:rgba(255,255,255,.22)!important;box-shadow:none!important}
+  @media(max-width:620px){.topbar{min-height:auto!important}.topbar p{font-size:12px!important}.notebook-toolbar .nav a:not(#aiInsightNav)>span,.notebook-toolbar .cloud-drive-shortcut>span,.notebook-toolbar #aiInsightNav>span:last-child{max-width:120px;opacity:1;margin-left:7px}}
+</style>
 </body>
 </html>
