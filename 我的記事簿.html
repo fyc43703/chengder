@@ -579,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ['polish','✍️ 潤飾公文語氣','貼上文字或開啟檔案，潤飾為臺灣公部門常用的正式語氣。'],
     ['critical','🔎 批判性思維','以多元觀點、證據與邏輯，深入剖析指定議題。'],
     ['painpoint','🛠️ 痛點分析精進方案','診斷議案瓶頸，提出具體策略、行動方案與成效指標。'],
-    ['timeline','⏳ 時間軸分析','依時間順序整理文件重點，產出可視化閱讀的橫式時間軸。']
+    ['webvisual','🧩 網頁可視化','以圖形化、具互動性的單頁網頁展示資料狀態。']
   ];
   let selectedFeature = 'proofread';
   const readSettings = () => { try { return JSON.parse(localStorage.getItem('notebookSettingsV1') || '{}'); } catch (_) { return {}; } };
@@ -694,17 +694,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 【四、預期效益與風險】
 預估改進效益、整體績效影響與成本效益；識別實施風險，評估發生機率與衝擊程度，提出風險控管及應變措施。請以「痛點／原因／優先級／解決策略／行動步驟／資源／指標／風險」的清楚結構逐項呈現。`,
-    timeline: `請以繁體中文將本文件全文依時間順序整理，並以非互動式的橫式時間軸圖表方式呈現。
+    webvisual: `請製作一個交互式單頁的網頁可視化（Web Visualization）應用，將使用者提供的原始內容轉換為可直接開啟的完整 HTML 檔案。請只輸出一份完整 HTML 原始碼，使用 \`\`\`html 程式碼區塊包覆，不要在程式碼區塊外加入說明文字。
 
-【整理原則】
-1. 明確標示每個重要事件或事項的發生時間；時間先後必須清楚，如文件未載明確切日期，請標示「時間未明」並依上下文推定相對順序。
-2. 每個時間點均須摘要說明事件核心內容與影響。
-3. 涵蓋所有重要事件，避免遺漏關鍵資訊；不可臆造日期、事件或因果關係。
+【核心架構與互動】
+建立單頁式網頁應用。點擊導覽列項目時，僅顯示對應內容區塊，其餘區塊隱藏。主要內容標題（例如「業務簡介」）設計為可收合式區塊；內容過長時，以限定高度搭配內部捲軸呈現。
 
-【輸出格式】
-先列出「時間軸標題」與「整體期間」，接著以 Markdown 表格呈現：序號、時間、事件／事項、核心內容、影響／關聯。表格後再提供一份適合橫向閱讀的文字時間軸，例如：
-〔2026-01〕──● 事件 A ──►〔2026-03〕──● 事件 B
-並以圖示或符號與簡潔標籤凸顯重要里程碑。`
+【導覽列與頁首】
+導覽列固定置頂並置中，不得遮擋內文。頁首包含置中、加粗、深藍色的主題文字，以及全站搜尋框。
+
+【視覺與字體】
+整體採日系清新的淺藍綠漸層風格，加入柔和動畫與過渡效果。導覽列目錄採藍底半圓角、白色大字。全站使用 Noto Sans TC 字體，並提供適當後備字體。
+
+【內容忠實性與格式】
+必須一字不漏、忠實呈現原始文字，不得摘要、刪減、虛構或改寫。自動辨識文字中的 URL 並轉為可點擊超連結；表格須保留原始欄列結構並美化。正文設定為 1.3rem，並明確定義目錄標題與副標題的相對字體大小。
+
+【使用者體驗】
+搜尋功能須以黃色突顯關鍵字與結果列表背景。已閱讀的目錄項目要有顏色變化等視覺標記。提供固定的「回到頂端」按鈕。
+
+【響應式設計】
+須完整支援桌面與行動裝置，確保小螢幕上的閱讀與操作體驗良好。所有 CSS 與 JavaScript 必須內嵌於同一 HTML 檔，且不得依賴任何需要 API Key 的服務。`
   };
   const panel = document.createElement('section');
   panel.id = 'aiInsightPage'; panel.className = 'ai-page';
@@ -719,7 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const uiStyle = document.createElement('style');
   uiStyle.textContent = '.ai-controls{width:100%}.ai-control-tools{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ai-processing{display:none;position:absolute;inset:0;z-index:5;border-radius:24px;background:rgba(244,249,255,.8);backdrop-filter:blur(3px);align-items:center;justify-content:center}.ai-processing.show{display:flex}.ai-processing-box{min-width:270px;padding:24px 30px;background:#fff;border:1px solid #cfe0f4;border-radius:16px;box-shadow:0 18px 42px rgba(25,69,119,.2);text-align:center;color:#234f83}.ai-processing-box i{display:block;width:30px;height:30px;margin:0 auto 12px;border:4px solid #d7e7f9;border-top-color:#1767c5;border-radius:50%;animation:aiSpin .8s linear infinite}.ai-processing-box b,.ai-processing-box span{display:block}.ai-processing-box span{margin-top:6px;color:#6a7c95;font-size:13px}@keyframes aiSpin{to{transform:rotate(360deg)}}@media(max-width:620px){.ai-control-tools{margin-left:0;width:100%}}';
   document.head.appendChild(uiStyle);
-  const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','timeline'].includes(id);
+  const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','webvisual'].includes(id);
   const choose = id => { selectedFeature = id; const directInput = usesDocumentInput(id); panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; input.placeholder = directInput ? '請貼上要處理的文件、議題或文字內容…' : '可補充分析指令。'; limit.textContent = directInput ? '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : ''; };
   choose(selectedFeature);
   panel.querySelectorAll('.ai-action').forEach(button => button.addEventListener('click', () => choose(button.dataset.ai)));
@@ -838,10 +846,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const text = result.textContent.trim(), format = exportFormat.value;
     if (!text) { status.textContent = '請先完成 AI 分析，再匯出結果。'; return; }
     const name = safeFileName(), lines = markdownLines(text);
+    const generatedWebHtml = () => {
+      const match = text.match(/```(?:html)?\s*([\s\S]*?)```/i), source = (match ? match[1] : text).trim();
+      if (!/^<!doctype\s+html|^<html[\s>]/i.test(source)) throw new Error('網頁可視化結果不是完整 HTML，請重新執行分析後再匯出。');
+      return source;
+    };
     try {
       if (format === 'txt') download(new Blob([plainMarkdownText(text)], { type:'text/plain;charset=utf-8' }), name + '.txt');
       else if (format === 'md') download(new Blob([text], { type:'text/markdown;charset=utf-8' }), name + '.md');
-      else if (format === 'html') download(new Blob(['<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>AI 分析結果</title><style>body{font-family:"Microsoft JhengHei",Arial;line-height:1.7;padding:24px;color:#1f2937}h2{font-size:1.15em;margin:1.2em 0 .4em}.list{margin:.25em 0}.gap{height:.7em}</style><body>' + markdownHtml(text) + '</body></html>'], { type:'text/html;charset=utf-8' }), name + '.html');
+      else if (format === 'html') download(new Blob([selectedFeature === 'webvisual' ? generatedWebHtml() : '<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>AI 分析結果</title><style>body{font-family:"Microsoft JhengHei",Arial;line-height:1.7;padding:24px;color:#1f2937}h2{font-size:1.15em;margin:1.2em 0 .4em}.list{margin:.25em 0}.gap{height:.7em}</style><body>' + markdownHtml(text) + '</body></html>'], { type:'text/html;charset=utf-8' }), name + '.html');
       else if (format === 'rtf') download(new Blob([textToRtf(text)], { type:'application/rtf;charset=utf-8' }), name + '.rtf');
       else if (format === 'docx') {
         await loadScript('aiDocxWriterMarkdown', 'https://unpkg.com/docx@8.5.0/build/index.umd.js');
