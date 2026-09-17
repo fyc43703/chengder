@@ -183,7 +183,7 @@
 </head>
 <body><div class="app">
   <aside class="sidebar"><div class="brand"><span class="logo">▤</span>我的記事簿</div><nav class="nav"><a class="active" href="#">▦　日曆</a><a href="#" onclick="showToast('搜尋功能已在右上角啟用')">⌕　搜尋記事</a><a href="#" onclick="showToast('附件會依日期集中管理')">▱　我的附件</a><a href="#" onclick="showToast('設定功能即將提供')">⚙　設定</a></nav><div class="mini"><b>Google Drive</b><div class="drive" id="driveState">尚未連結帳戶</div><button class="connect" onclick="connectDrive()">連結 Google Drive</button></div></aside>
-  <main class="main"><header class="topbar"><div><h1>九月 2026</h1><p>整合 Google 日曆、Google Drive 與 Gemini AI 的個人記事簿，可管理每日記事、附件與行程，並支援語音輸入、文字辨識，以及 AI 智慧解析圖卡功能，提供錯別字辨識、會議紀錄整理與筆記續寫潤稿，並可匯出分析結果。</p></div><input id="search" class="search" placeholder="搜尋記事、附件或關鍵字…" oninput="searchNotes()"></header>
+  <main class="main"><header class="topbar"><div><h1>九月 2026</h1><p>整合 Google 日曆、Google Drive 與 Gemini AI 的個人記事簿，可管理每日記事、附件與行程，並支援語音輸入、文字辨識，以及 AI 提供錯別字辨識、會議紀錄整理與潤飾公文語氣，並可匯出分析結果。</p></div><input id="search" class="search" placeholder="搜尋記事、附件或關鍵字…" oninput="searchNotes()"></header>
   <section class="content"><div class="calendar-card"><div class="cal-head"><button class="arrow" aria-label="上個月">‹</button><h2>2026 年 9 月</h2><button class="arrow" aria-label="下個月">›</button></div><div class="week"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div class="days" id="calendar"></div></div>
   <aside class="agenda"><h2 id="agendaTitle">今日行程</h2><div class="date-label" id="dateLabel">2026 年 9 月 13 日，星期日</div><button class="add" onclick="openEditor()">＋ 新增記事</button><div id="noteList"></div><div class="drive-path">☁ 儲存位置<br><b>Google Drive／我的記事簿／115-09-13</b></div></aside></section></main></div>
   <div class="modal" id="editor"><div class="dialog"><h2>新增記事</h2><p id="editorDate">儲存到民國 115 年 9 月 13 日</p><div class="field"><label>標題</label><input id="title" placeholder="例如：專案進度會議"></div><div class="row"><div class="field"><label>時間</label><input id="time" type="time" value="10:00"></div><div class="field"><label>重要程度</label><select id="priority"><option value="red">重要</option><option value="amber">較重要</option><option value="blue" selected>一般</option></select></div></div><div class="field"><label>會前注意事項</label><textarea id="detail" placeholder="輸入需要準備、確認或提醒自己的事項…"></textarea></div><div class="field"><label>附件</label><div class="drop">📎 選擇 PDF、圖片或文件　<input id="file" type="file" multiple></div></div><div class="modal-actions"><button class="cancel" onclick="closeEditor()">取消</button><button class="save" onclick="saveNote()">儲存記事</button></div></div></div>
@@ -576,7 +576,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const features = [
     ['proofread','錯別字辨識','審閱文件的錯別字、標點符號、語法、措辭及格式。'],
     ['meeting','📝 會議紀錄整理','貼上會議紀錄文字或開啟檔案，整理為結構化議題摘要。'],
-    ['polish','✍️ 筆記續寫與潤稿','貼上文字或開啟檔案，潤飾為臺灣公部門常用的正式語氣。']
+    ['polish','✍️ 潤飾公文語氣','貼上文字或開啟檔案，潤飾為臺灣公部門常用的正式語氣。'],
+    ['critical','🔎 批判性思維','以多元觀點、證據與邏輯，深入剖析指定議題。'],
+    ['painpoint','🛠️ 痛點分析精進方案','診斷議案瓶頸，提出具體策略、行動方案與成效指標。'],
+    ['timeline','⏳ 時間軸分析','依時間順序整理文件重點，產出可視化閱讀的橫式時間軸。']
   ];
   let selectedFeature = 'proofread';
   const readSettings = () => { try { return JSON.parse(localStorage.getItem('notebookSettingsV1') || '{}'); } catch (_) { return {}; } };
@@ -662,7 +665,46 @@ document.addEventListener('DOMContentLoaded', () => {
 －不改變原文實質意思。
 
 你的核心工作只有一項：
-「在忠實保留原意的前提下，將使用者提供的文字潤飾成自然、精確、簡潔且符合臺灣行政機關使用習慣的公文用語。」`
+「在忠實保留原意的前提下，將使用者提供的文字潤飾成自然、精確、簡潔且符合臺灣行政機關使用習慣的公文用語。」`,
+    critical: `請以批判性思維為核心，對指定議題進行深入且全面的分析。
+
+【分析方法論】
+一、多維度思考：從經濟、社會、技術、法律、倫理等不同學科角度審視問題；考量各方利害關係人的立場與觀點；探討問題的歷史脈絡與未來趨勢。
+二、理性分析原則：以事實與證據為基礎進行論證；辨識並避免邏輯謬誤；保持客觀中立，避免預設立場。
+三、深度探討要求：分析表層現象與深層原因；探討可能結果與影響；評估不同解決方案的優劣與風險。
+
+【輸出內容規格】
+請提供 60 個完整重點項目。每個項目均須超過 200 字，並以 Markdown 粗體呈現標題。每項應具體包含問題描述、論點與論據、相關案例／數據／理論支持、意義與影響評估、相關觀點，且段落清楚、邏輯連貫。
+
+【建議架構】
+可依序涵蓋：問題定義與背景、現況分析與挑戰、多方觀點與立場、原因與影響因素、可能結果與情境分析、解決方案與策略、風險評估與應對、未來展望與建議。若原始資料不足以支持特定事實、數據或案例，請明確標示資訊缺口與待查證處，不得虛構。`,
+    painpoint: `請扮演專業評審委員，針對目標對象進行全面性的痛點分析與改進建議，並以正式、客觀、有理有據且可操作的方式輸出。
+
+【一、問題診斷】
+1. 核心痛點識別：列舉目前主要問題、分析根本原因，並說明問題間的關聯性。
+2. 影響程度評估：逐項標示嚴重性（高／中／低）、影響範圍、急迫性與優先順序。
+
+【二、改進建議】
+1. 具體解決措施：針對每項痛點提出方案，說明執行方式、步驟，以及所需人力、時間與經費。
+2. 可行性分析：評估實施難度、預期障礙、配套措施與替代方案。
+
+【三、精進方案】
+1. 重點強化計畫：制定短期（3 個月內）改善目標、中期（6 至 12 個月）發展策略及長期（1 年以上）精進方向。
+2. 成效指標：建立量化指標（如效率提升、錯誤率降低）及質化指標（如滿意度、品質改善程度），並訂定各階段檢核時間點與標準。
+
+【四、預期效益與風險】
+預估改進效益、整體績效影響與成本效益；識別實施風險，評估發生機率與衝擊程度，提出風險控管及應變措施。請以「痛點／原因／優先級／解決策略／行動步驟／資源／指標／風險」的清楚結構逐項呈現。`,
+    timeline: `請以繁體中文將本文件全文依時間順序整理，並以非互動式的橫式時間軸圖表方式呈現。
+
+【整理原則】
+1. 明確標示每個重要事件或事項的發生時間；時間先後必須清楚，如文件未載明確切日期，請標示「時間未明」並依上下文推定相對順序。
+2. 每個時間點均須摘要說明事件核心內容與影響。
+3. 涵蓋所有重要事件，避免遺漏關鍵資訊；不可臆造日期、事件或因果關係。
+
+【輸出格式】
+先列出「時間軸標題」與「整體期間」，接著以 Markdown 表格呈現：序號、時間、事件／事項、核心內容、影響／關聯。表格後再提供一份適合橫向閱讀的文字時間軸，例如：
+〔2026-01〕──● 事件 A ──►〔2026-03〕──● 事件 B
+並以圖示或符號與簡潔標籤凸顯重要里程碑。`
   };
   const panel = document.createElement('section');
   panel.id = 'aiInsightPage'; panel.className = 'ai-page';
@@ -677,7 +719,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const uiStyle = document.createElement('style');
   uiStyle.textContent = '.ai-controls{width:100%}.ai-control-tools{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ai-processing{display:none;position:absolute;inset:0;z-index:5;border-radius:24px;background:rgba(244,249,255,.8);backdrop-filter:blur(3px);align-items:center;justify-content:center}.ai-processing.show{display:flex}.ai-processing-box{min-width:270px;padding:24px 30px;background:#fff;border:1px solid #cfe0f4;border-radius:16px;box-shadow:0 18px 42px rgba(25,69,119,.2);text-align:center;color:#234f83}.ai-processing-box i{display:block;width:30px;height:30px;margin:0 auto 12px;border:4px solid #d7e7f9;border-top-color:#1767c5;border-radius:50%;animation:aiSpin .8s linear infinite}.ai-processing-box b,.ai-processing-box span{display:block}.ai-processing-box span{margin-top:6px;color:#6a7c95;font-size:13px}@keyframes aiSpin{to{transform:rotate(360deg)}}@media(max-width:620px){.ai-control-tools{margin-left:0;width:100%}}';
   document.head.appendChild(uiStyle);
-  const choose = id => { selectedFeature = id; const directInput = id === 'proofread' || id === 'meeting' || id === 'polish'; panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; input.placeholder = directInput ? '請貼上要處理的文件或文字內容…' : '可補充分析指令。'; limit.textContent = directInput ? '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : ''; };
+  const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','timeline'].includes(id);
+  const choose = id => { selectedFeature = id; const directInput = usesDocumentInput(id); panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; input.placeholder = directInput ? '請貼上要處理的文件、議題或文字內容…' : '可補充分析指令。'; limit.textContent = directInput ? '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : ''; };
   choose(selectedFeature);
   panel.querySelectorAll('.ai-action').forEach(button => button.addEventListener('click', () => choose(button.dataset.ai)));
   panel.querySelector('.search-close').addEventListener('click', () => panel.classList.remove('show'));
@@ -791,7 +834,7 @@ document.addEventListener('DOMContentLoaded', () => {
   run.addEventListener('click', async () => {
     const apiKey = readSettings().geminiKey;
     if (!apiKey) { status.textContent = '請先在「設定」填入 Gemini API Key。'; return; }
-    const { date, scope } = contextFor(), extra = input.value.trim(), directInput = selectedFeature === 'proofread' || selectedFeature === 'meeting' || selectedFeature === 'polish';
+    const { date, scope } = contextFor(), extra = input.value.trim(), directInput = usesDocumentInput(selectedFeature);
     if (directInput && !extra) { status.textContent = '請貼上要處理的文字，或開啟一份可讀文字檔。'; return; }
     if (!directInput && !scope.trim() && !extra) { status.textContent = '目前沒有可分析的記事；請選擇含記事的日期或輸入補充文字。'; return; }
     const heading = features.find(item => item[0] === selectedFeature)[1];
