@@ -896,9 +896,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!text) { status.textContent = '請先完成 AI 分析，再匯出結果。'; return; }
     const name = safeFileName(), lines = markdownLines(text);
     const generatedWebHtml = () => {
-      const match = text.match(/```(?:html)?\s*([\s\S]*?)```/i), source = (match ? match[1] : text).trim();
-      if (!/^<!doctype\s+html|^<html[\s>]/i.test(source)) throw new Error('網頁可視化結果不是完整 HTML，請重新執行分析後再匯出。');
-      return source;
+      // 部分模型在長篇 HTML 輸出時會省略結尾 ```；以真正的 HTML 起始標記為準，避免誤判失敗。
+      const fenceRemoved = text.replace(/^\s*```(?:html)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+      const htmlStart = fenceRemoved.search(/<!doctype\s+html\b|<html[\s>]/i);
+      if (htmlStart < 0) throw new Error('網頁可視化結果未包含 HTML 起始標記，請重新執行分析後再匯出。');
+      const source = fenceRemoved.slice(htmlStart);
+      const htmlEnd = source.search(/<\/html\s*>/i);
+      return htmlEnd >= 0 ? source.slice(0, htmlEnd + source.match(/<\/html\s*>/i)[0].length) : source;
     };
     try {
       if (format === 'txt') download(new Blob([plainMarkdownText(text)], { type:'text/plain;charset=utf-8' }), name + '.txt');
