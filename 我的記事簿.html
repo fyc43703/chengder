@@ -196,7 +196,7 @@
 /* Google Drive / Calendar integration for 我的記事簿 (GitHub Pages). */
 (() => {
   const CLIENT_ID = '834974194833-onn2a51uddmjf458ced478ivis0fb5f1.apps.googleusercontent.com';
-  const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.events.readonly';
+  const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.readonly';
   const FOLDER_MIME = 'application/vnd.google-apps.folder';
   const esc = (v = '') => String(v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   let token = localStorage.getItem('notebookGoogleToken') || '', shownMonth = new Date(2026, 8, 1);
@@ -248,9 +248,10 @@
 
   async function importCalendar() {
     const first=new Date(shownMonth.getFullYear(),shownMonth.getMonth(),1), next=new Date(shownMonth.getFullYear(),shownMonth.getMonth()+1,1), prefix=`${monthKey()}-`;
-    const data=await api(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(first.toISOString())}&timeMax=${encodeURIComponent(next.toISOString())}`);
+    const calendars=await api('https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader');
+    const feeds=(await Promise.all((calendars.items||[]).filter(calendar=>calendar.selected!==false).map(async calendar=>({calendar,data:await api(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendar.id)}/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(first.toISOString())}&timeMax=${encodeURIComponent(next.toISOString())}`)})))).filter(Boolean);
     Object.keys(ledger).filter(k=>k.startsWith(prefix)).forEach(k=>ledger[k]=ledger[k].filter(n=>!n.calendarImport)); let count=0;
-    for(const e of data.items||[]) { const raw=e.start?.date||e.start?.dateTime; if(!raw || hiddenCalendarEvents.has(e.id)) continue; const key=e.start?.date?raw:`${prefix}${String(new Date(raw).getDate()).padStart(2,'0')}`; if(!key.startsWith(prefix))continue; (ledger[key]??=[]).push({title:e.summary||'未命名行程',time:e.start?.dateTime?new Date(e.start.dateTime).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false}):'全天',kind:'blue',detail:e.description||e.location||'Google 日曆行程',tags:'日曆匯入',calendarImport:true,calendarEventId:e.id}); count++; }
+    for(const {calendar,data} of feeds) for(const e of data.items||[]) { const raw=e.start?.date||e.start?.dateTime, eventId=`${calendar.id}:${e.id}`; if(!raw || hiddenCalendarEvents.has(eventId)) continue; const key=e.start?.date?raw:`${prefix}${String(new Date(raw).getDate()).padStart(2,'0')}`; if(!key.startsWith(prefix))continue; const isHoliday=/節|紀念日|元旦|除夕|春節|補假/.test(e.summary||'') || /holiday/i.test(calendar.summary||''); (ledger[key]??=[]).push({title:e.summary||'未命名行程',time:e.start?.dateTime?new Date(e.start.dateTime).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false}):'全天',kind:isHoliday?'red':'blue',color:isHoliday?'#d4145a':'',detail:e.description||e.location||`${calendar.summary||'Google 日曆'}行程`,tags:calendar.summary||'日曆匯入',calendarImport:true,calendarEventId:eventId}); count++; }
     for(const [key,title] of Object.entries(taiwanHolidays)) { if(!key.startsWith(prefix)) continue; (ledger[key]??=[]).push({title,time:'全天',kind:'red',color:'#d4145a',detail:'內建台灣節日',tags:'台灣節日',calendarImport:true,taiwanHoliday:true}); count++; }
     saveLedger();localStorage.setItem('notebookLastSync', new Date().toISOString());renderCalendar();renderAgenda();window.showToast(count?`已匯入 ${label()}的 ${count} 筆行程`:`${label()}沒有 Google 日曆行程`);
   }
@@ -1036,6 +1037,8 @@ document.addEventListener('DOMContentLoaded', () => {
   body:not(.dark-mode) .notebook-toolbar #aiInsightNav .ai-nav-icon{background:#3b9cff!important;color:#fff!important;box-shadow:none!important}
   body:not(.dark-mode) .notebook-toolbar #aiInsightNav:hover{background:#fff!important;color:var(--apple-text)!important;box-shadow:0 3px 10px rgba(0,0,0,.12)!important}
   body:not(.dark-mode) .notebook-toolbar #aiInsightNav:hover .ai-nav-icon{background:#fff!important;color:var(--apple-blue)!important;box-shadow:inset 0 0 0 1px var(--apple-line)!important}
+  body:not(.dark-mode) .notebook-toolbar #aiInsightNav{padding:6px 9px!important;border-radius:10px!important;gap:6px!important}
+  body:not(.dark-mode) .notebook-toolbar #aiInsightNav .ai-nav-icon{width:24px!important;height:24px!important;border-radius:7px!important;font-size:16px!important}
 
   /* 縮短搜尋框，為副標題右側保留呼吸空間。 */
   .search-wrap{width:min(260px,24vw)!important}
