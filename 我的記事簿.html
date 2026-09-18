@@ -223,6 +223,9 @@
   const label = () => `${shownMonth.getFullYear()} 年 ${shownMonth.getMonth()+1} 月`;
   const isToday = day => { const now = new Date(); return shownMonth.getFullYear() === now.getFullYear() && shownMonth.getMonth() === now.getMonth() && day === now.getDate(); };
   const api = async (url, opt = {}) => { const r = await fetch(url, { ...opt, headers: { Authorization: `Bearer ${token}`, ...(opt.headers || {}) } }); if (!r.ok) throw new Error((await r.json().catch(()=>({}))).error?.message || 'Google 服務暫時無法完成要求'); if(r.status===204)return null;return (r.headers.get('content-type')||'').includes('application/json')?r.json():r.text(); };
+  const taiwanHolidays = {
+    '2026-01-01':'開國紀念日','2026-02-15':'小年夜','2026-02-16':'農曆除夕','2026-02-17':'春節','2026-02-18':'春節','2026-02-19':'春節','2026-02-20':'春節補假','2026-02-27':'和平紀念日補假','2026-02-28':'和平紀念日','2026-04-03':'兒童節補假','2026-04-04':'兒童節','2026-04-05':'清明節','2026-04-06':'清明節補假','2026-05-01':'勞動節','2026-06-19':'端午節','2026-09-25':'中秋節','2026-09-28':'孔子誕辰紀念日／教師節','2026-10-09':'國慶日補假','2026-10-10':'國慶日','2026-10-25':'臺灣光復暨金門古寧頭大捷紀念日','2026-10-26':'光復節補假','2026-12-25':'行憲紀念日'
+  };
 
   function renderCalendar() {
     const cal = document.getElementById('calendar'); cal.innerHTML = '';
@@ -248,6 +251,7 @@
     const data=await api(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(first.toISOString())}&timeMax=${encodeURIComponent(next.toISOString())}`);
     Object.keys(ledger).filter(k=>k.startsWith(prefix)).forEach(k=>ledger[k]=ledger[k].filter(n=>!n.calendarImport)); let count=0;
     for(const e of data.items||[]) { const raw=e.start?.date||e.start?.dateTime; if(!raw || hiddenCalendarEvents.has(e.id)) continue; const key=e.start?.date?raw:`${prefix}${String(new Date(raw).getDate()).padStart(2,'0')}`; if(!key.startsWith(prefix))continue; (ledger[key]??=[]).push({title:e.summary||'未命名行程',time:e.start?.dateTime?new Date(e.start.dateTime).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false}):'全天',kind:'blue',detail:e.description||e.location||'Google 日曆行程',tags:'日曆匯入',calendarImport:true,calendarEventId:e.id}); count++; }
+    for(const [key,title] of Object.entries(taiwanHolidays)) { if(!key.startsWith(prefix)) continue; (ledger[key]??=[]).push({title,time:'全天',kind:'red',color:'#d4145a',detail:'內建台灣節日',tags:'台灣節日',calendarImport:true,taiwanHoliday:true}); count++; }
     saveLedger();localStorage.setItem('notebookLastSync', new Date().toISOString());renderCalendar();renderAgenda();window.showToast(count?`已匯入 ${label()}的 ${count} 筆行程`:`${label()}沒有 Google 日曆行程`);
   }
   async function importDriveNotes(){
@@ -1046,8 +1050,8 @@ document.addEventListener('DOMContentLoaded', () => {
   .office-calendar-import:hover{background:var(--apple-tint)!important}
 </style>
 <script>
-/* 行政院人事行政總處：中華民國政府行政機關辦公日曆表。 */
-(() => {
+/* 已改用內建台灣節日，不載入官方辦公日曆。 */
+(() => { return;
   const sources = {
     2026: 'https://www.dgpa.gov.tw/FileConversion?filename=dgpa/files/202506/a52331bd-a189-466b-b0f0-cae3062bbf74.csv&nfix=&name=115%E5%B9%B4%E4%B8%AD%E8%8F%AF%E6%B0%91%E5%9C%8B%E6%94%BF%E5%BA%9C%E8%A1%8C%E6%94%BF%E6%A9%9F%E9%97%9C%E8%BE%A6%E5%85%AC%E6%97%A5%E6%9B%86%E8%A1%A8.csv',
     2027: 'https://www.dgpa.gov.tw/FileConversion?filename=dgpa/files/202607/f538b1ff-ba60-4c63-9477-10db8e6612d1.csv&nfix=&name=116%E5%B9%B4%E4%B8%AD%E8%8F%AF%E6%B0%91%E5%9C%8B%E6%94%BF%E5%BA%9C%E8%A1%8C%E6%94%BF%E6%A9%9F%E9%97%9C%E8%BE%A6%E5%85%AC%E6%97%A5%E6%9B%86%E8%A1%A8_utf8bom.csv'
