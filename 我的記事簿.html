@@ -631,7 +631,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ['polish','✍️ 潤飾公文語氣','貼上文字或開啟檔案，潤飾為臺灣公部門常用的正式語氣。'],
     ['critical','🔎 批判性思維','以多元觀點、證據與邏輯，深入剖析指定議題。'],
     ['painpoint','🛠️ 痛點分析精進方案','診斷議案瓶頸，提出具體策略、行動方案與成效指標。'],
-    ['webvisual','🧩 網頁可視化','以圖形化、具互動性的單頁網頁展示資料狀態。']
+    ['webvisual','🧩 網頁可視化','以圖形化、具互動性的單頁網頁展示資料狀態。'],
+    ['newsrelease','📰 撰寫新聞稿','讓 AI 協助產出專業水準的新聞稿，解決寫作痛點。'],
+    ['speech','🎙️ 撰寫致詞稿','快速因應各種場合需求調整內容，產出專業致詞稿。'],
+    ['slidesoutline','📊 建立簡報架構','將文件整理成適合口頭報告的專業簡報格式。']
   ];
   let selectedFeature = 'proofread';
   const readSettings = () => { try { return JSON.parse(localStorage.getItem('notebookSettingsV1') || '{}'); } catch (_) { return {}; } };
@@ -764,7 +767,10 @@ document.addEventListener('DOMContentLoaded', () => {
 搜尋功能須以黃色突顯關鍵字與結果列表背景。已閱讀的目錄項目要有顏色變化等視覺標記。提供固定的「回到頂端」按鈕。
 
 【響應式設計】
-須完整支援桌面與行動裝置，確保小螢幕上的閱讀與操作體驗良好。所有 CSS 與 JavaScript 必須內嵌於同一 HTML 檔，且不得依賴任何需要 API Key 的服務。`
+須完整支援桌面與行動裝置，確保小螢幕上的閱讀與操作體驗良好。所有 CSS 與 JavaScript 必須內嵌於同一 HTML 檔，且不得依賴任何需要 API Key 的服務。`,
+    newsrelease: `請扮演資深記者，根據提供資訊撰寫 3 份不同角度的新聞稿：民生影響、市政發展、政策解讀。每份須有 SEO 優化標題，1000 字以內，採倒金字塔 4 段結構且每段均有 SEO 優化段落標題。第 1 段約 150–200 字回答 5W1H 核心訊息；第 2 段約 200–250 字展開重要細節、關鍵數據、事實或引言；第 3 段約 200–250 字說明背景脈絡及民眾／社會影響；第 4 段約 150–200 字說明後續措施與實用建議。使用台灣日常用語但避免過度口語化，面向一般民眾，以客觀中性、精準文字、數據佐證及具體可行建議呈現。`,
+    speech: `您是台灣頂尖致詞稿專家，具政府機關及企業組織致詞稿經驗，熟悉台灣公務體系語言風格。依使用者資訊撰寫 3 份致詞稿：場合○○○○；講話者為臺北市政府捷運工程局局長○○○；時間 5 分鐘；對象局內同仁約 60 人；目的表揚年度○○○。每份採 3 段落、400 字以內：開場向與會同仁致意，內容涵蓋表揚肯定、團隊合作、未來期許，結語感謝。版本一溫馨激勵型，溫暖親切並著重情感連結與團隊凝聚；版本二專業權威型，正式嚴謹並強調專業成就與未來願景；版本三親和鼓勵型，自然親民、如家人般關懷鼓勵。請使用台灣公務體系慣用語法。`,
+    slidesoutline: `請將以下文件整理成專業簡報格式。先提供完整章節架構，清楚標示標題與順序；每個章節至少 4 個重點，將冗長文字濃縮為條列摘要。架構應涵蓋專案概述（目標、範圍、重要性、期程）、執行過程（方法、里程碑、資源運用、團隊配置）、成果展示（具體產出、數據分析、達成指標、效益評估）、問題與挑戰（遭遇困難、解決方案、經驗學習、風險管控）、結論與建議（總結成果、後續規劃、改善建議、資源需求）。每頁不超過 7 個要點；重要數據用粗體；適合 15–20 分鐘口頭報告，並標明適合視覺化呈現的數據或流程。`
   };
   const panel = document.createElement('section');
   panel.id = 'aiInsightPage'; panel.className = 'ai-page';
@@ -780,7 +786,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const uiStyle = document.createElement('style');
   uiStyle.textContent = '.ai-controls{width:100%}.ai-control-tools{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ai-processing{display:none;position:absolute;inset:0;z-index:5;border-radius:24px;background:rgba(244,249,255,.8);backdrop-filter:blur(3px);align-items:center;justify-content:center}.ai-processing.show{display:flex}.ai-processing-box{min-width:270px;padding:24px 30px;background:#fff;border:1px solid #cfe0f4;border-radius:16px;box-shadow:0 18px 42px rgba(25,69,119,.2);text-align:center;color:#234f83}.ai-processing-box i{display:block;width:30px;height:30px;margin:0 auto 12px;border:4px solid #d7e7f9;border-top-color:#1767c5;border-radius:50%;animation:aiSpin .8s linear infinite}.ai-processing-box b,.ai-processing-box span{display:block}.ai-processing-box span{margin-top:6px;color:#6a7c95;font-size:13px}@keyframes aiSpin{to{transform:rotate(360deg)}}@media(max-width:620px){.ai-control-tools{margin-left:0;width:100%}}';
   document.head.appendChild(uiStyle);
-  const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','webvisual'].includes(id);
+  const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','webvisual','newsrelease','speech','slidesoutline'].includes(id);
   const choose = id => { selectedFeature = id; const directInput = usesDocumentInput(id); panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; input.placeholder = directInput ? '請貼上要處理的文件、議題或文字內容…' : '可補充分析指令。'; limit.textContent = directInput ? '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : ''; };
   choose(selectedFeature);
   panel.querySelectorAll('.ai-action').forEach(button => button.addEventListener('click', () => choose(button.dataset.ai)));
