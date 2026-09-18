@@ -1026,6 +1026,79 @@ document.addEventListener('DOMContentLoaded', () => {
   body:not(.dark-mode) .notebook-toolbar .nav a:hover,body:not(.dark-mode) .notebook-toolbar .cloud-drive-shortcut:hover,body:not(.dark-mode) .notebook-toolbar #aiInsightNav:hover{background:var(--apple-blue)!important;color:#fff!important}
   body:not(.dark-mode) .drive-path{background:var(--apple-tint)!important;color:#0057b8!important}
   body:not(.dark-mode) .search-result,body:not(.dark-mode) .attachment-card{background:#fff!important;border-color:var(--apple-line)!important}
+
+  /* AI 智慧解析：正常狀態與滑過狀態依使用情境互換。 */
+  body:not(.dark-mode) .notebook-toolbar #aiInsightNav{background:var(--apple-blue)!important;color:#fff!important;box-shadow:none!important}
+  body:not(.dark-mode) .notebook-toolbar #aiInsightNav .ai-nav-icon{background:#3b9cff!important;color:#fff!important;box-shadow:none!important}
+  body:not(.dark-mode) .notebook-toolbar #aiInsightNav:hover{background:#fff!important;color:var(--apple-text)!important;box-shadow:0 3px 10px rgba(0,0,0,.12)!important}
+  body:not(.dark-mode) .notebook-toolbar #aiInsightNav:hover .ai-nav-icon{background:#fff!important;color:var(--apple-blue)!important;box-shadow:inset 0 0 0 1px var(--apple-line)!important}
+
+  /* 縮短搜尋框，為副標題右側保留呼吸空間。 */
+  .search-wrap{width:min(260px,24vw)!important}
+  @media(max-width:700px){.search-wrap{width:100%!important}}
+
+  /* 行政院人事行政總處辦公日曆標示。 */
+  .office-holiday{background:#fff5f5!important}
+  .office-workday{background:#f7fbff!important}
+  .office-note{display:block;margin-top:3px;color:#c43838;font-size:10px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .office-workday .office-note{color:#007aff}
+  .office-calendar-import{border:1px solid var(--apple-blue)!important;background:#fff!important;color:var(--apple-blue)!important;border-radius:9px;padding:7px 10px;font-weight:700;cursor:pointer;font-size:12px;margin-right:8px}
+  .office-calendar-import:hover{background:var(--apple-tint)!important}
 </style>
+<script>
+/* 行政院人事行政總處：中華民國政府行政機關辦公日曆表。 */
+(() => {
+  const sources = {
+    2026: 'https://www.dgpa.gov.tw/FileConversion?filename=dgpa/files/202506/a52331bd-a189-466b-b0f0-cae3062bbf74.csv&nfix=&name=115%E5%B9%B4%E4%B8%AD%E8%8F%AF%E6%B0%91%E5%9C%8B%E6%94%BF%E5%BA%9C%E8%A1%8C%E6%94%BF%E6%A9%9F%E9%97%9C%E8%BE%A6%E5%85%AC%E6%97%A5%E6%9B%86%E8%A1%A8.csv',
+    2027: 'https://www.dgpa.gov.tw/FileConversion?filename=dgpa/files/202607/f538b1ff-ba60-4c63-9477-10db8e6612d1.csv&nfix=&name=116%E5%B9%B4%E4%B8%AD%E8%8F%AF%E6%B0%91%E5%9C%8B%E6%94%BF%E5%BA%9C%E8%A1%8C%E6%94%BF%E6%A9%9F%E9%97%9C%E8%BE%A6%E5%85%AC%E6%97%A5%E6%9B%86%E8%A1%A8_utf8bom.csv'
+  };
+  /* 官方 116 年 CSV 內嵌壓縮備援，避免原始資料站的跨網域限制。 */
+  const bundled116 = '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';
+  const unpack116 = async () => new Response(new Blob([Uint8Array.from(atob(bundled116), c => c.charCodeAt(0))]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  const cacheKey = 'notebookOfficeCalendarV1';
+  const cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+  const parse = text => Object.fromEntries(text.replace(/^\uFEFF/,'').trim().split(/\r?\n/).slice(1).map(line => {
+    const [date,,holiday,note=''] = line.split(',');
+    return [`${date.slice(0,4)}-${date.slice(4,6)}-${date.slice(6,8)}`, { holiday: holiday.trim() === '2', note: note.trim() }];
+  }));
+  const currentYear = () => Number(document.querySelector('.cal-head h2')?.textContent.match(/\d{4}/)?.[0]);
+  const paint = () => {
+    const year = currentYear(), records = cache[year];
+    if (!records) return;
+    const month = document.querySelector('.cal-head h2')?.textContent.match(/\d{4}\s*年\s*(\d+)/)?.[1];
+    if (!month) return;
+    document.querySelectorAll('#calendar .day:not(.empty)').forEach(cell => {
+      cell.classList.remove('office-holiday','office-workday'); cell.querySelector('.office-note')?.remove();
+      const day = cell.querySelector('.date')?.textContent.trim();
+      const item = records[`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`];
+      if (!item) return;
+      cell.classList.add(item.holiday ? 'office-holiday' : 'office-workday');
+      if (item.note) { const note = document.createElement('span'); note.className = 'office-note'; note.textContent = item.note; cell.querySelector('.date')?.after(note); }
+    });
+  };
+  const load = async (force = false) => {
+    const year = currentYear();
+    if (!sources[year]) return;
+    if (!cache[year] || force) {
+      try {
+        const text = year === 2027 ? await unpack116() : await (await fetch(sources[year])).text();
+        cache[year] = parse(text);
+        localStorage.setItem(cacheKey, JSON.stringify(cache));
+      } catch (_) { window.showToast?.('政府辦公日曆暫時無法載入'); return; }
+    }
+    paint();
+  };
+  const calendar = document.getElementById('calendar');
+  new MutationObserver(() => queueMicrotask(() => { paint(); load(); })).observe(calendar, { childList:true, subtree:true });
+  const addButton = () => {
+    if (document.querySelector('.office-calendar-import')) return;
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'office-calendar-import';
+    button.textContent = '↻ 政府辦公日曆'; button.title = '重新載入行政院人事行政總處辦公日曆表';
+    button.onclick = async () => { button.disabled = true; button.textContent = '載入中…'; await load(true); button.disabled = false; button.textContent = '↻ 政府辦公日曆'; window.showToast?.('已更新政府辦公日曆'); };
+    document.querySelector('.calendar-refresh')?.before(button);
+  };
+  addButton(); load();
+})();
+</script>
 </body>
 </html>
