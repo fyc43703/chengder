@@ -279,7 +279,8 @@
   }
   const authorizeDrive=(prompt='consent')=>{if(!window.google?.accounts?.oauth2)return window.showToast('Google 授權元件載入中，請稍後再試'); google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:async r=>{if(r.error){if(prompt==='none'){token='';localStorage.removeItem('notebookGoogleToken');document.getElementById('driveState').textContent='尚未連結帳戶';return}return window.showToast('Google 授權未完成')}token=r.access_token;localStorage.setItem('notebookGoogleToken',token);document.getElementById('driveState').textContent='Google Drive 已連結';try{await importCalendar();await importDriveNotes()}catch(e){window.showToast(`已連結，但雲端記事匯入失敗：${e.message}`)}}}).requestAccessToken({prompt});};
   window.connectDrive=()=>authorizeDrive('consent');
-  if(token){document.getElementById('driveState').textContent='Google Drive 授權恢復中…';setTimeout(()=>authorizeDrive('none'),400);}
+  // Google Drive 僅在使用者手動點選「連結 Google Drive」後才授權與載入。
+  if(token) document.getElementById('driveState').textContent='尚未連結帳戶';
 
   async function folder(name,parent) { const q=[`name = '${name.replace(/'/g,"\\'")}'`,`mimeType = '${FOLDER_MIME}'`,'trashed = false'];if(parent)q.push(`'${parent}' in parents`);const hit=await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q.join(' and '))}&fields=files(id)&pageSize=1`);if(hit.files?.[0])return hit.files[0].id;return(await api('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:FOLDER_MIME,...(parent?{parents:[parent]}:{})})})).id; }
   async function upload(parent,file,name=file.name) { const b=`notebook_${Date.now()}`,meta={name,parents:[parent]},body=new Blob([`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n`,`--${b}\r\nContent-Type: ${file.type||'application/octet-stream'}\r\n\r\n`,file,`\r\n--${b}--`],{type:`multipart/related; boundary=${b}`});return api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${b}`},body}); }
@@ -1044,6 +1045,11 @@ document.addEventListener('DOMContentLoaded', () => {
   body:not(.dark-mode) .notebook-toolbar #aiInsightNav:hover .ai-nav-icon{background:#fff!important;color:var(--apple-blue)!important;box-shadow:inset 0 0 0 1px var(--apple-line)!important}
   body:not(.dark-mode) .notebook-toolbar #aiInsightNav{padding:6px 9px!important;border-radius:10px!important;gap:6px!important}
   body:not(.dark-mode) .notebook-toolbar #aiInsightNav .ai-nav-icon{width:24px!important;height:24px!important;border-radius:7px!important;font-size:16px!important}
+
+  /* 收緊標題、功能列與月曆之間的垂直留白。 */
+  .topbar{min-height:64px!important}
+  .notebook-toolbar{margin:0 auto 10px!important;padding:6px 14px!important}
+  .notebook-toolbar .nav a{padding:6px 12px!important}
 
   /* 縮短搜尋框，為副標題右側保留呼吸空間。 */
   .search-wrap{width:min(260px,24vw)!important}
