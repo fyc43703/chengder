@@ -42,6 +42,16 @@
     toolbar.setAttribute('aria-label', '記事簿功能');
     topbar.insertAdjacentElement('afterend', toolbar);
     toolbar.append(nav);
+    const quickLinks = document.createElement('nav');
+    quickLinks.className = 'quick-links'; quickLinks.setAttribute('aria-label', '常用系統捷徑');
+    [
+      ['台','TaipeiON','https://login.gov.taipei/login.php'],
+      ['E','EIP入口','https://pdapsv04.dorts.gov.tw/NetCoreApp/eip3vue/#/personal'],
+      ['M','MaiGPT','https://admin.maiagent.ai/login?redirect=/maigpt'],
+      ['☁','NAS雲端','https://pdnssv15.dorts.gov.tw:8445/?launchApp=SYNO.SDS.Drive.Application#file_id=465906671940538616'],
+      ['✉','Outlook','https://outlook.cloud.microsoft/mail/']
+    ].forEach(([icon,label,href]) => { const link = document.createElement('a'); link.href = href; link.target = '_blank'; link.rel = 'noopener'; link.title = label; link.setAttribute('aria-label', label); link.textContent = icon; quickLinks.append(link); });
+    toolbar.prepend(quickLinks);
     if (drive) toolbar.append(drive);
 
     const labels = ['日曆', '搜尋記事', '我的附件', '設定'];
@@ -109,6 +119,7 @@
     layoutStyle.textContent = `
       .notebook-toolbar{display:grid!important;grid-template-columns:1fr auto 1fr;gap:12px;padding:9px 12px!important}
       .notebook-toolbar .nav{grid-column:2;grid-row:1}
+      .notebook-toolbar .quick-links{grid-column:1;grid-row:1;justify-self:start;display:flex;align-items:center;gap:5px}.quick-links a{display:grid;place-items:center;width:25px;height:25px;border:1px solid #cbdcf0;border-radius:7px;background:#f7faff;color:#1767c5;text-decoration:none;font-size:12px;font-weight:800}.quick-links a:hover{background:#1767c5;color:#fff;border-color:#1767c5}
       .notebook-toolbar .mini{grid-column:3;grid-row:1;justify-self:end;border-left:1px solid #dce5f0;padding-left:14px!important}
       .notebook-toolbar .nav a{display:flex;align-items:center;gap:8px;padding:8px 14px!important;color:#294b78;transition:transform .18s,box-shadow .18s}
       .notebook-toolbar .nav a:hover{transform:translateY(-2px);box-shadow:0 7px 14px rgba(38,91,171,.16)}
@@ -775,9 +786,21 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   const panel = document.createElement('section');
   panel.id = 'aiInsightPage'; panel.className = 'ai-page';
-  panel.innerHTML = `<div class="ai-panel"><button class="search-close" type="button" aria-label="關閉 AI 智慧解析">×</button><h2>✦ AI 智慧解析</h2><div class="ai-grid">${features.map(([id,name,desc]) => `<button type="button" class="ai-action" data-ai="${id}">${name}：<span>${desc}</span></button>`).join('')}</div><textarea class="ai-input" id="aiExtra" placeholder="選擇功能後，在此貼上要處理的文字。"></textarea><div class="ai-file" id="aiFileArea" hidden><label for="aiSourceFile">📎 開啟檔案</label><input id="aiSourceFile" type="file" accept=".doc,.docx,.rtf,.pdf,.txt,.md,.html,.htm,.csv,.json,.log,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/rtf,application/pdf,text/plain,text/markdown,text/csv,text/html"><small id="aiFileName">支援 DOC、DOCX、RTF、PDF、TXT、MD、HTML 等檔案；檔案文字會帶入上方欄位。</small><div class="ai-file-actions"><button type="button" id="aiClearFile">清除檔案</button><button type="button" id="aiReloadFile">重新開啟檔案</button></div></div><div class="ai-controls"><button type="button" class="ai-run">開始 AI 分析</button><button type="button" class="ai-copy">複製結果</button><select class="ai-export-select" id="aiExportFormat" aria-label="匯出格式"><option value="docx">DOCX</option><option value="rtf">RTF</option><option value="pdf">PDF</option><option value="txt">TXT</option><option value="md">MD</option><option value="html">HTML</option></select><button type="button" class="ai-export">匯出結果</button><span class="ai-status"></span></div><div class="ai-result" aria-live="polite"></div><div class="ai-limit" id="aiLimit">分析範圍：今日重點摘要使用目前選取日期的記事。</div></div>`;
+  panel.innerHTML = `<div class="ai-panel"><button class="search-close" type="button" aria-label="關閉 AI 智慧解析">×</button><div class="ai-title-row"><h2>✦ AI 智慧解析</h2><section class="ai-keybar" aria-label="AI 助理設定"><label>Gemini API Key<input id="aiGeminiKey" type="password" placeholder="Gemini API Key"></label><label>Groq API Key（Gemini 忙碌時自動備援）<input id="aiGroqKey" type="password" placeholder="Groq API Key"></label></section></div><div class="ai-grid">${features.map(([id,name,desc]) => `<button type="button" class="ai-action" data-ai="${id}">${name}：<span>${desc}</span></button>`).join('')}</div><textarea class="ai-input" id="aiExtra" placeholder="選擇功能後，在此貼上要處理的文字。"></textarea><div class="ai-file" id="aiFileArea" hidden><label for="aiSourceFile">📎 開啟檔案</label><input id="aiSourceFile" type="file" accept=".doc,.docx,.rtf,.pdf,.txt,.md,.html,.htm,.csv,.json,.log,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/rtf,application/pdf,text/plain,text/markdown,text/csv,text/html"><small id="aiFileName">支援 DOC、DOCX、RTF、PDF、TXT、MD、HTML 等檔案；檔案文字會帶入上方欄位。</small><div class="ai-file-actions"><button type="button" id="aiClearFile">清除檔案</button><button type="button" id="aiReloadFile">重新開啟檔案</button></div></div><div class="ai-controls"><button type="button" class="ai-run">開始 AI 分析</button><button type="button" class="ai-copy">複製結果</button><select class="ai-export-select" id="aiExportFormat" aria-label="匯出格式"><option value="docx">DOCX</option><option value="rtf">RTF</option><option value="pdf">PDF</option><option value="txt">TXT</option><option value="md">MD</option><option value="html">HTML</option></select><button type="button" class="ai-export">匯出結果</button><span class="ai-status"></span></div><div class="ai-result" aria-live="polite"></div><div class="ai-limit" id="aiLimit">分析範圍：今日重點摘要使用目前選取日期的記事。</div></div>`;
   document.body.appendChild(panel);
   const result = panel.querySelector('.ai-result'), status = panel.querySelector('.ai-status'), run = panel.querySelector('.ai-run'), input = panel.querySelector('#aiExtra'), fileArea = panel.querySelector('#aiFileArea'), fileInput = panel.querySelector('#aiSourceFile'), fileName = panel.querySelector('#aiFileName'), limit = panel.querySelector('#aiLimit'), exportFormat = panel.querySelector('#aiExportFormat');
+  const aiGeminiKey = panel.querySelector('#aiGeminiKey'), aiGroqKey = panel.querySelector('#aiGroqKey');
+  const syncAiKeys = () => {
+    const values = { ...readSettings(), geminiKey: aiGeminiKey.value.trim(), groqKey: aiGroqKey.value.trim() };
+    localStorage.setItem('notebookSettingsV1', JSON.stringify(values));
+    const settingsGemini = document.querySelector('#settingGeminiKey'), settingsGroq = document.querySelector('#settingGroqKey');
+    if (settingsGemini) settingsGemini.value = values.geminiKey;
+    if (settingsGroq) settingsGroq.value = values.groqKey;
+  };
+  const savedAiKeys = readSettings(); aiGeminiKey.value = savedAiKeys.geminiKey || ''; aiGroqKey.value = savedAiKeys.groqKey || '';
+  aiGeminiKey.addEventListener('input', syncAiKeys); aiGroqKey.addEventListener('input', syncAiKeys);
+  document.querySelector('#settingGeminiKey')?.addEventListener('input', event => { aiGeminiKey.value = event.target.value; });
+  document.querySelector('#settingGroqKey')?.addEventListener('input', event => { aiGroqKey.value = event.target.value; });
   let rawResult = '';
   const controls = panel.querySelector('.ai-controls'), copyButton = panel.querySelector('.ai-copy'), exportButton = panel.querySelector('.ai-export'), controlTools = document.createElement('div'), processing = document.createElement('div');
   copyButton.textContent = '複製文字';
@@ -789,6 +812,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.head.appendChild(uiStyle);
   const cardStyle = document.createElement('style');
   cardStyle.textContent = `
+    .ai-title-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}.ai-title-row h2{margin:0!important;white-space:nowrap}.ai-keybar{display:flex;align-items:flex-end;gap:10px;flex:1;justify-content:flex-end}.ai-keybar label{display:grid;gap:3px;max-width:235px;color:#38577f;font-size:11px;font-weight:700}.ai-keybar input{height:32px;width:100%;border:1px solid #bfd1e8;border-radius:8px;padding:6px 9px;font:13px/1 Arial,'Microsoft JhengHei',sans-serif}.quick-links{display:flex}@media(max-width:900px){.ai-title-row{align-items:stretch;flex-direction:column}.ai-keybar{justify-content:flex-start;flex-wrap:wrap}.ai-keybar label{max-width:none;flex:1 1 220px}.quick-links{display:none!important}}
     .ai-grid .ai-action{position:relative;border:1px solid #cbdcf3!important;box-shadow:0 3px 0 rgba(48,91,143,.12),0 5px 10px rgba(31,67,111,.08)!important;transform:translateY(0);transition:transform .18s ease,box-shadow .18s ease!important}
     .ai-grid .ai-action:hover,.ai-grid .ai-action:focus{transform:translateY(-2px)!important;box-shadow:0 4px 0 rgba(48,91,143,.12),0 8px 14px rgba(31,67,111,.12)!important;z-index:2}
     .ai-grid .ai-action.active{background:#174f94!important;color:#1b477c!important;border-color:#123d75!important;box-shadow:0 3px 0 rgba(18,61,117,.32),0 6px 12px rgba(18,61,117,.16)!important}
