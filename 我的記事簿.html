@@ -787,6 +787,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const uiStyle = document.createElement('style');
   uiStyle.textContent = '.ai-controls{width:100%}.ai-control-tools{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ai-processing{display:none;position:absolute;inset:0;z-index:5;border-radius:24px;background:rgba(244,249,255,.8);backdrop-filter:blur(3px);align-items:center;justify-content:center}.ai-processing.show{display:flex}.ai-processing-box{min-width:270px;padding:24px 30px;background:#fff;border:1px solid #cfe0f4;border-radius:16px;box-shadow:0 18px 42px rgba(25,69,119,.2);text-align:center;color:#234f83}.ai-processing-box i{display:block;width:30px;height:30px;margin:0 auto 12px;border:4px solid #d7e7f9;border-top-color:#1767c5;border-radius:50%;animation:aiSpin .8s linear infinite}.ai-processing-box b,.ai-processing-box span{display:block}.ai-processing-box span{margin-top:6px;color:#6a7c95;font-size:13px}@keyframes aiSpin{to{transform:rotate(360deg)}}@media(max-width:620px){.ai-control-tools{margin-left:0;width:100%}}';
   document.head.appendChild(uiStyle);
+  const cardStyle = document.createElement('style');
+  cardStyle.textContent = `
+    .ai-grid .ai-action{position:relative;border:1px solid #cbdcf3!important;box-shadow:0 7px 0 rgba(48,91,143,.15),0 12px 20px rgba(31,67,111,.12)!important;transform:translateY(0);transition:transform .18s ease,box-shadow .18s ease!important}
+    .ai-grid .ai-action:hover,.ai-grid .ai-action:focus{transform:translateY(-4px)!important;box-shadow:0 10px 0 rgba(48,91,143,.14),0 18px 28px rgba(31,67,111,.18)!important;z-index:2}
+    .ai-grid .ai-action:nth-child(1){background:#eaf3ff!important}.ai-grid .ai-action:nth-child(2){background:#eff9f5!important}.ai-grid .ai-action:nth-child(3){background:#fff4e7!important}.ai-grid .ai-action:nth-child(4){background:#f4efff!important}.ai-grid .ai-action:nth-child(5){background:#fff0f3!important}.ai-grid .ai-action:nth-child(6){background:#edf8fb!important}.ai-grid .ai-action:nth-child(7){background:#fff7e8!important}.ai-grid .ai-action:nth-child(8){background:#f2f7e9!important}.ai-grid .ai-action:nth-child(9){background:#eef1ff!important}
+    .ai-prompt-popover{position:fixed;z-index:1000;max-height:min(64vh,560px);overflow:hidden;border:1px solid #bdd4f2;border-radius:14px;background:#fff;box-shadow:0 16px 42px rgba(25,62,110,.28);color:#203a5b;text-align:left}.ai-prompt-popover[hidden]{display:none}.ai-prompt-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#eaf3ff;color:#174f94}.ai-prompt-head button{width:30px;height:30px;border:0;border-radius:8px;background:#007aff;color:#fff;font-size:18px;cursor:pointer}.ai-prompt-body{max-height:calc(min(64vh,560px) - 52px);overflow:auto;padding:12px 16px;font-size:13px;line-height:1.65}.ai-prompt-body h2{margin:10px 0 7px;font-size:15px;color:#075ab8}.ai-prompt-body h2:first-child{margin-top:0}.ai-prompt-body p{margin:7px 0;white-space:pre-wrap}
+  `;
+  document.head.appendChild(cardStyle);
   const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','webvisual','newsrelease','speech','slidesoutline'].includes(id);
   const choose = id => { selectedFeature = id; const directInput = usesDocumentInput(id); panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; input.placeholder = directInput ? '請貼上要處理的文件、議題或文字內容…' : '可補充分析指令。'; limit.textContent = directInput ? '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : ''; };
   choose(selectedFeature);
@@ -836,6 +844,35 @@ document.addEventListener('DOMContentLoaded', () => {
     if (line.ordered) return '<p class="ordered">' + inlineHtml(line.tokens) + '</p>';
     return '<p>' + inlineHtml(line.tokens) + '</p>';
   }).join('');
+  const promptPopover = document.createElement('aside');
+  promptPopover.className = 'ai-prompt-popover'; promptPopover.hidden = true;
+  document.body.appendChild(promptPopover);
+  let promptTimer;
+  const promptSource = id => {
+    const feature = features.find(item => item[0] === id);
+    const points = String(instructions[id] || '').split(/(?<=[。；])/).map(text => text.trim()).filter(Boolean);
+    return `# ${feature?.[1] || 'AI 智慧解析'}\n\n## 完整提示詞\n\n${points.map(text => `- ${text}`).join('\n')}`;
+  };
+  const hidePrompt = () => { promptTimer = setTimeout(() => { promptPopover.hidden = true; }, 180); };
+  const showPrompt = button => {
+    clearTimeout(promptTimer);
+    const id = button.dataset.ai, source = promptSource(id), rect = button.getBoundingClientRect();
+    promptPopover.innerHTML = `<div class="ai-prompt-head"><b>提示詞預覽</b><button type="button" aria-label="複製提示詞" title="複製提示詞">⧉</button></div><div class="ai-prompt-body">${markdownHtml(source)}</div>`;
+    promptPopover.querySelector('button').onclick = async () => { try { await navigator.clipboard.writeText(source); promptPopover.querySelector('button').textContent = '✓'; } catch (_) { window.prompt('請複製以下提示詞：', source); } };
+    promptPopover.hidden = false;
+    const width = Math.min(560, window.innerWidth - 24);
+    promptPopover.style.width = width + 'px';
+    promptPopover.style.left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)) + 'px';
+    promptPopover.style.top = Math.min(rect.bottom + 8, window.innerHeight - 300) + 'px';
+  };
+  panel.querySelectorAll('.ai-action').forEach(button => {
+    button.addEventListener('mouseenter', () => showPrompt(button));
+    button.addEventListener('mouseleave', hidePrompt);
+    button.addEventListener('focus', () => showPrompt(button));
+    button.addEventListener('blur', hidePrompt);
+  });
+  promptPopover.addEventListener('mouseenter', () => clearTimeout(promptTimer));
+  promptPopover.addEventListener('mouseleave', hidePrompt);
   const textToRtf = text => {
     let output = '{\\rtf1\\ansi\\uc1\\deff0{\\fonttbl{\\f0 Microsoft JhengHei;}}\\f0\\fs24\n';
     const encode = value => { let encoded = ''; for (const char of value) { if (char === '\\') encoded += '\\\\'; else if (char === '{' || char === '}') encoded += '\\' + char; else { const code = char.codePointAt(0); encoded += code < 128 ? char : '\\u' + (code > 32767 ? code - 65536 : code) + '?'; } } return encoded; };
