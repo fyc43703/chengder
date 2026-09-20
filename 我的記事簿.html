@@ -1152,8 +1152,24 @@ document.addEventListener('DOMContentLoaded', () => {
     rename('#aiTranscriptToInput', '帶入 AI 辦公助理', '將完成的逐字稿帶回 AI 辦公助理輸入欄。');
     rename('#aiTranscribeClose', '← 返回 AI 辦公助理', '返回 AI 辦公助理頁面。');
     document.querySelectorAll('#aiInsightPage .ai-action').forEach(card => card.removeAttribute('title'));
+    const makeKeyLink = (selector, text, url) => {
+      const input = document.querySelector(selector), label = input?.closest('label');
+      if (!label || !input || label.querySelector('.ai-key-link')) return;
+      const source = [...label.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+      const link = document.createElement('a'); link.className = 'ai-key-link'; link.href = url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = text + ' ↗'; link.title = '前往官方網站免費申請 API Key';
+      if (source) source.remove(); label.insertBefore(link, input);
+    };
+    makeKeyLink('#aiGeminiKey', 'Gemini API Key', 'https://aistudio.google.com/app/apikey');
+    makeKeyLink('#aiGroqKey', 'Groq API Key（Gemini 忙碌時自動備援）', 'https://console.groq.com/keys');
   });
 </script>
+<style>
+  #aiInsightPage .ai-title-row{position:relative;min-height:54px}
+  #aiInsightPage .ai-keybar{position:absolute;left:50%;transform:translateX(-50%);justify-content:center;flex:none}
+  #aiInsightPage .ai-key-link{color:#315d8c;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
+  #aiInsightPage .ai-key-link:hover,#aiInsightPage .ai-key-link:focus{color:#007aff}
+  @media(max-width:900px){#aiInsightPage .ai-keybar{position:static;transform:none;justify-content:flex-start}}
+</style>
 <style>
   /* 主標題下方的應用程式說明。 */
   .topbar{min-height:76px!important;align-items:flex-start!important}
