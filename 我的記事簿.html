@@ -678,7 +678,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ['webvisual','🧩 網頁可視化','以圖形化、具互動性的單頁網頁展示資料狀態。'],
     ['newsrelease','📰 撰寫新聞稿','讓 AI 協助產出專業水準的新聞稿，解決寫作痛點。'],
     ['speech','🎙️ 撰寫致詞稿','快速因應各種場合需求調整內容，產出專業致詞稿。'],
-    ['slidesoutline','📊 建立簡報架構','將文件整理成適合口頭報告的專業簡報格式。']
+    ['slidesoutline','📊 建立簡報架構','將文件整理成適合口頭報告的專業簡報格式。'],
+    ['compare','🔄 公文／報告差異比對','比對兩份文件，標出增刪修訂、數字日期與權責差異。'],
+    ['sitephoto','📷 現場照片轉工程紀錄','將現場照片擷取文字與補充說明整理為工程紀錄及追蹤事項。'],
+    ['briefing','⏱️ 長官簡報三分鐘版','將長篇資料濃縮為首長可快速掌握的三分鐘決策摘要。']
   ];
   let selectedFeature = 'proofread';
   const readSettings = () => { try { return JSON.parse(localStorage.getItem('notebookSettingsV1') || '{}'); } catch (_) { return {}; } };
@@ -816,7 +819,58 @@ document.addEventListener('DOMContentLoaded', () => {
 須完整支援桌面與行動裝置，確保小螢幕上的閱讀與操作體驗良好。所有 CSS 與 JavaScript 必須內嵌於同一 HTML 檔，且不得依賴任何需要 API Key 的服務。`,
     newsrelease: `請扮演資深記者，根據提供資訊撰寫 3 份不同角度的新聞稿：民生影響、市政發展、政策解讀。每份須有 SEO 優化標題，1000 字以內，採倒金字塔 4 段結構且每段均有 SEO 優化段落標題。第 1 段約 150–200 字回答 5W1H 核心訊息；第 2 段約 200–250 字展開重要細節、關鍵數據、事實或引言；第 3 段約 200–250 字說明背景脈絡及民眾／社會影響；第 4 段約 150–200 字說明後續措施與實用建議。使用台灣日常用語但避免過度口語化，面向一般民眾，以客觀中性、精準文字、數據佐證及具體可行建議呈現。`,
     speech: `您是台灣頂尖致詞稿專家，具政府機關及企業組織致詞稿經驗，熟悉台灣公務體系語言風格。依使用者資訊撰寫 3 份致詞稿：場合○○○○；講話者為臺北市政府捷運工程局局長○○○；時間 5 分鐘；對象局內同仁約 60 人；目的表揚年度○○○。每份採 3 段落、400 字以內：開場向與會同仁致意，內容涵蓋表揚肯定、團隊合作、未來期許，結語感謝。版本一溫馨激勵型，溫暖親切並著重情感連結與團隊凝聚；版本二專業權威型，正式嚴謹並強調專業成就與未來願景；版本三親和鼓勵型，自然親民、如家人般關懷鼓勵。請使用台灣公務體系慣用語法。`,
-    slidesoutline: `請將以下文件整理成專業簡報格式。先提供完整章節架構，清楚標示標題與順序；每個章節至少 4 個重點，將冗長文字濃縮為條列摘要。架構應涵蓋專案概述（目標、範圍、重要性、期程）、執行過程（方法、里程碑、資源運用、團隊配置）、成果展示（具體產出、數據分析、達成指標、效益評估）、問題與挑戰（遭遇困難、解決方案、經驗學習、風險管控）、結論與建議（總結成果、後續規劃、改善建議、資源需求）。每頁不超過 7 個要點；重要數據用粗體；適合 15–20 分鐘口頭報告，並標明適合視覺化呈現的數據或流程。`
+    slidesoutline: `請將以下文件整理成專業簡報格式。先提供完整章節架構，清楚標示標題與順序；每個章節至少 4 個重點，將冗長文字濃縮為條列摘要。架構應涵蓋專案概述（目標、範圍、重要性、期程）、執行過程（方法、里程碑、資源運用、團隊配置）、成果展示（具體產出、數據分析、達成指標、效益評估）、問題與挑戰（遭遇困難、解決方案、經驗學習、風險管控）、結論與建議（總結成果、後續規劃、改善建議、資源需求）。每頁不超過 7 個要點；重要數據用粗體；適合 15–20 分鐘口頭報告，並標明適合視覺化呈現的數據或流程。`,
+    compare: `請擔任臺灣公部門的文件版本控管與審閱專家，比對使用者提供的【版本 A】與【版本 B】。只能依據兩份原文判斷，不可臆測未提供的內容。
+
+【輸出格式】
+# 比對摘要
+- 說明兩份文件的主要差異、重要程度與優先確認事項。
+
+## 重大差異
+逐項以「位置／版本 A／版本 B／差異類型／影響與建議」呈現。差異類型須明確標示為新增、刪除、文字修改、數字、日期、金額、法規、機關、人名、期限、權責或格式。
+
+## 完整差異清單
+依原文出現順序列出每項差異，保留必要的上下文；所有有差異的文字、數字與日期以 Markdown **粗體** 標示。
+
+## 風險與確認清單
+以條列方式列出可能影響權責、期限、經費、法規依據或執行成果的項目，並提出需向承辦人確認的問題與建議採用版本。
+
+若未清楚區分【版本 A】與【版本 B】，或只收到一份文件，請明確告知使用者需提供兩份版本；不得假造差異。`,
+    sitephoto: `請擔任工程現場紀錄承辦人，依使用者提供的現場照片 OCR 擷取文字與補充說明，整理成可供追蹤的工程紀錄。不可捏造照片中看不到、OCR 未擷取或使用者未說明的事實；資訊不足時一律標示「待確認」，並列入待補資訊。
+
+【輸出格式】
+# 工程現場紀錄
+- 工程／標案名稱：
+- 紀錄日期與時間：
+- 地點／工區：
+- 紀錄人員：
+- 天候／施工項目：
+
+## 現場觀察
+依據來源逐項描述已知情形；每一項說明資訊來源為「照片 OCR」、「使用者補充」或「待確認」。
+
+## 缺失、風險與影響
+以編號條列可能的缺失、施工風險、品質／安衛／進度影響；如資料不足，請明示無法判定，不得臆測。
+
+## 改善與追蹤事項
+使用「事項／建議作法／主責單位或人員／預定完成日／追蹤狀態」的 Markdown 表格；未知欄位填「待確認」。
+
+## 待補資訊或補拍建議
+列出為完成正式工程紀錄仍應補充的照片角度、位置、尺寸、日期、施工項目或其他資料。`,
+    briefing: `請扮演首長幕僚與政策分析人員，將以下資料濃縮為可在 3 分鐘內報告、供長官快速決策的內容。忠於原始資料；未提供的數字、進度、效益、風險或決策事項不可自行補寫。
+
+【輸出格式】
+# 一頁決策摘要
+- **一句結論：** 用一句話說明目前最需要長官掌握或決定的事。
+- **現況與成果：** 3 至 5 點，優先呈現具體數字、里程碑與影響。
+- **關鍵風險：** 以高／中／低標示，說明可能影響。
+- **請示或決策事項：** 清楚寫出需要長官核定、協調或指示的事項；沒有資料時寫「未提供」。
+
+## 三分鐘口頭簡報稿
+依「30 秒背景與目的／90 秒現況、成果與問題／45 秒風險與處置／15 秒請示事項」編排，語句簡潔、可直接朗讀，總長度約 450 至 600 個中文字。
+
+## 追問備答
+列出 3 至 5 個長官可能追問的問題；只能根據已提供資料作答，資料不足時標示「待確認」。`
   };
   const panel = document.createElement('section');
   panel.id = 'aiInsightPage'; panel.className = 'ai-page';
@@ -868,7 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
     .ai-grid .ai-action:hover,.ai-grid .ai-action:focus{transform:translateY(-2px)!important;box-shadow:0 4px 0 rgba(48,91,143,.12),0 8px 14px rgba(31,67,111,.12)!important;z-index:2}
     .ai-grid .ai-action.active{background:#174f94!important;color:#1b477c!important;border-color:#123d75!important;box-shadow:0 3px 0 rgba(18,61,117,.32),0 6px 12px rgba(18,61,117,.16)!important}
     .ai-grid .ai-action.active span{color:#6d7d94!important}.ai-grid .ai-action.active::after{content:'已選取';position:absolute;right:12px;top:10px;padding:2px 7px;border-radius:999px;background:#fff;color:#174f94;font-size:11px;font-weight:800}
-    .ai-grid .ai-action:nth-child(1){background:#eaf3ff!important}.ai-grid .ai-action:nth-child(2){background:#eff9f5!important}.ai-grid .ai-action:nth-child(3){background:#fff4e7!important}.ai-grid .ai-action:nth-child(4){background:#f4efff!important}.ai-grid .ai-action:nth-child(5){background:#fff0f3!important}.ai-grid .ai-action:nth-child(6){background:#edf8fb!important}.ai-grid .ai-action:nth-child(7){background:#fff7e8!important}.ai-grid .ai-action:nth-child(8){background:#f2f7e9!important}.ai-grid .ai-action:nth-child(9){background:#eef1ff!important}
+    .ai-grid .ai-action:nth-child(1){background:#eaf3ff!important}.ai-grid .ai-action:nth-child(2){background:#eff9f5!important}.ai-grid .ai-action:nth-child(3){background:#fff4e7!important}.ai-grid .ai-action:nth-child(4){background:#f4efff!important}.ai-grid .ai-action:nth-child(5){background:#fff0f3!important}.ai-grid .ai-action:nth-child(6){background:#edf8fb!important}.ai-grid .ai-action:nth-child(7){background:#fff7e8!important}.ai-grid .ai-action:nth-child(8){background:#f2f7e9!important}.ai-grid .ai-action:nth-child(9){background:#eef1ff!important}.ai-grid .ai-action:nth-child(10){background:#f3f0ff!important}.ai-grid .ai-action:nth-child(11){background:#edf9f3!important}.ai-grid .ai-action:nth-child(12){background:#fff3ef!important}
     .ai-prompt-popover{position:fixed;z-index:1000;max-height:min(64vh,560px);overflow:hidden;border:1px solid #bdd4f2;border-radius:14px;background:#fff;box-shadow:0 16px 42px rgba(25,62,110,.28);color:#203a5b;text-align:left}.ai-prompt-popover[hidden]{display:none}.ai-prompt-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#eaf3ff;color:#174f94}.ai-prompt-head button{width:30px;height:30px;border:0;border-radius:8px;background:#007aff;color:#fff;font-size:18px;cursor:pointer}.ai-prompt-body{height:154px;max-height:154px;overflow:auto;padding:12px 16px;font-size:13px;line-height:1.65}.ai-prompt-body h2{margin:10px 0 7px;font-size:15px;color:#075ab8}.ai-prompt-body h2:first-child{margin-top:0}.ai-prompt-body p{margin:7px 0;white-space:pre-wrap}
     .ai-file{position:relative;background:#fff8e9!important;border-color:#e8c56f!important}.ai-file::before{content:'文件／圖片解析';display:block;margin-bottom:6px;color:#91600b;font-size:11px;font-weight:800;letter-spacing:.04em}.ai-file label{color:#80560f}.ai-transcribe{margin-top:14px;border:1px solid #8dbcf0;border-radius:13px;background:#edf6ff;padding:14px}.ai-transcribe-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.ai-transcribe h3{margin:0;color:#0d569d;font-size:16px}.ai-transcribe p{margin:4px 0 0;color:#4e7096;font-size:13px}.ai-audio-select{display:inline-flex;align-items:center;gap:7px;margin-top:10px;border:1px solid #66a7e9;border-radius:8px;background:#fff;color:#0d569d;padding:7px 10px;font-weight:800;cursor:pointer}.ai-audio-select input{display:none}.ai-audio-name{display:block;margin-top:7px;color:#466c95;font-size:12px;overflow-wrap:anywhere}.ai-transcribe-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.ai-transcribe-actions button{border:0;border-radius:8px;padding:8px 11px;background:#1767c5;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ai-transcribe-actions .secondary{background:#dcecff;color:#174f94}.ai-transcript{width:100%;min-height:106px;margin-top:10px;border:1px solid #a7caef;border-radius:9px;padding:10px;background:#fff;color:#29415f;font:13px/1.55 'Microsoft JhengHei',sans-serif;resize:vertical}.ai-transcribe details{margin-top:10px;border-top:1px solid #c4def7;padding-top:9px;color:#4d6e92;font-size:12px;line-height:1.65}.ai-transcribe summary{cursor:pointer;color:#0d569d;font-weight:800}.ai-transcribe ol{margin:6px 0 0 20px;padding:0}.ai-transcribe-note{display:block;margin-top:6px;color:#647b95}.ai-transcribe.busy{opacity:.72}.ai-transcribe.busy button{cursor:wait}
   `;
@@ -876,8 +930,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const transcribePageStyle = document.createElement('style');
   transcribePageStyle.textContent = `.ai-transcribe-launch{border:1px solid #76aee8;border-radius:9px;background:#eaf4ff;color:#0d569d;padding:8px 11px;font:700 13px/1 'Microsoft JhengHei',sans-serif;white-space:nowrap;cursor:pointer}.ai-transcribe-launch:hover,.ai-transcribe-launch:focus{background:#1767c5;color:#fff;border-color:#1767c5}.ai-transcribe-page{display:none;position:fixed;inset:0;z-index:230;padding:5vh 6vw;overflow:auto;background:rgba(233,240,249,.94);backdrop-filter:blur(9px)}.ai-transcribe-page.show{display:block}.ai-transcribe-shell{position:relative;max-width:860px;margin:auto;padding:26px;background:#fff;border-radius:24px;box-shadow:0 24px 70px rgba(27,54,93,.25)}.ai-transcribe-shell .ai-transcribe{margin-top:14px;padding:22px}.ai-transcribe-close{border:0;border-radius:9px;background:#eaf3ff;color:#174f94;padding:9px 12px;font:800 14px 'Microsoft JhengHei',sans-serif;cursor:pointer}.ai-transcribe-close:hover,.ai-transcribe-close:focus{background:#1767c5;color:#fff}.ai-transcribe-status{min-height:1.5em;margin:10px 0 0;color:#315d8c;font-size:13px;font-weight:700}@media(max-width:900px){.ai-transcribe-launch{align-self:flex-start}.ai-transcribe-page{padding:18px 12px}.ai-transcribe-shell{padding:18px}.ai-transcribe-shell .ai-transcribe{padding:16px}}`;
   document.head.appendChild(transcribePageStyle);
-  const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','webvisual','newsrelease','speech','slidesoutline'].includes(id);
-  const choose = id => { selectedFeature = id; const directInput = usesDocumentInput(id); panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; input.placeholder = directInput ? '請貼上要處理的文件、議題或文字內容…' : '可補充分析指令。'; limit.textContent = directInput ? '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : ''; };
+  const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','webvisual','newsrelease','speech','slidesoutline','compare','sitephoto','briefing'].includes(id);
+  const defaultFileHint = '支援 DOC、DOCX、RTF、PDF、PNG、JPG、HEIC、WebP、TXT、MD、HTML 等檔案；PDF 與圖片會以 OCR 擷取文字。';
+  const choose = id => { selectedFeature = id; const directInput = usesDocumentInput(id), compareMode = id === 'compare'; panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; fileInput.multiple = compareMode; input.placeholder = compareMode ? '請貼上兩份文件，並以【版本 A】與【版本 B】清楚區分；或一次開啟兩個檔案…' : id === 'sitephoto' ? '請貼上照片相關的工程名稱、地點、時間、施工項目或補充說明…' : directInput ? '請貼上要處理的文件、議題或文字內容…' : '可補充分析指令。'; fileName.textContent = compareMode ? '請一次選擇兩份要比對的文件；系統會標記為版本 A 與版本 B。' : defaultFileHint; limit.textContent = directInput ? compareMode ? '資料來源：僅使用此欄貼上的兩份文字或您選取的兩個檔案，不會讀取記事內容。' : '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : ''; };
   choose(selectedFeature);
   panel.querySelectorAll('.ai-action').forEach(button => button.addEventListener('click', () => choose(button.dataset.ai)));
   panel.querySelector('.search-close').addEventListener('click', () => panel.classList.remove('show'));
@@ -893,10 +948,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const readLegacyDoc = async file => { const raw = new TextDecoder('big5').decode(await readBuffer(file)); const text = raw.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ').replace(/\s{2,}/g, ' ').trim(); if (text.length < 20) throw new Error('此 DOC 檔案無法擷取可讀文字，請另存為 DOCX 或 PDF 後重新開啟。'); return text; };
   const readImage = async file => { const ext = (file.name.split('.').pop() || '').toLowerCase(); let image = file; if (['heic','heif'].includes(ext) || /image\/hei[cf]/i.test(file.type)) { await loadScript('aiHeicConverter', 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js'); image = await window.heic2any({ blob:file, toType:'image/png' }); } status.textContent = '正在 OCR 辨識圖片文字…'; return ocrImage(image); };
   const extractFileText = async file => { const ext = (file.name.split('.').pop() || '').toLowerCase(); if (ext === 'pdf') return readPdf(file); if (['png','jpg','jpeg','webp','heic','heif'].includes(ext) || file.type.startsWith('image/')) return readImage(file); if (ext === 'docx') return readDocx(file); if (ext === 'rtf') return rtfToText(await readPlainText(file)); if (ext === 'doc') return readLegacyDoc(file); return readPlainText(file); };
-  const clearSourceFile = () => { fileInput.value = ''; input.value = ''; fileName.textContent = '支援 DOC、DOCX、RTF、PDF、PNG、JPG、HEIC、WebP、TXT、MD、HTML 等檔案；PDF 與圖片會以 OCR 擷取文字。'; status.textContent = '已清除已載入的檔案與文字。'; };
+  const clearSourceFile = () => { fileInput.value = ''; input.value = ''; fileName.textContent = selectedFeature === 'compare' ? '請一次選擇兩份要比對的文件；系統會標記為版本 A 與版本 B。' : defaultFileHint; status.textContent = '已清除已載入的檔案與文字。'; };
   panel.querySelector('#aiClearFile').addEventListener('click', clearSourceFile);
   panel.querySelector('#aiReloadFile').addEventListener('click', () => { fileInput.value = ''; fileInput.click(); });
-  fileInput.addEventListener('change', async () => { const file = fileInput.files[0]; if (!file) return; fileName.textContent = `正在讀取：${file.name}`; status.textContent = '正在擷取檔案文字…'; try { input.value = await extractFileText(file); fileName.textContent = `已載入：${file.name}`; status.textContent = '檔案文字已帶入輸入欄。'; } catch (error) { fileInput.value = ''; fileName.textContent = '檔案讀取失敗，請改以貼上文字方式提供內容。'; status.textContent = `讀取失敗：${error.message}`; } });
+  fileInput.addEventListener('change', async () => { const files = [...fileInput.files]; if (!files.length) return; const compareMode = selectedFeature === 'compare'; if (compareMode && files.length < 2) { fileInput.value = ''; fileName.textContent = '差異比對需要兩份文件；請一次選擇版本 A 與版本 B，或在輸入欄貼上兩份文字。'; status.textContent = '尚未載入文件：請選擇兩份要比對的檔案。'; return; } const selectedFiles = compareMode ? files.slice(0, 2) : files.slice(0, 1); fileName.textContent = `正在讀取：${selectedFiles.map(file => file.name).join('、')}`; status.textContent = '正在擷取檔案文字…'; try { const texts = await Promise.all(selectedFiles.map(extractFileText)); input.value = compareMode ? `【版本 A：${selectedFiles[0].name}】\n${texts[0]}\n\n【版本 B：${selectedFiles[1].name}】\n${texts[1]}` : texts[0]; fileName.textContent = compareMode ? `已載入兩份文件：${selectedFiles[0].name}、${selectedFiles[1].name}` : `已載入：${selectedFiles[0].name}`; status.textContent = compareMode ? '兩份文件文字已帶入輸入欄，可開始差異比對。' : '檔案文字已帶入輸入欄。'; } catch (error) { fileInput.value = ''; fileName.textContent = '檔案讀取失敗，請改以貼上文字方式提供內容。'; status.textContent = `讀取失敗：${error.message}`; } });
   const audioInput = transcribeArea.querySelector('#aiAudioFile'), audioName = transcribeArea.querySelector('#aiAudioName'), transcript = transcribeArea.querySelector('#aiTranscript'), transcribeRun = transcribeArea.querySelector('#aiTranscribeRun'), transcriptToInput = transcribeArea.querySelector('#aiTranscriptToInput'), clearAudio = transcribeArea.querySelector('#aiClearAudio');
   let selectedAudioFile = null, whisperWorker = null, whisperWorkerUrl = null;
   const clearAudioFile = () => { selectedAudioFile = null; audioInput.value = ''; transcript.value = ''; audioName.textContent = '支援 MP3、M4A、WAV、WebM、OGG、AAC、FLAC；請由您選擇檔案，程式不會自行讀取硬碟。'; status.textContent = '已清除語音檔與逐字稿。'; };
@@ -1155,9 +1210,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainTitle = document.querySelector('.topbar h1');
     const applyMainBrand = () => {
       if (!mainTitle) return;
-      const prefix = mainTitle.textContent.split(' - ')[0] || '';
-      if (!mainTitle.querySelector('a') || !mainTitle.textContent.includes('AI 雲端辦公記事簿')) mainTitle.innerHTML = `<a href="https://fyc43703.github.io/chengder/%E6%88%91%E7%9A%84%E8%A8%98%E4%BA%8B%E7%B0%BF.html" title="開啟 AI 雲端辦公記事簿線上版本">${prefix ? prefix + ' - ' : ''}AI 雲端辦公記事簿</a>`;
-      const description = document.querySelector('.topbar p'); if (description) description.textContent = '整合每日行程、記事、附件、Google 日曆與 Google Drive；並提供 AI 辦公助理進行文件解析、語音轉文字、文字校對、會議紀錄、撰稿及簡報架構整理。';
+      if (!mainTitle.querySelector('a') || mainTitle.textContent !== 'AI 雲端辦公記事簿') mainTitle.innerHTML = '<a href="https://fyc43703.github.io/chengder/%E6%88%91%E7%9A%84%E8%A8%98%E4%BA%8B%E7%B0%BF.html" title="開啟 AI 雲端辦公記事簿線上版本">AI 雲端辦公記事簿</a>';
+      const description = document.querySelector('.topbar p'); if (description) description.innerHTML = '<span class="subtitle-line">整合每日行程、記事附件、Google 日曆與 Google Drive</span><span class="subtitle-line">提供 AI 辦公助理、文件解析、語音轉文字與內容整理</span>';
     };
     applyMainBrand();
     if (mainTitle) new MutationObserver(applyMainBrand).observe(mainTitle, { childList:true, subtree:true, characterData:true });
@@ -1179,6 +1233,8 @@ document.addEventListener('DOMContentLoaded', () => {
   #aiInsightPage .ai-key-link{color:#315d8c;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
   #aiInsightPage .ai-key-link:hover,#aiInsightPage .ai-key-link:focus{color:#007aff}
   .topbar h1 a{color:inherit;text-decoration:none}.topbar h1 a:hover,.topbar h1 a:focus{color:#007aff;text-decoration:underline;text-underline-offset:4px}
+  .topbar p .subtitle-line{display:block;text-align:center;white-space:nowrap}
+  @media(max-width:620px){.topbar p .subtitle-line{white-space:normal}}
   #aiInsightPage .search-close{right:20px!important;top:18px!important;z-index:10!important;width:44px!important;height:44px!important;background:#007aff!important;color:#fff!important;border:0!important;border-radius:12px!important;font-size:30px!important;font-weight:800!important;line-height:1!important;box-shadow:0 5px 12px rgba(0,122,255,.28)!important}
   #aiInsightPage .ai-title-row{padding-right:60px}
   @media(max-width:900px){#aiInsightPage .ai-keybar{position:static;transform:none;justify-content:flex-start}}
