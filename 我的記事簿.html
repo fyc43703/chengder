@@ -897,7 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
   panel.querySelector('#aiClearFile').addEventListener('click', clearSourceFile);
   panel.querySelector('#aiReloadFile').addEventListener('click', () => { fileInput.value = ''; fileInput.click(); });
   fileInput.addEventListener('change', async () => { const file = fileInput.files[0]; if (!file) return; fileName.textContent = `正在讀取：${file.name}`; status.textContent = '正在擷取檔案文字…'; try { input.value = await extractFileText(file); fileName.textContent = `已載入：${file.name}`; status.textContent = '檔案文字已帶入輸入欄。'; } catch (error) { fileInput.value = ''; fileName.textContent = '檔案讀取失敗，請改以貼上文字方式提供內容。'; status.textContent = `讀取失敗：${error.message}`; } });
-  const audioInput = panel.querySelector('#aiAudioFile'), audioName = panel.querySelector('#aiAudioName'), transcript = panel.querySelector('#aiTranscript'), transcribeRun = panel.querySelector('#aiTranscribeRun'), transcriptToInput = panel.querySelector('#aiTranscriptToInput'), clearAudio = panel.querySelector('#aiClearAudio');
+  const audioInput = transcribeArea.querySelector('#aiAudioFile'), audioName = transcribeArea.querySelector('#aiAudioName'), transcript = transcribeArea.querySelector('#aiTranscript'), transcribeRun = transcribeArea.querySelector('#aiTranscribeRun'), transcriptToInput = transcribeArea.querySelector('#aiTranscriptToInput'), clearAudio = transcribeArea.querySelector('#aiClearAudio');
   let selectedAudioFile = null, whisperWorker = null, whisperWorkerUrl = null;
   const clearAudioFile = () => { selectedAudioFile = null; audioInput.value = ''; transcript.value = ''; audioName.textContent = '支援 MP3、M4A、WAV、WebM、OGG、AAC、FLAC；請由您選擇檔案，程式不會自行讀取硬碟。'; status.textContent = '已清除語音檔與逐字稿。'; };
   const yieldToUi = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -947,7 +947,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const promptSource = id => {
     const feature = features.find(item => item[0] === id);
     const points = String(instructions[id] || '').split(/(?<=[。；])/).map(text => text.trim()).filter(Boolean);
-    return `# ${feature?.[1] || 'AI 智慧解析'}\n\n## 完整提示詞\n\n${points.map(text => `- ${text}`).join('\n')}`;
+    return `# ${feature?.[1] || 'AI 辦公助理'}\n\n## 完整提示詞\n\n${points.map(text => `- ${text}`).join('\n')}`;
   };
   const hidePrompt = () => { promptTimer = setTimeout(() => { promptPopover.hidden = true; }, 180); };
   const showPrompt = button => {
@@ -1034,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', () => {
       writeLine(row.tokens, row.heading);
       y += row.heading ? 2.4 : 1.2;
     });
-    pdf.setProperties({ title:'AI 分析結果', subject:'AI 智慧解析匯出結果', author:'我的記事簿' });
+    pdf.setProperties({ title:'AI 分析結果', subject:'AI 辦公助理匯出結果', author:'我的記事簿' });
     pdf.save(name + '.pdf');
   };
   replacementExportButton.addEventListener('click', async () => {
@@ -1140,6 +1140,18 @@ document.addEventListener('DOMContentLoaded', () => {
     link.innerHTML = '<span class="ai-nav-icon">✦</span><span>AI 智慧解析</span>';
     link.addEventListener('click', event => { event.preventDefault(); page.classList.add('show'); });
     nav.appendChild(link);
+  });
+</script>
+<script>
+  window.addEventListener('load', () => {
+    const rename = (selector, text, title) => { const element = document.querySelector(selector); if (!element) return; if (text) element.textContent = text; if (title) { element.title = title; element.setAttribute('aria-label', text || title); } };
+    rename('#aiInsightPage .ai-title-row h2', '✦ AI 辦公助理');
+    rename('#aiInsightNav span:last-child', 'AI 辦公助理', '開啟 AI 辦公助理');
+    rename('#aiInsightNav', '', '開啟 AI 辦公助理');
+    rename('#aiOpenTranscribe', '🎙️ 語音檔轉文字', '開啟獨立的語音檔轉文字頁面；完成後可將逐字稿帶回 AI 辦公助理。');
+    rename('#aiTranscriptToInput', '帶入 AI 辦公助理', '將完成的逐字稿帶回 AI 辦公助理輸入欄。');
+    rename('#aiTranscribeClose', '← 返回 AI 辦公助理', '返回 AI 辦公助理頁面。');
+    document.querySelectorAll('#aiInsightPage .ai-action').forEach(card => card.removeAttribute('title'));
   });
 </script>
 <style>
