@@ -876,7 +876,12 @@ document.addEventListener('DOMContentLoaded', () => {
 依「30 秒背景與目的／90 秒現況、成果與問題／45 秒風險與處置／15 秒請示事項」編排，語句簡潔、可直接朗讀，總長度約 450 至 600 個中文字。
 
 ## 追問備答
-列出 3 至 5 個長官可能追問的問題；只能根據已提供資料作答，資料不足時標示「待確認」。`
+列出 3 至 5 個長官可能追問的問題；只能根據已提供資料作答，資料不足時標示「待確認」。每一題必須完全依下列 Markdown 格式輸出，不可將 ** 單獨放在另一行，也不可省略粗體結尾：
+
+1. **問：第一個可能追問的問題？**
+   - **答：** 根據資料的直接回答；資料不足時寫「待確認」並簡述原因。
+2. **問：第二個可能追問的問題？**
+   - **答：** 根據資料的直接回答；資料不足時寫「未提供」。`
   };
   const panel = document.createElement('section');
   panel.id = 'aiInsightPage'; panel.className = 'ai-page';
@@ -1004,6 +1009,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (line.ordered) return '<p class="ordered">' + inlineHtml(line.tokens) + '</p>';
     return '<p>' + inlineHtml(line.tokens) + '</p>';
   }).join('');
+  const normaliseBriefingMarkdown = text => String(text || '')
+    .replace(/\n\s*\*\*\s*\n(?=\s*(?:[-*]\s*)?答[：:])/g, '\n')
+    .replace(/^(\s*\d+[.)]\s+)(?:\*\*)?問[：:]\s*(.+?)(?:\*\*)?\s*$/gm, (_, prefix, question) => `${prefix}**問：${question.replace(/\*\*\s*$/, '').trim()}**`)
+    .replace(/^(\s*)(?:[-*+]\s*)?(?:\*\*)?答[：:]\s*(.+?)(?:\*\*)?\s*$/gm, (_, indent, answer) => `${indent}- **答：** ${answer.replace(/\*\*\s*$/, '').trim()}`);
   const promptPopover = document.createElement('aside');
   promptPopover.className = 'ai-prompt-popover'; promptPopover.hidden = true;
   document.body.appendChild(promptPopover);
@@ -1186,7 +1195,7 @@ document.addEventListener('DOMContentLoaded', () => {
       setProcessing(true, '正在整理分析結果', '正在將完成內容套用為易讀的 Markdown 格式…');
       setTranscriptionProgress(96, '即將完成');
       await new Promise(resolve => requestAnimationFrame(resolve));
-      rawResult = aiResult.text; result.classList.toggle('proofread-result', selectedFeature === 'proofread'); result.innerHTML = markdownHtml(rawResult); result.classList.add('show'); status.textContent = `分析完成（${aiResult.provider}${aiResult.fallback ? '，已自動備援' : ''}）`;
+      rawResult = selectedFeature === 'briefing' ? normaliseBriefingMarkdown(aiResult.text) : aiResult.text; result.classList.toggle('proofread-result', selectedFeature === 'proofread'); result.innerHTML = markdownHtml(rawResult); result.classList.add('show'); status.textContent = `分析完成（${aiResult.provider}${aiResult.fallback ? '，已自動備援' : ''}）`;
     } catch (error) { status.textContent = `分析失敗：${error.message}`; }
     finally { setProcessing(false); run.disabled = false; run.textContent = '開始 AI 分析'; }
   });
