@@ -687,6 +687,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ['newsrelease','📰 撰寫新聞稿','讓 AI 協助產出專業水準的新聞稿，解決寫作痛點。'],
     ['speech','🎙️ 撰寫致詞稿','快速因應各種場合需求調整內容，產出專業致詞稿。'],
     ['slidesoutline','📊 建立簡報架構','將文件整理成適合口頭報告的專業簡報格式。'],
+    ['transcriptcheck','🔗 逐字稿對照校正','將摘要、決議與待辦逐項連回逐字稿段落，供人工核對。'],
+    ['handwrite','✒️ 手寫／照片辨識文件','辨識白板、便條、手寫筆記或照片文字，轉為正式紀錄。'],
     ['compare','🔄 公文／報告差異比對','比對兩份文件，標出增刪修訂、數字日期與權責差異。'],
     ['sitephoto','📷 現場照片轉工程紀錄','將現場照片擷取文字與補充說明整理為工程紀錄及追蹤事項。'],
     ['briefing','⏱️ 長官簡報三分鐘版','將長篇資料濃縮為首長可快速掌握的三分鐘決策摘要。']
@@ -866,6 +868,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ## 待補資訊或補拍建議
 列出為完成正式工程紀錄仍應補充的照片角度、位置、尺寸、日期、施工項目或其他資料。`,
+    transcriptcheck: `請擔任會議紀錄稽核與校正人員。依據使用者提供的逐字稿，整理可供核對的正式會議紀錄；不得補寫原文沒有的決議、主責、期限或立場。每一個摘要項目都要附上可回查的原文依據。
+
+【處理規則】
+1. 先依議題、發言轉折或時間碼切分段落，為每段編號「段落 01、段落 02…」。
+2. 決議、主責、期限、待確認事項都必須在原文有明確依據；無法確認時標示「待確認」。
+3. 原文若已有時間碼，完整保留；沒有時間碼時，以段落編號作為來源。
+
+【輸出格式】
+# 會議紀錄對照校正
+## 決議與行動清單
+以 Markdown 表格呈現「項次／結論或待辦／主責／期限／核對狀態／原文來源」。原文來源一律使用「段落 XX」或「00:00:00–00:00:00」。
+
+## 待釐清事項
+條列原文未明確指定的主責、期限、金額或結論，並說明原因。
+
+## 原文對照索引
+依段落順序列出「段落編號／原文摘錄／AI 對應項次」，使承辦人能直接比對與修正。`,
+    handwrite: `請擔任行政文件整理人員。根據使用者提供的白板、便條紙、手寫筆記或照片 OCR 文字，轉為可編輯的正式紀錄。只能整理看得清楚或 OCR 已辨識的內容；姓名、數字、日期、金額與無法辨識的字詞一律標示「待確認」，不得猜測或補寫。
+
+【輸出格式】
+# 照片／手寫內容整理
+## 文字辨識結果
+盡可能保留原始段落、項目與編號；不確定文字以「［待確認：原始字樣］」表示。
+
+## 正式紀錄草稿
+將內容整理為「主題／背景／重點事項／決議或待辦／主責／期限」的正式繁體中文紀錄。
+
+## 行動與核對清單
+以 Markdown 表格呈現「事項／建議處理／主責／期限／原圖或原文依據／核對狀態」。`,
     briefing: `請扮演首長幕僚與政策分析人員，將以下資料濃縮為可在 3 分鐘內報告、供長官快速決策的內容。忠於原始資料；未提供的數字、進度、效益、風險或決策事項不可自行補寫。
 
 【Markdown 呈現規則】
@@ -970,9 +1001,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const transcribePageStyle = document.createElement('style');
   transcribePageStyle.textContent = `.ai-transcribe-launch{border:1px solid #76aee8;border-radius:9px;background:#eaf4ff;color:#0d569d;padding:8px 11px;font:700 13px/1 'Microsoft JhengHei',sans-serif;white-space:nowrap;cursor:pointer}.ai-transcribe-launch:hover,.ai-transcribe-launch:focus{background:#1767c5;color:#fff;border-color:#1767c5}.ai-transcribe-page{display:none;position:fixed;inset:0;z-index:230;padding:5vh 6vw;overflow:auto;background:rgba(233,240,249,.94);backdrop-filter:blur(9px)}.ai-transcribe-page.show{display:block}.ai-transcribe-shell{position:relative;max-width:860px;margin:auto;padding:26px;background:#fff;border-radius:24px;box-shadow:0 24px 70px rgba(27,54,93,.25)}.ai-transcribe-shell .ai-transcribe{margin-top:14px;padding:22px}.ai-transcribe-close{border:0;border-radius:9px;background:#eaf3ff;color:#174f94;padding:9px 12px;font:800 14px 'Microsoft JhengHei',sans-serif;cursor:pointer}.ai-transcribe-close:hover,.ai-transcribe-close:focus{background:#1767c5;color:#fff}.ai-transcribe-status{min-height:1.5em;margin:10px 0 0;color:#315d8c;font-size:13px;font-weight:700}@media(max-width:900px){.ai-transcribe-launch{align-self:flex-start}.ai-transcribe-page{padding:18px 12px}.ai-transcribe-shell{padding:18px}.ai-transcribe-shell .ai-transcribe{padding:16px}}`;
   document.head.appendChild(transcribePageStyle);
-  const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','webvisual','newsrelease','speech','slidesoutline','compare','sitephoto','briefing'].includes(id);
+  const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','webvisual','newsrelease','speech','slidesoutline','transcriptcheck','handwrite','compare','sitephoto','briefing'].includes(id);
   const defaultFileHint = '支援 DOC、DOCX、RTF、PDF、PNG、JPG、HEIC、WebP、TXT、MD、HTML 等檔案；PDF 與圖片會以 OCR 擷取文字。';
-  const choose = id => { const changed = selectedFeature !== id; selectedFeature = id; const directInput = usesDocumentInput(id), compareMode = id === 'compare', photoMode = id === 'sitephoto'; if (changed) { pendingCompareFiles = []; selectedSourceFiles = []; fileInput.value = ''; } setWorkflowStep(2); panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; fileInput.multiple = compareMode; input.placeholder = compareMode ? '請貼上兩份文件，並以【版本 A】與【版本 B】清楚區分；可一次選擇兩檔，或分兩次開啟版本 A、B…' : photoMode ? '請貼上照片相關的工程名稱、地點、時間、施工項目或補充說明…' : directInput ? '請貼上要處理的文件、議題或文字內容…' : '可補充分析指令。'; fileName.textContent = compareMode ? '可一次選擇兩份文件，或先開啟版本 A、再開啟版本 B；系統會依開啟順序標記。' : photoMode ? '支援現場照片與補充文字；開始 AI 分析時，原始照片會傳送至 Gemini 進行場景初步判讀。' : defaultFileHint; limit.textContent = photoMode ? '隱私提醒：僅在按下「開始 AI 分析」時，所選照片才會傳送至 Gemini；結果為 AI 初步判讀，須由現場人員確認。' : directInput ? compareMode ? '資料來源：僅使用此欄貼上的兩份文字或您選取的兩個檔案，不會讀取記事內容。' : '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : ''; };
+  const choose = id => { const changed = selectedFeature !== id; selectedFeature = id; const directInput = usesDocumentInput(id), compareMode = id === 'compare', photoMode = ['sitephoto','handwrite'].includes(id); if (changed) { pendingCompareFiles = []; selectedSourceFiles = []; fileInput.value = ''; } setWorkflowStep(2); panel.querySelectorAll('.ai-action').forEach(button => button.classList.toggle('active', button.dataset.ai === id)); fileArea.hidden = !directInput; fileInput.multiple = compareMode; input.placeholder = compareMode ? '請貼上兩份文件，並以【版本 A】與【版本 B】清楚區分；可一次選擇兩檔，或分兩次開啟版本 A、B…' : id === 'transcriptcheck' ? '請貼上會議逐字稿；若有時間碼請一併保留，AI 會建立可回查的對照索引…' : photoMode ? '請貼上照片相關的案件名稱、日期、地點或補充說明…' : directInput ? '請貼上要處理的文件、議題或文字內容…' : '可補充分析指令。'; fileName.textContent = compareMode ? '可一次選擇兩份文件，或先開啟版本 A、再開啟版本 B；系統會依開啟順序標記。' : id === 'handwrite' ? '支援白板、便條與手寫照片；先進行 OCR，再由 AI 整理成正式紀錄。' : photoMode ? '支援現場照片與補充文字；開始 AI 分析時，原始照片會傳送至 Gemini 進行場景初步判讀。' : defaultFileHint; limit.textContent = photoMode ? '隱私提醒：僅在按下「開始 AI 分析」時，所選照片才會傳送至 Gemini；結果為 AI 初步判讀，須由承辦人確認。' : directInput ? compareMode ? '資料來源：僅使用此欄貼上的兩份文字或您選取的兩個檔案，不會讀取記事內容。' : '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : ''; };
   choose(selectedFeature);
   panel.querySelectorAll('.ai-action').forEach(button => button.addEventListener('click', () => choose(button.dataset.ai)));
   panel.querySelector('.search-close').addEventListener('click', () => panel.classList.remove('show'));
@@ -996,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   const readDocx = async file => { const mammoth = await loadMammoth(); const output = await mammoth.extractRawText({ arrayBuffer: await readBuffer(file) }); return String(output?.value || '').trim(); };
   const readLegacyDoc = async file => { const raw = new TextDecoder('big5').decode(await readBuffer(file)); const text = raw.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ').replace(/\s{2,}/g, ' ').trim(); if (text.length < 20) throw new Error('此 DOC 檔案無法擷取可讀文字，請另存為 DOCX 或 PDF 後重新開啟。'); return text; };
-  const readImage = async file => { const ext = (file.name.split('.').pop() || '').toLowerCase(); let image = file; if (['heic','heif'].includes(ext) || /image\/hei[cf]/i.test(file.type)) { await loadScript('aiHeicConverter', 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js'); image = await window.heic2any({ blob:file, toType:'image/png' }); } status.textContent = '正在 OCR 辨識圖片文字…'; const text = await ocrImage(image); if (!text.trim() && selectedFeature !== 'sitephoto') throw new Error('此圖片未辨識到可讀文字。請補充工程名稱、地點與現場說明後再分析，或改用文字較清楚的照片。'); return text.trim() || '【圖片 OCR 未辨識出文字；請依照片場景與使用者補充資料進行初步整理。】'; };
+  const readImage = async file => { const ext = (file.name.split('.').pop() || '').toLowerCase(); let image = file; if (['heic','heif'].includes(ext) || /image\/hei[cf]/i.test(file.type)) { await loadScript('aiHeicConverter', 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js'); image = await window.heic2any({ blob:file, toType:'image/png' }); } status.textContent = '正在 OCR 辨識圖片文字…'; const text = await ocrImage(image); if (!text.trim() && !['sitephoto','handwrite'].includes(selectedFeature)) throw new Error('此圖片未辨識到可讀文字。請補充工程名稱、地點與現場說明後再分析，或改用文字較清楚的照片。'); return text.trim() || '【圖片 OCR 未辨識出文字；請依照片場景與使用者補充資料進行初步整理。】'; };
   const hasImageSignature = async file => { const bytes = new Uint8Array(await file.slice(0, 16).arrayBuffer()); const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff, isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47, isWebp = String.fromCharCode(...bytes.slice(0,4)) === 'RIFF' && String.fromCharCode(...bytes.slice(8,12)) === 'WEBP'; return isJpeg || isPng || isWebp; };
   const imageMimeType = file => { const ext = (file.name.split('.').pop() || '').toLowerCase(), byExt = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', webp:'image/webp', heic:'image/heic', heif:'image/heif' }; return /^image\//i.test(file.type) ? file.type : (byExt[ext] || 'image/jpeg'); };
   const imageToInlineData = async file => { if (file.size > 14 * 1024 * 1024) throw new Error('照片檔案超過 14 MB，無法直接傳送至 Gemini。請先縮小照片後再試。'); const bytes = new Uint8Array(await file.arrayBuffer()); let binary = ''; const chunk = 0x8000; for (let start = 0; start < bytes.length; start += chunk) binary += String.fromCharCode(...bytes.subarray(start, start + chunk)); return { mimeType:imageMimeType(file), data:btoa(binary), name:file.name }; };
@@ -1219,14 +1250,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const heading = features.find(item => item[0] === selectedFeature)[1];
     const originalContent = directInput ? extra : [scope, extra].filter(Boolean).join('\n\n');
     let imagePayload = null;
-    if (selectedFeature === 'sitephoto' && selectedSourceFiles[0]) {
+    if (['sitephoto','handwrite'].includes(selectedFeature) && selectedSourceFiles[0]) {
       const source = selectedSourceFiles[0], ext = (source.name.split('.').pop() || '').toLowerCase(), imageByName = ['png','jpg','jpeg','webp','heic','heif'].includes(ext), imageByType = /^image\//i.test(source.type), imageBySignature = await hasImageSignature(source).catch(() => false);
       if (imageByName || imageByType || imageBySignature) {
         try { imagePayload = await imageToInlineData(source); }
         catch (error) { status.textContent = error.message; return; }
       }
     }
-    const visualNotice = imagePayload ? '\n\n【系統隨附原始現場照片】\n請執行照片場景初步判讀，並遵守提示詞中的待確認與不得臆測規則。' : selectedFeature === 'sitephoto' ? '\n\n【照片場景判讀狀態】\n未隨附可用原始圖片，請僅依 OCR 文字與使用者補充資料整理，不得聲稱已看見現場場景。' : '';
+    const visualNotice = imagePayload ? `\n\n【系統隨附原始${selectedFeature === 'handwrite' ? '手寫／白板' : '現場'}照片】\n請執行可直接觀察的內容初步判讀，並遵守提示詞中的待確認與不得臆測規則。` : ['sitephoto','handwrite'].includes(selectedFeature) ? '\n\n【照片判讀狀態】\n未隨附可用原始圖片，請僅依 OCR 文字與使用者補充資料整理，不得聲稱已看見照片內容。' : '';
     const prompt = (directInput ? `${instructions[selectedFeature]}\n\n功能：${heading}\n\n【使用者提供的原始文字】\n${extra}` : `${instructions[selectedFeature]}\n\n功能：${heading}\n${date ? `目前選取日期：${date}` : ''}\n\n【記事資料】\n${scope || '無'}\n\n【使用者補充】\n${extra || '無'}`) + visualNotice;
     setWorkflowStep(3); run.disabled = true; run.textContent = 'AI 分析中…'; status.textContent = directInput ? '正在處理提供的文字…' : '正在分析記事內容…'; rawResult = ''; result.classList.remove('show'); workspace.classList.remove('show'); resultActions.classList.remove('show');
     const startedAt = Date.now();
