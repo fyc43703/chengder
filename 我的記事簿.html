@@ -1570,5 +1570,32 @@ body.dark-mode .ai-source-text,body.dark-mode .ai-result{color:#e8e1d6!important
 body.dark-mode .ai-result h2{border-color:#4c555a!important;color:#b9cde2!important}body.dark-mode .ai-result strong{color:#9cbf93!important}
 @media(max-width:760px){.calendar-card .cal-head::before,.calendar-card .cal-head::after{display:none}.calendar-card .cal-head h2{letter-spacing:.09em!important}.ai-result-workspace{gap:12px!important}}
 </style>
+<style>
+/* 新增記事：欄位標籤與輔助說明。 */
+#editor .field>label{display:flex!important;align-items:center;gap:7px;margin-bottom:8px!important;color:#145b43!important;font-size:16px!important;font-weight:900!important;letter-spacing:.04em}
+#editor .field>label::before{content:"";width:5px;height:18px;border-radius:999px;background:#2f7c5f}
+#editor .field[data-editor-help]{position:relative}#editor .field[data-editor-help]:hover>label{color:#0c7050!important}
+.editor-hover-help{position:fixed;z-index:1300;max-width:min(320px,calc(100vw - 24px));padding:8px 10px;border-radius:8px;background:#164c3b;color:#fff;box-shadow:0 6px 18px rgba(15,67,50,.28);font:12px/1.55 "Microsoft JhengHei",sans-serif;pointer-events:none}.editor-hover-help[hidden]{display:none}
+</style>
+<script>
+/* 為新增記事欄位提供就近的懸浮操作說明。 */
+(() => {
+  const editor = document.getElementById('editor'); if (!editor) return;
+  const helpByLabel = {
+    '標題':'輸入記事名稱；可使用常用活動名稱快速帶入。',
+    '時間':'設定行程或提醒的開始時間。',
+    '重要程度':'依重要性套用顏色，方便在月曆中辨識。',
+    '會前注意事項':'記錄準備事項、待確認內容或提醒；可使用語音輸入與 AI 整理。',
+    '會議地點與導航':'輸入地點後，記事會提供 Google 地圖導航連結。',
+    '附件':'可加入文件、簡報或圖片；儲存時會一併同步。'
+  };
+  editor.querySelectorAll('.field').forEach(field => { const label = field.querySelector(':scope > label')?.textContent.trim(); if (helpByLabel[label]) field.dataset.editorHelp = helpByLabel[label]; });
+  editor.querySelector('.cancel')?.setAttribute('data-editor-help','放棄本次新增，不會儲存任何內容。');
+  editor.querySelector('.save')?.setAttribute('data-editor-help','儲存記事與附件；已連結雲端時會同步至 Google Drive。');
+  const bubble = document.createElement('aside'); bubble.className = 'editor-hover-help'; bubble.hidden = true; document.body.appendChild(bubble);
+  const show = event => { const target = event.target.closest('#editor [data-editor-help]'); if (!target) return; bubble.textContent = target.dataset.editorHelp; bubble.hidden = false; bubble.style.left = `${Math.max(12, Math.min(event.clientX + 12, window.innerWidth - Math.min(320, window.innerWidth - 24) - 12))}px`; bubble.style.top = `${Math.max(12, Math.min(event.clientY + 14, window.innerHeight - 82))}px`; };
+  editor.addEventListener('pointerover', show); editor.addEventListener('pointermove', show); editor.addEventListener('pointerout', event => { if (!event.relatedTarget || !event.relatedTarget.closest?.('#editor [data-editor-help]')) bubble.hidden = true; });
+})();
+</script>
 </body>
 </html>
