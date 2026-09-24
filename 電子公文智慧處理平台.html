@@ -1212,7 +1212,13 @@ body.font-kai .doc-paper [contenteditable="true"],
       <div class="ai-split-view">
         <div class="ai-panel">
           <h4 style="color: #6D28D9;">📝 案件情境與關鍵字描述</h4>
-          <textarea class="ai-textarea" id="draftPromptInput" placeholder="💡 請描述您的公文重點，例如：&#10;「收到本府消防局來函，要求本局派員參加「臺北市智慧災害應變雲端協作平臺」研習，請工管處推派兩人參加（林○○副工程司及張○○副工程司），並將參訓名單於115年○月○日前email回報消防局（或google表單報名）。」&#10;&#10;😊 AI 將自動為您擴寫並排版為標準的：&#10;【主旨】&#10;【說明】&#10;【擬辦】"></textarea>
+          <textarea class="ai-textarea" id="draftPromptInput">💡 請描述您的公文重點，例如：
+「收到本府消防局來函，要求本局派員參加「臺北市智慧災害應變雲端協作平臺」研習，請工管處推派兩人參加（林○○副工程司及張○○副工程司），並將參訓名單於115年○月○日前email回報消防局（或google表單報名）。」
+
+😊 AI 將自動為您擴寫並排版為標準的：
+【主旨】
+【說明】
+【擬辦】</textarea>
         </div>
         <div class="ai-panel">
           <h4 style="color: #6D28D9;">✨ AI 起稿結果</h4>
@@ -4555,7 +4561,6 @@ let generatedDraftData = null; // 暫存生成的草稿結構
 
 function openDraftModal() {
   document.getElementById('draftResultBox').innerHTML = '<div style="text-align:center; padding-top:40%; opacity:0.5; font-weight:600;">輸入左側條件後，點擊上方按鈕生成草稿</div>';
-  document.getElementById('draftPromptInput').value = "";
   document.getElementById('btnApplyDraft').style.display = "none";
   generatedDraftData = null;
   
@@ -4779,6 +4784,57 @@ function clearChat() {
   `;
 }
 
+function formatChatMarkdown(markdown) {
+  const lines = String(markdown || '').replace(/\r\n?/g, '\n').split('\n');
+  const inline = value => esc(value)
+    .replace(/`([^`]+)`/g, '<code style="background:#E5E7EB;padding:1px 4px;border-radius:4px;">$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/\*{2,}|#{2,}/g, '');
+  let html = '';
+  let listType = null;
+  let codeLines = null;
+  const closeList = () => { if (listType) { html += `</${listType}>`; listType = null; } };
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (/^```/.test(line)) {
+      closeList();
+      if (codeLines) {
+        html += `<pre style="white-space:pre-wrap;background:#E5E7EB;padding:10px;border-radius:6px;">${esc(codeLines.join('\n'))}</pre>`;
+        codeLines = null;
+      } else codeLines = [];
+      continue;
+    }
+    if (codeLines) { codeLines.push(raw); continue; }
+    if (!line) { closeList(); html += '<div style="height:8px;"></div>'; continue; }
+    const heading = line.match(/^(#{1,6})\s*(.+)$/);
+    if (heading) {
+      closeList();
+      const size = heading[1].length <= 2 ? '18px' : '16px';
+      html += `<div style="font-weight:800;font-size:${size};margin:12px 0 6px;">${inline(heading[2])}</div>`;
+      continue;
+    }
+    if (/^([-*_]\s*){3,}$/.test(line)) { closeList(); html += '<hr style="border:0;border-top:1px solid #CBD5E1;margin:10px 0;">'; continue; }
+    const ordered = line.match(/^\d+[.)、]\s+(.+)$/);
+    const unordered = line.match(/^[-*+]\s+(.+)$/);
+    if (ordered || unordered) {
+      const type = ordered ? 'ol' : 'ul';
+      if (listType !== type) { closeList(); html += `<${type} style="margin:6px 0;padding-left:24px;">`; listType = type; }
+      html += `<li style="margin:4px 0;">${inline((ordered || unordered)[1])}</li>`;
+      continue;
+    }
+    closeList();
+    const quote = line.match(/^>\s*(.+)$/);
+    html += quote
+      ? `<div style="border-left:3px solid #94A3B8;padding-left:10px;color:#475569;margin:5px 0;">${inline(quote[1])}</div>`
+      : `<div style="margin:4px 0;">${inline(line)}</div>`;
+  }
+  closeList();
+  if (codeLines) html += `<pre style="white-space:pre-wrap;background:#E5E7EB;padding:10px;border-radius:6px;">${esc(codeLines.join('\n'))}</pre>`;
+  return html;
+}
+
 async function sendChatMessage() {
   const inputEl = document.getElementById('chatInput');
   const chatDisplay = document.getElementById('chatDisplay');
@@ -4813,20 +4869,24 @@ async function sendChatMessage() {
       })
     });
     const data = await response.json();
-    document.getElementById(loadingId).remove();
-
     if(!response.ok) throw new Error(data.error?.message || "請求失敗");
     
     const aiResponse = data.choices[0].message.content;
-    chatDisplay.innerHTML += `
-      <div style="align-self: flex-start; background: #F3F4F6; padding: 12px 18px; border-radius: 18px 18px 18px 0; max-width: 80%; font-size: 15px; color: #1F2937; border: 1px solid #E5E7EB;">
-        ${esc(aiResponse).replace(/\n/g, '<br>')}
-      </div>
-    `;
+    document.getElementById(loadingId)?.remove();
+    const answer = document.createElement('div');
+    answer.style.cssText = 'align-self:flex-start;background:#F3F4F6;padding:12px 18px;border-radius:18px 18px 18px 0;max-width:80%;font-size:15px;color:#1F2937;border:1px solid #E5E7EB;line-height:1.7;';
+    answer.innerHTML = formatChatMarkdown(aiResponse);
+    chatDisplay.appendChild(answer);
     chatDisplay.scrollTop = chatDisplay.scrollHeight;
 
   } catch (err) {
-    document.getElementById(loadingId).innerHTML = `<span style="color:var(--seal-red);">發生錯誤：${esc(err.message)}</span>`;
+    let loading = document.getElementById(loadingId);
+    if (!loading) {
+      loading = document.createElement('div');
+      loading.style.cssText = 'align-self:flex-start;background:#F3F4F6;padding:12px 18px;border-radius:18px;font-size:15px;';
+      chatDisplay.appendChild(loading);
+    }
+    loading.innerHTML = `<span style="color:var(--seal-red);">發生錯誤：${esc(err.message)}</span>`;
   }
 }
 
