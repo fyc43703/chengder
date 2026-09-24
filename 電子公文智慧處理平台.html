@@ -1814,7 +1814,30 @@ if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
-function esc(s) { return !s ? "" : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function esc(s) { return s == null ? "" : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+// AI 回應只允許報告排版所需的標籤與樣式類別。
+function sanitizeAIHtml(html) {
+  const parsed = new DOMParser().parseFromString(String(html || ''), 'text/html');
+  const allowedTags = new Set(['DIV', 'P', 'H4', 'STRONG', 'B', 'EM', 'UL', 'OL', 'LI', 'BR', 'SPAN']);
+  const blockedTags = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'SVG', 'MATH', 'LINK', 'META', 'FORM', 'INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'IMG', 'VIDEO', 'AUDIO']);
+  const allowedClasses = new Set(['risk-section', 'risk-high', 'risk-med', 'risk-low', 'risk-item', 'risk-summary']);
+  const copySafe = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent);
+    if (node.nodeType !== Node.ELEMENT_NODE || blockedTags.has(node.tagName)) return null;
+    const fragment = document.createDocumentFragment();
+    node.childNodes.forEach(child => { const safe = copySafe(child); if (safe) fragment.appendChild(safe); });
+    if (!allowedTags.has(node.tagName)) return fragment;
+    const el = document.createElement(node.tagName.toLowerCase());
+    const classes = [...node.classList].filter(name => allowedClasses.has(name));
+    if (classes.length) el.className = classes.join(' ');
+    el.appendChild(fragment);
+    return el;
+  };
+  const result = document.createDocumentFragment();
+  parsed.body.childNodes.forEach(node => { const safe = copySafe(node); if (safe) result.appendChild(safe); });
+  return result;
+}
 
 function saveHomeApiKeys() {
   const gemini = document.getElementById('geminiApiKeyInput')?.value.trim() || '';
@@ -1921,7 +1944,8 @@ function showToast(message) {
     const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
   toast.className = 'toast';
-  toast.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> ${message}`;
+  toast.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> ';
+  toast.appendChild(document.createTextNode(String(message)));
   container.appendChild(toast);
   
   // ▼ 這裡將原本的 3500 改為 2000 (代表 2 秒後就會消失)
@@ -1982,7 +2006,7 @@ if (!allowedTypes.includes(ext)) {
 
 currentFile = file;
 
-fileInfoArea.innerHTML = `<div class="file-pill" style="margin-top: 15px; font-weight: bold; color: var(--nature-green-main);">🌿 檔案已載入：${file.name}</div>`;
+fileInfoArea.innerHTML = `<div class="file-pill" style="margin-top: 15px; font-weight: bold; color: var(--nature-green-main);">🌿 檔案已載入：${esc(file.name)}</div>`;
 
 // ▼ 新增這行：讓中央的解析按鈕顯示出來
 document.getElementById('parseActionArea').style.display = 'block';
@@ -2142,11 +2166,33 @@ function removeSpacesFromDoc() {
  btnExport.onclick = handleExportRTF;
  btnExportDI.onclick = handleExportDI;
  
- docContainer.addEventListener('input', (e) => {
+  let historySaveTimer = null;
+  let pendingHistoryData = null;
+  let pendingHistoryRaw = '';
+  function scheduleHistorySave() {
+    clearTimeout(historySaveTimer);
+    pendingHistoryData = lastParsedData;
+    pendingHistoryRaw = lastRawText;
+    historySaveTimer = setTimeout(() => {
+      if (pendingHistoryData) saveToHistory(pendingHistoryData, pendingHistoryRaw);
+      historySaveTimer = null;
+    }, 400);
+  }
+  window.addEventListener('pagehide', () => {
+    if (historySaveTimer && pendingHistoryData) {
+      clearTimeout(historySaveTimer);
+      saveToHistory(pendingHistoryData, pendingHistoryRaw);
+      historySaveTimer = null;
+    }
+  });
+  docContainer.addEventListener('input', (e) => {
    const target = e.target;
    if (target.hasAttribute('contenteditable') && target.hasAttribute('data-key')) {
      const key = target.getAttribute('data-key');
-     if (key && lastParsedData) lastParsedData[key] = target.innerText.replace(/\n$/, ''); 
+      if (key && lastParsedData) {
+        lastParsedData[key] = target.innerText.replace(/\n$/, '');
+        scheduleHistorySave();
+      }
    }
  });
  
@@ -3005,13 +3051,7 @@ function render(d, raw) {
           </div>
           <div class="section-text" id="doc-originalCopy" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="originalCopy">${renderText(d.originalCopy)}</div>
         </div>
-<div class="section-block" style="margin-bottom:10px;">
-          <div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px; align-items:center;">
-            正本 <button class="unit-select-btn" contenteditable="false" onclick="openUnitModal('originalCopy')" title="點擊開啟清單，可快速挑選或自訂新增正本收受機關">✏️ 挑選/新增單位</button>
-          </div>
-          <div class="section-text" id="doc-originalCopy" style="line-height:1.6; border-left:none; font-weight:400; padding-left:0;" contenteditable="true" data-key="originalCopy">${renderText(d.originalCopy)}</div>
-        </div>
-<div class="section-block" style="margin-bottom:10px;">
+        <div class="section-block" style="margin-bottom:10px;">
           <div class="section-tag" style="color:#D70015; font-size:14px; margin-bottom:5px; align-items:center;">
             副本 <button class="unit-select-btn" contenteditable="false" onclick="openUnitModal('carbonCopy')" title="點擊開啟清單，可快速挑選或自訂新增副本收受機關">✏️ 挑選/新增單位</button>
           </div>
@@ -3224,7 +3264,7 @@ document.getElementById('diffFileInput').onchange = async (e) => {
 
   } catch (err) {
     console.error(err);
-    document.getElementById('diffResultBox').innerHTML = `<div style="color:red; padding:20px;">解析失敗：${err.message}</div>`;
+    document.getElementById('diffResultBox').innerHTML = `<div style="color:red; padding:20px;">解析失敗：${esc(err.message)}</div>`;
   }
 };
 
@@ -3268,12 +3308,18 @@ function renderProfileOptions() {
       continue;
     }
 
-    container.innerHTML = options[key].map(val => `
+    container.innerHTML = options[key].map((val, index) => `
       <div class="unit-chip" style="font-size: 13px; padding: 4px 10px; margin: 0; display: inline-flex; align-items: center; gap: 4px;">
-        <span style="cursor: pointer;" onclick="document.getElementById('${inputId}').value='${esc(val)}'" title="點擊帶入輸入框">${esc(val)}</span>
-        <span class="unit-chip-del" onclick="deleteProfileOptionDirect('${key}', '${esc(val)}')" title="刪除此選項">×</span>
+        <span class="profile-option-select" data-index="${index}" style="cursor: pointer;" title="點擊帶入輸入框">${esc(val)}</span>
+        <span class="unit-chip-del profile-option-delete" data-index="${index}" title="刪除此選項">×</span>
       </div>
     `).join('');
+    container.querySelectorAll('.profile-option-select').forEach(el => {
+      el.addEventListener('click', () => { document.getElementById(inputId).value = options[key][Number(el.dataset.index)]; });
+    });
+    container.querySelectorAll('.profile-option-delete').forEach(el => {
+      el.addEventListener('click', () => { deleteProfileOptionDirect(key, options[key][Number(el.dataset.index)]); });
+    });
   }
 }
 
@@ -3480,7 +3526,7 @@ async function startAIPolish() {
     showToast(`✨ AI 潤飾完成！`);
 
   } catch (err) {
-    resultBox.innerHTML = `<div style="color:var(--seal-red); padding-top:20px; font-weight:600;">發生錯誤：<br>${err.message}</div>`;
+    resultBox.innerHTML = `<div style="color:var(--seal-red); padding-top:20px; font-weight:600;">發生錯誤：<br>${esc(err.message)}</div>`;
   } finally {
     btnStart.disabled = false;
   }
@@ -3683,7 +3729,13 @@ function renderUnitChips() {
     chip.className = isBase ? 'unit-chip' : 'unit-chip custom';
     
     // 所有按鈕都賦予 刪除(×) 功能
-    chip.innerHTML = `${esc(unit)} <span class="unit-chip-del" title="刪除此單位" onclick="deleteUnit('${currentUnitType}', '${esc(unit)}', event)">×</span>`;
+    chip.appendChild(document.createTextNode(unit + ' '));
+    const deleteButton = document.createElement('span');
+    deleteButton.className = 'unit-chip-del';
+    deleteButton.title = '刪除此單位';
+    deleteButton.textContent = '×';
+    deleteButton.addEventListener('click', (event) => deleteUnit(currentUnitType, unit, event));
+    chip.appendChild(deleteButton);
     chip.onclick = () => appendUnitToPreview(unit);
     container.appendChild(chip);
   });
@@ -3772,16 +3824,18 @@ document.addEventListener('keydown', (e) => {
 // ==========================================
 function saveToHistory(data, rawText) {
   let history = JSON.parse(localStorage.getItem('di_doc_history') || '[]');
+  const id = data._historyId || `doc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  data._historyId = id;
   const docEntry = {
-    id: Date.now(),
+    id: id,
     date: new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit' }),
     title: data.subjectTitle || data.subject || "未命名公文",
     data: data,
     rawText: rawText
   };
   
-  // 避免重複儲存相同的公文，以字號判斷
-  history = history.filter(h => h.data.docNo !== data.docNo);
+  // 以每份公文的唯一 ID 更新紀錄，避免空白或相同字號互相覆蓋。
+  history = history.filter(h => h.id !== id);
   history.unshift(docEntry);
   if (history.length > 5) history = history.slice(0, 5); // 最多保留 5 筆
   
@@ -3812,6 +3866,7 @@ function restoreFromHistory(index) {
   const history = JSON.parse(localStorage.getItem('di_doc_history') || '[]');
   if (history[index]) {
     lastParsedData = history[index].data;
+    lastParsedData._historyId = history[index].id;
     lastRawText = history[index].rawText;
     render(lastParsedData, lastRawText);
     document.getElementById('uploadArea').style.display = 'none';
@@ -3837,11 +3892,7 @@ document.addEventListener('DOMContentLoaded', renderHistoryDashboard);
 const originalRender = render;
 render = function(d, raw) {
   originalRender(d, raw);
-  // 只有當這是一份全新的上傳解析，才存入歷史 (避免編輯時無限觸發)
-  if (!d._isRestored) {
-    saveToHistory(d, raw);
-    d._isRestored = true; 
-  }
+  saveToHistory(d, raw);
 };
 
 // ==========================================
@@ -4089,7 +4140,7 @@ async function generateBossSummaryAI() {
     showToast("✨ AI 智慧摘要產生完成！");
 
   } catch (err) {
-    summaryBox.innerHTML = `<div style="color:var(--seal-red); padding:15px; font-weight:600;">❌ 摘要生成失敗：<br>${err.message}</div>`;
+    summaryBox.innerHTML = `<div style="color:var(--seal-red); padding:15px; font-weight:600;">❌ 摘要生成失敗：<br>${esc(err.message)}</div>`;
   } finally {
     btnAI.disabled = false;
   }
@@ -4258,7 +4309,7 @@ async function startTranslation() {
     showToast(`🌍 翻譯完成 (${targetLang})！`);
 
   } catch (err) {
-    resultBox.innerHTML = `<div style="color:var(--seal-red); padding-top:20px; font-weight:600;">翻譯發生錯誤：<br>${err.message}</div>`;
+    resultBox.innerHTML = `<div style="color:var(--seal-red); padding-top:20px; font-weight:600;">翻譯發生錯誤：<br>${esc(err.message)}</div>`;
   } finally {
     btnStart.disabled = false;
   }
@@ -4543,7 +4594,7 @@ async function generateDraftAI() {
     }
 
   } catch (err) {
-    resultBox.innerHTML = `<div style="color:var(--seal-red); padding-top:20px; font-weight:600;">生成發生錯誤：<br>${err.message}</div>`;
+    resultBox.innerHTML = `<div style="color:var(--seal-red); padding-top:20px; font-weight:600;">生成發生錯誤：<br>${esc(err.message)}</div>`;
   } finally {
     btnStart.disabled = false;
   }
@@ -4696,7 +4747,7 @@ async function sendChatMessage() {
     chatDisplay.scrollTop = chatDisplay.scrollHeight;
 
   } catch (err) {
-    document.getElementById(loadingId).innerHTML = `<span style="color:var(--seal-red);">發生錯誤：${err.message}</span>`;
+    document.getElementById(loadingId).innerHTML = `<span style="color:var(--seal-red);">發生錯誤：${esc(err.message)}</span>`;
   }
 }
 
@@ -4722,7 +4773,7 @@ if (typeof mermaid !== 'undefined') {
   mermaid.initialize({
     startOnLoad: false,
     theme: document.body.classList.contains('dark-theme') ? 'dark' : 'default',
-    securityLevel: 'loose',
+    securityLevel: 'strict',
     fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Noto Sans TC", sans-serif'
   });
 }
@@ -4842,7 +4893,7 @@ ${typePrompt}
     console.error("Mermaid Render Error:", err);
     resultBox.innerHTML = `<div style="color:var(--seal-red); padding:20px; font-weight:600; text-align:center;">
       ❌ 圖表生成或渲染失敗。<br>可能是 AI 輸出的語法有誤。<br>
-      <span style="font-size:12px; color:var(--apple-gray);">${err.message}</span>
+      <span style="font-size:12px; color:var(--apple-gray);">${esc(err.message)}</span>
     </div>`;
   } finally {
     btnStart.disabled = false;
@@ -4988,7 +5039,7 @@ async function callGroqAI(systemPrompt, userContent, resultBoxId, btnId, onSucce
     else resultBox.innerHTML = `<div style="white-space:pre-wrap;line-height:1.8;font-size:14px;">${esc(text)}</div>`;
     showToast('✨ AI 分析完成！');
   } catch (err) {
-    resultBox.innerHTML = `<div style="color:var(--seal-red);padding:20px;font-weight:600;">❌ 錯誤：${err.message}</div>`;
+    resultBox.innerHTML = `<div style="color:var(--seal-red);padding:20px;font-weight:600;">❌ 錯誤：${esc(err.message)}</div>`;
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -5034,7 +5085,8 @@ async function startRiskScan() {
 
 請特別注意：1.引用法規是否正確且現行有效 2.期限要求是否明確 3.責任歸屬是否清楚 4.必要程序是否完備 5.密等標示是否適當`;
   await callGroqAI(sys, getDocFullText(), 'riskResultBox', 'btnRiskScan', (text, box) => {
-    box.innerHTML = `<style>.risk-section{font-weight:800;font-size:15px;margin:15px 0 8px;padding:8px 15px;border-radius:8px;}.risk-high{background:rgba(244,63,94,0.1);color:#BE123C;border-left:4px solid #BE123C;}.risk-med{background:rgba(245,158,11,0.1);color:#D97706;border-left:4px solid #D97706;}.risk-low{background:rgba(16,185,129,0.1);color:#059669;border-left:4px solid #059669;}.risk-item{padding:6px 15px;font-size:14px;line-height:1.7;border-bottom:1px solid var(--border-color);}.risk-summary{background:rgba(0,122,255,0.07);border:1px solid rgba(0,122,255,0.2);border-radius:10px;padding:15px;margin-top:15px;font-size:14px;line-height:1.8;font-weight:600;}</style>${text}`;
+    box.innerHTML = '<style>.risk-section{font-weight:800;font-size:15px;margin:15px 0 8px;padding:8px 15px;border-radius:8px;}.risk-high{background:rgba(244,63,94,0.1);color:#BE123C;border-left:4px solid #BE123C;}.risk-med{background:rgba(245,158,11,0.1);color:#D97706;border-left:4px solid #D97706;}.risk-low{background:rgba(16,185,129,0.1);color:#059669;border-left:4px solid #059669;}.risk-item{padding:6px 15px;font-size:14px;line-height:1.7;border-bottom:1px solid var(--border-color);}.risk-summary{background:rgba(0,122,255,0.07);border:1px solid rgba(0,122,255,0.2);border-radius:10px;padding:15px;margin-top:15px;font-size:14px;line-height:1.8;font-weight:600;}</style>';
+    box.appendChild(sanitizeAIHtml(text));
   });
 }
 
@@ -5069,7 +5121,8 @@ async function analyzeContext() {
 <h4 style="color:#BE123C">🎯 下一步行動</h4>
 <p>建議的後續行動方案...</p>`;
   await callGroqAI(sys, combined, 'contextResultBox', 'btnAnalyzeContext', (text, box) => {
-    box.innerHTML = `<style>#contextResultBox h4{margin:12px 0 6px;font-size:15px;}#contextResultBox p{font-size:14px;line-height:1.8;padding:0 0 10px;border-bottom:1px solid var(--border-color);}</style>${text}`;
+    box.innerHTML = '<style>#contextResultBox h4{margin:12px 0 6px;font-size:15px;}#contextResultBox p{font-size:14px;line-height:1.8;padding:0 0 10px;border-bottom:1px solid var(--border-color);}</style>';
+    box.appendChild(sanitizeAIHtml(text));
   });
 }
 
@@ -5100,23 +5153,33 @@ function addBatchRule() {
 async function executeBatchRewrite() {
   const rules = Array.from(document.getElementById('batchRuleList').children).map(el => `「${el.dataset.from}」 → 「${el.dataset.to || '（刪除）'}」`);
   const aiEnhance = document.getElementById('batchAIEnhance').checked;
-  const fullText = getDocFullText();
-  let processedText = fullText;
-  
-  Array.from(document.getElementById('batchRuleList').children).forEach(el => {
-    processedText = processedText.replaceAll(el.dataset.from, el.dataset.to || '');
+  if (!lastParsedData) return showToast('請先匯入並解析一份公文！');
+  const sections = [
+    ['subject', '主旨'], ['content', '說明'], ['proposal', '擬辦']
+  ];
+  const processedFields = {};
+  sections.forEach(([key]) => {
+    let value = lastParsedData[key] || '';
+    Array.from(document.getElementById('batchRuleList').children).forEach(el => {
+      value = value.replaceAll(el.dataset.from, el.dataset.to || '');
+    });
+    processedFields[key] = value;
   });
+  const processedText = sections.map(([key, label]) => `【${label}】\n${processedFields[key]}`).join('\n\n');
+  window._batchResultFields = null;
   
   if (!aiEnhance) {
     document.getElementById('batchResultBox').innerHTML = `<div style="white-space:pre-wrap;font-size:14px;line-height:1.8;">${esc(processedText)}</div>
       <button class="btn btn-primary" onclick="applyBatchResult()" style="margin-top:15px;width:100%;">✅ 套用至公文</button>`;
     window._batchResult = processedText;
+    window._batchResultFields = processedFields;
     return;
   }
   
   const sys = `你是資深中文公文校對員。以下公文已套用了若干詞彙替換規則：\n${rules.join('\n')}\n\n請在保留所有替換結果的前提下，針對因替換產生的不通順、重複或語病進行潤飾修正，使全文再次流暢自然。只輸出修正後的完整公文全文，不要有任何解說。`;
   await callGroqAI(sys, processedText, 'batchResultBox', 'btnBatchRun', (text, box) => {
     window._batchResult = text;
+    window._batchResultFields = null;
     box.innerHTML = `<div style="white-space:pre-wrap;font-size:14px;line-height:1.8;">${esc(text)}</div>
       <button class="btn btn-primary" onclick="applyBatchResult()" style="margin-top:15px;width:100%;">✅ 套用至公文</button>`;
   });
@@ -5124,13 +5187,26 @@ async function executeBatchRewrite() {
 
 function applyBatchResult() {
   if (!window._batchResult || !lastParsedData) return;
-  const text = window._batchResult;
-  const subMatch = text.match(/【主旨】\n?([\s\S]*?)(?=\n\n【|$)/);
-  const conMatch = text.match(/【說明】\n?([\s\S]*?)(?=\n\n【|$)/);
-  const proMatch = text.match(/【擬辦】\n?([\s\S]*?)(?=\n\n【|$)/);
-  if (subMatch) lastParsedData.subject = subMatch[1].trim();
-  if (conMatch) lastParsedData.content = conMatch[1].trim();
-  if (proMatch) lastParsedData.proposal = proMatch[1].trim();
+  let fields = window._batchResultFields;
+  if (!fields) {
+    const text = window._batchResult;
+    const labels = [['subject', '主旨'], ['content', '說明'], ['proposal', '擬辦']];
+    fields = {};
+    for (let i = 0; i < labels.length; i++) {
+      const [key, label] = labels[i];
+      const nextLabel = labels[i + 1]?.[1];
+      const pattern = new RegExp(`【${label}】\\s*([\\s\\S]*?)${nextLabel ? `(?=\\n\\s*【${nextLabel}】)` : '$'}`);
+      const match = text.match(pattern);
+      if (!match) {
+        showToast(`⚠️ 改寫結果缺少「${label}」欄位，未套用任何修改`);
+        return;
+      }
+      fields[key] = match[1].trim();
+    }
+  }
+  lastParsedData.subject = fields.subject;
+  lastParsedData.content = fields.content;
+  lastParsedData.proposal = fields.proposal;
   render(lastParsedData, lastRawText);
   closeBatchModal();
   showToast('✅ 批次改寫已套用至公文！');
@@ -5158,7 +5234,7 @@ async function startSimulation() {
   };
   const sys = `${personas[persona]}\n\n請以繁體中文，用條列式且具體的方式輸出你的模擬反應，要有真實感和洞見，不要空泛。每個部分用粗體標題分隔。`;
   await callGroqAI(sys, getDocFullText(), 'simulateResultBox', 'btnStartSimulate', (text, box) => {
-    const formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--nature-green-deep);">$1</strong>').replace(/\n/g, '<br>');
+    const formatted = esc(text).replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--nature-green-deep);">$1</strong>').replace(/\n/g, '<br>');
     box.innerHTML = `<div style="font-size:14px;line-height:1.9;">${formatted}</div>`;
   });
 }
@@ -5371,7 +5447,7 @@ async function generatePresentation() {
         return `
           <div style="border:1px solid var(--border-color);border-radius:14px;margin-bottom:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
             <div style="background:${typeColor[s.type]||'#374151'};color:white;padding:12px 18px;display:flex;align-items:center;gap:12px;">
-              <div style="background:rgba(255,255,255,0.25);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;">${s.slideNum}</div>
+          <div style="background:rgba(255,255,255,0.25);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;">${esc(s.slideNum)}</div>
               <div style="font-weight:800;font-size:16px;letter-spacing:0.03em;">${esc(s.title)}</div>
               <span style="margin-left:auto;font-size:11px;background:rgba(255,255,255,0.22);padding:3px 10px;border-radius:12px;white-space:nowrap;">${esc(s.type)}</span>
             </div>
@@ -5716,14 +5792,14 @@ function renderLawResults(data, keyword, box) {
               <div style="font-weight:900;font-size:15px;">${esc(law.lawName)} ${esc(law.article)}</div>
               <div style="font-size:12px;opacity:0.85;margin-top:2px;">${esc(law.content)}</div>
             </div>
-            <span style="margin-left:auto;font-size:11px;background:rgba(255,255,255,0.18);padding:3px 9px;border-radius:10px;">#${law.rank} 相關度</span>
+            <span style="margin-left:auto;font-size:11px;background:rgba(255,255,255,0.18);padding:3px 9px;border-radius:10px;">#${esc(law.rank)} 相關度</span>
           </div>
           <div style="padding:14px 18px;">
             <div style="background:rgba(30,64,175,0.06);border:1px solid rgba(30,64,175,0.2);border-radius:8px;padding:10px 14px;margin-bottom:10px;">
               <div style="font-size:11px;font-weight:800;color:var(--apple-gray);letter-spacing:0.1em;margin-bottom:5px;">📝 標準引述格式（點擊右側圖示複製）</div>
               <div style="display:flex; align-items:center; gap:8px;">
                 <a href="${searchUrl}" target="_blank" style="font-size:14px;font-weight:700;color:#1E3A8A;font-family:'Noto Serif TC',serif;text-decoration:none;border-bottom:1px dashed #1E3A8A;padding-bottom:1px;" title="透過 Google 搜尋全國法規資料庫：${esc(law.lawName)}">${esc(law.fullQuote)} 🔍</a>
-                <span style="font-size:16px;cursor:pointer;" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(law.fullQuote || "")}')).then(()=>showToast('✅ 引述格式已複製！'))" title="點擊複製引述格式">📋</span>
+                <span class="law-copy-quote" data-law-index="${i}" style="font-size:16px;cursor:pointer;" title="點擊複製引述格式">📋</span>
               </div>
             </div>
             <div style="font-size:13px;color:var(--apple-gray);margin-bottom:8px;">💡 <b>關聯原因：</b>${esc(law.relevanceReason)}</div>
@@ -5742,10 +5818,14 @@ function renderLawResults(data, keyword, box) {
       <div style="font-size:12px;color:var(--apple-gray);margin-bottom:12px;padding:8px 12px;background:rgba(245,158,11,0.08);border-radius:8px;border:1px solid rgba(245,158,11,0.2);">
         ⚠️ 本功能推薦結果僅供參考，正式文書請務必至<a href="https://law.moj.gov.tw/" target="_blank" style="color:var(--apple-blue);font-weight:700;">全國法規資料庫</a>核對最新條文版本。
       </div>
-      ${lawCards}`;
+       ${lawCards}`;
+    box.querySelectorAll('.law-copy-quote').forEach(button => {
+      button.addEventListener('click', () => {
+        const quote = data.laws[Number(button.dataset.lawIndex)]?.fullQuote || '';
+        navigator.clipboard.writeText(quote).then(() => showToast('✅ 引述格式已複製！'));
+      });
+    });
 }
 </script>
 </body>
 </html>
-
-
