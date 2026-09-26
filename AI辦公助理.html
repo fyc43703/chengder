@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AI 辦公助理</title>
-<meta name="ai-office-version" content="2026-09-26.1">
+<meta name="ai-office-version" content="2026-09-26.2">
 <meta name="description" content="文件整理、文字分析、語音轉文字與結果匯出的獨立 AI 辦公助理。">
 <style>*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#eaf2fc;color:#1d2b44;font:16px/1.5 Arial,'Microsoft JhengHei',sans-serif}button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #75a8ed;outline-offset:2px}
 
@@ -49,6 +49,11 @@
 @media(max-width:1200px){.ai-title-row{flex-wrap:wrap}.ai-keybar{flex:1 1 430px}.ai-header-shortcuts{margin-left:auto}}
 @media(max-width:900px){.ai-header-shortcuts{margin-left:0;align-self:flex-start}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.ai-workflow-step,.ai-workflow-step b{animation:none!important}}
+
+#aiInsightPage .ai-header-shortcuts > .ai-transcribe-launch,
+#aiInsightPage .ai-header-shortcuts > .ai-youtube-link{height:38px;min-height:38px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;font:700 13px/1.2 'Microsoft JhengHei',sans-serif;white-space:nowrap}
+#aiInsightPage .ai-title-row > h2{font-weight:900;letter-spacing:.03em;text-shadow:0 1px 0 #fff,0 2px 0 #9db4ce,0 3px 0 #6f8ba9,0 5px 8px rgba(23,79,148,.22)}
+@media(max-width:620px){#aiInsightPage .ai-header-shortcuts > .ai-youtube-link{max-width:100%;white-space:normal;text-align:center}}
 </style>
 </head>
 <body>
@@ -431,8 +436,48 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
   document.head.appendChild(workspaceStyle);
   const hoverHelp = document.createElement('aside');
   hoverHelp.className = 'ai-hover-help'; hoverHelp.hidden = true; document.body.appendChild(hoverHelp);
-  const positionHoverHelp = event => { const target = event.target.closest('#aiInsightPage [data-help],#aiInsightPage [title]'); if (!target) return; const message = target.dataset.help || target.title; if (!message) return; hoverHelp.textContent = message; hoverHelp.hidden = false; const width = Math.min(310, window.innerWidth - 24); hoverHelp.style.maxWidth = `${width}px`; hoverHelp.style.left = `${Math.max(12, Math.min(event.clientX + 13, window.innerWidth - width - 12))}px`; hoverHelp.style.top = `${Math.max(12, Math.min(event.clientY + 15, window.innerHeight - 88))}px`; };
-  panel.addEventListener('pointerover', positionHoverHelp); panel.addEventListener('pointermove', positionHoverHelp); panel.addEventListener('pointerout', event => { if (!event.relatedTarget || !event.relatedTarget.closest?.('#aiInsightPage [data-help],#aiInsightPage [title]')) hoverHelp.hidden = true; });
+  const helpSelector = '#aiInsightPage [data-help],#aiTranscribePage [data-help],.ai-prompt-popover [data-help]';
+  const normaliseHelpAttributes = root => root.querySelectorAll('[title]').forEach(element => {
+    const message = element.getAttribute('title');
+    if (message && !element.dataset.help) element.dataset.help = message;
+    element.removeAttribute('title'); // Use one tooltip; the browser's native title cannot be timed.
+  });
+  let hoverHelpOwner = null, hoverHelpTimer = null;
+  const dismissHoverHelp = (forgetOwner = false) => {
+    clearTimeout(hoverHelpTimer); hoverHelpTimer = null; hoverHelp.hidden = true;
+    if (forgetOwner) hoverHelpOwner = null;
+  };
+  const positionHoverHelp = event => {
+    if (hoverHelp.hidden || !hoverHelpOwner) return;
+    const width = Math.min(310, window.innerWidth - 24), rect = hoverHelpOwner.getBoundingClientRect();
+    const x = Number.isFinite(event.clientX) ? event.clientX + 13 : rect.left;
+    const y = Number.isFinite(event.clientY) ? event.clientY + 15 : rect.bottom + 8;
+    hoverHelp.style.maxWidth = width + 'px';
+    hoverHelp.style.left = Math.max(12, Math.min(x, window.innerWidth - width - 12)) + 'px';
+    hoverHelp.style.top = Math.max(12, Math.min(y, window.innerHeight - hoverHelp.offsetHeight - 12)) + 'px';
+  };
+  const showHoverHelp = event => {
+    const target = event.target.closest?.(helpSelector);
+    if (!target || !target.dataset.help) { dismissHoverHelp(true); return; }
+    if (target === hoverHelpOwner) { positionHoverHelp(event); return; }
+    dismissHoverHelp(true); hoverHelpOwner = target; hoverHelp.textContent = target.dataset.help; hoverHelp.hidden = false;
+    positionHoverHelp(event);
+    // Keep the owner after expiration so pointer movement cannot restart the three seconds.
+    hoverHelpTimer = setTimeout(() => { hoverHelpTimer = null; hoverHelp.hidden = true; }, 3000);
+  };
+  const leaveHoverHelp = event => {
+    const next = event.relatedTarget?.closest?.(helpSelector);
+    if (next !== hoverHelpOwner) dismissHoverHelp(true);
+  };
+  document.addEventListener('pointerover', showHoverHelp);
+  document.addEventListener('pointermove', positionHoverHelp);
+  document.addEventListener('pointerout', leaveHoverHelp);
+  document.addEventListener('focusin', showHoverHelp);
+  document.addEventListener('focusout', leaveHoverHelp);
+  document.addEventListener('click', () => dismissHoverHelp());
+  document.addEventListener('keydown', () => dismissHoverHelp());
+  window.addEventListener('blur', () => dismissHoverHelp(true));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) dismissHoverHelp(true); });
   const hoverHelpStyle = document.createElement('style');
   hoverHelpStyle.textContent = '.ai-hover-help{position:fixed;z-index:1200;padding:8px 10px;border-radius:8px;background:#183b67;color:#fff;box-shadow:0 5px 16px rgba(20,49,83,.25);font:12px/1.5 "Microsoft JhengHei",sans-serif;pointer-events:none}.ai-hover-help[hidden]{display:none}';
   document.head.appendChild(hoverHelpStyle);
@@ -769,6 +814,7 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
     promptPopover.innerHTML = `<div class="ai-prompt-head"><b>提示詞預覽</b><span><button type="button" data-prompt-copy aria-label="複製提示詞" title="複製提示詞">⧉</button><button type="button" data-prompt-close aria-label="關閉提示詞預覽" title="關閉">×</button></span></div><div class="ai-prompt-body">${markdownHtml(source)}</div>`;
     promptPopover.querySelector('[data-prompt-copy]').onclick = async () => { try { await navigator.clipboard.writeText(source); promptPopover.querySelector('[data-prompt-copy]').textContent = '✓'; } catch (_) { window.prompt('請複製以下提示詞：', source); } };
     promptPopover.querySelector('[data-prompt-close]').onclick = hidePrompt;
+    normaliseHelpAttributes(promptPopover); dismissHoverHelp();
     promptPopover.hidden = false;
     const width = Math.min(560, window.innerWidth - 24);
     promptPopover.style.width = width + 'px';
@@ -1025,6 +1071,8 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
     } catch (error) { status.textContent = error.name === 'AbortError' ? '已取消分析，原始內容與上一份結果仍保留。' : `分析失敗：${error.message}`; }
     finally { setProcessing(false); setEditingEnabled(true); run.disabled = false; run.textContent = '開始 AI 分析'; }
   });
+
+  normaliseHelpAttributes(panel); normaliseHelpAttributes(transcribePage);
 
 })();
 </script>
