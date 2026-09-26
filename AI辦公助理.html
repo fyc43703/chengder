@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AI 辦公助理</title>
-<meta name="ai-office-version" content="2026-09-26.7">
+<meta name="ai-office-version" content="2026-09-26.8">
 <meta name="description" content="文件整理、文字分析、語音轉文字與結果匯出的獨立 AI 辦公助理。">
 <style>*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#eaf2fc;color:#1d2b44;font:16px/1.5 Arial,'Microsoft JhengHei',sans-serif}button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #75a8ed;outline-offset:2px}
 
@@ -1125,6 +1125,26 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
   });
 
   normaliseHelpAttributes(panel); normaliseHelpAttributes(transcribePage);
+
+  // Match only the lower toolbar to the final transcript link; leave the upper row unchanged.
+  const headerShortcuts = panel.querySelector('.ai-header-shortcuts');
+  const officeToolLinks = panel.querySelector('.ai-tool-links');
+  const correctedTranscriptLink = headerShortcuts.querySelectorAll('.ai-youtube-example')[2];
+  const alignOfficeToolLinks = () => {
+    const end = correctedTranscriptLink.getBoundingClientRect().right;
+    const start = officeToolLinks.getBoundingClientRect().left;
+    const available = panel.querySelector('.ai-header-hub').clientWidth;
+    const width = Math.min(available, Math.max(0, end - start));
+    if (width > 0) officeToolLinks.style.width = width + 'px';
+  };
+  alignOfficeToolLinks();
+  window.addEventListener('resize', alignOfficeToolLinks);
+  if (typeof ResizeObserver !== 'undefined') {
+    const toolbarSizeObserver = new ResizeObserver(alignOfficeToolLinks);
+    toolbarSizeObserver.observe(headerShortcuts); toolbarSizeObserver.observe(correctedTranscriptLink);
+  }
+  document.fonts?.ready.then(alignOfficeToolLinks).catch(() => {});
+
 
 })();
 </script>
