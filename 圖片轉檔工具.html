@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>圖片轉檔工具</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js" integrity="sha512-VjmsArkf8Vv2yyvbXCyVxp+R3n4N2WyS1GEQ+YQxa7Hu0tx836WpY4nW9/T1W5JBmvuIsxkVH/DlHgp7NEMjDw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eee9df; --card: #f8f4ec; --text: #35322d; --muted: #777065;
+      --line: #d8d0c2; --blue: #766d50; --blue-hover: #625b43;
+      --soft: #e8e2d6; --error: #9a4f42; --success: #5f7356;
+      --clay: #a56f52; --clay-hover: #8d5d44;
+      --shadow: 0 22px 55px rgba(74,65,52,.10);
+    }
+    body.dark {
+      color-scheme: dark;
+      --bg: #24231f; --card: #302e29; --text: #eee9df; --muted: #b8afa1;
+      --line: #4d4941; --blue: #b3aa84; --blue-hover: #cbc19a;
+      --soft: #39362f; --error: #e19a8c; --success: #a8bc96;
+      --clay: #bd8060; --clay-hover: #cf9271;
+      --shadow: 0 22px 55px rgba(0,0,0,.24);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 22px 18px 32px; color: var(--text);
+      background:
+        radial-gradient(circle at 15% 5%, rgba(255,255,255,.42), transparent 30%),
+        radial-gradient(circle at 85% 92%, rgba(138,116,84,.10), transparent 28%),
+        var(--bg);
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      letter-spacing: .01em;
+    }
+    main { width: min(1320px, 100%); margin: auto; }
+    .card {
+      position: relative; overflow: hidden; background: var(--card); border: 1px solid var(--line);
+      border-radius: 7px 22px 9px 28px; padding: clamp(20px, 3vw, 32px); box-shadow: var(--shadow);
+    }
+    header { position: relative; display: block; padding: 0 130px 10px; text-align: center; }
+    h1 { font-family: "BiauKai", "DFKai-SB", "KaiTi", "標楷體", serif; font-size: clamp(26px, 3vw, 36px); font-weight: 400; letter-spacing: .08em; margin: 0 0 3px; line-height: 1.2; }
+    h2 { font-family: "Iowan Old Style", "Noto Serif TC", "PMingLiU", serif; font-size: 19px; letter-spacing: .06em; margin: 0 0 12px; }
+    p { margin: 0 0 12px; }
+    .sub { color: var(--muted); font: 400 18px/1.4 "BiauKai", "DFKai-SB", "KaiTi", "標楷體", serif; letter-spacing: .04em; }
+    .note, .meta, .summary { color: var(--muted); }
+    .author { font-size: 12px; color: var(--muted); margin: 7px 0 0; }
+    .theme { position: absolute; top: 0; right: 0; white-space: nowrap; }
+    .workflow { margin-top: 16px; }
+    .workspace-layout {
+      display: grid; grid-template-columns: minmax(320px, .82fr) minmax(0, 1.35fr);
+      gap: clamp(20px, 3vw, 36px); align-items: start;
+    }
+    .controls-column { min-width: 0; }
+    .display-column {
+      min-width: 0; min-height: 460px; padding: 20px;
+      border: 1px solid var(--line); border-radius: 6px 20px 8px 24px;
+      background: #fff;
+    }
+    .display-heading { margin-bottom: 12px; }
+    .display-heading h2 { margin-bottom: 4px; }
+    .display-heading p { margin: 0; color: var(--muted); font-size: 13px; }
+    .display-empty {
+      display: grid; place-items: center; min-height: 340px; padding: 22px;
+      border: 1px dashed var(--line); border-radius: 4px 16px 6px 18px;
+      color: var(--muted); text-align: center; font-size: 14px;
+    }
+    .display-empty[hidden] { display: none; }
+    .display-column .selected-files { margin-top: 0; }
+    .step { position: relative; padding: 18px 0; border-top: 1px solid var(--line); }
+    .step:first-child { border-top: 0; padding-top: 0; }
+    .step[hidden] { display: none; }
+    .step-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; }
+    .step-number {
+      display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px;
+      border: 1px solid var(--line); border-radius: 50%; color: var(--clay);
+      font: 600 13px/1 "Iowan Old Style", "Noto Serif TC", serif; background: var(--soft);
+    }
+    .step-copy { min-width: 0; }
+    .step-title { margin: 0; font: 600 19px/1.25 "Iowan Old Style", "Noto Serif TC", "PMingLiU", serif; letter-spacing: .05em; }
+    .step-hint { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .controls-column .step-head {
+      align-items: center; padding: 11px 14px; margin-bottom: 12px;
+      width: min(100%, 430px);
+      border-radius: 5px 15px 6px 18px; color: #fff;
+      background: #74513b; box-shadow: 0 7px 16px rgba(83,54,37,.14);
+    }
+    body.dark .controls-column .step-head { background: #5e422f; }
+    .controls-column .step-number {
+      position: relative; width: 46px; height: 46px; flex-basis: 46px;
+      border-color: rgba(255,255,255,.34); color: #fff; background: rgba(255,255,255,.08);
+    }
+    .controls-column .step-number svg {
+      width: 23px; height: 23px; fill: none; stroke: currentColor;
+      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .controls-column .step-number::after {
+      content: attr(data-step); position: absolute; right: -5px; bottom: -5px;
+      min-width: 22px; height: 18px; padding: 0 4px; border: 2px solid #74513b;
+      border-radius: 9px; color: #74513b; background: #f2e8d9;
+      font: 700 9px/16px -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body.dark .controls-column .step-number::after { border-color: #5e422f; color: #5e422f; }
+    .controls-column .step-title { color: #fff; font-size: 20px; }
+    .controls-column .step-hint { color: rgba(255,255,255,.74); }
+    .drop {
+      display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 14px;
+      width: min(100%, 430px); min-height: 96px; margin: 0; padding: 16px 18px;
+      border: 1px dashed var(--blue); border-radius: 4px 16px 6px 18px;
+      text-align: left; cursor: pointer; background: var(--soft);
+      transition: border-color .2s, background-color .2s, transform .2s;
+    }
+    .drop:hover, .drop.drag { border-color: var(--blue); transform: translateY(-2px); }
+    .drop-icon {
+      display: grid; place-items: center; width: 48px; height: 48px;
+      border: 1px solid var(--line); border-radius: 50%; color: var(--clay); background: var(--card);
+    }
+    .drop-icon svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .drop-copy { min-width: 0; }
+    .drop strong { display: block; font-size: 16px; font-weight: 650; letter-spacing: 0; }
+    .drop small { display: block; color: var(--muted); margin-top: 4px; font-size: 11px; line-height: 1.45; }
+    input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .settings { display: flex; flex-wrap: wrap; gap: 22px; align-items: end; }
+    .field { display: flex; flex-direction: column; gap: 8px; min-width: 180px; flex: 1; }
+    label { font-weight: 600; }
+    select, input[type=range], button { font: inherit; }
+    select {
+      width: 100%; padding: 13px 16px; border: 1px solid var(--line); border-radius: 6px 12px 7px 14px;
+      color: #35322d; background: #fff;
+    }
+    input[type=range] {
+      width: 100%; height: 54px; margin: 0; padding: 0 16px; appearance: none;
+      border: 1px solid var(--line); border-radius: 6px 12px 7px 14px;
+      background: #fff; accent-color: var(--clay);
+    }
+    input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: #d8d0c2; }
+    input[type=range]::-webkit-slider-thumb {
+      width: 19px; height: 19px; margin-top: -6.5px; appearance: none;
+      border: 0; border-radius: 50%; background: var(--clay);
+    }
+    input[type=range]::-moz-range-track { height: 6px; border: 0; border-radius: 3px; background: #d8d0c2; }
+    input[type=range]::-moz-range-thumb { width: 19px; height: 19px; border: 0; border-radius: 50%; background: var(--clay); }
+    button {
+      border: 1px solid var(--line); border-radius: 5px 11px 6px 13px; padding: 11px 18px;
+      background: var(--card); color: var(--text); cursor: pointer;
+      transition: background-color .2s, box-shadow .2s, transform .2s;
+    }
+    button:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(29,29,31,.09); }
+    button.primary { background: var(--clay); color: #fffaf2; border-color: var(--clay); font-weight: 650; }
+    button.primary:not(:disabled):hover { background: var(--clay-hover); }
+    button:disabled { opacity: .48; cursor: not-allowed; }
+    button:focus-visible, select:focus-visible, input:focus-visible, .drop:focus-visible {
+      outline: 3px solid rgba(165,111,82,.28); outline-offset: 3px;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .selection-meta { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 14px; }
+    .selection-meta .summary:empty + button { display: none; }
+    .selection-meta button { padding: 7px 12px; font-size: 13px; }
+    .selected-files { margin-top: 18px; }
+    .selected-files[hidden] { display: none; }
+    .selected-label { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+    .selected-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 12px;
+    }
+    .selected-item {
+      min-width: 0; padding: 9px; border: 1px solid var(--line);
+      border-radius: 5px 14px 6px 16px; background: rgba(255,255,255,.16);
+    }
+    .selected-thumb {
+      display: block; width: 100%; aspect-ratio: 4 / 3; padding: 0; overflow: hidden;
+      border: 0; border-radius: 3px 10px 4px 12px; background: var(--soft); cursor: zoom-in;
+    }
+    .selected-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .selected-fallback {
+      display: grid; place-items: center; width: 100%; height: 100%;
+      color: var(--muted); font: 600 12px/1 "Iowan Old Style", serif; letter-spacing: .12em;
+    }
+    .selected-name {
+      display: block; margin-top: 8px; overflow: hidden; color: var(--text);
+      font-size: 13px; font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .selected-size { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .convert-actions { margin-top: 0; }
+    .convert-actions .primary { min-width: 150px; }
+    .result-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+    .result-heading .step-head { margin-bottom: 0; }
+    .result-actions { margin: 0; }
+    .note { font-size: 14px; margin-top: 10px; }
+    .message { min-height: 22px; margin: 12px 0 4px; }
+    .message.error { color: var(--error); }
+    .message.success { color: var(--success); }
+    progress { width: 100%; height: 8px; margin: 12px 0 6px; accent-color: var(--blue); }
+    .summary { font-size: 13px; }
+    .list {
+      list-style: none; margin: 20px 0 0; padding: 0; max-height: 420px; overflow: auto;
+      border: 1px solid var(--line); border-radius: 5px 17px 7px 20px; background: #fff;
+    }
+    .list li { display: flex; gap: 15px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+    .list li:last-child { border-bottom: 0; }
+    .preview-btn {
+      flex: 0 0 64px; width: 64px; height: 64px; padding: 0; overflow: hidden;
+      border-radius: 4px 12px 5px 14px; background: var(--bg); cursor: zoom-in;
+    }
+    .preview-btn[hidden] { display: none; }
+    .preview-btn img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .file-info { flex: 1; min-width: 0; }
+    .filename { display: block; overflow-wrap: anywhere; font-weight: 600; line-height: 1.35; }
+    .size { display: block; color: var(--muted); font-size: 12px; font-weight: 400; margin-top: 3px; }
+    .status { max-width: 250px; color: var(--muted); font-size: 13px; line-height: 1.4; text-align: right; }
+    .status.ok { color: var(--success); }
+    .status.bad { color: var(--error); }
+    .row-actions { display: flex; align-items: center; gap: 10px; }
+    .download-one {
+      display: grid; place-items: center; flex: 0 0 38px; width: 38px; height: 38px;
+      padding: 0; border-color: var(--line); color: var(--blue); background: transparent;
+    }
+    .download-one:hover { color: var(--clay); background: var(--soft); }
+    .download-one[hidden] { display: none; }
+    .download-one svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .help { margin-top: 14px; font-size: 13px; color: var(--muted); box-shadow: none; }
+    .help h2 { color: var(--text); }
+    .help p:last-child { margin-bottom: 0; }
+    body.dark .display-column, body.dark .display-column .list { background: var(--card); }
+    .preview-dialog {
+      width: min(94vw, 1080px); max-height: 92vh; padding: 0; overflow: hidden;
+      border: 1px solid #625d53; border-radius: 7px 22px 9px 28px; background: #292722;
+      color: #f4efe6; box-shadow: 0 30px 90px rgba(0,0,0,.4);
+    }
+    .preview-dialog::backdrop { background: rgba(0,0,0,.76); backdrop-filter: blur(10px); }
+    .preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; }
+    .preview-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+    .preview-close {
+      flex: 0 0 auto; display: grid; place-items: center; width: 34px; height: 34px;
+      padding: 0; border: 0; border-radius: 50%; background: #3a3a3c; color: white;
+      font-size: 22px; line-height: 1;
+    }
+    .preview-image { display: block; max-width: 100%; max-height: calc(92vh - 60px); width: auto; height: auto; margin: auto; object-fit: contain; }
+    @media(max-width:900px) {
+      .workspace-layout { grid-template-columns: 1fr; }
+      .display-column { min-height: 280px; }
+      .display-empty { min-height: 180px; }
+    }
+    @media(max-width:600px) {
+      body { padding: 10px 10px 24px; }
+      .card { border-radius: 6px 18px 8px 22px; }
+      header { padding: 0 0 10px; }
+      .theme { position: static; margin-top: 14px; padding: 8px 10px; font-size: 13px; }
+      .drop { width: 100%; min-height: 88px; padding: 14px 16px; }
+      .settings { display: block; }
+      .field { margin-bottom: 16px; }
+      .actions button { flex: 1; }
+      .selection-meta { align-items: flex-start; }
+      .selection-meta button { flex: 0 0 auto; }
+      .selected-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+      .result-heading { display: block; }
+      .result-actions { margin: 16px 0 0 50px; }
+      .result-actions button { width: calc(100% - 50px); }
+      .list li { gap: 10px; padding: 10px; }
+      .preview-btn { flex-basis: 54px; width: 54px; height: 54px; }
+      .row-actions { gap: 6px; }
+      .status { display: block; max-width: 108px; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <header>
+      <div>
+        <h1>圖片轉檔工具</h1>
+        <p class="sub">將常見圖片格式批次轉為 JPG、PNG 或 WebP</p>
+        <p class="author">製作者：陳政德</p>
+      </div>
+      <button id="themeBtn" class="theme" type="button" aria-label="切換深色或淺色主題">切換主題</button>
+    </header>
+    <div class="workflow">
+      <div class="workspace-layout">
+        <div class="controls-column">
+      <section class="step" aria-labelledby="step1Title">
+        <div class="step-head">
+          <span class="step-number" data-step="01" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+              <circle cx="9" cy="9" r="1.5"></circle>
+              <path d="m5.5 17 4.2-4.2 3.1 3 2.1-2.1 3.6 3.3"></path>
+            </svg>
+          </span>
+          <div class="step-copy">
+            <h2 class="step-title" id="step1Title">選擇圖片</h2>
+            <p class="step-hint">可一次選擇多張圖片，或直接拖曳至下方區域。</p>
+          </div>
+        </div>
+        <label class="drop" id="dropZone" for="fileInput" tabindex="0">
+          <span class="drop-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+              <circle cx="9" cy="9" r="1.5"></circle>
+              <path d="m5.5 17 4.2-4.2 3.1 3 2.1-2.1 3.6 3.3"></path>
+            </svg>
+          </span>
+          <span class="drop-copy">
+            <strong>選擇圖片或拖曳至此</strong>
+            <small>JPG、PNG、WebP、GIF、BMP、AVIF、HEIC、HEIF、TIFF</small>
+          </span>
+        </label>
+        <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.bmp,.avif,.heic,.heif,.tif,.tiff,image/*">
+      </section>
+
+      <section class="step" aria-labelledby="step2Title">
+        <div class="step-head">
+          <span class="step-number" data-step="02" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path>
+              <circle cx="16" cy="7" r="2"></circle>
+              <circle cx="8" cy="17" r="2"></circle>
+            </svg>
+          </span>
+          <div class="step-copy">
+            <h2 class="step-title" id="step2Title">設定輸出</h2>
+            <p class="step-hint">選擇格式，並依需求調整圖片品質。</p>
+          </div>
+        </div>
+        <div class="settings">
+          <div class="field">
+            <label for="outputType">輸出格式</label>
+            <select id="outputType">
+              <option value="image/jpeg">JPG</option>
+              <option value="image/png">PNG</option>
+              <option value="image/webp">WebP</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="quality">品質：<span id="qualityText">85%</span></label>
+            <input id="quality" type="range" min="10" max="100" step="5" value="85">
+          </div>
+        </div>
+        <p class="note" id="qualityNote">品質設定適用於 JPG 與 WebP；PNG 為無損輸出。</p>
+      </section>
+
+      <section class="step" aria-labelledby="step3Title">
+        <div class="step-head">
+          <span class="step-number" data-step="03" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 7h11"></path>
+              <path d="m13 4 3 3-3 3"></path>
+              <path d="M19 17H8"></path>
+              <path d="m11 14-3 3 3 3"></path>
+            </svg>
+          </span>
+          <div class="step-copy">
+            <h2 class="step-title" id="step3Title">開始轉換</h2>
+            <p class="step-hint">確認設定後開始處理，轉檔全程在瀏覽器內完成。</p>
+          </div>
+        </div>
+        <div class="actions convert-actions">
+          <button class="primary" id="convertBtn" type="button" disabled>開始轉換</button>
+        </div>
+        <p id="message" class="message" role="status" aria-live="polite"></p>
+        <progress id="progress" max="100" value="0" aria-label="轉換進度" hidden></progress>
+      </section>
+        </div>
+
+        <aside class="display-column" aria-labelledby="displayTitle">
+          <div class="display-heading">
+            <h2 id="displayTitle">圖片顯示區</h2>
+            <p>所選圖片與轉換完成的檔案會顯示於此。</p>
+          </div>
+          <div id="displayEmpty" class="display-empty">
+            選擇圖片後，縮圖將顯示於此
+          </div>
+          <div id="selectedFiles" class="selected-files" hidden>
+            <div class="selection-meta">
+              <div>
+                <p class="selected-label">已選擇的圖片</p>
+                <div id="summary" class="summary"></div>
+              </div>
+              <button id="clearBtn" type="button" disabled>清除檔案</button>
+            </div>
+            <div id="selectedGrid" class="selected-grid" aria-label="已選擇的圖片清單"></div>
+          </div>
+
+      <section class="step" id="resultStep" aria-labelledby="step4Title" hidden>
+        <div class="result-heading">
+          <div class="step-head">
+            <div class="step-copy">
+              <h2 class="step-title" id="step4Title">預覽與下載</h2>
+              <p class="step-hint">點選縮圖可放大預覽，也可下載單一圖片或全部 ZIP。</p>
+            </div>
+          </div>
+          <div class="actions result-actions">
+            <button id="downloadBtn" type="button" disabled>下載全部 ZIP</button>
+          </div>
+        </div>
+        <ul id="fileList" class="list" aria-label="轉檔結果清單" hidden></ul>
+      </section>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <div class="card help">
+    <h2>使用說明</h2>
+    <p>選擇或拖入圖片、設定輸出格式，再按「開始轉換」。完成後可點選縮圖預覽、使用列表右側圖示下載單一檔案，或下載 ZIP。轉檔在瀏覽器內進行；此頁需連線載入轉檔程式庫。</p>
+    <p>動畫 GIF、多頁 TIFF 及多影格 HEIC 只輸出第一張影格。轉檔不保留原始 EXIF、位置等中繼資料。WebP 輸出取決於瀏覽器支援；不支援時會顯示錯誤。</p>
+    <p>部分特殊或損壞的檔案可能無法解碼，超大圖片也可能受瀏覽器記憶體限制。</p>
+  </div>
+</main>
+<dialog id="previewDialog" class="preview-dialog" aria-label="圖片預覽">
+  <div class="preview-bar">
+    <span id="previewTitle" class="preview-title"></span>
+    <button id="previewClose" class="preview-close" type="button" aria-label="關閉預覽">×</button>
+  </div>
+  <img id="previewImage" class="preview-image" alt="">
+</dialog>
+<script>
+(function () {
+  "use strict";
+  const supported = new Set(["jpg","jpeg","png","webp","gif","bmp","avif","heic","heif","tif","tiff"]);
+  const $ = id => document.getElementById(id);
+  const ui = {
+    input:$("fileInput"), drop:$("dropZone"), list:$("fileList"), output:$("outputType"),
+    quality:$("quality"), qualityText:$("qualityText"), qualityNote:$("qualityNote"),
+    convert:$("convertBtn"), download:$("downloadBtn"), clear:$("clearBtn"),
+    message:$("message"), progress:$("progress"), summary:$("summary"), results:$("resultStep"),
+    selectedFiles:$("selectedFiles"), selectedGrid:$("selectedGrid"), displayEmpty:$("displayEmpty"), theme:$("themeBtn"),
+    previewDialog:$("previewDialog"), previewTitle:$("previewTitle"), previewImage:$("previewImage"), previewClose:$("previewClose")
+  };
+  let entries = [];
+  let converted = [];
+  let busy = false;
+
+  function ext(name) { return (name.split(".").pop() || "").toLowerCase(); }
+  function formatLabel(name) {
+    const type = ext(name);
+    return ({
+      jpg:"JPG", jpeg:"JPG", png:"PNG", webp:"WebP", gif:"GIF", bmp:"BMP",
+      avif:"AVIF", heic:"HEIC", heif:"HEIF", tif:"TIFF", tiff:"TIFF"
+    })[type] || type.toUpperCase();
+  }
+  function size(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / 1048576).toFixed(1) + " MB";
+  }
+  function message(text, kind) {
+    ui.message.textContent = text;
+    ui.message.className = "message" + (kind ? " " + kind : "");
+  }
+  function refresh() {
+    ui.convert.disabled = busy || entries.length === 0;
+    ui.download.disabled = busy || converted.length === 0;
+    ui.clear.disabled = busy || entries.length === 0;
+    ui.input.disabled = busy;
+    ui.output.disabled = busy;
+    ui.quality.disabled = busy || ui.output.value === "image/png";
+    ui.qualityNote.textContent = ui.output.value === "image/png"
+      ? "PNG 為無損輸出，品質滑桿不適用。"
+      : "品質設定適用於 JPG 與 WebP；PNG 為無損輸出。";
+    ui.list.hidden = entries.length === 0;
+    const hasProcessed = entries.some(entry =>
+      entry.state.classList.contains("ok") || entry.state.classList.contains("bad")
+    );
+    ui.displayEmpty.hidden = entries.length !== 0;
+    ui.selectedFiles.hidden = entries.length === 0 || hasProcessed;
+    ui.results.hidden = !hasProcessed;
+    ui.summary.textContent = entries.length
+      ? entries.length + " 個檔案・" + size(entries.reduce((n, e) => n + e.file.size, 0)) +
+        (converted.length ? "・已轉換 " + converted.length + " 個" : "")
+      : "";
+  }
+  function resetPreviews() {
+    for (const entry of entries) {
+      if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
+      entry.previewUrl = null;
+      entry.outputBlob = null;
+      entry.outputName = "";
+      entry.nameLabel.textContent = entry.file.name;
+      entry.sizeLabel.textContent = size(entry.file.size);
+      entry.previewImg.removeAttribute("src");
+      entry.previewBtn.hidden = true;
+      entry.downloadBtn.hidden = true;
+    }
+    if (ui.previewDialog.open) ui.previewDialog.close();
+  }
+  function openPreview(entry) {
+    if (!entry.previewUrl) return;
+    ui.previewTitle.textContent = entry.outputName;
+    ui.previewImage.src = entry.previewUrl;
+    ui.previewImage.alt = entry.outputName;
+    ui.previewDialog.showModal();
+  }
+  function openSourcePreview(entry) {
+    if (!entry.sourceUrl) return;
+    ui.previewTitle.textContent = entry.file.name;
+    ui.previewImage.src = entry.sourceUrl;
+    ui.previewImage.alt = entry.file.name;
+    ui.previewDialog.showModal();
+  }
+  function clearSourcePreviews() {
+    for (const entry of entries) {
+      if (entry.sourceUrl) URL.revokeObjectURL(entry.sourceUrl);
+      entry.sourceUrl = null;
+    }
+    ui.selectedGrid.replaceChildren();
+  }
+  function downloadOne(entry) {
+    if (!entry.outputBlob || !entry.outputName) return;
+    const url = URL.createObjectURL(entry.outputBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = entry.outputName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    message("已下載「" + entry.outputName + "」。", "success");
+  }
+  function addFiles(files) {
+    if (busy) return;
+    const accepted = Array.from(files).filter(file => supported.has(ext(file.name)));
+    const skipped = files.length - accepted.length;
+    if (!accepted.length) {
+      if (files.length) message("未找到支援的圖片格式。", "error");
+      return;
+    }
+    converted = [];
+    resetPreviews();
+    for (const entry of entries) { entry.state.textContent = "等待中"; entry.state.className = "status"; }
+    for (const file of accepted) {
+      const li = document.createElement("li");
+      const info = document.createElement("div");
+      const name = document.createElement("span");
+      const bytes = document.createElement("span");
+      const state = document.createElement("span");
+      const previewBtn = document.createElement("button");
+      const previewImg = document.createElement("img");
+      const rowActions = document.createElement("div");
+      const downloadBtn = document.createElement("button");
+      const selectedItem = document.createElement("div");
+      const selectedThumb = document.createElement("button");
+      const selectedImg = document.createElement("img");
+      const selectedName = document.createElement("span");
+      const selectedSize = document.createElement("span");
+      info.className = "file-info";
+      name.className = "filename";
+      bytes.className = "size";
+      state.className = "status";
+      previewBtn.className = "preview-btn";
+      previewBtn.type = "button";
+      previewBtn.hidden = true;
+      previewBtn.setAttribute("aria-label", "預覽 " + file.name);
+      rowActions.className = "row-actions";
+      downloadBtn.className = "download-one";
+      downloadBtn.type = "button";
+      downloadBtn.hidden = true;
+      downloadBtn.title = "下載";
+      downloadBtn.setAttribute("aria-label", "下載轉檔後的 " + file.name);
+      downloadBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11"></path><path d="m7.5 10 4.5 4.5 4.5-4.5"></path><path d="M5 20h14"></path></svg>';
+      selectedItem.className = "selected-item";
+      selectedThumb.className = "selected-thumb";
+      selectedThumb.type = "button";
+      selectedThumb.setAttribute("aria-label", "預覽原始圖片 " + file.name);
+      selectedImg.alt = "";
+      selectedName.className = "selected-name";
+      selectedName.textContent = file.name;
+      selectedName.title = file.name;
+      selectedSize.className = "selected-size";
+      selectedSize.textContent = size(file.size);
+      previewImg.alt = "";
+      name.textContent = file.name;
+      bytes.textContent = size(file.size);
+      state.textContent = "等待中";
+      previewBtn.appendChild(previewImg);
+      info.append(name, bytes);
+      rowActions.append(state, downloadBtn);
+      li.append(previewBtn, info, rowActions);
+      ui.list.appendChild(li);
+      selectedThumb.appendChild(selectedImg);
+      selectedItem.append(selectedThumb, selectedName, selectedSize);
+      ui.selectedGrid.appendChild(selectedItem);
+      const sourceUrl = URL.createObjectURL(file);
+      const entry = {file, state, nameLabel:name, sizeLabel:bytes, previewBtn, previewImg, downloadBtn, selectedThumb, selectedImg, sourceUrl, previewUrl:null, outputBlob:null, outputName:""};
+      selectedImg.src = sourceUrl;
+      selectedImg.addEventListener("error", async function useDecodedThumbnail() {
+        selectedImg.removeEventListener("error", useDecodedThumbnail);
+        try {
+          const canvas = await toCanvas(file);
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+          if (!blob) throw new Error("無法產生縮圖");
+          URL.revokeObjectURL(entry.sourceUrl);
+          entry.sourceUrl = URL.createObjectURL(blob);
+          selectedImg.src = entry.sourceUrl;
+        } catch (_) {
+          URL.revokeObjectURL(entry.sourceUrl);
+          entry.sourceUrl = null;
+          selectedThumb.disabled = true;
+          selectedThumb.innerHTML = '<span class="selected-fallback">IMAGE</span>';
+        }
+      });
+      previewBtn.addEventListener("click", () => openPreview(entry));
+      downloadBtn.addEventListener("click", () => downloadOne(entry));
+      selectedThumb.addEventListener("click", () => openSourcePreview(entry));
+      entries.push(entry);
+    }
+    ui.progress.hidden = true;
+    ui.progress.value = 0;
+    message("已加入 " + accepted.length + " 個檔案" + (skipped ? "；略過 " + skipped + " 個不支援的檔案" : "") + "。");
+    refresh();
+  }
+  function imageCanvas(image) {
+    const width = image.naturalWidth || image.width;
+    const height = image.naturalHeight || image.height;
+    if (!width || !height || width > 32767 || height > 32767 || width * height > 100000000) {
+      throw new Error("圖片尺寸超過此工具可處理的範圍");
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    return canvas;
+  }
+  async function blobToCanvas(blob) {
+    const url = URL.createObjectURL(blob);
+    try {
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("瀏覽器無法解碼此圖片"));
+        img.src = url;
+      });
+      const canvas = imageCanvas(image);
+      canvas.getContext("2d").drawImage(image, 0, 0);
+      return canvas;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+  async function tiffToCanvas(file) {
+    if (typeof UTIF === "undefined") throw new Error("TIFF 解碼程式庫未載入");
+    const buffer = await file.arrayBuffer();
+    const pages = UTIF.decode(buffer);
+    if (!pages.length) throw new Error("TIFF 沒有可讀取的影像");
+    UTIF.decodeImage(buffer, pages[0]);
+    const page = pages[0];
+    const canvas = imageCanvas({width:page.width, height:page.height});
+    const context = canvas.getContext("2d");
+    const data = context.createImageData(page.width, page.height);
+    data.data.set(UTIF.toRGBA8(page));
+    context.putImageData(data, 0, 0);
+    return canvas;
+  }
+  async function toCanvas(file) {
+    const type = ext(file.name);
+    if (type === "heic" || type === "heif") {
+      if (typeof heic2any === "undefined") throw new Error("HEIC 解碼程式庫未載入");
+      const result = await heic2any({blob:file, toType:"image/png"});
+      return blobToCanvas(Array.isArray(result) ? result[0] : result);
+    }
+    if (type === "tif" || type === "tiff") return tiffToCanvas(file);
+    return blobToCanvas(file);
+  }
+  function outputBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+      if (type === "image/jpeg") {
+        const flat = document.createElement("canvas");
+        flat.width = canvas.width;
+        flat.height = canvas.height;
+        const ctx = flat.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, flat.width, flat.height);
+        ctx.drawImage(canvas, 0, 0);
+        canvas = flat;
+      }
+      try {
+        canvas.toBlob(blob => {
+          if (!blob) return reject(new Error("瀏覽器無法輸出此圖片"));
+          if (blob.type !== type) return reject(new Error("瀏覽器不支援所選輸出格式"));
+          resolve(blob);
+        }, type, quality);
+      } catch (error) { reject(error); }
+    });
+  }
+  function outputName(name, extension, used) {
+    const stem = name.replace(/\.[^.]+$/, "").replace(/[\/\\]/g, "_").trim() || "image";
+    let result = stem + "." + extension;
+    let index = 2;
+    while (used.has(result.toLowerCase())) {
+      result = stem + " (" + index + ")." + extension;
+      index++;
+    }
+    used.add(result.toLowerCase());
+    return result;
+  }
+  async function convertAll() {
+    if (busy || !entries.length) return;
+    busy = true;
+    converted = [];
+    resetPreviews();
+    refresh();
+    message("正在轉換…");
+    ui.progress.hidden = false;
+    ui.progress.value = 0;
+    const type = ui.output.value;
+    const extension = type === "image/jpeg" ? "jpg" : type === "image/png" ? "png" : "webp";
+    const outputFormat = formatLabel("image." + extension);
+    const quality = Number(ui.quality.value) / 100;
+    const usedNames = new Set();
+    let failures = 0;
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      const sourceFormat = formatLabel(entry.file.name);
+      entry.state.textContent = "由 " + sourceFormat + " 檔轉換為 " + outputFormat + "…";
+      entry.state.className = "status";
+      try {
+        const canvas = await toCanvas(entry.file);
+        const blob = await outputBlob(canvas, type, quality);
+        const name = outputName(entry.file.name, extension, usedNames);
+        converted.push({name, blob});
+        entry.outputName = name;
+        entry.outputBlob = blob;
+        entry.nameLabel.textContent = name;
+        entry.sizeLabel.textContent = size(blob.size);
+        entry.previewUrl = URL.createObjectURL(blob);
+        entry.previewImg.src = entry.previewUrl;
+        entry.previewBtn.setAttribute("aria-label", "預覽 " + name);
+        entry.previewBtn.hidden = false;
+        entry.downloadBtn.setAttribute("aria-label", "下載 " + name);
+        entry.downloadBtn.hidden = false;
+        entry.state.textContent = "由 " + sourceFormat + " 檔轉換為 " + outputFormat + "，已完成（轉檔後 " + size(blob.size) + "）";
+        entry.state.className = "status ok";
+      } catch (error) {
+        failures++;
+        entry.state.textContent = "由 " + sourceFormat + " 檔轉換為 " + outputFormat + " 失敗：" + (error && error.message ? error.message : "未知錯誤");
+        entry.state.className = "status bad";
+      }
+      ui.progress.value = Math.round((i + 1) / entries.length * 100);
+      ui.summary.textContent = "已處理 " + (i + 1) + " / " + entries.length + "・成功 " + converted.length + "・失敗 " + failures;
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    busy = false;
+    refresh();
+    const sourceFormats = Array.from(new Set(entries.map(entry => formatLabel(entry.file.name)))).join("、");
+    message(sourceFormats + " → " + outputFormat + " 轉換完成：成功 " + converted.length + " 個，失敗 " + failures + " 個。", failures ? "error" : "success");
+  }
+  async function downloadZip() {
+    if (busy || !converted.length) return;
+    if (typeof JSZip === "undefined") return message("ZIP 程式庫未載入，請檢查網路連線。", "error");
+    busy = true;
+    refresh();
+    message("正在建立 ZIP…");
+    try {
+      const zip = new JSZip();
+      for (const item of converted) zip.file(item.name, item.blob);
+      const blob = await zip.generateAsync({type:"blob"});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "converted_images.zip";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      message("ZIP 已準備下載。", "success");
+    } catch (error) {
+      message("建立 ZIP 失敗：" + (error && error.message ? error.message : "未知錯誤"), "error");
+    } finally {
+      busy = false;
+      refresh();
+    }
+  }
+  ui.input.addEventListener("change", event => {
+    addFiles(event.target.files);
+    event.target.value = "";
+  });
+  ui.drop.addEventListener("dragover", event => { event.preventDefault(); if (!busy) ui.drop.classList.add("drag"); });
+  ui.drop.addEventListener("dragleave", () => ui.drop.classList.remove("drag"));
+  ui.drop.addEventListener("drop", event => {
+    event.preventDefault();
+    ui.drop.classList.remove("drag");
+    if (!busy) addFiles(event.dataTransfer.files);
+  });
+  ui.drop.addEventListener("keydown", event => {
+    if ((event.key === "Enter" || event.key === " ") && !busy) {
+      event.preventDefault();
+      ui.input.click();
+    }
+  });
+  ui.output.addEventListener("change", () => {
+    if (converted.length) { converted = []; resetPreviews(); for (const entry of entries) { entry.state.textContent = "等待中"; entry.state.className = "status"; } message("輸出設定已變更，請重新轉換。"); }
+    refresh();
+  });
+  ui.quality.addEventListener("input", () => {
+    ui.qualityText.textContent = ui.quality.value + "%";
+    if (converted.length) { converted = []; resetPreviews(); for (const entry of entries) { entry.state.textContent = "等待中"; entry.state.className = "status"; } message("品質設定已變更，請重新轉換。"); refresh(); }
+  });
+  ui.convert.addEventListener("click", convertAll);
+  ui.download.addEventListener("click", downloadZip);
+  ui.clear.addEventListener("click", () => {
+    if (busy) return;
+    resetPreviews();
+    clearSourcePreviews();
+    entries = [];
+    converted = [];
+    ui.list.replaceChildren();
+    ui.progress.hidden = true;
+    ui.progress.value = 0;
+    message("");
+    refresh();
+  });
+  ui.previewClose.addEventListener("click", () => ui.previewDialog.close());
+  ui.previewDialog.addEventListener("click", event => {
+    if (event.target === ui.previewDialog) ui.previewDialog.close();
+  });
+  ui.previewDialog.addEventListener("close", () => ui.previewImage.removeAttribute("src"));
+  ui.theme.addEventListener("click", () => {
+    document.body.classList.toggle("dark");
+    try { localStorage.setItem("image-converter-theme", document.body.classList.contains("dark") ? "dark" : "light"); } catch (_) {}
+  });
+  try {
+    const theme = localStorage.getItem("image-converter-theme");
+    if (theme === "dark" || (!theme && matchMedia("(prefers-color-scheme: dark)").matches)) document.body.classList.add("dark");
+  } catch (_) {}
+  refresh();
+})();
+</script>
+</body>
+</html>
