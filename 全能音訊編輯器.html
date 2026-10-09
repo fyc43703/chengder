@@ -52,7 +52,7 @@
     .titles h1{margin:0; font-size:26px; font-weight:700;}
     .titles h2{margin:2px 0 0; font-size:14px; font-weight:400; color:var(--muted);}
     .author{font-size:13px; color:var(--muted); white-space:nowrap; margin-top: 0.2rem;}
-    .glass{background:var(--panel-bg); border:1px solid var(--stroke); border-radius:var(--card-radius); backdrop-filter: saturate(160%) blur(22px); -webkit-backdrop-filter:sate(160%) blur(22px); box-shadow:var(--shadow); transition: background-color .3s ease, border-color .3s ease;}
+    .glass{background:var(--panel-bg); border:1px solid var(--stroke); border-radius:var(--card-radius); backdrop-filter: saturate(160%) blur(22px); -webkit-backdrop-filter:saturate(160%) blur(22px); box-shadow:var(--shadow); transition: background-color .3s ease, border-color .3s ease;}
     .layout{display:grid; grid-template-columns: 360px 1fr; gap:18px; align-items: start;}
     .sidebar{display:flex; flex-direction:column; gap:12px;}
     .panel{padding:18px;}
@@ -139,6 +139,12 @@
     .effect-group .btn:hover { background-color: rgba(0,0,0,0.09); }
     html.dark-theme .effect-group .btn:hover { background-color: var(--btn-ghost-bg-hover); }
     .btn.center-text { justify-content: center; text-align: center; }
+    .history-toolbar { display:flex; gap:8px; width:100%; }
+    .history-toolbar .btn { flex:1; }
+    .metrics-grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+    .metric-card { padding:10px; border-radius:10px; background:rgba(0,0,0,.04); text-align:center; }
+    .metric-card .metric-value { display:block; margin-top:4px; font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; }
+    .batch-panel { border-top:1px solid var(--stroke); padding-top:12px; margin-top:4px; }
     
     /* ===== START OF RWD ADJUSTMENTS ===== */
     @media (max-width: 1024px) {
@@ -302,6 +308,22 @@
                 <span>音量標準化 (-1 dBFS)</span>
               </button>
 
+              <div class="history-toolbar">
+                <button id="undoBtn" class="btn ghost" title="復原上一個編輯操作" disabled>↶ 復原</button>
+                <button id="redoBtn" class="btn ghost" title="重做已復原的編輯操作" disabled>↷ 重做</button>
+              </div>
+
+              <div class="effect-group">
+                <h4 class="blue-title">降噪處理</h4>
+                <div class="badge">使用目前選取範圍估算噪聲；未選取時取開頭 0.5 秒。</div>
+                <div class="slider">
+                  <label>降噪強度</label>
+                  <input id="noiseReductionAmount" type="range" min="0" max="100" step="1" value="60" title="調整噪聲抑制強度">
+                  <div class="value" id="noiseReductionAmountV">60 %</div>
+                </div>
+                <button id="applyNoiseReductionBtn" class="btn ghost center-text" title="估算噪聲並套用降噪">套用降噪</button>
+              </div>
+
               <div class="effect-group">
                 <h4 class="blue-title"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12H5L7 7L9 17L11 10L13 14L15 9L17 15L19 12H22" stroke="#0A84FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4 8L2 10L4 12" stroke="#FF8C66" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M20 8L22 10L20 12" stroke="#FF8C66" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>動態壓縮器</h4>
                 <div class="slider">
@@ -431,6 +453,14 @@
                       <canvas id="peakMeterCanvas"></canvas>
                       <div class="badge">分析儀：雙聲道峰值電平錶</div>
                   </div>
+                  <div class="analyzer-item" style="grid-column:1 / -1;">
+                      <div class="metrics-grid">
+                        <div class="metric-card"><span class="badge">整合響度 LUFS</span><span id="lufsValue" class="metric-value">--</span></div>
+                        <div class="metric-card"><span class="badge">短期響度 LUFS</span><span id="shortLufsValue" class="metric-value">--</span></div>
+                        <div class="metric-card"><span class="badge">True Peak 估算</span><span id="truePeakValue" class="metric-value">--</span></div>
+                      </div>
+                      <button id="analyzeLufsBtn" class="btn ghost center-text" title="分析目前音訊的整合響度、短期響度與峰值">分析 LUFS / 峰值</button>
+                  </div>
               </div>
           </div>
         </div>
@@ -487,6 +517,10 @@
           <div class="toolbar" style="margin-top: 24px; display:flex; justify-content:center; gap: 10px;">
               <button id="saveFileBtn" class="btn primary" style="width: 33.33%;" title="開始處理音訊並觸發瀏覽器下載">另存新檔</button>
               <button id="cancelExportBtn" class="btn ghost" style="width: 33.33%;" title="取消匯出並返回主編輯介面">取消</button>
+          </div>
+          <div class="batch-panel">
+            <button id="batchExportBtn" class="btn ghost center-text" style="width:100%;" title="使用目前匯出設定處理所有已匯入檔案">批次處理全部已匯入檔案</button>
+            <div class="badge" style="text-align:center; margin-top:8px;">將套用目前的 EQ、音量、速度與匯出格式設定。</div>
           </div>
       </div>
       <a id="download" style="display:none"></a>
@@ -569,17 +603,19 @@
   const deqInvert = AC.createGain(); deqInvert.gain.value = -1;
   const deqMakeUp = AC.createGain();
 
-  preEffectNode.connect(hp).connect(lp).connect(pan).connect(gain).connect(analyser).connect(AC.destination);
+  preEffectNode.connect(hp).connect(lp).connect(pan);
+  gain.connect(analyser).connect(AC.destination);
   gain.connect(splitter);
   splitter.connect(analyserL, 0);
   splitter.connect(analyserR, 1);
   
   const deqChainInput = AC.createGain();
   pan.connect(deqChainInput);
-  deqChainInput.connect(peak).connect(deqCompressor).connect(deqInvert).connect(deqMakeUp);
-  deqMakeUp.connect(gain);
+  deqChainInput.connect(gain);
   
   let audioBuffer = null, sourceNode = null;
+  let loadRequestId = 0;
+  let editHistory = [], redoHistory = [];
   let isPlaying = false, startTime = 0, pausedAt = 0, animationFrameId = null;
   let loopStart = 0, loopEnd = 0, isLooping = false;
   let zoom = 1; let viewOffset = 0;
@@ -589,6 +625,10 @@
 
   const $ = (id) => document.getElementById(id);
   const setVal = (id, txt) => $(id).textContent = txt;
+  function updateHistoryButtons() {
+      $('undoBtn').disabled = editHistory.length === 0;
+      $('redoBtn').disabled = redoHistory.length === 0;
+  }
   
   const waveformCanvas = $('waveformCanvas'), waveformCtx = waveformCanvas.getContext('2d');
   const playhead = $('playhead'), selectionRect = $('selectionRect');
@@ -632,7 +672,7 @@
       let newFilesAdded = false;
 
       for (const file of files) {
-          if (!importedFiles.some(f => f.name === file.name)) {
+          if (!importedFiles.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)) {
               importedFiles.push(file);
               newFilesAdded = true;
           }
@@ -648,12 +688,18 @@
   }
 
   async function loadFile(file) {
+    const requestId = ++loadRequestId;
     stop();
     $('loadingIndicator').querySelector('div:last-child').textContent = '音訊載入中...';
     $('loadingIndicator').style.display = 'flex';
     try {
       const arrayBuffer = await file.arrayBuffer();
-      audioBuffer = await AC.decodeAudioData(arrayBuffer);
+      const decodedBuffer = await AC.decodeAudioData(arrayBuffer);
+      if (requestId !== loadRequestId) return;
+      audioBuffer = decodedBuffer;
+      editHistory = [];
+      redoHistory = [];
+      updateHistoryButtons();
       currentFileIndex = importedFiles.findIndex(f => f.name === file.name);
       updateFileList();
       const duration = audioBuffer ? audioBuffer.duration : 0;
@@ -665,10 +711,13 @@
       resetUI();
       drawWaveform();
     } catch (e) {
+      if (requestId !== loadRequestId) return;
       console.error("Error decoding audio file:", e);
       audioBuffer = null;
       updateFileList();
+      alert("無法讀取此音訊檔案，請確認格式受瀏覽器支援。");
     } finally {
+        if (requestId !== loadRequestId) return;
         $('loadingIndicator').style.display = 'none';
     }
   }
@@ -685,6 +734,10 @@
 
   function play(startOffset = pausedAt) {
     if (isPlaying || !audioBuffer) return;
+    if (isLooping && loopEnd <= loopStart) {
+        isLooping = false;
+        $('loopToggle').checked = false;
+    }
     if(isLooping && startOffset >= loopEnd) startOffset = loopStart;
 
     sourceNode = AC.createBufferSource(); sourceNode.buffer = audioBuffer;
@@ -930,12 +983,14 @@
   $('peakQ').oninput = e=>{ peak.Q.value = +e.target.value; setVal('pqV', Number(peak.Q.value).toFixed(1)); };
   $('deqThreshold').oninput = e => {
       const val = +e.target.value;
+      deqChainInput.disconnect();
+      deqMakeUp.disconnect();
       if (val > -100) {
           deqCompressor.threshold.value = val; deqCompressor.ratio.value = 4;
           deqMakeUp.gain.value = -val / 2;
-          deqChainInput.connect(peak);
+          deqChainInput.connect(peak).connect(deqCompressor).connect(deqInvert).connect(deqMakeUp).connect(gain);
       } else {
-          try { deqChainInput.disconnect(peak); } catch(e) {}
+          deqChainInput.connect(gain);
       }
       setVal('deqTV', val > -100 ? `${val} dB` : `-inf dB`);
   };
@@ -945,14 +1000,39 @@
   $('maximizeAmount').oninput = e => setVal('maximizeAmountV', `${e.target.value} %`);
 
   function updateBuffer(newBuffer) {
-      const wasPlaying = isPlaying; stop(); audioBuffer = newBuffer;
+      const wasPlaying = isPlaying;
+      if (audioBuffer) editHistory.push(audioBuffer);
+      redoHistory = [];
+      stop(); audioBuffer = newBuffer;
       const duration = audioBuffer ? audioBuffer.duration : 0;
       $('loopStart').value = formatTime(0); $('loopEnd').value = formatTime(duration);
       loopStart = 0; loopEnd = duration;
       updateTimeDisplay(); clearSelection();
       drawWaveform();
+      updateHistoryButtons();
       if(wasPlaying) play();
   }
+
+  $('undoBtn').onclick = () => {
+      if (!audioBuffer || editHistory.length === 0) return;
+      redoHistory.push(audioBuffer);
+      const previous = editHistory.pop();
+      const wasPlaying = isPlaying; stop(); audioBuffer = previous;
+      $('loopStart').value = formatTime(0); $('loopEnd').value = formatTime(audioBuffer.duration);
+      loopStart = 0; loopEnd = audioBuffer.duration;
+      clearSelection(); drawWaveform(); updateTimeDisplay(); updatePlayhead(); updateHistoryButtons();
+      if (wasPlaying) play();
+  };
+  $('redoBtn').onclick = () => {
+      if (!audioBuffer || redoHistory.length === 0) return;
+      editHistory.push(audioBuffer);
+      const next = redoHistory.pop();
+      const wasPlaying = isPlaying; stop(); audioBuffer = next;
+      $('loopStart').value = formatTime(0); $('loopEnd').value = formatTime(audioBuffer.duration);
+      loopStart = 0; loopEnd = audioBuffer.duration;
+      clearSelection(); drawWaveform(); updateTimeDisplay(); updatePlayhead(); updateHistoryButtons();
+      if (wasPlaying) play();
+  };
 
   async function applyOfflineEffect(nodeSetupCallback) {
       if (!audioBuffer) { alert("請先載入音訊檔案"); return; }
@@ -1002,6 +1082,7 @@
     if (!audioBuffer || selectionEnd === selectionStart) return;
     const start = Math.floor(selectionStart * audioBuffer.sampleRate), end = Math.floor(selectionEnd * audioBuffer.sampleRate);
     const len = audioBuffer.length - (end - start);
+    if (len <= 0) return;
     const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, len, audioBuffer.sampleRate);
     for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
       const oldData = audioBuffer.getChannelData(i), newData = newBuffer.getChannelData(i);
@@ -1042,10 +1123,105 @@
       });
   };
 
+  $('noiseReductionAmount').oninput = e => setVal('noiseReductionAmountV', `${e.target.value} %`);
+  $('applyNoiseReductionBtn').onclick = async () => {
+      if (!audioBuffer) { alert('請先載入音訊檔案'); return; }
+      const amount = (+$('noiseReductionAmount').value || 0) / 100;
+      const sampleRate = audioBuffer.sampleRate;
+      const profileStart = selectionEnd > selectionStart ? Math.floor(selectionStart * sampleRate) : 0;
+      const profileEnd = selectionEnd > selectionStart ? Math.floor(selectionEnd * sampleRate) : Math.min(audioBuffer.length, Math.floor(sampleRate * 0.5));
+      if (profileEnd <= profileStart) return;
+      const indicator = $('loadingIndicator');
+      indicator.querySelector('div:last-child').textContent = '降噪處理中...';
+      indicator.style.display = 'flex';
+      await new Promise(resolve => setTimeout(resolve, 20));
+      try {
+          let noiseEnergy = 0, noiseCount = 0;
+          for (let i = profileStart; i < profileEnd; i++) {
+              let sampleEnergy = 0;
+              for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+                  const s = audioBuffer.getChannelData(ch)[i] || 0;
+                  sampleEnergy += s * s;
+              }
+              noiseEnergy += sampleEnergy / audioBuffer.numberOfChannels;
+              noiseCount++;
+          }
+          const noiseRms = Math.sqrt(noiseEnergy / Math.max(1, noiseCount));
+          const threshold = Math.max(0.00001, noiseRms * (1.15 + amount * 3.5));
+          const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, audioBuffer.length, sampleRate);
+          const channels = Array.from({length: audioBuffer.numberOfChannels}, (_, ch) => audioBuffer.getChannelData(ch));
+          const outputs = Array.from({length: audioBuffer.numberOfChannels}, (_, ch) => newBuffer.getChannelData(ch));
+          let envelope = 1;
+          for (let i = 0; i < audioBuffer.length; i++) {
+              let energy = 0;
+              for (let ch = 0; ch < channels.length; ch++) energy += channels[ch][i] * channels[ch][i];
+              const rms = Math.sqrt(energy / channels.length);
+              const target = rms < threshold ? Math.max(0.04, 1 - amount * 0.92) : 1;
+              envelope += (target - envelope) * (target < envelope ? 0.025 : 0.0025);
+              for (let ch = 0; ch < channels.length; ch++) outputs[ch][i] = channels[ch][i] * envelope;
+          }
+          updateBuffer(newBuffer);
+      } finally {
+          indicator.style.display = 'none';
+      }
+  };
+
+  function loudnessFromMeanSquare(meanSquare) {
+      return meanSquare > 0 ? -0.691 + 10 * Math.log10(meanSquare) : -Infinity;
+  }
+  function formatDb(value) { return Number.isFinite(value) ? `${value.toFixed(1)} dB` : '-inf'; }
+  $('analyzeLufsBtn').onclick = async () => {
+      if (!audioBuffer) { alert('請先載入音訊檔案'); return; }
+      const indicator = $('loadingIndicator');
+      indicator.querySelector('div:last-child').textContent = 'LUFS 分析中...';
+      indicator.style.display = 'flex';
+      await new Promise(resolve => setTimeout(resolve, 20));
+      try {
+          const blockSize = Math.max(1, Math.floor(audioBuffer.sampleRate * 0.4));
+          const blocks = [];
+          let peak = 0;
+          for (let start = 0; start < audioBuffer.length; start += blockSize) {
+              const end = Math.min(audioBuffer.length, start + blockSize);
+              let sum = 0, count = 0;
+              for (let i = start; i < end; i++) {
+                  let sampleEnergy = 0;
+                  for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+                      const sample = audioBuffer.getChannelData(ch)[i] || 0;
+                      sampleEnergy += sample * sample;
+                      peak = Math.max(peak, Math.abs(sample));
+                  }
+                  sum += sampleEnergy / audioBuffer.numberOfChannels;
+                  count++;
+              }
+              blocks.push(loudnessFromMeanSquare(sum / Math.max(1, count)));
+          }
+          const valid = blocks.filter(v => v > -70);
+          const preliminary = valid.length ? 10 * Math.log10(valid.reduce((sum, db) => sum + Math.pow(10, (db + 0.691) / 10), 0) / valid.length) - 0.691 : -Infinity;
+          const gated = valid.filter(db => db >= preliminary - 10);
+          const integrated = gated.length ? 10 * Math.log10(gated.reduce((sum, db) => sum + Math.pow(10, (db + 0.691) / 10), 0) / gated.length) - 0.691 : preliminary;
+          const shortStart = Math.max(0, audioBuffer.length - Math.floor(audioBuffer.sampleRate * 3));
+          let shortSum = 0, shortCount = 0;
+          for (let i = shortStart; i < audioBuffer.length; i++) {
+              let e = 0;
+              for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) { const s = audioBuffer.getChannelData(ch)[i] || 0; e += s * s; }
+              shortSum += e / audioBuffer.numberOfChannels; shortCount++;
+          }
+          $('lufsValue').textContent = formatDb(integrated);
+          $('shortLufsValue').textContent = formatDb(loudnessFromMeanSquare(shortSum / Math.max(1, shortCount)));
+          $('truePeakValue').textContent = formatDb(peak > 0 ? 20 * Math.log10(peak) : -Infinity);
+      } finally {
+          indicator.style.display = 'none';
+      }
+  };
+
   const scopeCanvas = $('scope'), scopeCtx = scopeCanvas.getContext('2d');
   const oscilloscopeCanvas = $('oscilloscopeCanvas'), oscilloscopeCtx = oscilloscopeCanvas.getContext('2d');
   const vectorscopeCanvas = $('vectorscopeCanvas'), vectorscopeCtx = vectorscopeCanvas.getContext('2d');
   const peakMeterCanvas = $('peakMeterCanvas'), peakMeterCtx = peakMeterCanvas.getContext('2d');
+  const freqData = new Uint8Array(analyser.frequencyBinCount);
+  const timeData = new Uint8Array(analyser.frequencyBinCount);
+  const timeDataL = new Uint8Array(analyserL.fftSize);
+  const timeDataR = new Uint8Array(analyserR.fftSize);
   
   function getColorForValue(value) {
     const hue = (1 - value) * 240;
@@ -1064,10 +1240,6 @@
     });
     
     const bufferLength = analyser.frequencyBinCount;
-    const freqData = new Uint8Array(bufferLength);
-    const timeData = new Uint8Array(bufferLength);
-    const timeDataL = new Uint8Array(analyserL.fftSize);
-    const timeDataR = new Uint8Array(analyserR.fftSize);
 
     analyser.getByteFrequencyData(freqData);
     analyser.getByteTimeDomainData(timeData);
@@ -1131,19 +1303,24 @@
   drawAnalyzers();
   
   function parseTimeToSeconds(timeStr) {
-    const parts = String(timeStr).split(/[:.]/);
-    if(parts.length < 2) return 0;
-    return (parseInt(parts[0] || 0, 10) * 60) + parseInt(parts[1] || 0, 10) + (parseFloat(parts[2] || 0) / 10);
+    const match = String(timeStr).trim().match(/^(\d+):([0-5]\d)(?:\.(\d{1,3}))?$/);
+    if (!match) return 0;
+    const fraction = match[3] ? Number(`0.${match[3]}`) : 0;
+    return (parseInt(match[1], 10) * 60) + parseInt(match[2], 10) + fraction;
   }
   $('loopStart').onchange = () => { 
-    loopStart = parseTimeToSeconds($('loopStart').value);
+    loopStart = Math.max(0, Math.min(parseTimeToSeconds($('loopStart').value), audioBuffer?.duration || 0));
+    $('loopStart').value = formatTime(loopStart);
     if (!isPlaying) {
         pausedAt = loopStart;
         updatePlayhead();
         updateTimeDisplay();
     }
   };
-  $('loopEnd').onchange = () => { loopEnd = parseTimeToSeconds($('loopEnd').value) || (audioBuffer ? audioBuffer.duration : 0); };
+  $('loopEnd').onchange = () => {
+      loopEnd = Math.max(0, Math.min(parseTimeToSeconds($('loopEnd').value) || (audioBuffer ? audioBuffer.duration : 0), audioBuffer?.duration || 0));
+      $('loopEnd').value = formatTime(loopEnd);
+  };
   $('loopToggle').onchange = e => {
       isLooping = e.target.checked;
       if (isPlaying) {
@@ -1183,8 +1360,9 @@
   function bufferToMp3(buffer, bitrate) {
     return new Promise((resolve, reject) => {
         if (!mp3EncoderWorker) {
+            const lameUrl = new URL('lame.min.js', document.baseURI).href;
             const encoderJsString = `
-                self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.0/lame.min.js');
+                self.importScripts(${JSON.stringify(lameUrl)});
                 self.onmessage = function (e) {
                     if (e.data.command === 'encode') {
                         const mp3Data = encode(e.data);
@@ -1266,6 +1444,34 @@
     });
   }
 
+  async function renderForExport(bufferToRender) {
+      const exportRate = Math.max(0.01, parseFloat($('rate').value) || 1);
+      const outputChannels = selectedChannelMode === 'mono' ? 1 : bufferToRender.numberOfChannels;
+      const outputLength = Math.max(1, Math.ceil(bufferToRender.length / exportRate));
+      const offlineCtx = new OfflineAudioContext(outputChannels, outputLength, bufferToRender.sampleRate);
+      const oSrc = offlineCtx.createBufferSource(); oSrc.buffer = bufferToRender;
+      const oHp = offlineCtx.createBiquadFilter(), oPeak = offlineCtx.createBiquadFilter(), oLp = offlineCtx.createBiquadFilter();
+      const oPan = offlineCtx.createStereoPanner(), oGain = offlineCtx.createGain(), oExportGain = offlineCtx.createGain();
+      const oDeqC = offlineCtx.createDynamicsCompressor(), oDeqI = offlineCtx.createGain(), oDeqM = offlineCtx.createGain();
+      oHp.type = 'highpass'; oHp.frequency.value = hp.frequency.value; oHp.Q.value = 0.707;
+      oLp.type = 'lowpass'; oLp.frequency.value = lp.frequency.value; oLp.Q.value = 0.707;
+      oPeak.type = 'peaking'; oPeak.frequency.value = peak.frequency.value; oPeak.gain.value = peak.gain.value; oPeak.Q.value = peak.Q.value;
+      oPan.pan.value = pan.pan.value;
+      oGain.gain.value = gain.gain.value;
+      oExportGain.gain.value = parseFloat($('exportGain').value);
+      oSrc.playbackRate.value = exportRate;
+      let lastNode = oSrc.connect(oHp).connect(oLp).connect(oPan);
+      const deqThresh = parseFloat($('deqThreshold').value);
+      if (deqThresh > -100) {
+          oDeqC.threshold.value = deqThresh; oDeqC.ratio.value = 4; oDeqC.attack.value = 0.001; oDeqC.release.value = 0.1;
+          oDeqI.gain.value = -1; oDeqM.gain.value = -deqThresh / 2;
+          lastNode = lastNode.connect(oPeak).connect(oDeqC).connect(oDeqI).connect(oDeqM);
+      }
+      lastNode.connect(oGain).connect(oExportGain).connect(offlineCtx.destination);
+      oSrc.start(0);
+      return offlineCtx.startRendering();
+  }
+
   $('saveFileBtn').onclick = async () => {
     if (!audioBuffer) return;
     const status = $('exportStatus'), saveBtn = $('saveFileBtn');
@@ -1285,6 +1491,7 @@
         const originalFileName = importedFiles[currentFileIndex]?.name.replace(/\.[^/.]+$/, "") || "audio_file";
         const splitCount = parseInt($('splitCount').value) || 1;
         if (splitCount < 1) throw new Error("分割份數無效");
+        if (splitCount > audioBuffer.length) throw new Error("分割份數不可大於音訊取樣數");
 
         for (let i = 0; i < splitCount; i++) {
             statusText.textContent = `處理中... (${i + 1}/${splitCount})`;
@@ -1296,39 +1503,7 @@
                 bufferToRender.copyToChannel(audioBuffer.getChannelData(ch).subarray(startOffset, endOffset), ch);
             }
             
-            const offlineCtx = new OfflineAudioContext(bufferToRender.numberOfChannels, bufferToRender.length, bufferToRender.sampleRate);
-            const oSrc = offlineCtx.createBufferSource(); oSrc.buffer = bufferToRender;
-            const oHp = offlineCtx.createBiquadFilter(), oPeak = offlineCtx.createBiquadFilter(), oLp = offlineCtx.createBiquadFilter();
-            const oPan = offlineCtx.createStereoPanner(), oGain = offlineCtx.createGain(), oExportGain = offlineCtx.createGain();
-            const oDeqC = offlineCtx.createDynamicsCompressor(), oDeqI = offlineCtx.createGain(), oDeqM = offlineCtx.createGain();
-            
-            oHp.type = 'highpass'; oHp.frequency.value = hp.frequency.value; oHp.Q.value = 0.707;
-            oLp.type = 'lowpass'; oLp.frequency.value = lp.frequency.value; oLp.Q.value = 0.707;
-            oPeak.type = 'peaking'; oPeak.frequency.value = peak.frequency.value; oPeak.gain.value = peak.gain.value; oPeak.Q.value = peak.Q.value;
-            oPan.pan.value = pan.pan.value;
-            oGain.gain.value = gain.gain.value;
-            oExportGain.gain.value = parseFloat($('exportGain').value);
-            oSrc.playbackRate.value = parseFloat($('rate').value);
-
-            let lastNode = oSrc.connect(oHp).connect(oLp).connect(oPan);
-            
-            const deqThresh = parseFloat($('deqThreshold').value);
-            if (deqThresh > -100) {
-                oDeqC.threshold.value = deqThresh; oDeqC.ratio.value = 4; oDeqC.attack.value = 0.001; oDeqC.release.value = 0.1;
-                oDeqI.gain.value = -1; oDeqM.gain.value = -deqThresh / 2;
-                lastNode.connect(oPeak).connect(oDeqC).connect(oDeqI).connect(oDeqM);
-                oDeqM.connect(oGain);
-                lastNode.connect(oGain);
-                lastNode = oGain;
-            } else {
-                lastNode.connect(oGain);
-                lastNode = oGain;
-            }
-            
-            lastNode.connect(oExportGain).connect(offlineCtx.destination);
-            oSrc.start(0);
-
-            const renderedBuffer = await offlineCtx.startRendering();
+            const renderedBuffer = await renderForExport(bufferToRender);
             let audioBlob, fileExtension;
             if (selectedExportFormat === 'wav') { 
                 audioBlob = bufferToWav(renderedBuffer); 
@@ -1343,7 +1518,7 @@
             const fileName = splitCount > 1 ? `${originalFileName}_part${i+1}.${fileExtension}` : `${originalFileName}_processed.${fileExtension}`;
             a.download = fileName;
             a.click();
-            URL.revokeObjectURL(url);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
             
             await new Promise(resolve => setTimeout(resolve, 100));
         }
@@ -1364,6 +1539,52 @@
             }, 2500);
         }
     }
+  };
+
+  $('batchExportBtn').onclick = async () => {
+      if (importedFiles.length === 0) { alert('請先匯入音訊檔案'); return; }
+      const status = $('exportStatus'), statusText = $('exportStatusText'), spinner = status.querySelector('.spinner');
+      const splitCount = parseInt($('splitCount').value) || 1;
+      const batchButton = $('batchExportBtn');
+      status.style.display = 'flex'; spinner.style.display = 'block'; status.style.color = 'var(--blue)';
+      batchButton.disabled = true; $('saveFileBtn').disabled = true;
+      let completed = 0;
+      try {
+          for (let fileIndex = 0; fileIndex < importedFiles.length; fileIndex++) {
+              const file = importedFiles[fileIndex];
+              statusText.textContent = `讀取 ${fileIndex + 1}/${importedFiles.length}：${file.name}`;
+              const decoded = await AC.decodeAudioData(await file.arrayBuffer());
+              if (splitCount > decoded.length) throw new Error(`${file.name} 的分割份數過多`);
+              const partLength = Math.floor(decoded.length / splitCount);
+              const baseName = file.name.replace(/\.[^/.]+$/, '') || 'audio_file';
+              for (let part = 0; part < splitCount; part++) {
+                  statusText.textContent = `批次處理中... (${fileIndex + 1}/${importedFiles.length}, ${part + 1}/${splitCount})`;
+                  const start = part * partLength;
+                  const end = part + 1 === splitCount ? decoded.length : (part + 1) * partLength;
+                  const segment = AC.createBuffer(decoded.numberOfChannels, end - start, decoded.sampleRate);
+                  for (let ch = 0; ch < decoded.numberOfChannels; ch++) segment.copyToChannel(decoded.getChannelData(ch).subarray(start, end), ch);
+                  const rendered = await renderForExport(segment);
+                  const blob = selectedExportFormat === 'wav' ? bufferToWav(rendered) : await bufferToMp3(rendered, parseInt($('mp3Bitrate').value));
+                  const extension = selectedExportFormat === 'wav' ? 'wav' : 'mp3';
+                  const url = URL.createObjectURL(blob), anchor = $('download');
+                  anchor.href = url;
+                  anchor.download = `${baseName}_${splitCount > 1 ? `part${part + 1}` : 'processed'}.${extension}`;
+                  anchor.click();
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  completed++;
+                  await new Promise(resolve => setTimeout(resolve, 120));
+              }
+          }
+          statusText.textContent = `批次處理完成（${completed} 個檔案）`;
+          spinner.style.display = 'none';
+      } catch (error) {
+          console.error('Batch export failed:', error);
+          statusText.textContent = `批次處理失敗：${error.message}`;
+          status.style.color = 'var(--red)'; spinner.style.display = 'none';
+      } finally {
+          batchButton.disabled = false; $('saveFileBtn').disabled = false;
+          setTimeout(() => { status.style.display = 'none'; }, 3000);
+      }
   };
   
   // ===== Theme Toggler Logic =====
