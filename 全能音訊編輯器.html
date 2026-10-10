@@ -359,6 +359,18 @@
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 19C6 20.1046 6.89543 21 8 21H16C17.1046 21 18 20.1046 18 19V7H6V19Z" fill="#FF605C"></path><path d="M19 4H15.5L14.5 3H9.5L8.5 4H5V6H19V4Z" fill="#FF8C66"></path></svg>
                 <span>刪除 ( 多次刪除拖曳範圍，移除開頭結尾 )</span>
               </button>
+              <div class="effect-group">
+                <h4 class="blue-title">靜音與淡化</h4>
+                <div class="slider"><label>靜音門檻</label><input id="silenceThreshold" type="range" min="-80" max="-20" step="1" value="-45"><div class="value" id="silenceThresholdV">-45 dB</div></div>
+                <div class="slider"><label>最短靜音</label><input id="silenceDuration" type="range" min="0.1" max="3" step="0.1" value="0.5"><div class="value" id="silenceDurationV">0.5 秒</div></div>
+                <button id="removeSilenceBtn" class="btn ghost center-text">移除靜音段落</button>
+                <div class="toolbar" style="margin-top:4px; gap:6px;"><button id="fadeInBtn" class="btn ghost">淡入</button><button id="fadeOutBtn" class="btn ghost">淡出</button><button id="crossfadeBtn" class="btn ghost">交叉淡化</button></div>
+              </div>
+              <div class="effect-group">
+                <h4 class="blue-title">語音增強</h4>
+                <div class="badge">高通濾波、清晰度提升與壓縮，適合人聲錄音。</div>
+                <button id="voiceEnhanceBtn" class="btn ghost center-text">套用語音增強</button>
+              </div>
             </div>
         </div>
       </div>
@@ -476,6 +488,19 @@
               <div class="value" id="exportGainV">1.00</div>
           </div>
           
+          <div style="margin-top: 12px;">
+            <label for="exportPreset">匯出預設</label>
+            <select id="exportPreset" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--stroke); background:rgba(255,255,255,.5); margin-top:4px;">
+              <option value="custom">自訂</option><option value="podcast">Podcast（-16 LUFS）</option><option value="youtube">YouTube（-14 LUFS）</option><option value="line">LINE 語音</option><option value="archive">無損保存（WAV）</option>
+            </select>
+          </div>
+          <div style="margin-top: 12px;">
+            <label>音訊 Metadata</label>
+            <div class="input-group"><label for="metaTitle">標題</label><input id="metaTitle" type="text" placeholder="音訊標題"></div>
+            <div class="input-group"><label for="metaArtist">作者</label><input id="metaArtist" type="text" placeholder="作者／演講者"></div>
+            <div class="input-group"><label for="metaAlbum">專輯</label><input id="metaAlbum" type="text" placeholder="專輯或節目名稱"></div>
+            <div class="input-group"><label for="metaYear">年份</label><input id="metaYear" type="text" placeholder="2026"></div>
+          </div>
           <div style="margin-top: 12px;">
             <label>匯出的音訊格式</label>
             <div class="seg" id="formatSelector" style="margin-top:4px; justify-content: center;">
@@ -1039,32 +1064,53 @@
 
   $('undoBtn').onclick = () => {
       if (!audioBuffer || editHistory.length === 0) return;
-      redoHistory.push(audioBuffer);
-      const previous = editHistory.pop();
-      const wasPlaying = isPlaying; stop(); audioBuffer = previous;
-      $('loopStart').value = formatTime(0); $('loopEnd').value = formatTime(audioBuffer.duration);
-      loopStart = 0; loopEnd = audioBuffer.duration;
-      clearSelection(); drawWaveform(); updateTimeDisplay(); updatePlayhead(); updateHistoryButtons();
-      if (wasPlaying) play();
+      runEditOperation('復原', () => {
+          redoHistory.push(audioBuffer);
+          const previous = editHistory.pop();
+          const wasPlaying = isPlaying; stop(); audioBuffer = previous;
+          $('loopStart').value = formatTime(0); $('loopEnd').value = formatTime(audioBuffer.duration);
+          loopStart = 0; loopEnd = audioBuffer.duration;
+          clearSelection(); drawWaveform(); updateTimeDisplay(); updatePlayhead(); updateHistoryButtons();
+          if (wasPlaying) play();
+      });
   };
   $('redoBtn').onclick = () => {
       if (!audioBuffer || redoHistory.length === 0) return;
-      editHistory.push(audioBuffer);
-      const next = redoHistory.pop();
-      const wasPlaying = isPlaying; stop(); audioBuffer = next;
-      $('loopStart').value = formatTime(0); $('loopEnd').value = formatTime(audioBuffer.duration);
-      loopStart = 0; loopEnd = audioBuffer.duration;
-      clearSelection(); drawWaveform(); updateTimeDisplay(); updatePlayhead(); updateHistoryButtons();
-      if (wasPlaying) play();
+      runEditOperation('重做', () => {
+          editHistory.push(audioBuffer);
+          const next = redoHistory.pop();
+          const wasPlaying = isPlaying; stop(); audioBuffer = next;
+          $('loopStart').value = formatTime(0); $('loopEnd').value = formatTime(audioBuffer.duration);
+          loopStart = 0; loopEnd = audioBuffer.duration;
+          clearSelection(); drawWaveform(); updateTimeDisplay(); updatePlayhead(); updateHistoryButtons();
+          if (wasPlaying) play();
+      });
   };
 
-  async function applyOfflineEffect(nodeSetupCallback) {
-      if (!audioBuffer) { alert("請先載入音訊檔案"); return; }
+  async function runEditOperation(label, operation) {
+      if (!audioBuffer) { alert('請先載入音訊檔案'); return; }
       const indicator = $('loadingIndicator');
-      indicator.querySelector('div:last-child').textContent = '音訊處理中...';
+      const message = indicator.querySelector('div:last-child');
       indicator.style.display = 'flex';
-      await new Promise(resolve => setTimeout(resolve, 20)); 
+      message.textContent = `現在正在處理中：${label}`;
+      await new Promise(resolve => setTimeout(resolve, 30));
       try {
+          await operation();
+          message.textContent = `處理完畢：${label}`;
+          await new Promise(resolve => setTimeout(resolve, 700));
+      } catch (e) {
+          console.error(`${label} failed:`, e);
+          message.textContent = `處理失敗：${label}`;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          alert(`${label}時發生錯誤。`);
+      } finally {
+          indicator.style.display = 'none';
+      }
+  }
+
+  async function applyOfflineEffect(nodeSetupCallback, label = '音訊效果') {
+      if (!audioBuffer) { alert("請先載入音訊檔案"); return; }
+      await runEditOperation(label, async () => {
           const offlineCtx = new OfflineAudioContext(audioBuffer.numberOfChannels, audioBuffer.length, audioBuffer.sampleRate);
           const source = offlineCtx.createBufferSource();
           source.buffer = audioBuffer;
@@ -1073,46 +1119,23 @@
           source.start(0);
           const renderedBuffer = await offlineCtx.startRendering();
           updateBuffer(renderedBuffer);
-      } catch (e) {
-          console.error("Error applying effect:", e);
-          alert("套用效果時發生錯誤。");
-      } finally {
-          indicator.style.display = 'none';
-      }
+      });
   }
 
-  $('normalizeBtn').onclick = () => {
-    if (!audioBuffer) return; let peak = 0;
-    for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-        const cd = audioBuffer.getChannelData(i);
-        for (let j = 0; j < cd.length; j++) peak = Math.max(peak, Math.abs(cd[j]));
-    }
-    const gainVal = 0.89125 / (peak || 1);
-    const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, audioBuffer.length, audioBuffer.sampleRate);
-    for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-        const oldData = audioBuffer.getChannelData(i), newData = newBuffer.getChannelData(i);
-        for (let j = 0; j < oldData.length; j++) newData[j] = oldData[j] * gainVal;
-    }
+  $('normalizeBtn').onclick = () => runEditOperation('音量標準化', () => {
+    let peak = 0;
+    for (let i = 0; i < audioBuffer.numberOfChannels; i++) { const cd = audioBuffer.getChannelData(i); for (let j = 0; j < cd.length; j++) peak = Math.max(peak, Math.abs(cd[j])); }
+    const gainVal = 0.89125 / (peak || 1), newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, audioBuffer.length, audioBuffer.sampleRate);
+    for (let i = 0; i < audioBuffer.numberOfChannels; i++) { const oldData = audioBuffer.getChannelData(i), newData = newBuffer.getChannelData(i); for (let j = 0; j < oldData.length; j++) newData[j] = oldData[j] * gainVal; }
     updateBuffer(newBuffer);
-  };
+  });
   $('trimBtn').onclick = () => {
     if (!audioBuffer || selectionEnd === selectionStart) return;
-    const start = Math.floor(selectionStart * audioBuffer.sampleRate), end = Math.floor(selectionEnd * audioBuffer.sampleRate), len = end - start;
-    const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, len, audioBuffer.sampleRate);
-    for (let i = 0; i < audioBuffer.numberOfChannels; i++) { newBuffer.getChannelData(i).set(audioBuffer.getChannelData(i).subarray(start, end)); }
-    updateBuffer(newBuffer);
+    runEditOperation('裁剪音訊', () => { const start = Math.floor(selectionStart * audioBuffer.sampleRate), end = Math.floor(selectionEnd * audioBuffer.sampleRate), len = end - start, newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, len, audioBuffer.sampleRate); for (let i = 0; i < audioBuffer.numberOfChannels; i++) newBuffer.getChannelData(i).set(audioBuffer.getChannelData(i).subarray(start, end)); updateBuffer(newBuffer); });
   };
   $('deleteBtn').onclick = () => {
     if (!audioBuffer || selectionEnd === selectionStart) return;
-    const start = Math.floor(selectionStart * audioBuffer.sampleRate), end = Math.floor(selectionEnd * audioBuffer.sampleRate);
-    const len = audioBuffer.length - (end - start);
-    if (len <= 0) return;
-    const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, len, audioBuffer.sampleRate);
-    for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-      const oldData = audioBuffer.getChannelData(i), newData = newBuffer.getChannelData(i);
-      newData.set(oldData.subarray(0, start)); newData.set(oldData.subarray(end), start);
-    }
-    updateBuffer(newBuffer);
+    runEditOperation('刪除音訊', () => { const start = Math.floor(selectionStart * audioBuffer.sampleRate), end = Math.floor(selectionEnd * audioBuffer.sampleRate), len = audioBuffer.length - (end - start); if (len <= 0) return; const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, len, audioBuffer.sampleRate); for (let i = 0; i < audioBuffer.numberOfChannels; i++) { const oldData = audioBuffer.getChannelData(i), newData = newBuffer.getChannelData(i); newData.set(oldData.subarray(0, start)); newData.set(oldData.subarray(end), start); } updateBuffer(newBuffer); });
   };
 
   $('applyCompressorBtn').onclick = () => {
@@ -1127,7 +1150,7 @@
           compressor.release.setValueAtTime(0.25, ctx.currentTime);
           sourceNode.connect(compressor);
           return compressor;
-      });
+      }, '套用壓縮');
   };
   $('applyMaximizerBtn').onclick = () => {
       const amount = parseFloat($('maximizeAmount').value) / 100;
@@ -1144,8 +1167,58 @@
           makeupGain.gain.setValueAtTime(makeupGainValue, ctx.currentTime);
           sourceNode.connect(limiter).connect(makeupGain);
           return makeupGain;
+      }, '套用音量均衡');
+  };
+
+  $('silenceThreshold').oninput = e => setVal('silenceThresholdV', `${e.target.value} dB`);
+  $('silenceDuration').oninput = e => setVal('silenceDurationV', `${Number(e.target.value).toFixed(1)} 秒`);
+  $('removeSilenceBtn').onclick = () => {
+      runEditOperation('移除靜音', () => {
+          const threshold = Math.pow(10, (+$('silenceThreshold').value || -45) / 20);
+          const minSamples = Math.max(1, Math.floor((+$('silenceDuration').value || 0.5) * audioBuffer.sampleRate));
+          const channels = Array.from({length: audioBuffer.numberOfChannels}, (_, ch) => audioBuffer.getChannelData(ch));
+          const keep = new Uint8Array(audioBuffer.length); let silentStart = -1;
+          for (let i = 0; i < audioBuffer.length; i++) {
+              let peak = 0; for (const data of channels) peak = Math.max(peak, Math.abs(data[i] || 0));
+              if (peak >= threshold) { if (silentStart >= 0 && i - silentStart < minSamples) keep.fill(1, silentStart, i); silentStart = -1; keep[i] = 1; }
+              else if (silentStart < 0) silentStart = i;
+          }
+          if (silentStart >= 0 && audioBuffer.length - silentStart < minSamples) keep.fill(1, silentStart);
+          const kept = []; for (let i = 0; i < keep.length; i++) if (keep[i]) kept.push(i);
+          if (kept.length === audioBuffer.length) throw new Error('找不到符合條件的靜音段落');
+          const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, kept.length, audioBuffer.sampleRate);
+          for (let ch = 0; ch < channels.length; ch++) { const out = newBuffer.getChannelData(ch); for (let i = 0; i < kept.length; i++) out[i] = channels[ch][kept[i]]; }
+          updateBuffer(newBuffer);
       });
   };
+
+  function applyFade(mode) {
+      if (!audioBuffer) { alert('請先載入音訊檔案'); return; }
+      runEditOperation(mode === 'in' ? '淡入' : mode === 'out' ? '淡出' : '交叉淡化', () => {
+          const start = selectionEnd > selectionStart ? Math.floor(selectionStart * audioBuffer.sampleRate) : 0;
+          const end = selectionEnd > selectionStart ? Math.floor(selectionEnd * audioBuffer.sampleRate) : audioBuffer.length;
+          const length = end - start; if (length < 2) return;
+          const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, audioBuffer.length, audioBuffer.sampleRate);
+          for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) newBuffer.getChannelData(ch).set(audioBuffer.getChannelData(ch));
+          for (let i = start; i < end; i++) {
+              const t = (i - start) / (length - 1);
+              let gainValue = mode === 'in' ? t : mode === 'out' ? 1 - t : (t < 0.5 ? t * 2 : (1 - t) * 2);
+              if (mode === 'cross') gainValue = t < 0.5 ? Math.sin(t * Math.PI) : Math.sin((1 - t) * Math.PI);
+              for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) newBuffer.getChannelData(ch)[i] *= gainValue;
+          }
+          updateBuffer(newBuffer);
+      });
+  }
+  $('fadeInBtn').onclick = () => applyFade('in');
+  $('fadeOutBtn').onclick = () => applyFade('out');
+  $('crossfadeBtn').onclick = () => applyFade('cross');
+
+  $('voiceEnhanceBtn').onclick = () => applyOfflineEffect((ctx, sourceNode) => {
+      const highpass = ctx.createBiquadFilter(); highpass.type = 'highpass'; highpass.frequency.value = 90; highpass.Q.value = 0.707;
+      const presence = ctx.createBiquadFilter(); presence.type = 'peaking'; presence.frequency.value = 3000; presence.gain.value = 3; presence.Q.value = 0.8;
+      const compressor = ctx.createDynamicsCompressor(); compressor.threshold.value = -26; compressor.ratio.value = 3; compressor.attack.value = 0.003; compressor.release.value = 0.18;
+      sourceNode.connect(highpass).connect(presence).connect(compressor); return compressor;
+  }, '套用語音增強');
 
   $('noiseReductionAmount').oninput = e => setVal('noiseReductionAmountV', `${e.target.value} %`);
   $('applyNoiseReductionBtn').onclick = async () => {
@@ -1156,7 +1229,7 @@
       const profileEnd = selectionEnd > selectionStart ? Math.floor(selectionEnd * sampleRate) : Math.min(audioBuffer.length, Math.floor(sampleRate * 0.5));
       if (profileEnd <= profileStart) return;
       const indicator = $('loadingIndicator');
-      indicator.querySelector('div:last-child').textContent = '降噪處理中...';
+      indicator.querySelector('div:last-child').textContent = '現在正在處理中：降噪';
       indicator.style.display = 'flex';
       await new Promise(resolve => setTimeout(resolve, 20));
       try {
@@ -1185,6 +1258,13 @@
               for (let ch = 0; ch < channels.length; ch++) outputs[ch][i] = channels[ch][i] * envelope;
           }
           updateBuffer(newBuffer);
+          indicator.querySelector('div:last-child').textContent = '處理完畢：降噪';
+          await new Promise(resolve => setTimeout(resolve, 700));
+      } catch (e) {
+          console.error('降噪處理失敗:', e);
+          indicator.querySelector('div:last-child').textContent = '處理失敗：降噪';
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          alert('降噪處理時發生錯誤。');
       } finally {
           indicator.style.display = 'none';
       }
@@ -1359,11 +1439,35 @@
   const channelButtons = document.querySelectorAll('#channelSelector .format-btn');
   channelButtons.forEach(b => b.onclick = () => { channelButtons.forEach(btn => btn.classList.remove('active')); b.classList.add('active'); selectedChannelMode = b.dataset.channels; });
   $('mp3Bitrate').oninput = e => setVal('mp3BitrateV', `${e.target.value} kbps`);
+  $('exportPreset').onchange = e => {
+      const preset = e.target.value;
+      if (preset === 'archive') formatButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.format === 'wav'));
+      else formatButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.format === 'mp3'));
+      selectedExportFormat = preset === 'archive' ? 'wav' : 'mp3';
+      $('mp3Options').style.display = selectedExportFormat === 'mp3' ? 'flex' : 'none';
+      if (preset === 'podcast') { $('mp3Bitrate').value = 128; $('gain').value = 1; $('exportGain').value = 1; }
+      if (preset === 'youtube') { $('mp3Bitrate').value = 192; $('exportGain').value = 1; }
+      if (preset === 'line') { $('mp3Bitrate').value = 96; channelButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.channels === 'mono')); selectedChannelMode = 'mono'; }
+      if (preset === 'archive') { channelButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.channels === 'source')); selectedChannelMode = 'source'; }
+      setVal('mp3BitrateV', `${$('mp3Bitrate').value} kbps`);
+  };
   $('export').onclick = () => { if(!audioBuffer) { alert("請先載入音訊檔案"); return; } $('mainRightPanel').style.display = 'none'; $('exportPanel').style.display = 'flex'; };
   $('cancelExportBtn').onclick = () => { $('exportPanel').style.display = 'none'; $('mainRightPanel').style.display = 'block'; };
   $('exportGain').oninput = e => setVal('exportGainV', Number(e.target.value).toFixed(2));
+  function getMetadata() { return { title: $('metaTitle').value.trim(), artist: $('metaArtist').value.trim(), album: $('metaAlbum').value.trim(), year: $('metaYear').value.trim() }; }
+  function hasMetadata(meta) { return Object.values(meta).some(Boolean); }
+  function makeWavInfoChunk(meta) {
+      const entries = [['INAM', meta.title], ['IART', meta.artist], ['IPRD', meta.album], ['ICRD', meta.year]].filter(([, value]) => value);
+      if (!entries.length) return null;
+      const encoder = new TextEncoder(); let size = 4;
+      const encoded = entries.map(([id, value]) => { const text = encoder.encode(`${value}\0`); const padded = text.length % 2 ? text.length + 1 : text.length; size += 8 + padded; return { id, text, padded }; });
+      const chunk = new Uint8Array(size); const view = new DataView(chunk.buffer); let offset = 0;
+      chunk.set([76,73,83,84], offset); offset += 4; view.setUint32(offset, size - 8, true); offset += 4; chunk.set([73,78,70,79], offset); offset += 4;
+      for (const item of encoded) { for (let i = 0; i < 4; i++) chunk[offset++] = item.id.charCodeAt(i); view.setUint32(offset, item.text.length, true); offset += 4; chunk.set(item.text, offset); offset += item.padded; }
+      return chunk;
+  }
   
-  function bufferToWav(buffer) {
+  function bufferToWav(buffer, meta = {}) {
     const numOfChan = buffer.numberOfChannels, length = buffer.length * numOfChan * 2 + 44, ab = new ArrayBuffer(length), view = new DataView(ab);
     let offset = 0; const writeStr = (s) => { for (let i = 0; i < s.length; i++) view.setUint8(offset++, s.charCodeAt(i)); };
     writeStr('RIFF'); view.setUint32(offset, 36 + buffer.length * numOfChan * 2, true); offset += 4;
@@ -1378,8 +1482,20 @@
             view.setInt16(offset + (i * numOfChan + ch) * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
         }
     }
-    return new Blob([view], { type: 'audio/wav' });
+    const infoChunk = makeWavInfoChunk(meta);
+    if (infoChunk) view.setUint32(4, 36 + buffer.length * numOfChan * 2 + infoChunk.length, true);
+    return new Blob(infoChunk ? [view, infoChunk] : [view], { type: 'audio/wav' });
   }
+
+  function makeId3Tag(meta) {
+      const entries = [['TIT2', meta.title], ['TPE1', meta.artist], ['TALB', meta.album], ['TYER', meta.year]].filter(([, value]) => value);
+      if (!entries.length) return new Uint8Array();
+      const encoder = new TextEncoder(); const frames = entries.map(([id, value]) => { const data = new Uint8Array([3, ...encoder.encode(value)]); const frame = new Uint8Array(10 + data.length); for (let i = 0; i < 4; i++) frame[i] = id.charCodeAt(i); new DataView(frame.buffer).setUint32(4, data.length, false); frame.set(data, 10); return frame; });
+      const bodyLength = frames.reduce((sum, frame) => sum + frame.length, 0); const tag = new Uint8Array(10 + bodyLength); tag.set([73,68,51,3,0,0], 0);
+      let value = bodyLength; for (let i = 0; i < 4; i++) { tag[9 - i] = value & 0x7f; value >>= 7; }
+      let offset = 10; for (const frame of frames) { tag.set(frame, offset); offset += frame.length; } return tag;
+  }
+  async function addMp3Metadata(blob, meta) { const tag = makeId3Tag(meta); return tag.length ? new Blob([tag, await blob.arrayBuffer()], { type: 'audio/mp3' }) : blob; }
 
   async function bufferToMp3(buffer, bitrate) {
     if (!window.lamejs || !window.lamejs.Mp3Encoder) {
@@ -1483,11 +1599,11 @@
             const renderedBuffer = await renderForExport(bufferToRender);
             let audioBlob, fileExtension;
             if (selectedExportFormat === 'wav') { 
-                audioBlob = bufferToWav(renderedBuffer); 
+                audioBlob = bufferToWav(renderedBuffer, getMetadata()); 
                 fileExtension = 'wav'; 
             } 
             else { 
-                audioBlob = await bufferToMp3(renderedBuffer, parseInt($('mp3Bitrate').value)); 
+                audioBlob = await addMp3Metadata(await bufferToMp3(renderedBuffer, parseInt($('mp3Bitrate').value)), getMetadata()); 
                 fileExtension = 'mp3'; 
             }
             const url = URL.createObjectURL(audioBlob), a = $('download');
@@ -1541,7 +1657,7 @@
                   const segment = AC.createBuffer(decoded.numberOfChannels, end - start, decoded.sampleRate);
                   for (let ch = 0; ch < decoded.numberOfChannels; ch++) segment.copyToChannel(decoded.getChannelData(ch).subarray(start, end), ch);
                   const rendered = await renderForExport(segment);
-                  const blob = selectedExportFormat === 'wav' ? bufferToWav(rendered) : await bufferToMp3(rendered, parseInt($('mp3Bitrate').value));
+                  const blob = selectedExportFormat === 'wav' ? bufferToWav(rendered, getMetadata()) : await addMp3Metadata(await bufferToMp3(rendered, parseInt($('mp3Bitrate').value)), getMetadata());
                   const extension = selectedExportFormat === 'wav' ? 'wav' : 'mp3';
                   const url = URL.createObjectURL(blob), anchor = $('download');
                   anchor.href = url;
@@ -1563,6 +1679,17 @@
           setTimeout(() => { status.style.display = 'none'; }, 3000);
       }
   };
+
+  document.addEventListener('keydown', e => {
+      const modifier = e.ctrlKey || e.metaKey;
+      const editingText = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+      if (modifier && e.key.toLowerCase() === 'z') { e.preventDefault(); $('undoBtn').click(); return; }
+      if (modifier && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); $('redoBtn').click(); return; }
+      if (editingText) return;
+      if (e.code === 'Space') { e.preventDefault(); isPlaying ? pause() : play(pausedAt); }
+      if (e.key.toLowerCase() === 'i' && audioBuffer) { loopStart = pausedAt; $('loopStart').value = formatTime(loopStart); activeTimeField = 'start'; }
+      if (e.key.toLowerCase() === 'o' && audioBuffer) { loopEnd = pausedAt; $('loopEnd').value = formatTime(loopEnd); activeTimeField = 'end'; }
+  });
   
   // ===== Theme Toggler Logic =====
   const themeToggle = $('theme-toggle');
