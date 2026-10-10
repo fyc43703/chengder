@@ -66,6 +66,8 @@
     html.dark-theme .btn.ghost { background-color: var(--btn-ghost-bg); }
     html.dark-theme .btn.ghost:hover { background-color: var(--btn-ghost-bg-hover); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    @keyframes fileSelectAttention { 0%, 100% { transform:scale(1); box-shadow:0 0 0 0 rgba(10,132,255,.45); } 50% { transform:scale(1.06); box-shadow:0 0 0 8px rgba(10,132,255,0); } }
+    #chooseFileLabel.file-select-attention { animation:fileSelectAttention 1.4s ease-in-out infinite; }
     #export.btn.primary { background: var(--peach); }
     #export.btn.primary:hover { filter: brightness(1.08); }
     .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px; justify-content: center;}
@@ -292,7 +294,7 @@
         <div class="panel glass stack">
           <h3>匯入及匯出音訊</h3>
           <div class="filedrop" id="drop" title="將音訊檔案拖曳至此處以上傳">
-            <label class="btn primary" title="點擊此處選擇一個或多個音訊檔案">
+            <label id="chooseFileLabel" class="btn primary file-select-attention" title="點擊此處選擇一個或多個音訊檔案">
               選擇檔案
               <input id="file" type="file" accept="audio/*,.m4a,.ogg,.aac,.3gp" hidden multiple>
             </label>
@@ -426,8 +428,8 @@
           <div class="slider-group">
             <div class="slider">
               <label>音量</label>
-              <input id="gain" type="range" min="0" max="2" step="0.01" value="1" title="調整播放音量"/>
-              <div class="value" id="gainV">1.00</div>
+              <input id="gain" type="range" min="0" max="2" step="0.01" value="0.8" title="調整播放音量"/>
+              <div class="value" id="gainV">0.80</div>
             </div>
             <div class="slider">
               <label>平衡</label>
@@ -756,13 +758,16 @@
     }
   }
   
-  $('file').onchange = e => handleFiles(e.target.files);
+  const chooseFileLabel = $('chooseFileLabel');
+  const stopFileSelectAttention = () => chooseFileLabel.classList.remove('file-select-attention');
+  $('file').onchange = e => { stopFileSelectAttention(); handleFiles(e.target.files); };
   const drop = $('drop');
   drop.ondragover = e => { e.preventDefault(); drop.style.borderColor = 'var(--blue)'; };
   drop.ondragleave = () => drop.style.borderColor = '';
   drop.ondrop = e => {
       e.preventDefault();
       drop.style.borderColor = '';
+      stopFileSelectAttention();
       handleFiles(e.dataTransfer.files);
   };
 
@@ -847,7 +852,7 @@
     updatePlayhead();
     zoom = 1;
     viewOffset = 0;
-    const initialVolume = 0.2;
+     const initialVolume = 0.8;
     $('gain').value = initialVolume;
     setVal('gainV', Number(initialVolume).toFixed(2));
     gain.gain.value = initialVolume;
