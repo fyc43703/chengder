@@ -584,6 +584,7 @@
     </div>
   </div>
 
+  <script src="./lame.min.js"></script>
   <script>
   // ===== Web Audio Setup =====
   const AC = new (window.AudioContext || window.webkitAudioContext)();
@@ -618,8 +619,8 @@
   let editHistory = [], redoHistory = [];
   let isPlaying = false, startTime = 0, pausedAt = 0, animationFrameId = null;
   let loopStart = 0, loopEnd = 0, isLooping = false;
+  let activeTimeField = 'start';
   let zoom = 1; let viewOffset = 0;
-  let mp3EncoderWorker = null;
   let importedFiles = []; // Array for storing imported File objects
   let currentFileIndex = -1; 
 
@@ -820,6 +821,10 @@
   }
   
   const timeRuler = $('time-ruler'), timeHover = $('time-hover-info');
+  ['loopStart', 'loopEnd'].forEach(id => {
+      $(id).addEventListener('focus', () => { activeTimeField = id === 'loopStart' ? 'start' : 'end'; });
+      $(id).addEventListener('click', () => { activeTimeField = id === 'loopStart' ? 'start' : 'end'; });
+  });
   timeRuler.onmousemove = e => {
     if(!audioBuffer) return;
     const rect = timeRuler.getBoundingClientRect();
@@ -918,6 +923,8 @@
         window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp); return;
     }
     isDragging = true;
+    let lastX = startX;
+    let didMove = false;
     selectionStart = pxToSeconds(startX);
     selectionEnd = selectionStart;
     selectionRect.style.left = `${startX}px`;
@@ -926,6 +933,8 @@
     const onMouseMove = moveE => {
         if (!isDragging) return;
         const currentX = Math.max(0, Math.min(moveE.clientX - rect.left, rect.width));
+        if (Math.abs(currentX - startX) > 2) didMove = true;
+        lastX = currentX;
         const left = Math.min(startX, currentX), width = Math.abs(currentX - startX);
         selectionRect.style.left = `${left}px`;
         selectionRect.style.width = `${width}px`;
@@ -933,10 +942,25 @@
     };
     const onMouseUp = () => {
         isDragging = false;
-        if (selectionStart > selectionEnd) [selectionStart, selectionEnd] = [selectionEnd, selectionStart];
-        $('loopStart').value = formatTime(selectionStart);
-        $('loopEnd').value = formatTime(selectionEnd);
-        loopStart = selectionStart; loopEnd = selectionEnd;
+        const clickedTime = pxToSeconds(lastX);
+        if (!didMove) {
+            if (activeTimeField === 'start') {
+                loopStart = clickedTime;
+                $('loopStart').value = formatTime(loopStart);
+            } else {
+                loopEnd = clickedTime;
+                $('loopEnd').value = formatTime(loopEnd);
+            }
+            selectionStart = selectionEnd = clickedTime;
+            selectionRect.style.left = `${Math.max(0, lastX - 1)}px`;
+            selectionRect.style.width = '2px';
+            selectionRect.style.display = 'block';
+        } else {
+            if (selectionStart > selectionEnd) [selectionStart, selectionEnd] = [selectionEnd, selectionStart];
+            $('loopStart').value = formatTime(selectionStart);
+            $('loopEnd').value = formatTime(selectionEnd);
+            loopStart = selectionStart; loopEnd = selectionEnd;
+        }
         window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp);
     };
     window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp);
@@ -1357,96 +1381,49 @@
     return new Blob([view], { type: 'audio/wav' });
   }
 
-  function bufferToMp3(buffer, bitrate) {
-    return new Promise((resolve, reject) => {
-        if (!mp3EncoderWorker) {
-            const lameUrl = new URL('lame.min.js', document.baseURI).href;
-            const encoderJsString = `
-                self.importScripts(${JSON.stringify(lameUrl)});
-                self.onmessage = function (e) {
-                    if (e.data.command === 'encode') {
-                        const mp3Data = encode(e.data);
-                        self.postMessage({ command: 'end', buffer: mp3Data });
-                    }
-                };
-                function encode({ channelData, sampleRate, bitrate, channels }) {
-                    const mp3Encoder = new lamejs.Mp3Encoder(channels, sampleRate, bitrate);
-                    const sampleBlockSize = 1152;
-                    const mp3Data = [];
-                    const convertToInt16 = (floatArray) => {
-                        const intArray = new Int16Array(floatArray.length);
-                        for (let i = 0; i < floatArray.length; i++) {
-                            const sample = Math.max(-1, Math.min(1, floatArray[i]));
-                            intArray[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
-                        }
-                        return intArray;
-                    };
-                    let pcm_i16_channels = [];
-                    if (channels === 1) {
-                        const mono_f32 = new Float32Array(channelData[0].length);
-                        if (channelData.length > 1) {
-                            const left = channelData[0];
-                            const right = channelData[1];
-                            for(let i = 0; i < channelData[0].length; i++) {
-                                mono_f32[i] = (left[i] + right[i]) * 0.5;
-                            }
-                        } else {
-                            mono_f32.set(channelData[0]);
-                        }
-                        pcm_i16_channels.push(convertToInt16(mono_f32));
-                    } else {
-                        const left_f32 = channelData[0];
-                        const right_f32 = channelData.length > 1 ? channelData[1] : left_f32;
-                        pcm_i16_channels.push(convertToInt16(left_f32));
-                        pcm_i16_channels.push(convertToInt16(right_f32));
-                    }
-                    const dataLength = pcm_i16_channels[0].length;
-                    for (let i = 0; i < dataLength; i += sampleBlockSize) {
-                        const sampleChunks = pcm_i16_channels.map(channelData => channelData.subarray(i, i + sampleBlockSize));
-                        const mp3buf = mp3Encoder.encodeBuffer(...sampleChunks);
-                        if (mp3buf.length > 0) {
-                            mp3Data.push(mp3buf);
-                        }
-                    }
-                    const flushed = mp3Encoder.flush();
-                    if (flushed.length > 0) {
-                        mp3Data.push(flushed);
-                    }
-                    return mp3Data;
-                }
-            `;
-            const blob = new Blob([encoderJsString], { type: 'application/javascript' });
-            mp3EncoderWorker = new Worker(URL.createObjectURL(blob));
+  async function bufferToMp3(buffer, bitrate) {
+    if (!window.lamejs || !window.lamejs.Mp3Encoder) {
+        throw new Error('找不到本地 MP3 編碼器 lame.min.js');
+    }
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const sourceChannels = Math.min(2, buffer.numberOfChannels);
+    const channels = selectedChannelMode === 'mono' ? 1 : sourceChannels;
+    const encoder = new lamejs.Mp3Encoder(channels, buffer.sampleRate, bitrate);
+    const sampleBlockSize = 1152;
+    const pcmChannels = [];
+    const toInt16 = data => {
+        const result = new Int16Array(data.length);
+        for (let i = 0; i < data.length; i++) {
+            const sample = Math.max(-1, Math.min(1, data[i]));
+            result[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
         }
-
-        const channelData = [];
-        for (let i = 0; i < buffer.numberOfChannels; i++) {
-            channelData.push(buffer.getChannelData(i));
-        }
-
-        mp3EncoderWorker.onmessage = (e) => {
-            if (e.data.command === 'end') {
-                resolve(new Blob(e.data.buffer, { type: 'audio/mp3' }));
-            }
-        };
-        
-        mp3EncoderWorker.onerror = (e) => {
-            reject(new Error(`Worker error: ${e.message}`));
-        };
-
-        mp3EncoderWorker.postMessage({
-            command: 'encode',
-            channelData: channelData,
-            sampleRate: buffer.sampleRate,
-            bitrate: bitrate,
-            channels: (selectedChannelMode === 'mono') ? 1 : buffer.numberOfChannels
-        });
-    });
+        return result;
+    };
+    if (channels === 1) {
+        const mono = new Float32Array(buffer.length);
+        const left = buffer.getChannelData(0);
+        const right = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : left;
+        for (let i = 0; i < buffer.length; i++) mono[i] = (left[i] + right[i]) * 0.5;
+        pcmChannels.push(toInt16(mono));
+    } else {
+        pcmChannels.push(toInt16(buffer.getChannelData(0)));
+        pcmChannels.push(toInt16(buffer.getChannelData(1)));
+    }
+    const mp3Data = [];
+    for (let i = 0; i < pcmChannels[0].length; i += sampleBlockSize) {
+        const chunks = pcmChannels.map(channelData => channelData.subarray(i, i + sampleBlockSize));
+        const encoded = encoder.encodeBuffer(...chunks);
+        if (encoded.length) mp3Data.push(encoded);
+        if ((i / sampleBlockSize) % 32 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    const flushed = encoder.flush();
+    if (flushed.length) mp3Data.push(flushed);
+    return new Blob(mp3Data, { type: 'audio/mp3' });
   }
 
   async function renderForExport(bufferToRender) {
       const exportRate = Math.max(0.01, parseFloat($('rate').value) || 1);
-      const outputChannels = selectedChannelMode === 'mono' ? 1 : bufferToRender.numberOfChannels;
+      const outputChannels = selectedChannelMode === 'mono' ? 1 : (selectedExportFormat === 'mp3' ? Math.min(2, bufferToRender.numberOfChannels) : bufferToRender.numberOfChannels);
       const outputLength = Math.max(1, Math.ceil(bufferToRender.length / exportRate));
       const offlineCtx = new OfflineAudioContext(outputChannels, outputLength, bufferToRender.sampleRate);
       const oSrc = offlineCtx.createBufferSource(); oSrc.buffer = bufferToRender;
