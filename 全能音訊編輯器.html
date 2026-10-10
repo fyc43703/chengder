@@ -49,8 +49,11 @@
     .dot{width:12px; height:12px; border-radius:50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);}
     .dot.red{background:var(--red);} .dot.yellow{background:var(--yellow);} .dot.green{background:var(--green);}
     .titles{text-align:center; flex-grow:1;}
-    .titles h1{margin:0; font-size:26px; font-weight:700;}
-    .titles h2{margin:2px 0 0; font-size:14px; font-weight:400; color:var(--muted);}
+    .title-with-note{display:flex; align-items:center; justify-content:center; gap:10px;}
+    .title-note{width:42px; height:42px; object-fit:contain; border-radius:10px; mix-blend-mode:multiply; filter:grayscale(1) contrast(1.25);}
+    html.dark-theme .title-note{mix-blend-mode:screen; filter:grayscale(1) invert(1) contrast(1.15);}
+    .titles h1{margin:0; font-size:28px; font-weight:700; letter-spacing:2px; font-family:"STKaiti", "DFKai-SB", "BiauKai", "PingFang TC", "Microsoft JhengHei", sans-serif;}
+    .titles h2{margin:4px auto 0; max-width:980px; font-size:14px; font-weight:400; line-height:1.6; color:var(--muted);}
     .author{font-size:13px; color:var(--muted); white-space:nowrap; margin-top: 0.2rem;}
     .glass{background:var(--panel-bg); border:1px solid var(--stroke); border-radius:var(--card-radius); backdrop-filter: saturate(160%) blur(22px); -webkit-backdrop-filter:saturate(160%) blur(22px); box-shadow:var(--shadow); transition: background-color .3s ease, border-color .3s ease;}
     .layout{display:grid; grid-template-columns: 360px 1fr; gap:18px; align-items: start;}
@@ -155,7 +158,8 @@
     @media (max-width: 768px) {
         body { padding: 16px; }
         .layout { gap: 12px; }
-        .titles h1 { font-size: 22px; }
+        .titles h1 { font-size: 22px; letter-spacing:1px; }
+        .title-note { width:34px; height:34px; }
         .titles h2 { font-size: 13px; }
         .analyzer-grid { grid-template-columns: 1fr 1fr; }
         .slider {
@@ -266,8 +270,11 @@
     </div>
     <div class="titlebar">
       <div class="titles">
-        <h1>全能音訊編輯器</h1>
-        <h2>提供音樂播放、MP3 轉檔、檔案分割、音訊剪輯、音量標準化、各項分析儀波形及頻譜</h2>
+        <div class="title-with-note">
+          <img class="title-note" src="./pngtree-g-clef-treble-clef-musical-note-png-image_2974873.jpg" alt="高音譜號">
+          <h1>全能音訊編輯器</h1>
+        </div>
+        <h2>整合音訊播放、波形剪輯、淡入淡出、靜音移除、降噪與語音增強，支援 LUFS／峰值分析、非破壞性復原、批次處理、Metadata 編輯，以及 WAV／MP3 匯出，讓錄音修復、Podcast 製作與日常音訊整理更快速。</h2>
         <div class="author">製作者：陳政德</div>
       </div>
     </div>
@@ -613,6 +620,7 @@
   <script>
   // ===== Web Audio Setup =====
   const AC = new (window.AudioContext || window.webkitAudioContext)();
+  const STARTUP_AUDIO_URL = 'https://fyc43703.github.io/chengder/%E6%97%85%E7%AB%8B%E3%81%A1%E3%81%AE%E6%97%A5%E3%81%AB.mp3';
   
   const preEffectNode = AC.createGain();
   const gain = AC.createGain(), pan = AC.createStereoPanner(), analyser = AC.createAnalyser();
@@ -1713,7 +1721,23 @@
     updateFileList();
     const savedTheme = localStorage.getItem('theme') || 'light';
     setDarkTheme(savedTheme === 'dark');
+    loadStartupAudio();
   });
+
+  async function loadStartupAudio() {
+      if (location.protocol === 'file:') return;
+      try {
+          const response = await fetch(STARTUP_AUDIO_URL, { cache: 'no-cache' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const blob = await response.blob();
+          const file = new File([blob], decodeURIComponent(STARTUP_AUDIO_URL.split('/').pop()), { type: blob.type || 'audio/mpeg' });
+          importedFiles.push(file);
+          updateFileList();
+          await loadFile(file);
+      } catch (error) {
+          console.warn('預設音樂載入失敗，請確認 GitHub Pages 上存在檔案：', STARTUP_AUDIO_URL, error);
+      }
+  }
 
   </script>
 </body>
