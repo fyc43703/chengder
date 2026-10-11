@@ -622,7 +622,10 @@
   <script>
   // ===== Web Audio Setup =====
   const AC = new (window.AudioContext || window.webkitAudioContext)();
-  const STARTUP_AUDIO_URL = 'https://fyc43703.github.io/chengder/%E6%97%85%E7%AB%8B%E3%81%A1%E3%81%AE%E6%97%A5%E3%81%AB.mp3';
+  const STARTUP_AUDIO_URLS = [
+    'https://fyc43703.github.io/chengder/%E6%97%85%E7%AB%8B%E3%81%A1%E3%81%AE%E6%97%A5%E3%81%AB.mp3',
+    './千と千尋の神隠し - いつも何度でも.mp3'
+  ];
   
   const preEffectNode = AC.createGain();
   const gain = AC.createGain(), pan = AC.createStereoPanner(), analyser = AC.createAnalyser();
@@ -1451,7 +1454,21 @@
   formatButtons.forEach(b => b.onclick = () => { formatButtons.forEach(btn => btn.classList.remove('active')); b.classList.add('active'); selectedExportFormat = b.dataset.format; $('mp3Options').style.display = selectedExportFormat === 'mp3' ? 'flex' : 'none'; });
   const channelButtons = document.querySelectorAll('#channelSelector .format-btn');
   channelButtons.forEach(b => b.onclick = () => { channelButtons.forEach(btn => btn.classList.remove('active')); b.classList.add('active'); selectedChannelMode = b.dataset.channels; });
-  $('mp3Bitrate').oninput = e => setVal('mp3BitrateV', `${e.target.value} kbps`);
+  // lamejs/MP3 only supports the standard MPEG bitrates below.  In particular,
+  // 288 kbps (reachable with the old range step) creates an invalid stream.
+  const STANDARD_MP3_BITRATES = [64, 80, 96, 112, 128, 160, 192, 224, 256, 320];
+  function getSafeMp3Bitrate(value) {
+      const requested = Number(value) || 192;
+      return STANDARD_MP3_BITRATES.reduce((closest, candidate) =>
+          Math.abs(candidate - requested) < Math.abs(closest - requested) ? candidate : closest,
+          STANDARD_MP3_BITRATES[0]);
+  }
+  function syncMp3BitrateDisplay() {
+      const bitrate = getSafeMp3Bitrate($('mp3Bitrate').value);
+      $('mp3Bitrate').value = bitrate;
+      setVal('mp3BitrateV', `${bitrate} kbps`);
+  }
+  $('mp3Bitrate').oninput = syncMp3BitrateDisplay;
   $('exportPreset').onchange = e => {
       const preset = e.target.value;
       if (preset === 'archive') formatButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.format === 'wav'));
@@ -1462,7 +1479,7 @@
       if (preset === 'youtube') { $('mp3Bitrate').value = 192; $('exportGain').value = 1; }
       if (preset === 'line') { $('mp3Bitrate').value = 96; channelButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.channels === 'mono')); selectedChannelMode = 'mono'; }
       if (preset === 'archive') { channelButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.channels === 'source')); selectedChannelMode = 'source'; }
-      setVal('mp3BitrateV', `${$('mp3Bitrate').value} kbps`);
+      syncMp3BitrateDisplay();
   };
   $('export').onclick = () => { if(!audioBuffer) { alert("請先載入音訊檔案"); return; } $('mainRightPanel').style.display = 'none'; $('exportPanel').style.display = 'flex'; };
   $('cancelExportBtn').onclick = () => { $('exportPanel').style.display = 'none'; $('mainRightPanel').style.display = 'block'; };
@@ -1508,7 +1525,7 @@
       let value = bodyLength; for (let i = 0; i < 4; i++) { tag[9 - i] = value & 0x7f; value >>= 7; }
       let offset = 10; for (const frame of frames) { tag.set(frame, offset); offset += frame.length; } return tag;
   }
-  async function addMp3Metadata(blob, meta) { const tag = makeId3Tag(meta); return tag.length ? new Blob([tag, await blob.arrayBuffer()], { type: 'audio/mp3' }) : blob; }
+  async function addMp3Metadata(blob, meta) { const tag = makeId3Tag(meta); return tag.length ? new Blob([tag, await blob.arrayBuffer()], { type: 'audio/mpeg' }) : blob; }
 
   async function bufferToMp3(buffer, bitrate) {
     if (!window.lamejs || !window.lamejs.Mp3Encoder) {
@@ -1517,7 +1534,8 @@
     await new Promise(resolve => setTimeout(resolve, 0));
     const sourceChannels = Math.min(2, buffer.numberOfChannels);
     const channels = selectedChannelMode === 'mono' ? 1 : sourceChannels;
-    const encoder = new lamejs.Mp3Encoder(channels, buffer.sampleRate, bitrate);
+    const safeBitrate = getSafeMp3Bitrate(bitrate);
+    const encoder = new lamejs.Mp3Encoder(channels, buffer.sampleRate, safeBitrate);
     const sampleBlockSize = 1152;
     const pcmChannels = [];
     const toInt16 = data => {
@@ -1547,7 +1565,7 @@
     }
     const flushed = encoder.flush();
     if (flushed.length) mp3Data.push(flushed);
-    return new Blob(mp3Data, { type: 'audio/mp3' });
+    return new Blob(mp3Data, { type: 'audio/mpeg' });
   }
 
   async function renderForExport(bufferToRender) {
@@ -1616,7 +1634,7 @@
                 fileExtension = 'wav'; 
             } 
             else { 
-                audioBlob = await addMp3Metadata(await bufferToMp3(renderedBuffer, parseInt($('mp3Bitrate').value)), getMetadata()); 
+                audioBlob = await addMp3Metadata(await bufferToMp3(renderedBuffer, getSafeMp3Bitrate($('mp3Bitrate').value)), getMetadata()); 
                 fileExtension = 'mp3'; 
             }
             const url = URL.createObjectURL(audioBlob), a = $('download');
@@ -1670,7 +1688,7 @@
                   const segment = AC.createBuffer(decoded.numberOfChannels, end - start, decoded.sampleRate);
                   for (let ch = 0; ch < decoded.numberOfChannels; ch++) segment.copyToChannel(decoded.getChannelData(ch).subarray(start, end), ch);
                   const rendered = await renderForExport(segment);
-                  const blob = selectedExportFormat === 'wav' ? bufferToWav(rendered, getMetadata()) : await addMp3Metadata(await bufferToMp3(rendered, parseInt($('mp3Bitrate').value)), getMetadata());
+                  const blob = selectedExportFormat === 'wav' ? bufferToWav(rendered, getMetadata()) : await addMp3Metadata(await bufferToMp3(rendered, getSafeMp3Bitrate($('mp3Bitrate').value)), getMetadata());
                   const extension = selectedExportFormat === 'wav' ? 'wav' : 'mp3';
                   const url = URL.createObjectURL(blob), anchor = $('download');
                   anchor.href = url;
@@ -1730,18 +1748,23 @@
   });
 
   async function loadStartupAudio() {
-      if (location.protocol === 'file:') return;
-      try {
-          const response = await fetch(STARTUP_AUDIO_URL, { cache: 'no-cache' });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const blob = await response.blob();
-          const file = new File([blob], decodeURIComponent(STARTUP_AUDIO_URL.split('/').pop()), { type: blob.type || 'audio/mpeg' });
-          importedFiles.push(file);
-          updateFileList();
-          await loadFile(file);
-      } catch (error) {
-          console.warn('預設音樂載入失敗，請確認 GitHub Pages 上存在檔案：', STARTUP_AUDIO_URL, error);
+      const loadedFiles = [];
+      for (const audioUrl of STARTUP_AUDIO_URLS) {
+          try {
+              const response = await fetch(audioUrl, { cache: 'no-cache' });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              const blob = await response.blob();
+              const fileName = decodeURIComponent(audioUrl.split('/').pop());
+              loadedFiles.push(new File([blob], fileName, { type: blob.type || 'audio/mpeg' }));
+          } catch (error) {
+              console.warn('預設音樂載入失敗，請確認檔案與 HTML 位於同一工作區：', audioUrl, error);
+          }
       }
+
+      if (loadedFiles.length === 0) return;
+      importedFiles.push(...loadedFiles);
+      updateFileList();
+      await loadFile(loadedFiles[0]);
   }
 
   </script>
