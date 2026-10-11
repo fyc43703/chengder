@@ -1593,7 +1593,25 @@
       }
       lastNode.connect(oGain).connect(oExportGain).connect(offlineCtx.destination);
       oSrc.start(0);
-      return offlineCtx.startRendering();
+      const rendered = await offlineCtx.startRendering();
+
+      // Some browsers can occasionally return an all-zero OfflineAudioContext
+      // render even though the source buffer contains audio. Never encode that
+      // silent render, since it produces a playable MP3 with no audible sound.
+      let sourcePeak = 0, renderedPeak = 0;
+      for (let ch = 0; ch < bufferToRender.numberOfChannels; ch++) {
+          const sourceData = bufferToRender.getChannelData(ch);
+          for (let i = 0; i < sourceData.length; i++) sourcePeak = Math.max(sourcePeak, Math.abs(sourceData[i]));
+      }
+      for (let ch = 0; ch < rendered.numberOfChannels; ch++) {
+          const renderedData = rendered.getChannelData(ch);
+          for (let i = 0; i < renderedData.length; i++) renderedPeak = Math.max(renderedPeak, Math.abs(renderedData[i]));
+      }
+      if (sourcePeak > 1e-5 && renderedPeak < 1e-7 && parseFloat($('exportGain').value) > 0) {
+          console.warn('離線音訊渲染結果為靜音，已改用原始音訊進行匯出。');
+          return bufferToRender;
+      }
+      return rendered;
   }
 
   $('saveFileBtn').onclick = async () => {
