@@ -532,7 +532,7 @@ body{background:#ffffff}
 #aiInsightPage .ai-title-row{gap:16px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #c9dce8}
 #aiInsightPage .ai-title-row>h2{color:#2779e8;font-weight:800;letter-spacing:.01em}
 #aiInsightPage .ai-subtitle{color:#5f7181}
-#aiInsightPage .ai-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+#aiInsightPage .ai-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
 #aiInsightPage .ai-grid .ai-feature-card>.ai-action{min-height:74px;padding:10px 96px 10px 14px!important;border:1px solid #d0e0eb!important;border-radius:14px;background:#fff!important;color:#253241!important;box-shadow:0 2px 7px rgba(56,104,135,.06)!important}
 #aiInsightPage .ai-grid .ai-feature-card>.ai-action:hover{border-color:#8cbaf0!important;background:#f8fcff!important}
 #aiInsightPage .ai-grid .ai-feature-card>.ai-action.active{border-color:#4b91ed!important;background:#edf6ff!important;box-shadow:inset 4px 0 0 #2f80ed!important}
@@ -657,7 +657,11 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
     ['slidesoutline','📊 建立簡報架構','將文件整理成適合口頭報告的專業簡報格式。'],
     ['compare','🔄 公文／報告差異比對','比對兩份文件，標出增刪修訂、數字日期與權責差異。'],
     ['sitephoto','📷 現場照片轉工程紀錄','將現場照片擷取文字與補充說明整理為工程紀錄及追蹤事項。'],
-    ['briefing','⏱️ 長官簡報三分鐘版','將長篇資料濃縮為首長可快速掌握的三分鐘決策摘要。']
+    ['briefing','⏱️ 長官簡報三分鐘版','將長篇資料濃縮為首長可快速掌握的三分鐘決策摘要。'],
+    ['swot','🧭 SWOT分析','以優勢、劣勢、機會與威脅架構，整理策略分析與行動建議。'],
+    ['kpi','🎯 KPI分析','依 SMART 原則建立 KPI 架構、目標值、主責單位與執行時程。'],
+    ['pdca','🔄 PDCA分析','以計畫、執行、檢查、行動四階段規劃持續改善方案。'],
+    ['fab','💡 FAB分析','從功能特徵、優勢與實質效益建立產品或方案價值主張。']
   ];
   const exampleLinks = {
   "proofread": "https://docs.google.com/document/d/1d7uaLsnoI_PYlMx77S20-M59R9X7a8u9AXI2AlQ-aMI/edit?usp=drive_link",
@@ -671,7 +675,11 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
   "slidesoutline": "https://docs.google.com/document/d/1dUYYHmp3kih7X0Th0tJoLOeXqe37Haz4KNzy4Fd5Jrw/edit?usp=drive_link",
   "compare": "https://docs.google.com/document/d/1ddIRoHou1IzKmlSAOf-PqDswQoOXYK97NznCOfa9P3c/edit?usp=drive_link",
   "sitephoto": "https://docs.google.com/document/d/1E5Yu6-OLShjBE9TiEL_OosXMh_gNr4OtlvSFjRQB9ls/edit?usp=drive_link",
-  "briefing": "https://docs.google.com/document/d/1tHSHA9dRADVuAYX7Acwx9loYBrpLyxb3dC1grg3hZNk/edit?usp=drive_link"
+  "briefing": "https://docs.google.com/document/d/1tHSHA9dRADVuAYX7Acwx9loYBrpLyxb3dC1grg3hZNk/edit?usp=drive_link",
+  "swot": "https://docs.google.com/document/d/1aBadYuQyjJdv7kWZuoeoZ-44sEoJfH_dZ3VMYF0vzlE/edit?usp=sharing",
+  "kpi": "https://docs.google.com/document/d/1padWGAW1li_QBt7cGHl14vOdlIAiUTkdGBR-UJ8pHME/edit?usp=sharing",
+  "pdca": "https://docs.google.com/document/d/1PYeXMb2oQy7kBOxtesCDV-oh5S5ibJSLotUNjQUS-xo/edit?usp=sharing",
+  "fab": "https://docs.google.com/document/d/1t2ZGkcQJgbY0zO3MloZJVdSZ_y3PAHVlPRGhlqdivYE/edit?usp=sharing"
 };
   const proofreadIcon = '<svg class="ai-proofread-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h5M14 2l6 6v4M14 2v6h6M8 12h4M8 16h2"/><path d="m14 18 2 2 5-6" stroke="#18884c"/></svg>';
   let selectedFeature = 'proofread';
@@ -860,7 +868,33 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
 1. **問：第一個可能追問的問題？**
    - **答：** 根據資料的直接回答；資料不足時寫「待確認」並簡述原因。
 2. **問：第二個可能追問的問題？**
-   - **答：** 根據資料的直接回答；資料不足時寫「未提供」。`
+   - **答：** 根據資料的直接回答；資料不足時寫「未提供」。`,
+    swot: `請擔任資深策略分析師。請仔細閱讀下方提供的文件全文，並運用 SWOT 分析架構（優勢 Strengths、劣勢 Weaknesses、機會 Opportunities、威脅 Threats）進行全面且深入的結構化剖析。
+
+【產出要求】
+1. 格式呈現：請以結構化表格結合重點說明方式呈現結果，確保版面清晰、易於閱讀。
+2. 項目數量：每個 SWOT 面向（優勢、劣勢、機會、威脅）請精準提煉 3 至 5 項關鍵要點。
+3. 內容品質：分析須嚴格基於文件核心內容，表述精準、邏輯嚴謹，避免虛泛套話。每項要點請先給出簡明標題，並附上 1–2 句具體的實質說明與依據。
+4. 總結建議：在表格下方，根據 SWOT 分析結果提煉 2–3 條具可操作性的戰略建議。`,
+    kpi: `請擔任資深績效管理專家與顧問。請仔細閱讀下方提供的文件內容，系統性地為該計畫或專案提煉並制定合理且可執行的 KPI（關鍵績效指標）架構與實施方案。
+
+【撰寫與分析要求】
+1. 所有 KPI 必須嚴格符合 SMART 原則：具體、可衡量、可達成、相關性與時限性。
+2. 請以結構化表格呈現各項 KPI，欄位包含：績效目標／KPI 項目、目標值與衡量指標、主責單位／部門、預計完成時限／時程安排。
+3. 針對上述 KPI，按準備期、執行期、評估與優化期列出具體實施步驟與配套行動計畫。
+4. 額外提供 2–3 條執行過程中的潛在風險防範措施或推動建議，確保規劃具備高度可操作性。`,
+    pdca: `請擔任資深專案管理顧問。請仔細閱讀下方提供的文件內容，運用 PDCA 循環（Plan 計畫、Do 執行、Check 檢查、Act 行動）架構，進行系統化與結構化的重點歸納與推動規劃。
+
+【撰寫與架構要求】
+1. 明確區分 P、D、C、A 四個階段。每個階段須包含：具體目標、行動方案、負責單位／部門、時程規劃／里程碑、預期成果與檢驗標準。
+2. 請以主結構標題加結構化表格呈現，確保層次分明、邏輯嚴謹。
+3. 在 Act 行動階段特別著重偏差修正策略與標準化推廣步驟，充分展現 PDCA 滾動式改善的實務價值。`,
+    fab: `請擔任資深產品策略與行銷顧問。請仔細閱讀下方提供的文件內容，運用 FAB 銷售與價值主張架構（Features 特徵／功能、Advantages 優勢／勝出點、Benefits 效益／客戶價值），進行系統化與結構化的重點提煉與分析。
+
+【撰寫與分析要求】
+1. 明確區分三者的邏輯鏈結：Features 客觀描述產品、計畫或方案的功能、規格或做法；Advantages 分析相較於傳統做法、競品或現狀的獨特優勢；Benefits 從使用者或決策者角度說明具體好處、價值或量化回報。
+2. 請以結構化對照表格呈現，欄位包含：核心項目／功能名稱、Features 功能描述、Advantages 獨特優勢、Benefits 預期效益。
+3. 邏輯須嚴謹、表述精準，避免虛泛套話；效益部分儘量結合具體場景或量化指標預估。`
   };
   const panel = document.createElement('section');
   panel.id = 'aiInsightPage'; panel.className = 'ai-page show';
@@ -1100,7 +1134,7 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
   const transcribePageStyle = document.createElement('style');
   transcribePageStyle.textContent = `.ai-transcribe-launch{border:1px solid #76aee8;border-radius:9px;background:#eaf4ff;color:#0d569d;padding:8px 11px;font:700 13px/1 'Microsoft JhengHei',sans-serif;white-space:nowrap;cursor:pointer}.ai-transcribe-launch:hover,.ai-transcribe-launch:focus{background:#1767c5;color:#fff;border-color:#1767c5}.ai-transcribe-page{display:none;position:fixed;inset:0;z-index:230;padding:5vh 6vw;overflow:auto;background:rgba(233,240,249,.94);backdrop-filter:blur(9px)}.ai-transcribe-page.show{display:block}.ai-transcribe-shell{position:relative;max-width:860px;margin:auto;padding:26px;background:#fff;border-radius:24px;box-shadow:0 24px 70px rgba(27,54,93,.25)}.ai-transcribe-shell .ai-transcribe{margin-top:14px;padding:22px}.ai-transcribe-close{border:0;border-radius:9px;background:#eaf3ff;color:#174f94;padding:9px 12px;font:800 14px 'Microsoft JhengHei',sans-serif;cursor:pointer}.ai-transcribe-close:hover,.ai-transcribe-close:focus{background:#1767c5;color:#fff}.ai-transcribe-status{min-height:1.5em;margin:10px 0 0;color:#315d8c;font-size:13px;font-weight:700}@media(max-width:900px){.ai-transcribe-launch{align-self:flex-start}.ai-transcribe-page{padding:18px 12px}.ai-transcribe-shell{padding:18px}.ai-transcribe-shell .ai-transcribe{padding:16px}}`;
   document.head.appendChild(transcribePageStyle);
-  const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','webvisual','newsrelease','speech','slidesoutline','compare','sitephoto','briefing'].includes(id);
+  const usesDocumentInput = id => ['proofread','meeting','polish','critical','painpoint','webvisual','newsrelease','speech','slidesoutline','compare','sitephoto','briefing','swot','kpi','pdca','fab'].includes(id);
   const defaultFileHint = '支援 DOCX、RTF、PDF、PNG、JPG、HEIC、WebP、TXT、MD、HTML 等檔案；PDF 優先擷取原生文字，掃描頁與圖片使用 OCR；舊版 DOC 請另存為 DOCX。';
   const choose = id => { const changed = selectedFeature !== id; selectedFeature = id; const directInput = usesDocumentInput(id), compareMode = id === 'compare', photoMode = id === 'sitephoto'; if (changed) { fileLoadId++; readingFile = false; run.disabled = false; pendingCompareFiles = []; selectedSourceFiles = []; fileInput.value = ''; } setWorkflowStep(2); panel.querySelectorAll('.ai-action').forEach(button => { const active = button.dataset.ai === id; button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); }); fileArea.hidden = !directInput; fileInput.multiple = compareMode; input.placeholder = compareMode ? '請貼上兩份文件，並以【版本 A：】與【版本 B：】清楚區分；可一次選擇兩檔，或分兩次開啟版本 A、B…' : photoMode ? '請貼上照片相關的工程名稱、地點、時間、施工項目或補充說明…' : directInput ? '請貼上要處理的文件、議題或文字內容…' : '可補充分析指令。'; fileName.textContent = compareMode ? '可一次選擇兩份文件，或先開啟版本 A、再開啟版本 B；系統會依開啟順序標記。' : photoMode ? '支援現場照片與補充文字；開始 AI 分析時，原始照片會傳送至 Gemini 進行場景初步判讀。' : defaultFileHint; limit.textContent = photoMode ? '隱私提醒：僅在按下「開始 AI 分析」時，所選照片才會傳送至 Gemini；結果為 AI 初步判讀，須由現場人員確認。' : directInput ? compareMode ? '資料來源：僅使用此欄貼上的兩份文字或您選取的兩個檔案，不會讀取記事內容。' : '資料來源：僅使用此對話欄貼上的文字或選取文字檔，不會讀取記事內容。' : ''; };
   choose(selectedFeature);
