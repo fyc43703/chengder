@@ -934,7 +934,8 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   const AC = new (window.AudioContext || window.webkitAudioContext)();
   const STARTUP_AUDIO_URLS = [
     'https://fyc43703.github.io/chengder/%E6%97%85%E7%AB%8B%E3%81%A1%E3%81%AE%E6%97%A5%E3%81%AB.mp3',
-    './千と千尋の神隠し - いつも何度でも.mp3'
+    './千と千尋の神隠し - いつも何度でも.mp3',
+    './久石讓 in 武道館。龍貓.mp3'
   ];
   
   const preEffectNode = AC.createGain();
@@ -1203,6 +1204,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
           playhead.style.display = 'none';
           return;
       }
+      clampWaveformView();
       const currentTime = isPlaying ? ((AC.currentTime - startTime) * (sourceNode?.playbackRate.value || 1.0)) : pausedAt;
       const duration = audioBuffer.duration;
       const visibleStart = viewOffset;
@@ -1219,6 +1221,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   }
 
   function drawWaveform() {
+      clampWaveformView();
       const canvas = waveformCanvas;
       const dpr = window.devicePixelRatio || 1;
       canvas.width = canvas.clientWidth * dpr;
@@ -1252,10 +1255,27 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       ctx.stroke();
   }
 
+  function clampWaveformView() {
+      if (!audioBuffer) { viewOffset = 0; return; }
+      zoom = Number.isFinite(zoom) ? Math.max(1, Math.min(256, zoom)) : 1;
+      const maxOffset = Math.max(0, audioBuffer.duration - audioBuffer.duration / zoom);
+      viewOffset = Number.isFinite(viewOffset) ? Math.max(0, Math.min(viewOffset, maxOffset)) : 0;
+  }
+
   function pxToSeconds(px) {
-    if (!audioBuffer) return 0;
-    const visibleDuration = audioBuffer.duration / zoom;
-    return viewOffset + (px / waveformCanvas.clientWidth) * visibleDuration;
+      if (!audioBuffer) return 0;
+      clampWaveformView();
+      const width = waveformCanvas.getBoundingClientRect().width;
+      const fraction = width > 0 ? Math.max(0, Math.min(1, px / width)) : 0;
+      return Math.max(0, Math.min(audioBuffer.duration, viewOffset + fraction * audioBuffer.duration / zoom));
+  }
+
+  function selectionSampleRange(buffer = audioBuffer) {
+      if (!buffer || !Number.isFinite(selectionStart) || !Number.isFinite(selectionEnd)) return null;
+      const toSample = time => Math.max(0, Math.min(buffer.length, Math.round(time * buffer.sampleRate)));
+      const start = toSample(Math.min(selectionStart, selectionEnd));
+      const end = toSample(Math.max(selectionStart, selectionEnd));
+      return end > start ? { start, end } : null;
   }
 
   waveformCanvas.onmousedown = e => {
@@ -1382,15 +1402,16 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       const duration = audioBuffer ? audioBuffer.duration : 0;
       $('loopStart').value = formatTime(0); $('loopEnd').value = formatTime(duration);
       loopStart = 0; loopEnd = duration;
+      clampWaveformView();
       updateTimeDisplay(); clearSelection();
-      drawWaveform();
+      drawWaveform(); updatePlayhead();
       updateHistoryButtons();
       if(wasPlaying) play();
   }
 
   $('undoBtn').onclick = () => {
       if (!audioBuffer || editHistory.length === 0) return;
-      runEditOperation('復原', () => {
+      return runEditOperation('復原', () => {
           redoHistory.push(audioBuffer);
           const previous = editHistory.pop();
           const wasPlaying = isPlaying; stop(); audioBuffer = previous;
@@ -1402,7 +1423,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   };
   $('redoBtn').onclick = () => {
       if (!audioBuffer || redoHistory.length === 0) return;
-      runEditOperation('重做', () => {
+      return runEditOperation('重做', () => {
           editHistory.push(audioBuffer);
           const next = redoHistory.pop();
           const wasPlaying = isPlaying; stop(); audioBuffer = next;
@@ -1413,8 +1434,11 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       });
   };
 
+  let editOperationInProgress = false;
   async function runEditOperation(label, operation) {
+      if (editOperationInProgress) return;
       if (!audioBuffer) { alert('請先載入音訊檔案'); return; }
+      editOperationInProgress = true;
       const indicator = $('loadingIndicator');
       const message = indicator.querySelector('div:last-child');
       indicator.style.display = 'flex';
@@ -1430,6 +1454,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
           await new Promise(resolve => setTimeout(resolve, 1000));
           alert(`${label}時發生錯誤。`);
       } finally {
+          editOperationInProgress = false;
           indicator.style.display = 'none';
       }
   }
@@ -1456,12 +1481,37 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     updateBuffer(newBuffer);
   });
   $('trimBtn').onclick = () => {
-    if (!audioBuffer || selectionEnd === selectionStart) return;
-    runEditOperation('裁剪音訊', () => { const start = Math.floor(selectionStart * audioBuffer.sampleRate), end = Math.floor(selectionEnd * audioBuffer.sampleRate), len = end - start, newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, len, audioBuffer.sampleRate); for (let i = 0; i < audioBuffer.numberOfChannels; i++) newBuffer.getChannelData(i).set(audioBuffer.getChannelData(i).subarray(start, end)); updateBuffer(newBuffer); });
+      const buffer = audioBuffer, range = selectionSampleRange(buffer);
+      if (!range) return;
+      return runEditOperation('裁剪音訊', () => {
+          if (audioBuffer !== buffer) return;
+          const { start, end } = range;
+          if (start === 0 && end === buffer.length) return;
+          const newBuffer = AC.createBuffer(buffer.numberOfChannels, end - start, buffer.sampleRate);
+          for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+              newBuffer.getChannelData(ch).set(buffer.getChannelData(ch).subarray(start, end));
+          }
+          updateBuffer(newBuffer);
+      });
   };
   $('deleteBtn').onclick = () => {
-    if (!audioBuffer || selectionEnd === selectionStart) return;
-    runEditOperation('刪除音訊', () => { const start = Math.floor(selectionStart * audioBuffer.sampleRate), end = Math.floor(selectionEnd * audioBuffer.sampleRate), len = audioBuffer.length - (end - start); if (len <= 0) return; const newBuffer = AC.createBuffer(audioBuffer.numberOfChannels, len, audioBuffer.sampleRate); for (let i = 0; i < audioBuffer.numberOfChannels; i++) { const oldData = audioBuffer.getChannelData(i), newData = newBuffer.getChannelData(i); newData.set(oldData.subarray(0, start)); newData.set(oldData.subarray(end), start); } updateBuffer(newBuffer); });
+      const buffer = audioBuffer, range = selectionSampleRange(buffer);
+      if (!range) return;
+      if (range.end - range.start === buffer.length) {
+          alert('選取範圍涵蓋整首音訊，請縮小範圍，至少保留一段音訊。');
+          return;
+      }
+      return runEditOperation('刪除音訊', () => {
+          if (audioBuffer !== buffer) return;
+          const { start, end } = range;
+          const newBuffer = AC.createBuffer(buffer.numberOfChannels, buffer.length - (end - start), buffer.sampleRate);
+          for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+              const oldData = buffer.getChannelData(ch), newData = newBuffer.getChannelData(ch);
+              newData.set(oldData.subarray(0, start));
+              newData.set(oldData.subarray(end), start);
+          }
+          updateBuffer(newBuffer);
+      });
   };
 
   $('applyCompressorBtn').onclick = () => {
