@@ -1079,6 +1079,25 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
   polishLink.setAttribute('aria-label', '潤飾文稿（在新分頁開啟）');
   polishLink.innerHTML = '<svg class="ai-shortcut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16M6 16l10-10 2 2-10 10-3 1zM14 8l2 2"/></svg>潤飾文稿';
   audioRow.append(polishLink);
+  // Transfer only the keys currently in this page to the paired tool tab.
+  polishLink.href = new URL('./AI語句潤飾工具_共用金鑰版.html', location.href).href;
+  polishLink.removeAttribute('rel');
+  polishLink.addEventListener('click', event => {
+    event.preventDefault();
+    const nonce = crypto.randomUUID();
+    const destination = new URL(polishLink.href);
+    destination.hash = new URLSearchParams({'ai-office-nonce':nonce}).toString();
+    const child = window.open(destination.href, '_blank');
+    if (!child) { alert('請允許瀏覽器開啟潤飾文稿分頁。'); return; }
+    const respond = message => {
+      if (message.source !== child || message.data?.type !== 'ai-polish-ready' || message.data.nonce !== nonce) return;
+      if (destination.protocol !== 'file:' && message.origin !== destination.origin) return;
+      child.postMessage({type:'ai-office-keys', nonce, ...window.getAiOfficeSettings()}, destination.protocol === 'file:' ? '*' : destination.origin);
+      window.removeEventListener('message', respond);
+    };
+    window.addEventListener('message', respond);
+    setTimeout(() => window.removeEventListener('message', respond), 30000);
+  });
   arrangedTools.replaceChildren(photoRow, audioRow);
   relocatedShortcuts.classList.add('ai-workflow-shortcuts');
   relocatedShortcuts.setAttribute('aria-label', '語音轉文字及摘要教學');
