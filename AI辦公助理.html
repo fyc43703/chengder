@@ -1046,6 +1046,13 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
     for (const child of [...container.childNodes]) if (child.nodeType === Node.TEXT_NODE) child.remove();
     container.insertBefore(link, field);
   }
+  for (const field of [aiGeminiKey,aiGroqKey]) {
+    field.style.cssText='background:#fff;color:#172b4d;font:16px/24px Consolas,monospace;padding:10px 12px;border:1px solid #91a2b9;min-height:46px;opacity:1;';
+    const toggle=document.createElement('button');toggle.type='button';toggle.textContent='顯示金鑰';toggle.setAttribute('aria-pressed','false');
+    toggle.style.cssText='align-self:flex-start;padding:5px 10px;margin-top:4px;background:#f4f7fb;color:#172b4d;border:1px solid #91a2b9;border-radius:6px;cursor:pointer';
+    toggle.addEventListener('click',()=>{field.type=field.type==='password'?'text':'password';toggle.textContent=field.type==='password'?'顯示金鑰':'隱藏金鑰';toggle.setAttribute('aria-pressed',String(field.type==='text'))});
+    field.after(toggle);
+  }
   aiGeminiKey.addEventListener('input', syncAiKeys); aiGroqKey.addEventListener('input', syncAiKeys);
   let rawResult = '', resultFeature = selectedFeature, selectedSourceFiles = [], pendingCompareFiles = [], fileLoadId = 0, readingFile = false;
   const controls = panel.querySelector('.ai-controls'), copyButton = panel.querySelector('.ai-copy'), exportButton = panel.querySelector('.ai-export'), controlTools = document.createElement('div'), processing = document.createElement('div');
@@ -1079,24 +1086,27 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
   polishLink.setAttribute('aria-label', '潤飾文稿（在新分頁開啟）');
   polishLink.innerHTML = '<svg class="ai-shortcut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16M6 16l10-10 2 2-10 10-3 1zM14 8l2 2"/></svg>潤飾文稿';
   audioRow.append(polishLink);
-  // Transfer only the keys currently in this page to the paired tool tab.
-  polishLink.href = 'https://fyc43703.github.io/chengder/AI%E8%AA%9E%E5%8F%A5%E6%BD%A4%E9%A3%BE%E5%B7%A5%E5%85%B7.html';
+  // Open the paired revision and wait for acknowledgement before retiring the connection.
+  polishLink.href = new URL('AI語句潤飾工具_修正版.html', location.href).href;
   polishLink.removeAttribute('rel');
   polishLink.addEventListener('click', event => {
     event.preventDefault();
     const nonce = crypto.randomUUID();
     const destination = new URL(polishLink.href);
     destination.hash = new URLSearchParams({'ai-office-nonce':nonce}).toString();
-    const child = window.open(destination.href, '_blank');
-    if (!child) { alert('請允許瀏覽器開啟潤飾文稿分頁。'); return; }
+    let child, timeout;
+    const stop = () => { window.removeEventListener('message', respond); clearTimeout(timeout); };
     const respond = message => {
-      if (message.source !== child || message.data?.type !== 'ai-polish-ready' || message.data.nonce !== nonce) return;
+      if (!child || message.source !== child || message.data?.nonce !== nonce) return;
       if (destination.protocol !== 'file:' && message.origin !== destination.origin) return;
-      child.postMessage({type:'ai-office-keys', nonce, ...window.getAiOfficeSettings()}, destination.protocol === 'file:' ? '*' : destination.origin);
-      window.removeEventListener('message', respond);
+      if (message.data.type === 'ai-polish-keys-received') { stop(); return; }
+      if (message.data.type !== 'ai-polish-ready') return;
+      child.postMessage({type:'ai-office-keys',nonce,...window.getAiOfficeSettings()},destination.protocol === 'file:' ? '*' : destination.origin);
     };
     window.addEventListener('message', respond);
-    setTimeout(() => window.removeEventListener('message', respond), 30000);
+    child = window.open(destination.href, '_blank');
+    if (!child) { stop(); alert('請允許瀏覽器開啟潤飾文稿分頁。'); return; }
+    timeout = setTimeout(stop,45000);
   });
   arrangedTools.replaceChildren(photoRow, audioRow);
   relocatedShortcuts.classList.add('ai-workflow-shortcuts');
