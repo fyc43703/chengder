@@ -23126,6 +23126,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     </script>
     <style>
         [hidden] { display: none !important; }
+        #api-settings-panel.open{max-height:none!important}
+        #api-settings-panel input[type=password],#api-settings-panel input[type=text]{background:#fff;color:#172b4d;font-family:Consolas,"Microsoft JhengHei",monospace;font-size:16px;line-height:24px;min-height:46px;padding:10px 72px 10px 12px;border:1px solid #91a2b9;box-shadow:inset 0 1px 3px #0001;letter-spacing:.3px}
+        #api-settings-panel input::placeholder{color:#58677c;opacity:1}
+        .key-visibility{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:13px;padding:5px 8px;border:1px solid #91a2b9;border-radius:6px;background:#f4f7fb;color:#172b4d;cursor:pointer}
+        [data-theme=dark] #api-settings-panel input[type=password],[data-theme=dark] #api-settings-panel input[type=text]{background:#182435;color:#f5f7fb;border-color:#91a2b9}
+        [data-theme=dark] #api-settings-panel input::placeholder{color:#c0c9d6}
         :root {
             /* Light Mode Colors */
             --bg-primary: #e0e5ec; /* Neumorphic base color */
@@ -23358,14 +23364,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                 <div class="flex flex-col sm:flex-row gap-4">
                     <div class="flex-1">
                         <label for="geminiKeyInput" class="text-xs font-bold text-[var(--text-secondary)] mb-1 block">Gemini API Key</label>
-                        <input type="password" id="geminiKeyInput" class="w-full p-2 relief-input text-sm font-mono" autocomplete="off" placeholder="Gemini API Key">
+                        <div class="relative"><input type="password" id="geminiKeyInput" class="w-full p-2 relief-input text-sm font-mono" autocomplete="off" spellcheck="false" placeholder="尚未設定 Gemini API Key"><button type="button" id="toggleGeminiVisibility" class="key-visibility" aria-pressed="false" aria-label="顯示或隱藏 Gemini API Key">顯示</button></div>
                     </div>
                     <div class="flex-1">
                         <label for="apiKeyInput" class="text-xs font-bold text-[var(--text-secondary)] mb-1 block">Groq API Key</label>
                         <div class="relative">
-                            <input type="password" id="apiKeyInput" class="w-full p-2 pr-10 relief-input text-sm font-mono" placeholder="gsk_...">
-                            <button id="toggleApiVisibility" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--accent-blue)]" title="顯示/隱藏 Key">
-                                👁️
+                            <input type="password" id="apiKeyInput" class="w-full p-2 pr-10 relief-input text-sm font-mono" autocomplete="off" spellcheck="false" placeholder="尚未設定 Groq API Key">
+                            <button id="toggleApiVisibility" type="button" class="key-visibility" aria-pressed="false" title="顯示或隱藏 Groq API Key">
+                                顯示
                             </button>
                         </div>
                     </div>
@@ -23376,6 +23382,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                 </div>
                 <label class="text-xs text-[var(--text-secondary)]"><input type="checkbox" id="rememberKeysInput"> 記住 API Key（共用電腦請勿勾選）</label>
                 <label class="text-xs text-[var(--text-secondary)]"><input type="checkbox" id="allowFallbackInput"> Gemini 失敗時允許使用 Groq 備援</label>
+                <div id="keySourceStatus" role="status" style="font-size:13px;color:var(--text-primary)">正在檢查金鑰來源…</div><button type="button" id="importOfficeKeysButton" class="macos-button macos-button-secondary text-xs">從 AI 辦公助理帶入</button>
                 <div class="flex justify-between items-center">
                     <p class="text-[10px] text-[var(--text-tertiary)]">金鑰預設僅用於本次開啟；勾選記住金鑰後才會明文儲存在本瀏覽器。</p>
                     <button id="saveApiButton" class="macos-button macos-button-primary text-xs whitespace-nowrap">💾 儲存並關閉</button>
@@ -23423,6 +23430,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             </div>
             
             <p class="order-1 text-xs text-center text-[var(--text-secondary)]">未設定金鑰或本頁分析失敗時，可改用「匯出至 Gemini」。免填 API Key；複製目前模式提示詞及內容並開啟 Gemini，登入、貼上後自行送出。</p>
+            <div class="order-1" style="display:flex;gap:12px;justify-content:center;align-items:center"><span id="requestStatus" role="status" aria-live="polite"></span><button id="cancelRequestButton" type="button" hidden class="macos-button macos-button-secondary text-xs">取消處理</button></div>
             <div id="a4Options" hidden class="order-1 relief-frame" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px"><label>目標讀者<input id="a4Audience" class="relief-input" style="display:block;width:100%;padding:8px" placeholder="例如：主管、工程同仁"></label><label>使用情境<input id="a4Scenario" class="relief-input" style="display:block;width:100%;padding:8px" placeholder="例如：會議說明"></label><label>視覺風格<input id="a4VisualStyle" class="relief-input" style="display:block;width:100%;padding:8px" placeholder="例如：正式、簡潔、藍色系"></label><label>來源名稱<input id="a4Source" class="relief-input" style="display:block;width:100%;padding:8px" placeholder="檔名或文件名稱"></label></div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 order-2">
                 <!-- 原文 3D Frame -->
@@ -23559,18 +23567,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             initializeTheme();
             initializeSettings();
             initializeEventListeners();
-            const officeNonce = new URLSearchParams(location.hash.slice(1)).get('ai-office-nonce');
-            if (officeNonce && window.opener) {
-                window.addEventListener('message', event => {
-                    if (event.source !== window.opener || event.data?.type !== 'ai-office-keys' || event.data.nonce !== officeNonce) return;
-                    allUIElements.geminiKeyInput.value = event.data.geminiKey || '';
-                    allUIElements.apiKeyInput.value = event.data.groqKey || '';
-                    allUIElements.allowFallbackInput.checked = !!event.data.allowFallback;
-                    showToast('已從 AI 辦公助理帶入 API Key', 'success');
-                });
-                window.opener.postMessage({type:'ai-polish-ready', nonce:officeNonce}, '*');
-                history.replaceState(null, '', location.pathname + location.search);
-            }
+            let groqReadyAt = 0;
+            initializeOfficeConnection();
             handleStyleChange();
             initializeFeatures();
 
@@ -24088,6 +24086,123 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             }
 
 
+                        function setKeySource(message) {
+                document.getElementById('keySourceStatus').textContent = message;
+            }
+            function applyOfficeSettings(settings) {
+                if (!settings || typeof settings !== 'object') return false;
+                const gemini = typeof settings.geminiKey === 'string' ? settings.geminiKey.trim() : '';
+                const groq = typeof settings.groqKey === 'string' ? settings.groqKey.trim() : '';
+                if (!gemini && !groq) return false;
+                if (gemini) allUIElements.geminiKeyInput.value = gemini;
+                if (groq) allUIElements.apiKeyInput.value = groq;
+                if (typeof settings.allowFallback === 'boolean') allUIElements.allowFallbackInput.checked = settings.allowFallback;
+                setKeySource('已帶入 AI 辦公助理金鑰：' + [gemini ? 'Gemini' : '', groq ? 'Groq' : ''].filter(Boolean).join('、'));
+                return true;
+            }
+            function initializeOfficeConnection() {
+                const nonce = new URLSearchParams(location.hash.slice(1)).get('ai-office-nonce');
+                let received = false, attempts = 0, timer;
+                const loadAvailable = () => {
+                    try {
+                        if (window.opener && typeof window.opener.getAiOfficeSettings === 'function' && applyOfficeSettings(window.opener.getAiOfficeSettings())) return true;
+                    } catch (_) { /* Cross-origin or local-file opener: use the nonce handshake. */ }
+                    try {
+                        if (applyOfficeSettings(JSON.parse(localStorage.getItem('aiOfficeSettingsV1') || 'null'))) return true;
+                    } catch (_) {}
+                    return false;
+                };
+                const announce = () => {
+                    if (received || !nonce || !window.opener || window.opener.closed || attempts++ >= 40) { clearInterval(timer); return; }
+                    window.opener.postMessage({type:'ai-polish-ready',nonce}, '*');
+                };
+                if (nonce && window.opener) {
+                    window.addEventListener('message', event => {
+                        if (busy || event.source !== window.opener || event.data?.type !== 'ai-office-keys' || event.data.nonce !== nonce) return;
+                        if (received) return;
+                        received = true; clearInterval(timer);
+                        if (!applyOfficeSettings(event.data)) setKeySource('辦公助理尚未設定金鑰，請先在辦公助理填入。');
+                        window.opener.postMessage({type:'ai-polish-keys-received',nonce}, event.origin === 'null' ? '*' : event.origin);
+                    });
+                    announce(); timer=setInterval(announce,750);
+                    try { history.replaceState(null,'',location.pathname + location.search); } catch (_) {}
+                }
+                if (!loadAvailable() && !nonce) setKeySource(allUIElements.geminiKeyInput.value || allUIElements.apiKeyInput.value ? '已載入本瀏覽器保存的金鑰。' : '尚未帶入金鑰；請由 AI 辦公助理的「潤飾文稿」開啟，或直接填入。');
+                document.getElementById('importOfficeKeysButton').addEventListener('click', () => {
+                    if (busy) return;
+                    if (loadAvailable()) showToast('已從 AI 辦公助理帶入金鑰。');
+                    else if (nonce && window.opener) { received=false;attempts=0;clearInterval(timer);announce();timer=setInterval(announce,750);setKeySource('正在向 AI 辦公助理取得金鑰…'); }
+                    else {setKeySource('無法連接辦公助理；請使用配套修正版的「潤飾文稿」開啟本頁。');showToast('請從 AI 辦公助理開啟，或直接填入金鑰。','error');}
+                });
+                for (const [input,button] of [[allUIElements.geminiKeyInput,document.getElementById('toggleGeminiVisibility')],[allUIElements.apiKeyInput,allUIElements.toggleApiVisibility]]) {
+                    button.addEventListener('click', () => {
+                        // Existing Groq listener has already toggled its input.
+                        if (input === allUIElements.geminiKeyInput) input.type = input.type === 'password' ? 'text' : 'password';
+                        button.textContent = input.type === 'password' ? '顯示' : '隱藏';
+                        button.setAttribute('aria-pressed',String(input.type === 'text'));
+                    });
+                    input.addEventListener('input', () => setKeySource('目前使用您輸入的金鑰；勾選「記住 API Key」後按儲存才會保存。'));
+                }
+                document.getElementById('cancelRequestButton').addEventListener('click',()=>activeRequestController?.abort());
+            }
+            function parseQuotaDuration(value) {
+                if (!value) return 0;
+                if (/^\d+(\.\d+)?$/.test(value.trim())) return Number(value)*1000;
+                const parts = Array.from(value.matchAll(/(\d+(?:\.\d+)?)\s*(ms|s|m|h)/g));
+                return parts.reduce((sum,m)=>sum+Number(m[1])*({ms:1,s:1000,m:60000,h:3600000}[m[2]]),0);
+            }
+            async function waitForQuota(milliseconds,signal,label) {
+                if (signal.aborted) throw new DOMException('Aborted','AbortError');
+                await new Promise((resolve,reject)=>{
+                    const end=Date.now()+milliseconds;
+                    const status=document.getElementById('requestStatus');
+                    const update=()=>status.textContent=label+'，'+Math.max(1,Math.ceil((end-Date.now())/1000))+' 秒後繼續…';
+                    update();const interval=setInterval(update,1000);
+                    const finish=()=>{clearInterval(interval);clearTimeout(timer);signal.removeEventListener('abort',abort);};
+                    const abort=()=>{finish();reject(new DOMException('Aborted','AbortError'));};
+                    const timer=setTimeout(()=>{finish();resolve()},milliseconds);
+                    signal.addEventListener('abort',abort,{once:true});
+                });
+            }
+            async function fetchWithQuota(provider,url,options) {
+                const signal=options.signal;
+                if(provider==='Groq' && groqReadyAt>Date.now())await waitForQuota(groqReadyAt-Date.now(),signal,'Groq 額度恢復中');
+                for(let attempt=0;attempt<=3;attempt++){
+                    document.getElementById('requestStatus').textContent='正在使用 '+provider+' 處理資料…';
+                    const response=await fetch(url,options);
+                    if(response.ok){
+                        if(provider==='Groq'){
+                            const data=await response.clone().json().catch(()=>({}));
+                            const remaining=Number(response.headers.get('x-ratelimit-remaining-tokens'));
+                            const reset=parseQuotaDuration(response.headers.get('x-ratelimit-reset-tokens'));
+                            const total=Number(data.usage?.total_tokens)||0;
+                            const limit=Number(response.headers.get('x-ratelimit-limit-tokens'))||8000;
+                            const body=JSON.parse(options.body);
+                            const estimate=Math.ceil(body.messages.reduce((n,m)=>n+m.content.length,0)*0.8)+(body.max_tokens||0);
+                            groqReadyAt=Date.now() + (response.headers.has('x-ratelimit-remaining-tokens')&&remaining<estimate&&reset ? reset+1000 : Math.max(1000,Math.ceil(total/limit*60000)));
+                        }
+                        return response;
+                    }
+                    if(response.status!==429 && response.status!==413)return response;
+                    const data=await response.clone().json().catch(()=>({}));
+                    const message=data.error?.message || '';
+                    const limit=Number(message.match(/Limit\s*:?\s*([\d,.]+)/i)?.[1]?.replaceAll(',',''));
+                    const requested=Number(message.match(/Requested\s*:?\s*([\d,.]+)/i)?.[1]?.replaceAll(',',''));
+                    if(response.status===413 || (limit&&requested&&requested>limit))throw new Error(provider+' 單次請求超過額度，等待也無法完成。請縮短原文、分批處理，或匯出至 Gemini。');
+                    if(attempt===3)throw new Error(provider+' 額度仍不足，已等待並重試 3 次。原文已保留，請稍後再試或匯出至 Gemini。');
+                    let delay=parseQuotaDuration(response.headers.get('retry-after'));
+                    if(!delay && response.headers.get('retry-after'))delay=Math.max(0,Date.parse(response.headers.get('retry-after'))-Date.now());
+                    if(!delay)delay=parseQuotaDuration(message.match(/try again in\s+([\d.]+\s*[smh])/i)?.[1]);
+                    if(!delay)delay=parseQuotaDuration(response.headers.get('x-ratelimit-reset-tokens'));
+                    if(!delay)delay=15000*2**attempt;
+                    if(delay>300000)throw new Error(provider+' 額度恢復需要較長時間，請稍後再試。原文已保留。');
+                    delay=Math.ceil(delay)+1000;
+                    if(provider==='Groq')groqReadyAt=Date.now()+delay;
+                    await waitForQuota(delay,signal,provider+' 額度暫時不足，重試 '+(attempt+1)+' / 3');
+                }
+            }
+
+
             function stripCodeFence(text) {
                 return text.trim().replace(/^```(?:json|html|text)?\s*\r?\n/i, '').replace(/\r?\n```\s*$/, '');
             }
@@ -24396,7 +24511,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                 showLoading(explanationOutput);
                 const controller = new AbortController();
                 activeRequestController = controller;
-                const requestTimeout = setTimeout(() => controller.abort(), selectedStyle === 'a4_handboard' ? 600000 : 90000);
+                document.getElementById('cancelRequestButton').hidden = false;
+                const requestTimeout = setTimeout(() => controller.abort(), selectedStyle === 'a4_handboard' ? 600000 : 180000);
                 const providers = geminiKey ? ['Gemini'] : [];
                 if (groqKey && (!geminiKey || allUIElements.allowFallbackInput.checked)) providers.push('Groq');
 
@@ -24404,13 +24520,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                     const instruction = systemInstructionText + '\n' + extraInstruction + (repair ? '\n上次回應格式不完整。請重新處理來源，務必回傳合法 JSON，包含完整 polishedText 及非空 explanation 字串陣列。' : '');
                     let response;
                     if (provider === 'Gemini') {
-                        response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent', {
+                        response = await fetchWithQuota(provider, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent', {
                             method: 'POST', headers: {'Content-Type': 'application/json', 'x-goog-api-key': geminiKey},
                             body: JSON.stringify({systemInstruction: {parts: [{text: instruction}]}, contents: [{role: 'user', parts: [{text: userContentText}]}], generationConfig: {maxOutputTokens: MAX_OUTPUT_TOKENS, temperature: isGenerationMode ? 0.5 : 0.2, ...(!isGenerationMode || selectedStyle === 'a4_handboard' ? {responseMimeType: 'application/json'} : {})}}),
                             signal: controller.signal
                         });
                     } else {
-                        response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                        response = await fetchWithQuota(provider, 'https://api.groq.com/openai/v1/chat/completions', {
                             method: 'POST', headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + groqKey},
                             body: JSON.stringify({messages: [{role: 'system', content: instruction}, {role: 'user', content: userContentText}], model: currentModelName, temperature: isGenerationMode ? 0.5 : 0.2, max_tokens: MAX_OUTPUT_TOKENS, ...(!isGenerationMode || selectedStyle === 'a4_handboard' ? {response_format: {type: 'json_object'}} : {})}),
                             signal: controller.signal
@@ -24467,7 +24583,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                     hasValidResult = false;
                     lastResultText = '';
                     handboardData = null;
-                    showOutputError(error.name === 'AbortError' ? (selectedStyle === 'a4_handboard' ? '手板製作逾時（10 分鐘），請將資料分批處理。' : '請求逾時（90 秒），請縮短文字或稍後再試。') : error.message);
+                    showOutputError(error.name === 'AbortError' ? '處理已取消或等待逾時，原文已保留。請稍後再試或將資料分批處理。' : error.message);
                 } finally {
                     clearTimeout(requestTimeout);
                     activeRequestController = null;
@@ -24479,6 +24595,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
             function disableUI() {
                 busy = true;
+                document.getElementById('cancelRequestButton').hidden = !activeRequestController;
                 const elementsToDisable = [
                     allUIElements.polishButton, allUIElements.clearButton, allUIElements.copyButton, 
                     allUIElements.exportButton, allUIElements.exportExplanationButton, allUIElements.polishStyleSelect,
@@ -24492,6 +24609,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
             function enableUI() {
                 busy = false;
+                document.getElementById('cancelRequestButton').hidden = true;
+                document.getElementById('requestStatus').textContent = '';
                 const elementsToEnable = [
                     allUIElements.polishButton, allUIElements.clearButton, allUIElements.copyButton, 
                     allUIElements.exportButton, allUIElements.exportExplanationButton, allUIElements.polishStyleSelect,
