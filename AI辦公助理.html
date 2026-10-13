@@ -579,6 +579,17 @@ body{background:#ffffff}
   #aiInsightPage .ai-workflow-shortcuts>.ai-transcribe-launch,#aiInsightPage .ai-workflow-shortcuts>.ai-youtube-link,#aiInsightPage .ai-workflow-shortcuts>.ai-youtube-example{height:38px;min-height:38px;font-size:13px}
 }
 </style>
+<style id="ai-office-key-layout-fix">
+#aiInsightPage .ai-title-row .ai-keybar{position:static!important;transform:none!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;grid-auto-rows:auto!important;gap:8px!important;min-width:0;max-width:100%;margin:0!important;padding:10px;align-self:start!important}
+#aiInsightPage .ai-title-row .ai-keybar>.ai-key-actions{grid-column:1!important;grid-row:auto!important;display:flex;flex-wrap:wrap;gap:8px;height:auto!important;min-width:0}
+#aiInsightPage .ai-title-row .ai-keybar>label:nth-of-type(n){display:grid!important;grid-template-columns:142px minmax(0,1fr)!important;grid-template-rows:auto!important;grid-column:1!important;grid-row:auto!important;width:100%!important;max-width:none!important;min-height:44px!important;align-items:center;gap:8px}
+#aiInsightPage .ai-title-row .ai-keybar>label .ai-key-link{white-space:normal!important;width:auto!important;overflow-wrap:anywhere;font-size:12px;line-height:1.4}
+#aiInsightPage .ai-title-row .ai-keybar .ai-key-field{position:relative;min-width:0;width:100%;height:44px}
+#aiInsightPage .ai-title-row .ai-keybar .ai-key-field input{display:block;width:100%!important;height:44px!important;min-height:44px!important;margin:0!important;padding:9px 66px 9px 10px!important;background:#fff!important;color:#172b4d!important;font:16px/24px Consolas,monospace!important;border:1px solid #91a2b9!important;border-radius:7px;opacity:1}
+#aiInsightPage .ai-title-row .ai-keybar .ai-key-visibility{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:54px;min-height:30px;max-width:54px;white-space:nowrap;overflow:hidden;font:12px/1.3 "Microsoft JhengHei",sans-serif;padding:5px 3px;margin:0;border:1px solid #91a2b9;border-radius:5px;background:#f4f7fb;color:#172b4d;cursor:pointer}
+@media(max-width:900px){#aiInsightPage .ai-title-row .ai-keybar{width:100%!important;justify-self:stretch!important}}
+@media(max-width:620px){#aiInsightPage .ai-title-row .ai-keybar>label:nth-of-type(n){grid-template-columns:minmax(0,1fr)!important;gap:4px}#aiInsightPage .ai-title-row .ai-keybar .ai-key-actions>*{max-width:100%}}
+</style>
 </head>
 <body>
 <script>
@@ -1047,11 +1058,11 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
     container.insertBefore(link, field);
   }
   for (const field of [aiGeminiKey,aiGroqKey]) {
-    field.style.cssText='background:#fff;color:#172b4d;font:16px/24px Consolas,monospace;padding:10px 12px;border:1px solid #91a2b9;min-height:46px;opacity:1;';
-    const toggle=document.createElement('button');toggle.type='button';toggle.textContent='顯示金鑰';toggle.setAttribute('aria-pressed','false');
-    toggle.style.cssText='align-self:flex-start;padding:5px 10px;margin-top:4px;background:#f4f7fb;color:#172b4d;border:1px solid #91a2b9;border-radius:6px;cursor:pointer';
-    toggle.addEventListener('click',()=>{field.type=field.type==='password'?'text':'password';toggle.textContent=field.type==='password'?'顯示金鑰':'隱藏金鑰';toggle.setAttribute('aria-pressed',String(field.type==='text'))});
-    field.after(toggle);
+    const wrapper=document.createElement('div');wrapper.className='ai-key-field';
+    field.before(wrapper);wrapper.appendChild(field);
+    const toggle=document.createElement('button');toggle.type='button';toggle.className='ai-key-visibility';toggle.textContent='顯示';toggle.setAttribute('aria-pressed','false');toggle.setAttribute('aria-label',field===aiGeminiKey?'顯示或隱藏 Gemini API Key':'顯示或隱藏 Groq API Key');
+    toggle.addEventListener('click',()=>{field.type=field.type==='password'?'text':'password';toggle.textContent=field.type==='password'?'顯示':'隱藏';toggle.setAttribute('aria-pressed',String(field.type==='text'))});
+    wrapper.appendChild(toggle);
   }
   aiGeminiKey.addEventListener('input', syncAiKeys); aiGroqKey.addEventListener('input', syncAiKeys);
   let rawResult = '', resultFeature = selectedFeature, selectedSourceFiles = [], pendingCompareFiles = [], fileLoadId = 0, readingFile = false;
