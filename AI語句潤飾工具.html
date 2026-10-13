@@ -755,16 +755,9 @@
                 if (!hasValidResult) { showToast('沒有完整結果可以複製。', 'error'); return; }
                 let textToCopy = '';
                 
-                if (type === 'result') {
-                    // Logic updated: Return clean text (without deletions) as per user request
-                    if (generationModes.includes(polishStyleSelect.value)) {
-                        textToCopy = outputText.textContent;
-                    } else {
-                        textToCopy = getCleanOutputText(outputText);
-                    }
-                }
-                
-                if (textToCopy) {
+                if (type === 'result') textToCopy = lastResultText;
+
+            if (textToCopy) {
                     // Use document.execCommand('copy') which is more reliable in iFrames/WebView environments than navigator.clipboard
                     const textarea = document.createElement('textarea');
                     textarea.value = textToCopy;
@@ -817,18 +810,14 @@
                 let cleanText = '', filename = '';
                 
                 if (type === 'result') {
-                    if (generationModes.includes(polishStyleSelect.value)) {
-                        cleanText = outputText.textContent;
-                    } else {
-                        cleanText = getCleanOutputText(outputText);
-                    }
+                    cleanText = lastResultText;
                     filename = '潤飾結果.rtf';
                 } else {
                     cleanText = explanationOutput.innerText;
                     filename = 'AI潤飾說明.rtf';
                 }
 
-                if (cleanText && cleanText.trim() && cleanText !== '此處將顯示 AI 對潤飾內容的說明。') {
+            if (cleanText && cleanText.trim() && cleanText !== '此處將顯示 AI 對潤飾內容的說明。') {
                     const rtfContent = convertToRtfUnicode(cleanText);
                     const blob = new Blob([rtfContent], { type: 'application/rtf' });
                     const link = document.createElement('a');
@@ -885,10 +874,10 @@
                     summarize_transcript: '請根據文件實際內容整理主題摘要，重點數量及篇幅依來源決定。所有事實均須來自來源，不得為湊項目或字數補寫。請用繁體中文純文字段落呈現。',
                     lazy_html: "你是一位具備資訊整合、視覺設計與簡報製作能力的領域專家,請結合文字的規範性與視覺效果,將以下內容打造成一份符合HTML格式的圖文並茂懶人包。請直接提供完整的 HTML body 內容,不需要 `<html>` 或 `<body>` 標籤,也不需要任何額外解釋或 markdown 標記。",
                     seo_title: '請依原文提供五個精確、有吸引力的 SEO 標題；不得誇大或添加來源未提及的事實。請用繁體中文純文字呈現。',
-                    meeting_minutes_summary: `1. 請將會議內容整理為完整詳細的正式紀錄,包括以下項目:\n2. 會議基本資訊:會議名稱、時間、地點、主持人、紀錄人、出席/列席人員(依單位分類,含職稱姓名)。\n3. 報告事項:前次會議決議執行情形。\n4. 討論事項:議題詳細說明、發言者完整意見(含職稱姓名)、技術性討論內容(含規範引用)、明確決議、負責單位及期限。\n5. 專案議題:意外事故宣導及處理事項、交通維持計畫執行情形、工安科技降災技術討論、安全衛生議題討論、環境保護議題討論、環境影響評估議題討論、防颱防汛宣導及執行情形、門禁管理議題討論、高架作業議題討論、墜落防範議題討論、吊掛作業議題討論、物料管制議題討論。\n6. 臨時動議及結論:臨時提出事項、會議重要結論。請以繁體中文直接以純文字段落呈現,請勿使用Markdown格式符號,請絕對遵循生成的文字不要出現「#」、「*」、「**」、「***」、「-」等符號。`,
+                    meeting_minutes_summary: "您現在是臺北市政府捷運工程局資深會議紀錄承辦人員，請將會議紀錄逐字稿整理為結構化的議題摘要報告，以條列式方式具體呈現如下：\n議題數量與編號：整理出 30 項核心議題，每項議題需加註序號（例如：議題一、議題二……）。\n議題內容結構：每項議題應包含如下\n議題標題：簡明扼要的議題名稱。\n背景說明：說明議題的來龍去脈、討論緣由或相關背景資訊。\n重要結論：摘錄至少 3 項該議題的重要決議或結論。\n字數要求：每項議題（含背景說明與結論）約 300 字。\n輸出格式範例：議題一：[議題標題]。\n背景說明：[說明議題背景、討論原因及相關資訊]。",
                     official_doc_minutes: '請依來源會議內容擬具公文，包含受文者、發文日期、主旨、說明、擬辦、正本及副本。事實、日期及單位依來源填寫，來源未提及處標示待確認。說明項目依實際內容決定，擬辦建議須另標示為建議，不得視為既有決議。使用繁體中文純文字。',
-                    critical_thinking: '請從不同觀點分析原文議題，整理有實質內容的重點，篇幅依議題決定。明確區分來源事實、推論與建議；資料不足處標示待確認。使用繁體中文純文字，不使用 Markdown。',
-                    pain_point_analysis: `請扮演專業評審委員,針對目標對象進行全面痛點分析與改進建議。運用專業知識與實務經驗,以客觀建設性角度評估。請按以下結構進行系統性分析:現況評估:深入了解目標對象的基礎條件、運作模式與環境背景,建立完整的現狀認知基礎。問題診斷:運用專業分析工具識別核心痛點,評估問題嚴重性、影響範圍及相互關聯性,找出根本原因。利害關係人分析:識別所有相關人員,分析其影響力、態度與期待,評估支持度與可能阻力。資源盤點:評估可運用的人力、物力、財力與時間資源,了解執行條件與限制因素。改進建議:針對各痛點提出具體可行的解決措施,考量實務執行面向,提供優先順序建議。精進方案:制定詳細行動計畫,包括執行步驟、時程安排、責任分工與關鍵績效指標。執行時程規劃:安排實施順序與時間節點,設定里程碑與檢核機制,確保進度可控。溝通協調機制:建立內外部溝通管道與協作模式,確保資訊透明與團隊合作順暢。預期效益:量化分析改進成果,評估執行風險與挑戰,提出風險管控策略與備案。持續改善機制:設計長期優化調整機制,建立回饋循環與學習成長模式。請以繁體中文純文字段落呈現,展現專業評審委員的權威性與客觀中立立場。請勿使用Markdown格式符號,請絕對遵循生成的文字不要出現「#」、「*」、「**」、「***」、「-」等符號。`,
+                    critical_thinking: "請以批判性思維為核心，對指定議題進行深入且全面的分析。\n【分析方法論】\n一、多維度思考：從經濟、社會、技術、法律、倫理等不同學科角度審視問題；\n考量各方利害關係人的立場與觀點；\n探討問題的歷史脈絡與未來趨勢。\n二、理性分析原則：以事實與證據為基礎進行論證；\n辨識並避免邏輯謬誤；\n保持客觀中立，避免預設立場。\n三、深度探討要求：分析表層現象與深層原因；\n探討可能結果與影響；\n評估不同解決方案的優劣與風險。\n【輸出內容規格】\n請提供 60 個完整重點項目。\n每個項目均須超過 200 字，並以 Markdown 粗體呈現標題。\n每項應具體包含問題描述、論點與論據、相關案例／數據／理論支持、意義與影響評估、相關觀點，且段落清楚、邏輯連貫。\n【建議架構】\n可依序涵蓋：問題定義與背景、現況分析與挑戰、多方觀點與立場、原因與影響因素、可能結果與情境分析、解決方案與策略、風險評估與應對、未來展望與建議。\n若原始資料不足以支持特定事實、數據或案例，請明確標示資訊缺口與待查證處，不得虛構。",
+                    pain_point_analysis: "請扮演專業評審委員，針對目標對象進行全面性的痛點分析與改進建議，並以正式、客觀、有理有據且可操作的方式輸出。\n【一、問題診斷】\n1. 核心痛點識別：列舉目前主要問題、分析根本原因，並說明問題間的關聯性。\n2. 影響程度評估：逐項標示嚴重性（高／中／低）、影響範圍、急迫性與優先順序。\n【二、改進建議】\n1. 具體解決措施：針對每項痛點提出方案，說明執行方式、步驟，以及所需人力、時間與經費。\n2. 可行性分析：評估實施難度、預期障礙、配套措施與替代方案。\n【三、精進方案】\n1. 重點強化計畫：制定短期（3 個月內）改善目標、中期（6 至 12 個月）發展策略及長期（1 年以上）精進方向。\n2. 成效指標：建立量化指標（如效率提升、錯誤率降低）及質化指標（如滿意度、品質改善程度），並訂定各階段檢核時間點與標準。\n【四、預期效益與風險】\n預估改進效益、整體績效影響與成本效益；\n識別實施風險，評估發生機率與衝擊程度，提出風險控管及應變措施。\n請以「痛點／原因／優先級／解決策略／行動步驟／資源／指標／風險」的清楚結構逐項呈現。",
                     construction_meeting_format: '請依逐字稿整理工務會報紀錄，包含會議名稱、時間、地點、主席、紀錄、出席與列席人員、前次決議確認、議題討論、主席裁示、列管事項、工作報告及散會時間。資訊均依來源，不得預設年度、會次、地點、確認無意見或散會時間；缺漏欄位標示待確認。僅記載原文實際出現的裁示與議題，不得為增加字數補寫。使用繁體中文純文字。'
                 };
                 
@@ -959,7 +948,8 @@
                             if (isGenerationMode) {
                                 // HTML source and legitimate symbols must remain intact.
                                 lastResultText = stripCodeFence(rawText);
-                                outputText.textContent = lastResultText;
+                                if (selectedStyle === 'critical_thinking') renderExplanation(outputText, lastResultText);
+                                else outputText.textContent = lastResultText;
                                 explanationOutput.textContent = '本模式為生成模式，不提供潤飾差異說明。';
                             } else {
                                 let result;
