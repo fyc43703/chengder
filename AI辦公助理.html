@@ -557,6 +557,27 @@ body{background:#ffffff}
 @media(max-width:900px){#aiInsightPage .ai-grid{grid-template-columns:1fr}}
 @media(max-width:620px){#aiInsightPage{padding:8px}#aiInsightPage .ai-panel{padding:16px 12px;border-radius:16px}#aiInsightPage .ai-grid{gap:8px}}
 </style>
+<style id="ai-requested-tool-layout">
+#aiInsightPage .ai-header-hub{display:block;align-self:center}
+#aiInsightPage .ai-tool-links{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;overflow:visible;width:100%}
+#aiInsightPage .ai-tool-row{display:flex;justify-content:space-between;gap:10px;min-width:0}
+#aiInsightPage .ai-tool-row>.ai-tool-link{flex:0 0 calc((100% - 30px)/4);width:calc((100% - 30px)/4);height:46px;min-height:46px;padding:0 8px;gap:7px;border:1px solid #89b7c4!important;border-radius:9px;background:#fffcf5!important;color:#337d91!important;box-shadow:none!important;font:700 14px/1.3 'Microsoft JhengHei',sans-serif;white-space:nowrap}
+#aiInsightPage .ai-tool-row>.ai-tool-link:hover{background:#edf7f6!important;border-color:#3d8ba0!important;color:#337d91!important}
+#aiInsightPage .ai-tool-row .ai-shortcut-icon{width:18px;height:18px;flex:0 0 18px;color:currentColor!important}
+#aiInsightPage .ai-header-shortcuts.ai-workflow-shortcuts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;width:min(100%,1100px);margin:0 0 14px;overflow:visible;align-self:auto}
+#aiInsightPage .ai-workflow-shortcuts>.ai-transcribe-launch,
+#aiInsightPage .ai-workflow-shortcuts>.ai-youtube-link,
+#aiInsightPage .ai-workflow-shortcuts>.ai-youtube-example{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;height:46px;min-height:46px;padding:5px 8px;border:1px solid #89b7c4!important;border-radius:9px;background:#fffcf5!important;color:#337d91!important;box-shadow:none!important;font:700 14px/1.3 'Microsoft JhengHei',sans-serif;white-space:normal;text-align:center}
+#aiInsightPage .ai-workflow-shortcuts>a:hover,#aiInsightPage .ai-workflow-shortcuts>button:hover{background:#edf7f6!important;border-color:#3d8ba0!important;color:#337d91!important}
+#aiInsightPage .ai-workflow-shortcuts .ai-shortcut-icon{width:18px;height:18px;flex:0 0 18px;color:currentColor!important}
+@media(max-width:620px){
+  #aiInsightPage .ai-tool-links{gap:8px}
+  #aiInsightPage .ai-tool-row{gap:6px}
+  #aiInsightPage .ai-tool-row>.ai-tool-link{flex-basis:calc((100% - 18px)/4);width:calc((100% - 18px)/4);height:64px;min-height:64px;flex-direction:column;gap:4px;padding:4px 2px;font-size:14px;white-space:normal}
+  #aiInsightPage .ai-header-shortcuts.ai-workflow-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  #aiInsightPage .ai-workflow-shortcuts>.ai-youtube-link{height:46px;min-height:46px}
+}
+</style>
 </head>
 <body>
 <script>
@@ -1040,6 +1061,20 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
   exportStep.innerHTML = '<b>4</b><span>匯出結果<small>複製或下載分析結果</small></span>';
   workflow.append(exportStepSeparator, exportStep);
   panel.querySelector('.ai-title-row').after(workflow);
+  // Keep existing shortcut nodes so their links, icons and event handlers remain intact.
+  const relocatedShortcuts = panel.querySelector('.ai-header-shortcuts');
+  const arrangedTools = panel.querySelector('.ai-tool-links');
+  audioEditLink.className = 'ai-tool-link';
+  const existingTools = [...arrangedTools.children];
+  const photoRow = document.createElement('div'); photoRow.className = 'ai-tool-row';
+  const audioRow = document.createElement('div'); audioRow.className = 'ai-tool-row';
+  photoRow.append(existingTools[1], existingTools[2], existingTools[4], existingTools[0]);
+  audioRow.append(audioEditLink, existingTools[3], existingTools[5]);
+  arrangedTools.replaceChildren(photoRow, audioRow);
+  relocatedShortcuts.classList.add('ai-workflow-shortcuts');
+  relocatedShortcuts.setAttribute('aria-label', '語音轉文字及摘要教學');
+  workflow.after(relocatedShortcuts);
+
   const setWorkflowStep = step => workflow.querySelectorAll('.ai-workflow-step').forEach(item => { const value = Number(item.dataset.step); item.classList.toggle('is-done', value < step); item.classList.toggle('is-active', value === step); });
   setWorkflowStep(1);
   const workspace = document.createElement('section'), sourcePane = document.createElement('aside'), sourceText = document.createElement('pre'), resultActions = document.createElement('nav');
@@ -1769,24 +1804,6 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
 
   normaliseHelpAttributes(panel); normaliseHelpAttributes(transcribePage);
 
-  // Match only the lower toolbar to the final transcript link; leave the upper row unchanged.
-  const headerShortcuts = panel.querySelector('.ai-header-shortcuts');
-  const officeToolLinks = panel.querySelector('.ai-tool-links');
-  const correctedTranscriptLink = headerShortcuts.querySelectorAll('.ai-youtube-example')[3];
-  const alignOfficeToolLinks = () => {
-    const end = correctedTranscriptLink.getBoundingClientRect().right;
-    const start = officeToolLinks.getBoundingClientRect().left;
-    const available = panel.querySelector('.ai-header-hub').clientWidth;
-    const width = available;
-    if (width > 0) officeToolLinks.style.width = width + 'px';
-  };
-  alignOfficeToolLinks();
-  window.addEventListener('resize', alignOfficeToolLinks);
-  if (typeof ResizeObserver !== 'undefined') {
-    const toolbarSizeObserver = new ResizeObserver(alignOfficeToolLinks);
-    toolbarSizeObserver.observe(headerShortcuts); toolbarSizeObserver.observe(correctedTranscriptLink);
-  }
-  document.fonts?.ready.then(alignOfficeToolLinks).catch(() => {});
 
 
 })();
