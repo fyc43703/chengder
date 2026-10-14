@@ -639,6 +639,29 @@ body{background:#ffffff}
 }
 #aiInsightPage .ai-file-actions button:hover {background:#eff5e8!important;color:#4d663d!important}
 </style>
+<style id="ai-workflow-shortcuts-single-row">
+#aiInsightPage .ai-header-shortcuts.ai-workflow-shortcuts {
+  display:grid;grid-template-columns:repeat(8,minmax(0,1fr));
+  gap:clamp(2px,.5vw,8px);width:100%;max-width:none;
+  overflow:visible;white-space:nowrap;
+}
+#aiInsightPage .ai-header-shortcuts.ai-workflow-shortcuts>* {
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:clamp(1px,.35vw,6px);min-width:0;width:100%;
+  height:34px;min-height:34px;padding:2px clamp(1px,.35vw,6px);
+  border:1px solid #89b7c4!important;border-radius:9px;
+  background:#fffcf5!important;color:#337d91!important;
+  text-decoration:none;white-space:nowrap!important;
+  font:700 clamp(2.5px,.9vw,14px)/1.2 'Microsoft JhengHei',sans-serif;
+}
+#aiInsightPage .ai-header-shortcuts.ai-workflow-shortcuts>*:hover {
+  background:#edf7f6!important;border-color:#3d8ba0!important;
+}
+#aiInsightPage .ai-header-shortcuts.ai-workflow-shortcuts>*>.ai-shortcut-icon {
+  display:block;width:clamp(3px,1vw,18px);height:clamp(3px,1vw,18px);
+  flex:0 0 clamp(3px,1vw,18px);color:currentColor!important;
+}
+</style>
 </head>
 <body>
 <script>
@@ -1170,7 +1193,24 @@ window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) =>
   });
   arrangedTools.replaceChildren(photoRow, audioRow);
   relocatedShortcuts.classList.add('ai-workflow-shortcuts');
-  relocatedShortcuts.setAttribute('aria-label', '語音轉文字及摘要教學');
+  relocatedShortcuts.setAttribute('aria-label', '語音、影音及文件快捷連結');
+  const speechShortcut = relocatedShortcuts.querySelector('.ai-transcribe-launch');
+  const extraShortcuts = [
+    ['YouTube下載', 'https://vd6s.com/zh-tw3/', '<path d="M4 6h16v12H4z"/><path d="m10 9 5 3-5 3z"/><path d="M12 16v5m-3-3 3 3 3-3"/>'],
+    ['文字轉語音', 'https://ttsmaker.com/', '<path d="M4 6h10M9 6v12M5 18h8"/><path d="M16 9a4 4 0 0 1 0 6m2-8a7 7 0 0 1 0 10"/>'],
+    ['程式碼轉檔', 'https://fyc43703.github.io/chengder/%E7%A8%8B%E5%BC%8F%E7%A2%BC%E6%96%87%E4%BB%B6%E5%8C%96%E5%B7%A5%E5%85%B7.html', '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h4M11 12l-2 2 2 2m4-4 2 2-2 2"/>']
+  ];
+  speechShortcut.after(...extraShortcuts.map(([name, url, paths]) => {
+    const link = document.createElement('a');
+    link.className = 'ai-extra-shortcut';
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.dataset.help = name + '：在新分頁開啟';
+    link.setAttribute('aria-label', name + '（在新分頁開啟）');
+    link.innerHTML = '<svg class="ai-shortcut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg><span>' + name + '</span>';
+    return link;
+  }));
   workflow.after(relocatedShortcuts);
 
   const setWorkflowStep = step => workflow.querySelectorAll('.ai-workflow-step').forEach(item => { const value = Number(item.dataset.step); item.classList.toggle('is-done', value < step); item.classList.toggle('is-active', value === step); });
