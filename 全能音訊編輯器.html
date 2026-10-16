@@ -115,6 +115,17 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     #exportStatus { display: flex; align-items: center; justify-content: center; gap: 8px; }
     #exportStatus .spinner { width: 18px; height: 18px; border: 2px solid rgba(10, 132, 255, 0.2); border-top-color: var(--blue); }
+    #exportProgressOverlay { position: fixed; inset: 0; z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.38); backdrop-filter: blur(4px); }
+    #exportProgressOverlay.visible { display: flex; }
+    .export-progress-card { width: min(340px, 100%); padding: 28px 26px 24px; border-radius: 20px; background: var(--panel-bg); color: var(--text); box-shadow: 0 18px 60px rgba(0,0,0,.2); text-align: center; }
+    .export-progress-card .spinner { width: 38px; height: 38px; margin: 0 auto 16px; border-width: 4px; }
+    .export-progress-card h3 { margin: 0 0 12px; font-size: 18px; color: var(--text); }
+    #exportProgressStage { min-height: 38px; margin: 0 0 16px; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+    .export-progress-label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; color: var(--blue); font-size: 14px; font-weight: 600; text-align: left; }
+    .export-progress-label span:last-child { white-space: nowrap; }
+    #exportProgressBar { width: 100%; height: 10px; overflow: hidden; border-radius: 99px; background: rgba(10,132,255,.14); }
+    #exportProgressFill { width: 0; height: 100%; border-radius: inherit; background: var(--blue); transition: width .15s ease; }
+    #cancelProgressBtn { margin-top: 20px; border: 1px solid rgba(255,96,92,.3); color: #c83733; background: transparent; }
     .file-list-container { max-height: 140px; overflow-y: auto; border: 1px solid var(--stroke); border-radius: 8px; padding: 8px 12px; margin-top: 12px; background: rgba(0,0,0,.04); }
     #fileList { list-style-type: decimal; list-style-position: inside; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
     #fileList li { font-size: 13px; color: var(--text); padding: 4px 8px; cursor: pointer; border-radius: 6px; transition: background-color 0.15s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -642,6 +653,17 @@
     <div id="loadingIndicator" style="display: none;">
         <div class="spinner"></div>
         <div>處理中...</div>
+    </div>
+  </div>
+
+  <div id="exportProgressOverlay" role="dialog" aria-modal="true" aria-labelledby="exportProgressTitle" aria-describedby="exportProgressStage" aria-hidden="true">
+    <div class="export-progress-card">
+      <div class="spinner" aria-hidden="true"></div>
+      <h3 id="exportProgressTitle">正在分割音訊</h3>
+      <p id="exportProgressStage">正在準備音檔...</p>
+      <div class="export-progress-label"><span id="exportProgressPercent">0%</span><span id="exportProgressCount">0/0</span></div>
+      <div id="exportProgressBar" role="progressbar" aria-label="音訊處理進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="exportProgressFill"></div></div>
+      <button type="button" id="cancelProgressBtn" class="btn">取消處理</button>
     </div>
   </div>
 
@@ -1928,7 +1950,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   }
   async function addMp3Metadata(blob, meta) { const tag = makeId3Tag(meta); return tag.length ? new Blob([tag, await blob.arrayBuffer()], { type: 'audio/mpeg' }) : blob; }
 
-  async function bufferToMp3(buffer, bitrate) {
+  async function bufferToMp3(buffer, bitrate, onProgress = null, isCanceled = () => false) {
     if (!window.lamejs || !window.lamejs.Mp3Encoder) {
         throw new Error('找不到本地 MP3 編碼器 lame.min.js');
     }
@@ -1959,13 +1981,19 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     }
     const mp3Data = [];
     for (let i = 0; i < pcmChannels[0].length; i += sampleBlockSize) {
+        if (isCanceled()) throw new Error('已取消處理');
         const chunks = pcmChannels.map(channelData => channelData.subarray(i, i + sampleBlockSize));
         const encoded = encoder.encodeBuffer(...chunks);
         if (encoded.length) mp3Data.push(encoded);
-        if ((i / sampleBlockSize) % 32 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+        if ((i / sampleBlockSize) % 32 === 0) {
+            onProgress?.(Math.min(1, (i + sampleBlockSize) / pcmChannels[0].length));
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
     }
+    if (isCanceled()) throw new Error('已取消處理');
     const flushed = encoder.flush();
     if (flushed.length) mp3Data.push(flushed);
+    onProgress?.(1);
     return new Blob(mp3Data, { type: 'audio/mpeg' });
   }
 
@@ -2059,6 +2087,41 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
+  let exportCancelRequested = false;
+  let exportProgressReturnFocus = null;
+  $('cancelProgressBtn').onclick = () => {
+      exportCancelRequested = true;
+      $('cancelProgressBtn').disabled = true;
+      $('exportProgressStage').textContent = '正在取消處理...';
+  };
+  function showExportProgress(title, total) {
+      exportCancelRequested = false;
+      exportProgressReturnFocus = document.activeElement;
+      $('exportProgressTitle').textContent = title;
+      $('cancelProgressBtn').disabled = false;
+      $('exportProgressOverlay').classList.add('visible');
+      $('exportProgressOverlay').setAttribute('aria-hidden', 'false');
+      updateExportProgress(0, total, '正在準備音檔...');
+      $('cancelProgressBtn').focus();
+  }
+  function updateExportProgress(value, total, stage) {
+      const percent = Math.round(Math.max(0, Math.min(1, value / total)) * 100);
+      $('exportProgressPercent').textContent = `${percent}%`;
+      $('exportProgressCount').textContent = `${Math.ceil(value)}/${total}`;
+      $('exportProgressStage').textContent = stage;
+      $('exportProgressFill').style.width = `${percent}%`;
+      $('exportProgressBar').setAttribute('aria-valuenow', String(percent));
+  }
+  function hideExportProgress() {
+      $('exportProgressOverlay').classList.remove('visible');
+      $('exportProgressOverlay').setAttribute('aria-hidden', 'true');
+      exportProgressReturnFocus?.focus();
+      exportProgressReturnFocus = null;
+  }
+  function checkExportCanceled() {
+      if (exportCancelRequested) throw new Error('已取消處理');
+  }
+
   $('saveFileBtn').onclick = async () => {
     if (!audioBuffer) return;
     const status = $('exportStatus'), saveBtn = $('saveFileBtn');
@@ -2080,9 +2143,13 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
         const exportFiles = [];
         if (splitCount < 1) throw new Error("分割份數無效");
         if (splitCount > audioBuffer.length) throw new Error("分割份數不可大於音訊取樣數");
+        showExportProgress(splitCount > 1 ? '正在分割音訊' : '正在匯出音訊', splitCount);
 
         for (let i = 0; i < splitCount; i++) {
+            checkExportCanceled();
             statusText.textContent = `處理中... (${i + 1}/${splitCount})`;
+            updateExportProgress(i, splitCount, `正在處理 ${originalFileName}：第 ${i + 1} / ${splitCount} 份`);
+            await new Promise(resolve => setTimeout(resolve, 0));
             const startOffset = Math.floor(i * audioBuffer.length / splitCount);
             const endOffset = Math.floor((i + 1) * audioBuffer.length / splitCount);
             const bufferToRender = AC.createBuffer(audioBuffer.numberOfChannels, endOffset - startOffset, audioBuffer.sampleRate);
@@ -2091,28 +2158,33 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
             }
             
             const renderedBuffer = await renderForExport(bufferToRender);
+            checkExportCanceled();
             let audioBlob, fileExtension;
             if (selectedExportFormat === 'wav') { 
                 audioBlob = bufferToWav(renderedBuffer, getMetadata()); 
                 fileExtension = 'wav'; 
             } 
             else { 
-                audioBlob = await addMp3Metadata(await bufferToMp3(renderedBuffer, getSafeMp3Bitrate($('mp3Bitrate').value)), getMetadata()); 
+                audioBlob = await addMp3Metadata(await bufferToMp3(renderedBuffer, getSafeMp3Bitrate($('mp3Bitrate').value), fraction => updateExportProgress(i + fraction, splitCount, `正在編碼 ${originalFileName}：第 ${i + 1} / ${splitCount} 份`), () => exportCancelRequested), getMetadata()); 
                 fileExtension = 'mp3'; 
             }
             exportFiles.push({ blob: audioBlob, name: splitCount > 1 ? `${originalFileName}_part${i+1}.${fileExtension}` : `${originalFileName}_processed.${fileExtension}` });
+            updateExportProgress(i + 1, splitCount, `已完成第 ${i + 1} / ${splitCount} 份`);
             await new Promise(resolve => setTimeout(resolve, 100));
         }
+        checkExportCanceled();
+        updateExportProgress(splitCount, splitCount, '正在準備下載...');
         await deliverExportFiles(exportFiles, `${originalFileName}_${splitCount}份.zip`);
         statusText.textContent = splitCount > 1 ? `已產生 ZIP，內含 ${splitCount} 份音訊，請解壓縮後使用` : `已產生 1 份音訊並送出下載`;
         spinner.style.display = 'none';
     } catch(e) { 
-        console.error("Export failed:", e); 
-        statusText.textContent = `匯出失敗：${e.message}`;
+        if (!exportCancelRequested) console.error("Export failed:", e); 
+        statusText.textContent = exportCancelRequested ? '已取消處理' : `匯出失敗：${e.message}`;
         status.style.color = 'var(--red)';
         spinner.style.display = 'none';
         exportError = e;
     } finally {
+        hideExportProgress();
         saveBtn.disabled = false; $('batchExportBtn').disabled = false;
         if (!exportError) {
             setTimeout(() => {
@@ -2133,35 +2205,47 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       let completed = 0;
       try {
           const splitCount = readSplitCount();
+          const total = importedFiles.length * splitCount;
+          showExportProgress(splitCount > 1 ? '正在批次分割音訊' : '正在批次匯出音訊', total);
           for (let fileIndex = 0; fileIndex < importedFiles.length; fileIndex++) {
+              checkExportCanceled();
               const file = importedFiles[fileIndex];
               statusText.textContent = `讀取 ${fileIndex + 1}/${importedFiles.length}：${file.name}`;
+              updateExportProgress(completed, total, `正在讀取 ${file.name}（${fileIndex + 1}/${importedFiles.length}）`);
               const decoded = await AC.decodeAudioData(await file.arrayBuffer());
+              checkExportCanceled();
               if (splitCount > decoded.length) throw new Error(`${file.name} 的分割份數過多`);
-              const partLength = Math.floor(decoded.length / splitCount);
               const baseName = file.name.replace(/\.[^/.]+$/, '') || 'audio_file';
               for (let part = 0; part < splitCount; part++) {
+                  checkExportCanceled();
                   statusText.textContent = `批次處理中... (${fileIndex + 1}/${importedFiles.length}, ${part + 1}/${splitCount})`;
+                  updateExportProgress(completed, total, `正在處理 ${file.name}：第 ${part + 1} / ${splitCount} 份`);
+                  await new Promise(resolve => setTimeout(resolve, 0));
                   const start = Math.floor(part * decoded.length / splitCount);
                   const end = Math.floor((part + 1) * decoded.length / splitCount);
                   const segment = AC.createBuffer(decoded.numberOfChannels, end - start, decoded.sampleRate);
                   for (let ch = 0; ch < decoded.numberOfChannels; ch++) segment.copyToChannel(decoded.getChannelData(ch).subarray(start, end), ch);
                   const rendered = await renderForExport(segment);
-                  const blob = selectedExportFormat === 'wav' ? bufferToWav(rendered, getMetadata()) : await addMp3Metadata(await bufferToMp3(rendered, getSafeMp3Bitrate($('mp3Bitrate').value)), getMetadata());
+                  checkExportCanceled();
+                  const blob = selectedExportFormat === 'wav' ? bufferToWav(rendered, getMetadata()) : await addMp3Metadata(await bufferToMp3(rendered, getSafeMp3Bitrate($('mp3Bitrate').value), fraction => updateExportProgress(completed + fraction, total, `正在編碼 ${file.name}：第 ${part + 1} / ${splitCount} 份`), () => exportCancelRequested), getMetadata());
                   const extension = selectedExportFormat === 'wav' ? 'wav' : 'mp3';
                   exportFiles.push({ blob, name: `${baseName}_${splitCount > 1 ? `part${part + 1}` : 'processed'}.${extension}` });
                   completed++;
+                  updateExportProgress(completed, total, `已完成 ${completed} / ${total} 份`);
                   await new Promise(resolve => setTimeout(resolve, 120));
               }
           }
+          checkExportCanceled();
+          updateExportProgress(total, total, '正在準備下載...');
           await deliverExportFiles(exportFiles, `批次音訊_${completed}份.zip`);
           statusText.textContent = completed > 1 ? `已產生 ZIP，內含 ${completed} 份音訊，請解壓縮後使用` : `已產生 1 份音訊並送出下載`;
           spinner.style.display = 'none';
       } catch (error) {
-          console.error('Batch export failed:', error);
-          statusText.textContent = `批次處理失敗：${error.message}`;
+          if (!exportCancelRequested) console.error('Batch export failed:', error);
+          statusText.textContent = exportCancelRequested ? '已取消處理' : `批次處理失敗：${error.message}`;
           status.style.color = 'var(--red)'; spinner.style.display = 'none';
       } finally {
+          hideExportProgress();
           batchButton.disabled = false; $('saveFileBtn').disabled = false;
           setTimeout(() => { status.style.display = 'none'; }, 3000);
       }
