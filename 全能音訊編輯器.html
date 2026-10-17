@@ -385,6 +385,18 @@
               </div>
 
               <div class="effect-group">
+                <h4 class="blue-title">人聲與伴奏分離</h4>
+                <div class="badge">AI 將音樂分成人聲與伴奏兩個音訊，完成後加入匯入清單。首次需下載約 67 MB 模型。</div>
+                <button id="separateVocalsBtn" class="btn ghost center-text" title="使用 AI 分離人聲與伴奏">分離人聲與伴奏</button>
+              </div>
+
+              <div class="effect-group">
+                <h4 class="blue-title">人聲降噪</h4>
+                <div class="badge">以 RNNoise 語音模型抑制背景噪聲；可套用於整段或波形選取範圍。</div>
+                <button id="applyVoiceDenoiseBtn" class="btn ghost center-text" title="使用語音降噪模型處理整段或選取範圍">套用人聲降噪</button>
+              </div>
+
+              <div class="effect-group">
                 <h4 class="blue-title"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12H5L7 7L9 17L11 10L13 14L15 9L17 15L19 12H22" stroke="#0A84FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4 8L2 10L4 12" stroke="#FF8C66" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M20 8L22 10L20 12" stroke="#FF8C66" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>動態壓縮器</h4>
                 <div class="slider">
                   <label>閾值</label>
@@ -1768,6 +1780,114 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
           await new Promise(resolve => setTimeout(resolve, 1000));
           alert('降噪處理時發生錯誤。');
       } finally {
+          indicator.style.display = 'none';
+      }
+  };
+
+  async function resampleAudioBuffer(sourceBuffer, targetSampleRate) {
+      if (sourceBuffer.sampleRate === targetSampleRate) return sourceBuffer;
+      const frameCount = Math.max(1, Math.ceil(sourceBuffer.duration * targetSampleRate));
+      const offline = new OfflineAudioContext(sourceBuffer.numberOfChannels, frameCount, targetSampleRate);
+      const source = offline.createBufferSource();
+      source.buffer = sourceBuffer;
+      source.connect(offline.destination);
+      source.start(0);
+      return offline.startRendering();
+  }
+
+  $('applyVoiceDenoiseBtn').onclick = () => runEditOperation('人聲降噪', async () => {
+      const selected = selectionEnd > selectionStart;
+      const original = audioBuffer;
+      const indicatorMessage = $('loadingIndicator').querySelector('div:last-child');
+      indicatorMessage.textContent = '載入人聲降噪模型...';
+      const { Rnnoise } = await import('https://esm.sh/@shiguredo/rnnoise-wasm@2025.1.5');
+      const rnnoise = await Rnnoise.load();
+      const workBuffer = await resampleAudioBuffer(original, 48000);
+      const frameSize = rnnoise.frameSize;
+      const frameCount = Math.ceil(workBuffer.length / frameSize);
+      const denoised = AC.createBuffer(workBuffer.numberOfChannels, workBuffer.length, 48000);
+      const states = Array.from({length: workBuffer.numberOfChannels}, () => rnnoise.createDenoiseState());
+      try {
+          for (let ch = 0; ch < workBuffer.numberOfChannels; ch++) {
+              const input = workBuffer.getChannelData(ch);
+              const output = denoised.getChannelData(ch);
+              for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+                  const start = frameIndex * frameSize;
+                  const frame = new Float32Array(frameSize);
+                  const available = Math.min(frameSize, input.length - start);
+                  for (let i = 0; i < available; i++) frame[i] = input[start + i] * 32768;
+                  states[ch].processFrame(frame);
+                  for (let i = 0; i < available; i++) output[start + i] = frame[i] / 32768;
+                  if (frameIndex % 80 === 0) {
+                      indicatorMessage.textContent = `人聲降噪中... ${Math.min(100, Math.round((frameIndex / frameCount) * 100))}%`;
+                      await new Promise(resolve => setTimeout(resolve, 0));
+                  }
+              }
+          }
+      } finally {
+          states.forEach(state => state.destroy());
+      }
+      const restoredRateBuffer = await resampleAudioBuffer(denoised, original.sampleRate);
+      const result = AC.createBuffer(original.numberOfChannels, original.length, original.sampleRate);
+      const from = selected ? Math.max(0, Math.floor(selectionStart * original.sampleRate)) : 0;
+      const to = selected ? Math.min(original.length, Math.ceil(selectionEnd * original.sampleRate)) : original.length;
+      for (let ch = 0; ch < original.numberOfChannels; ch++) {
+          const destination = result.getChannelData(ch);
+          destination.set(original.getChannelData(ch));
+          destination.set(restoredRateBuffer.getChannelData(ch).subarray(from, to), from);
+      }
+      updateBuffer(result);
+  });
+
+  $('separateVocalsBtn').onclick = async () => {
+      if (!audioBuffer) { alert('請先載入音訊檔案'); return; }
+      if (editOperationInProgress) return;
+      editOperationInProgress = true;
+      const indicator = $('loadingIndicator');
+      const message = indicator.querySelector('div:last-child');
+      indicator.style.display = 'flex';
+      let sourceUrl = null;
+      let stemUrls = [];
+      try {
+          message.textContent = '載入人聲與伴奏分離模型（首次約 67 MB）...';
+          await new Promise(resolve => setTimeout(resolve, 20));
+          const { createSeparator } = await import('https://esm.sh/web-audio-separation@0.3.0?bundle');
+          const separator = createSeparator('Kim_Vocal_2', {
+              common: {
+                  onProgress: progress => {
+                      if (progress.stage === 'loading-model') message.textContent = `下載分離模型... ${Math.round((progress.fraction || 0) * 100)}%`;
+                      else if (progress.stage === 'demixing') message.textContent = `分離音訊中... (${progress.chunk || 0}/${progress.totalChunks || '?'})`;
+                      else message.textContent = '正在整理人聲與伴奏...';
+                  }
+              }
+          });
+          await separator.loadModel();
+          const sourceFile = importedFiles[currentFileIndex];
+          if (!sourceFile) throw new Error('找不到目前載入的音訊檔案。');
+          sourceUrl = URL.createObjectURL(sourceFile);
+          stemUrls = await separator.separate(sourceUrl);
+          if (!Array.isArray(stemUrls) || stemUrls.length < 2) throw new Error('分離模型未回傳兩個音軌。');
+          const baseName = sourceFile.name.replace(/\.[^.]+$/, '');
+          const resultFiles = [];
+          for (let i = 0; i < stemUrls.length; i++) {
+              const response = await fetch(stemUrls[i]);
+              if (!response.ok) throw new Error('讀取分離音軌失敗。');
+              const blob = await response.blob();
+              const name = `${baseName}_${i === 0 ? '人聲' : '伴奏'}.wav`;
+              resultFiles.push(new File([blob], name, {type: 'audio/wav', lastModified: Date.now()}));
+          }
+          handleFiles(resultFiles);
+          message.textContent = '人聲與伴奏分離完成，兩個音軌已加入匯入清單。';
+          await new Promise(resolve => setTimeout(resolve, 1100));
+      } catch (error) {
+          console.error('人聲與伴奏分離失敗:', error);
+          message.textContent = '人聲與伴奏分離失敗。';
+          await new Promise(resolve => setTimeout(resolve, 700));
+          alert(`人聲與伴奏分離失敗：${error.message || '請確認網路連線後重試。'}`);
+      } finally {
+          if (sourceUrl) URL.revokeObjectURL(sourceUrl);
+          stemUrls.forEach(url => { if (url.startsWith('blob:')) URL.revokeObjectURL(url); });
+          editOperationInProgress = false;
           indicator.style.display = 'none';
       }
   };
