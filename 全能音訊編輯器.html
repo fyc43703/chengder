@@ -1949,20 +1949,19 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   const timeData = new Uint8Array(analyser.frequencyBinCount);
   const spectrumLevels = new Float32Array(72);
   let particles = [];
-  let bassFloor = 0.1, lastBeatTime = 0, lastAmbientTime = 0, beatPulse = 0;
+  let bassFloor = 0.1, lastBeatTime = 0, lastVisualBurstTime = 0, lastAmbientTime = 0, beatPulse = 0;
   let previousAnalyzerFrame = performance.now();
 
   function emitParticles(count, power, ambient = false) {
       const dpr = window.devicePixelRatio || 1;
-      const hue = (performance.now() / 18) % 360;
       for (let i = 0; i < count; i++) {
           const angle = Math.random() * Math.PI * 2;
           const speed = (ambient ? 0.08 + Math.random() * 0.14 : (0.075 + Math.random() * 0.2) * (0.8 + power)) * dpr;
           particles.push({x: peakMeterCanvas.width / 2, y: peakMeterCanvas.height / 2,
               vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-              age: 0, life: ambient ? 900 + Math.random() * 500 : 750 + Math.random() * 500,
-              size: (ambient ? 2 + Math.random() * 2 : 2 + Math.random() * 3) * dpr,
-              hue: (hue + Math.random() * 70) % 360});
+              age: 0, life: ambient ? 1000 + Math.random() * 600 : 850 + Math.random() * 600,
+              size: (ambient ? 2.5 + Math.random() * 3 : 3 + Math.random() * 4) * dpr,
+              hue: Math.random() * 360});
       }
       if (particles.length > 220) particles.splice(0, particles.length - 220);
   }
@@ -2044,6 +2043,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     bass /= 6 * 255;
     if (isPlaying && bass > bassFloor * 1.2 && bass > 0.12 && now - lastBeatTime > 140) {
         lastBeatTime = now;
+        lastVisualBurstTime = now;
         beatPulse = 1;
         emitParticles(Math.round(26 + bass * 30), bass);
     }
@@ -2051,7 +2051,12 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     let musicEnergy = 0;
     for (let i = 2; i < 100; i++) musicEnergy += freqData[i];
     musicEnergy /= 98 * 255;
-    if (isPlaying && musicEnergy > 0.04 && now - lastAmbientTime > 110) {
+    if (isPlaying && musicEnergy > 0.015 && now - lastVisualBurstTime > 650) {
+        lastVisualBurstTime = now;
+        beatPulse = Math.max(beatPulse, 0.35);
+        emitParticles(14, musicEnergy);
+    }
+    if (isPlaying && musicEnergy > 0.015 && now - lastAmbientTime > 110) {
         lastAmbientTime = now;
         emitParticles(4, musicEnergy, true);
     }
@@ -2075,7 +2080,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
         const alpha = Math.max(0, 1 - particle.age / particle.life);
         peakMeterCtx.beginPath();
         peakMeterCtx.arc(particle.x, particle.y, particle.size * (0.6 + alpha * 0.4), 0, Math.PI * 2);
-        peakMeterCtx.fillStyle = `hsla(${particle.hue}, 90%, 65%, ${alpha * 0.8})`;
+        peakMeterCtx.fillStyle = `hsla(${particle.hue}, 90%, 60%, ${Math.sqrt(alpha) * 0.95})`;
         peakMeterCtx.fill();
     }
   } 
