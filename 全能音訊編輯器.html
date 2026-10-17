@@ -1037,6 +1037,9 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   const preEffectNode = AC.createGain();
   const gain = AC.createGain(), pan = AC.createStereoPanner(), analyser = AC.createAnalyser();
   analyser.fftSize = 2048;
+  const beatAnalyser = AC.createAnalyser();
+  beatAnalyser.fftSize = 1024;
+  beatAnalyser.smoothingTimeConstant = 0.55;
 
   const splitter = AC.createChannelSplitter(2);
   const analyserL = AC.createAnalyser(); analyserL.fftSize = 2048;
@@ -1050,7 +1053,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   const deqMakeUp = AC.createGain();
 
   preEffectNode.connect(hp).connect(lp).connect(pan);
-  gain.connect(analyser).connect(AC.destination);
+  gain.connect(beatAnalyser).connect(analyser).connect(AC.destination);
   gain.connect(splitter);
   splitter.connect(analyserL, 0);
   splitter.connect(analyserR, 1);
@@ -1942,11 +1945,27 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   const vectorscopeCanvas = $('vectorscopeCanvas'), vectorscopeCtx = vectorscopeCanvas.getContext('2d');
   const peakMeterCanvas = $('peakMeterCanvas'), peakMeterCtx = peakMeterCanvas.getContext('2d');
   const freqData = new Uint8Array(analyser.frequencyBinCount);
+  const beatData = new Uint8Array(beatAnalyser.frequencyBinCount);
   const timeData = new Uint8Array(analyser.frequencyBinCount);
   const spectrumLevels = new Float32Array(72);
   let particles = [];
-  let bassFloor = 0, previousBass = 0, lastBeatTime = 0, beatPulse = 0;
+  let bassFloor = 0.1, lastBeatTime = 0, lastAmbientTime = 0, beatPulse = 0;
   let previousAnalyzerFrame = performance.now();
+
+  function emitParticles(count, power, ambient = false) {
+      const dpr = window.devicePixelRatio || 1;
+      const hue = (performance.now() / 18) % 360;
+      for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = (ambient ? 0.08 + Math.random() * 0.14 : (0.075 + Math.random() * 0.2) * (0.8 + power)) * dpr;
+          particles.push({x: peakMeterCanvas.width / 2, y: peakMeterCanvas.height / 2,
+              vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+              age: 0, life: ambient ? 900 + Math.random() * 500 : 750 + Math.random() * 500,
+              size: (ambient ? 2 + Math.random() * 2 : 2 + Math.random() * 3) * dpr,
+              hue: (hue + Math.random() * 70) % 360});
+      }
+      if (particles.length > 220) particles.splice(0, particles.length - 220);
+  }
 
   function drawAnalyzers(){
     requestAnimationFrame(drawAnalyzers);
@@ -1966,6 +1985,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     const bufferLength = analyser.frequencyBinCount;
 
     analyser.getByteFrequencyData(freqData);
+    beatAnalyser.getByteFrequencyData(beatData);
     analyser.getByteTimeDomainData(timeData);
     const hzPerBin = AC.sampleRate / analyser.fftSize;
     const maxBin = Math.min(freqData.length - 1, Math.floor(16000 / hzPerBin));
@@ -2019,40 +2039,38 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
         vectorscopeCtx.stroke();
     }
 
-    const bassStart = Math.max(1, Math.floor(40 / hzPerBin));
-    const bassEnd = Math.min(freqData.length, Math.ceil(180 / hzPerBin));
     let bass = 0;
-    for (let i = bassStart; i < bassEnd; i++) bass += freqData[i];
-    bass /= Math.max(1, bassEnd - bassStart);
-    bassFloor = bassFloor ? bassFloor * 0.97 + bass * 0.03 : bass;
-    if (isPlaying && bass > 28 && bass > bassFloor + 13 && bass > previousBass + 4 && now - lastBeatTime > 170) {
+    for (let i = 1; i < 7; i++) bass += beatData[i];
+    bass /= 6 * 255;
+    if (isPlaying && bass > bassFloor * 1.2 && bass > 0.12 && now - lastBeatTime > 140) {
         lastBeatTime = now;
         beatPulse = 1;
-        const burstSize = Math.min(34, 16 + Math.round(bass / 15));
-        for (let i = 0; i < burstSize; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = (0.045 + Math.random() * 0.12) * dpr;
-            particles.push({x: peakMeterCanvas.width / 2, y: peakMeterCanvas.height / 2,
-                vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-                age: 0, life: 550 + Math.random() * 500, size: (2 + Math.random() * 3) * dpr,
-                hue: Math.random() * 360});
-        }
-        if (particles.length > 180) particles.splice(0, particles.length - 180);
+        emitParticles(Math.round(26 + bass * 30), bass);
     }
-    previousBass = bass;
+    bassFloor = bassFloor * 0.96 + bass * 0.04;
+    let musicEnergy = 0;
+    for (let i = 2; i < 100; i++) musicEnergy += freqData[i];
+    musicEnergy /= 98 * 255;
+    if (isPlaying && musicEnergy > 0.04 && now - lastAmbientTime > 110) {
+        lastAmbientTime = now;
+        emitParticles(4, musicEnergy, true);
+    }
     beatPulse = Math.max(0, beatPulse - elapsed / 400);
     peakMeterCtx.clearRect(0, 0, peakMeterCanvas.width, peakMeterCanvas.height);
     const burstX = peakMeterCanvas.width / 2, burstY = peakMeterCanvas.height / 2;
     peakMeterCtx.beginPath();
-    peakMeterCtx.arc(burstX, burstY, (10 + beatPulse * 5) * dpr, 0, Math.PI * 2);
-    peakMeterCtx.strokeStyle = `rgba(110, 110, 115, ${0.55 + beatPulse * 0.25})`;
+    peakMeterCtx.arc(burstX, burstY, (10 + bass * 22 + beatPulse * 6) * dpr, 0, Math.PI * 2);
+    peakMeterCtx.strokeStyle = `rgba(110, 110, 115, ${0.45 + Math.min(0.4, bass * 0.4) + beatPulse * 0.15})`;
     peakMeterCtx.lineWidth = 2 * dpr;
     peakMeterCtx.stroke();
     particles = particles.filter(particle => particle.age < particle.life);
+    const drag = Math.pow(0.985, elapsed / 16.7);
     for (const particle of particles) {
         particle.age += elapsed;
         particle.x += particle.vx * elapsed;
         particle.y += particle.vy * elapsed;
+        particle.vx *= drag;
+        particle.vy *= drag;
         particle.vy += 0.00007 * elapsed * dpr;
         const alpha = Math.max(0, 1 - particle.age / particle.life);
         peakMeterCtx.beginPath();
