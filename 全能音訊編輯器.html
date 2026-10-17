@@ -493,8 +493,8 @@
           <div class="slider-group">
             <div class="slider">
               <label>音量</label>
-              <input id="gain" type="range" min="0" max="2" step="0.01" value="0.8" title="調整播放音量"/>
-              <div class="value" id="gainV">0.80</div>
+              <input id="gain" type="range" min="0" max="2" step="0.01" value="0.6" title="調整播放音量"/>
+              <div class="value" id="gainV">0.60</div>
             </div>
             <div class="slider">
               <label>平衡</label>
@@ -1036,6 +1036,8 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   
   const preEffectNode = AC.createGain();
   const gain = AC.createGain(), pan = AC.createStereoPanner(), analyser = AC.createAnalyser();
+  const DEFAULT_VOLUME = 0.6;
+  gain.gain.value = DEFAULT_VOLUME;
   analyser.fftSize = 2048;
   const beatAnalyser = AC.createAnalyser();
   beatAnalyser.fftSize = 1024;
@@ -1265,7 +1267,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     updatePlayhead();
     zoom = 1;
     viewOffset = 0;
-     const initialVolume = 0.8;
+    const initialVolume = DEFAULT_VOLUME;
     $('gain').value = initialVolume;
     setVal('gainV', Number(initialVolume).toFixed(2));
     gain.gain.value = initialVolume;
@@ -1952,18 +1954,18 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   let bassFloor = 0.1, lastBeatTime = 0, lastVisualBurstTime = 0, lastAmbientTime = 0, beatPulse = 0;
   let previousAnalyzerFrame = performance.now();
 
-  function emitParticles(count, power, ambient = false) {
+  function emitParticles(count, power, ambient = false, persistent = false) {
       const dpr = window.devicePixelRatio || 1;
       for (let i = 0; i < count; i++) {
-          const angle = Math.random() * Math.PI * 2;
+          const angle = persistent ? (i + 0.25) * Math.PI * 2 / count : Math.random() * Math.PI * 2;
           const speed = (ambient ? 0.001 + Math.random() * 0.002 : (0.002 + Math.random() * 0.004) * (0.8 + power)) * dpr;
           const origin = (30 + Math.min(power, 1) * 5) * dpr;
           particles.push({x: peakMeterCanvas.width / 2 + Math.cos(angle) * origin,
               y: peakMeterCanvas.height / 2 + Math.sin(angle) * origin,
               vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-              age: 0, life: ambient ? 6000 + Math.random() * 2000 : 5500 + Math.random() * 2000,
+              age: persistent ? 900 : 0, life: persistent ? Infinity : ambient ? 6000 + Math.random() * 2000 : 5500 + Math.random() * 2000,
               size: (ambient ? 2.5 + Math.random() * 3 : 3 + Math.random() * 4) * dpr,
-              hue: Math.random() * 360});
+              hue: persistent ? i * 360 / count : Math.random() * 360});
       }
       if (particles.length > 120) particles.splice(0, particles.length - 120);
   }
@@ -1976,12 +1978,19 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     previousAnalyzerFrame = now;
     
     [scopeCanvas, oscilloscopeCanvas, vectorscopeCanvas, peakMeterCanvas].forEach(canvas => {
-        if (canvas.width !== canvas.clientWidth * dpr || canvas.height !== canvas.clientHeight * dpr) {
-            canvas.width = canvas.clientWidth * dpr;
-            canvas.height = canvas.clientHeight * dpr;
-            if (canvas === peakMeterCanvas) particles = [];
+        // Canvas backing dimensions are integers, including at fractional display scales.
+        const pixelWidth = Math.max(1, Math.round(canvas.clientWidth * dpr));
+        const pixelHeight = Math.max(1, Math.round(canvas.clientHeight * dpr));
+        if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+            canvas.width = pixelWidth;
+            canvas.height = pixelHeight;
+            if (canvas === peakMeterCanvas) {
+                particles = [];
+                emitParticles(12, 0, true, true);
+            }
         }
     });
+    if (particles.length === 0) emitParticles(12, 0, true, true);
     
     const bufferLength = analyser.frequencyBinCount;
 
@@ -2053,7 +2062,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     let strongestFrequency = 0;
     for (let i = 1; i < freqData.length; i++) strongestFrequency = Math.max(strongestFrequency, freqData[i]);
     const musicEnergy = Math.max(bass, strongestFrequency / 255);
-    const soundPresent = isPlaying && musicEnergy > 0.02;
+    const soundPresent = isPlaying;
     if (soundPresent && now - lastVisualBurstTime > 2200) {
         lastVisualBurstTime = now;
         beatPulse = Math.max(beatPulse, 0.35);
@@ -2080,7 +2089,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
         particle.vx *= drag;
         particle.vy *= drag;
         const fadeIn = Math.min(1, particle.age / 900);
-        const fadeOut = Math.min(1, (particle.life - particle.age) / 1800);
+        const fadeOut = Number.isFinite(particle.life) ? Math.min(1, (particle.life - particle.age) / 1800) : 1;
         const alpha = Math.max(0, Math.min(fadeIn, fadeOut));
         peakMeterCtx.beginPath();
         peakMeterCtx.arc(particle.x, particle.y, particle.size * (0.6 + alpha * 0.4), 0, Math.PI * 2);
