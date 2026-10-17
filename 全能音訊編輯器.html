@@ -1956,16 +1956,16 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       const dpr = window.devicePixelRatio || 1;
       for (let i = 0; i < count; i++) {
           const angle = Math.random() * Math.PI * 2;
-          const speed = (ambient ? 0.1 + Math.random() * 0.14 : (0.09 + Math.random() * 0.2) * (0.8 + power)) * dpr;
+          const speed = (ambient ? 0.018 + Math.random() * 0.03 : (0.025 + Math.random() * 0.06) * (0.8 + power)) * dpr;
           const origin = (30 + Math.min(power, 1) * 5) * dpr;
           particles.push({x: peakMeterCanvas.width / 2 + Math.cos(angle) * origin,
               y: peakMeterCanvas.height / 2 + Math.sin(angle) * origin,
               vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-              age: 0, life: ambient ? 1000 + Math.random() * 600 : 850 + Math.random() * 600,
+              age: 0, life: ambient ? 1800 + Math.random() * 1000 : 1600 + Math.random() * 1000,
               size: (ambient ? 2.5 + Math.random() * 3 : 3 + Math.random() * 4) * dpr,
               hue: Math.random() * 360});
       }
-      if (particles.length > 220) particles.splice(0, particles.length - 220);
+      if (particles.length > 120) particles.splice(0, particles.length - 120);
   }
 
   function drawAnalyzers(){
@@ -2043,25 +2043,25 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     let bass = 0;
     for (let i = 1; i < 7; i++) bass += beatData[i];
     bass /= 6 * 255;
-    if (isPlaying && bass > bassFloor * 1.2 && bass > 0.12 && now - lastBeatTime > 140) {
+    if (isPlaying && bass > bassFloor * 1.2 && bass > 0.12 && now - lastBeatTime > 260) {
         lastBeatTime = now;
         lastVisualBurstTime = now;
         beatPulse = 1;
-        emitParticles(Math.round(26 + bass * 30), bass);
+        emitParticles(Math.round(12 + bass * 16), bass);
     }
     bassFloor = bassFloor * 0.96 + bass * 0.04;
     let strongestFrequency = 0;
     for (let i = 1; i < freqData.length; i++) strongestFrequency = Math.max(strongestFrequency, freqData[i]);
     const musicEnergy = Math.max(bass, strongestFrequency / 255);
     const soundPresent = isPlaying && musicEnergy > 0.02;
-    if (soundPresent && now - lastVisualBurstTime > 500) {
+    if (soundPresent && now - lastVisualBurstTime > 1000) {
         lastVisualBurstTime = now;
         beatPulse = Math.max(beatPulse, 0.35);
-        emitParticles(20, musicEnergy);
+        emitParticles(9, musicEnergy);
     }
-    if (soundPresent && now - lastAmbientTime > 90) {
+    if (soundPresent && now - lastAmbientTime > 190) {
         lastAmbientTime = now;
-        emitParticles(5, musicEnergy, true);
+        emitParticles(2, musicEnergy, true);
     }
     beatPulse = Math.max(0, beatPulse - elapsed / 400);
     peakMeterCtx.clearRect(0, 0, peakMeterCanvas.width, peakMeterCanvas.height);
@@ -2079,7 +2079,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
         particle.y += particle.vy * elapsed;
         particle.vx *= drag;
         particle.vy *= drag;
-        particle.vy += 0.00007 * elapsed * dpr;
+        particle.vy += 0.000008 * elapsed * dpr;
         const alpha = Math.max(0, 1 - particle.age / particle.life);
         peakMeterCtx.beginPath();
         peakMeterCtx.arc(particle.x, particle.y, particle.size * (0.6 + alpha * 0.4), 0, Math.PI * 2);
