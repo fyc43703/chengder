@@ -1972,7 +1972,10 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
               size: (ambient ? 2.5 + Math.random() * 3 : 3 + Math.random() * 4) * dpr,
               hue: persistent ? i * 360 / count : Math.random() * 360});
       }
-      if (particles.length > 120) particles.splice(0, particles.length - 120);
+      if (particles.length > 120) {
+          const permanent = particles.filter(particle => particle.persistent);
+          particles = permanent.concat(particles.filter(particle => !particle.persistent).slice(-(120 - permanent.length)));
+      }
   }
 
   function drawAnalyzers(){
@@ -2051,7 +2054,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     const radius = circleSize * 0.0625;
     for (let i = 0; i < circularSpectrumLevels.length; i += 2) {
         const angle = -Math.PI / 2 + i * Math.PI * 2 / circularSpectrumLevels.length;
-        const spike = 2 * dpr + circularSpectrumLevels[i] * circleSize * 0.32;
+        const spike = 2 * dpr + Math.sqrt(circularSpectrumLevels[i]) * circleSize * 0.4;
         const hue = Math.round(i * 360 / spectrumLevels.length);
         vectorscopeCtx.beginPath();
         vectorscopeCtx.moveTo(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius);
@@ -2068,7 +2071,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
         lastBeatTime = now;
         lastVisualBurstTime = now;
         beatPulse = 1;
-        emitParticles(Math.round(3 + bass * 3), bass);
+        emitParticles(Math.round(9 + bass * 8), bass);
     }
     bassFloor = bassFloor * 0.96 + bass * 0.04;
     let strongestFrequency = 0;
@@ -2078,11 +2081,11 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     if (soundPresent && now - lastVisualBurstTime > 1800) {
         lastVisualBurstTime = now;
         beatPulse = Math.max(beatPulse, 0.35);
-        emitParticles(2, musicEnergy);
+        emitParticles(7, musicEnergy);
     }
-    if (soundPresent && now - lastAmbientTime > 1000) {
+    if (soundPresent && now - lastAmbientTime > 750) {
         lastAmbientTime = now;
-        emitParticles(1, musicEnergy, true);
+        emitParticles(2, musicEnergy, true);
     }
     beatPulse = Math.max(0, beatPulse - elapsed / 400);
     peakMeterCtx.clearRect(0, 0, peakMeterCanvas.width, peakMeterCanvas.height);
