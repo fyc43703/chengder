@@ -43,12 +43,13 @@
       transition: background-color .3s ease, color .3s ease;
     }
     .frame{max-width:1200px; margin:0 auto; position: relative;}
-    .frame > .dots { padding-bottom: 6px; }
-    .titlebar{display:flex; align-items:center; justify-content:center; margin-bottom: 0.5rem;}
+    .titlebar{display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:start; gap:12px; margin-bottom:0.5rem;}
     .dots{display:flex; gap:8px; align-items:center}
+    .titlebar .dots{justify-self:start; margin-top:15px;}
+    .titlebar::after{content:"";}
     .dot{width:12px; height:12px; border-radius:50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);}
     .dot.red{background:var(--red);} .dot.yellow{background:var(--yellow);} .dot.green{background:var(--green);}
-    .titles{text-align:center; flex-grow:1;}
+    .titles{text-align:center; min-width:0;}
     .title-with-note{display:flex; align-items:center; justify-content:center; gap:10px;}
     .title-note{width:42px; height:42px; object-fit:contain; border-radius:10px; mix-blend-mode:multiply; filter:grayscale(1) contrast(1.25);}
     html.dark-theme .title-note{mix-blend-mode:screen; filter:grayscale(1) invert(1) contrast(1.15);}
@@ -56,8 +57,14 @@
     .titles h2{margin:4px auto 0; max-width:980px; font-size:14px; font-weight:400; line-height:1.6; color:var(--muted);}
     .author{font-size:13px; color:var(--muted); white-space:nowrap; margin-top: 0.2rem;}
     .glass{background:var(--panel-bg); border:1px solid var(--stroke); border-radius:var(--card-radius); backdrop-filter: saturate(160%) blur(22px); -webkit-backdrop-filter:saturate(160%) blur(22px); box-shadow:var(--shadow); transition: background-color .3s ease, border-color .3s ease;}
-    .layout{display:grid; grid-template-columns: 360px 1fr; gap:18px; align-items: start;}
-    .sidebar{display:flex; flex-direction:column; gap:12px;}
+    .layout{display:grid; grid-template-columns:360px minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto; gap:18px; align-items:stretch;}
+    .sidebar{display:flex; flex-direction:column; gap:12px; grid-column:1; grid-row:1 / span 2;}
+    #mainRightPanel{display:flex; flex-direction:column; min-width:0;}
+    #mainRightPanel, #exportPanel{grid-column:2; grid-row:1;}
+    #mainRightPanel > .grid{flex:1; grid-template-rows:repeat(3,max-content) minmax(0,1fr); align-content:stretch;}
+    #mainRightPanel .scope-container{grid-row:4; display:flex; flex-direction:column; min-height:0;}
+    #mainRightPanel .analyzer-grid{flex:1; grid-template-rows:repeat(2,minmax(130px,1fr)) auto;}
+    #mainRightPanel .analyzer-item canvas{height:0; flex:1; min-height:100px; box-sizing:border-box;}
     .panel{padding:18px;}
     .panel h3{margin:0 0 12px; font-size:16px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.8px;}
     .btn{appearance:none; border:none; border-radius:14px; padding:8px 12px; cursor:pointer; font-weight:600; box-shadow:0 1px 0 rgba(0,0,0,.04) inset; transition:.15s ease;}
@@ -135,7 +142,7 @@
     #fileList:empty::after { content: "尚未匯入任何檔案"; color: var(--muted); font-style: italic; font-size: 13px; }
     .grid .slider { grid-template-columns: 95px 1fr 60px; gap: 8px; }
     .grid .slider label { font-size: 13px; }
-    .theme-switcher { position: absolute; top: -14px; right: 0; }
+    .theme-switcher { position:absolute; top:3px; right:0; }
     .theme-switcher button { background: var(--theme-btn-bg); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text); transition: background-color .2s ease; }
     .theme-switcher button:hover { background: var(--theme-btn-bg-hover); }
     .theme-switcher svg { width: 22px; height: 22px; }
@@ -171,7 +178,15 @@
     @media (max-width: 1024px) {
         .layout {
             grid-template-columns: 1fr; /* Stack sidebar and main content */
+            grid-template-rows:none;
+            align-items: start;
         }
+        .sidebar, #mainRightPanel, #exportPanel, #instructionsPanel { grid-column:1; grid-row:auto; }
+        #mainRightPanel { display:block; }
+        #mainRightPanel > .grid { grid-template-rows:none; }
+        #mainRightPanel .scope-container { display:block; }
+        #mainRightPanel .analyzer-grid { grid-template-rows:none; }
+        #mainRightPanel .analyzer-item canvas { height:100px; flex:none; min-height:0; }
     }
     @media (max-width: 768px) {
         body { padding: 16px; }
@@ -188,6 +203,7 @@
         .slider input[type="range"] { grid-row: 2; grid-column: 1 / 2; }
         .slider .value { grid-row: 2; grid-column: 2 / 3; justify-self: end; }
         .player-controls .slider-group, .grid { grid-template-columns: 1fr; }
+        #mainRightPanel .scope-container { grid-row:auto; }
     }
     @media (max-width: 480px) {
         body { padding: 10px; }
@@ -195,7 +211,13 @@
         .analyzer-grid { grid-template-columns: 1fr; }
         .loop-controls { flex-direction: column; gap: 8px; }
         #exportPanel .toolbar button { width: 100%; }
-        .theme-switcher { top: -8px; }
+        .titlebar { gap:8px; }
+        .titlebar .dots { margin-top:9px; }
+        .dots { gap:5px; }
+        .dot { width:10px; height:10px; }
+        .titles h1 { font-size:18px; letter-spacing:0; }
+        .title-note { width:28px; height:28px; }
+        .theme-switcher { top:0; }
     }
     /* ===== END OF RWD ADJUSTMENTS ===== */
 
@@ -205,14 +227,18 @@
         font-weight: 600; 
     }
     #instructionsPanel { 
-        grid-column: 1 / -1; 
-        margin-top: 18px; 
+        grid-column: 2;
+        grid-row: 2;
+        margin-top: 0;
     }
+    @media (max-width:1024px) { #instructionsPanel { grid-column:1; grid-row:auto; } }
     .instruction-grid { 
         display: grid; 
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
-        gap: 24px; 
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px 24px;
         margin-top: 12px;
+        flex: 1;
+        align-content: space-evenly;
     }
     .instruction-item { 
         display: flex; 
@@ -292,10 +318,10 @@
 </head>
 <body>
   <div class="frame">
-    <div class="dots">
-      <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-    </div>
     <div class="titlebar">
+      <div class="dots" aria-hidden="true">
+        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+      </div>
       <div class="titles">
         <div class="title-with-note">
           <img class="title-note" src="./pngtree-g-clef-treble-clef-musical-note-png-image_2974873.jpg" alt="高音譜號">
