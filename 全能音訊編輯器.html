@@ -154,6 +154,11 @@
     html.dark-theme .effect-group .btn { background-color: var(--btn-ghost-bg); }
     .effect-group .btn:hover { background-color: rgba(0,0,0,0.09); }
     html.dark-theme .effect-group .btn:hover { background-color: var(--btn-ghost-bg-hover); }
+    .effect-scope { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; font-size:13px; }
+    .effect-scope > span { color:var(--muted); }
+    .effect-scope label { display:inline-flex; align-items:center; gap:4px; cursor:pointer; }
+    .effect-scope input { accent-color:var(--blue); }
+    .effect-scope-hint { margin:0; color:var(--muted); font-size:12px; line-height:1.5; }
     .btn.center-text { justify-content: center; text-align: center; }
     .history-toolbar { display:flex; gap:8px; width:100%; }
     .history-toolbar .btn { flex:1; }
@@ -375,7 +380,13 @@
                   <input id="maximizeAmount" type="range" min="0" max="100" step="1" value="50" title="提升整體音量並降低動態範圍的強度">
                   <div class="value" id="maximizeAmountV">50 %</div>
                 </div>
-                <button id="applyMaximizerBtn" class="btn ghost center-text" title="將目前的音量均衡設定套用至整個音訊">套用均衡</button>
+                <div class="effect-scope" role="group" aria-label="音量均衡套用範圍">
+                  <span>套用範圍</span>
+                  <label><input type="radio" name="maximizerScope" value="all" checked>整個音訊</label>
+                  <label><input type="radio" name="maximizerScope" value="selection">波形選取範圍</label>
+                </div>
+                <p id="maximizerScopeHint" class="effect-scope-hint" hidden>請先在波形圖拖曳框選要處理的區段。</p>
+                <button id="applyMaximizerBtn" class="btn ghost center-text" title="依所選範圍套用目前的音量均衡設定">套用均衡</button>
               </div>
               
               <div style="border-top: 1px solid var(--stroke); width:100%; margin: 8px 0;"></div>
@@ -1578,11 +1589,14 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
           return compressor;
       }, '套用壓縮');
   };
+  document.querySelectorAll('input[name="maximizerScope"]').forEach(input => {
+      input.onchange = () => { $('maximizerScopeHint').hidden = input.value !== 'selection'; };
+  });
   $('applyMaximizerBtn').onclick = () => {
       const amount = parseFloat($('maximizeAmount').value) / 100;
       const threshold = -30 * amount;
       const makeupGainValue = 1 + amount * 1.5;
-      applyOfflineEffect((ctx, sourceNode) => {
+      const setupMaximizer = (ctx, sourceNode) => {
           const limiter = ctx.createDynamicsCompressor();
           limiter.threshold.setValueAtTime(threshold, ctx.currentTime);
           limiter.ratio.setValueAtTime(20, ctx.currentTime);
@@ -1593,7 +1607,43 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
           makeupGain.gain.setValueAtTime(makeupGainValue, ctx.currentTime);
           sourceNode.connect(limiter).connect(makeupGain);
           return makeupGain;
-      }, '套用音量均衡');
+      };
+      const selectedScope = document.querySelector('input[name="maximizerScope"]:checked')?.value;
+      if (selectedScope !== 'selection') {
+          return applyOfflineEffect(setupMaximizer, '套用音量均衡');
+      }
+      if (!audioBuffer) { alert('請先載入音訊檔案'); return; }
+      const originalBuffer = audioBuffer;
+      const range = selectionSampleRange(originalBuffer);
+      if (!range) { alert('請先在波形圖拖曳選取要套用音量均衡的範圍。'); return; }
+      return runEditOperation('選取範圍音量均衡', async () => {
+          if (audioBuffer !== originalBuffer) return;
+          const length = range.end - range.start;
+          const segment = AC.createBuffer(originalBuffer.numberOfChannels, length, originalBuffer.sampleRate);
+          for (let ch = 0; ch < originalBuffer.numberOfChannels; ch++) {
+              segment.copyToChannel(originalBuffer.getChannelData(ch).subarray(range.start, range.end), ch);
+          }
+          const offlineCtx = new OfflineAudioContext(segment.numberOfChannels, length, segment.sampleRate);
+          const source = offlineCtx.createBufferSource();
+          source.buffer = segment;
+          setupMaximizer(offlineCtx, source).connect(offlineCtx.destination);
+          source.start(0);
+          const processed = await offlineCtx.startRendering();
+          if (audioBuffer !== originalBuffer) return;
+          const result = AC.createBuffer(originalBuffer.numberOfChannels, originalBuffer.length, originalBuffer.sampleRate);
+          const fadeSamples = Math.min(Math.floor(originalBuffer.sampleRate * 0.005), Math.floor(length / 2));
+          for (let ch = 0; ch < originalBuffer.numberOfChannels; ch++) {
+              const oldData = originalBuffer.getChannelData(ch);
+              const newData = result.getChannelData(ch);
+              const processedData = processed.getChannelData(ch);
+              newData.set(oldData);
+              for (let i = 0; i < length; i++) {
+                  const blend = fadeSamples ? Math.min(1, (i + 1) / (fadeSamples + 1), (length - i) / (fadeSamples + 1)) : 1;
+                  newData[range.start + i] = oldData[range.start + i] * (1 - blend) + processedData[i] * blend;
+              }
+          }
+          updateBuffer(result);
+      });
   };
 
   $('silenceThreshold').oninput = e => setVal('silenceThresholdV', `${e.target.value} dB`);
