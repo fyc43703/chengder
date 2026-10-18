@@ -548,8 +548,8 @@
                       <div class="badge">分析儀：即時頻譜（七彩霓虹光柱＋峰值殘影）</div>
                   </div>
                   <div class="analyzer-item">
-                      <canvas id="oscilloscopeCanvas" role="img" aria-label="音高追蹤，音符會依偵測音高顯示在五線譜上"></canvas>
-                      <div class="badge">分析儀：音符隨音高在五線譜上跳動</div>
+                      <canvas id="oscilloscopeCanvas" role="img" aria-label="即時音訊波形示波器"></canvas>
+                      <div class="badge">分析儀：即時波形 (示波器)</div>
                   </div>
                   <div class="analyzer-item">
                       <canvas id="vectorscopeCanvas"></canvas>
@@ -1985,18 +1985,16 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   const peakMeterCanvas = $('peakMeterCanvas'), peakMeterCtx = peakMeterCanvas.getContext('2d');
   const freqData = new Uint8Array(analyser.frequencyBinCount);
   const beatData = new Uint8Array(beatAnalyser.frequencyBinCount);
-  const pitchTimeData = new Float32Array(analyser.fftSize);
+  const waveformData = new Uint8Array(analyser.fftSize);
+  const waveformLevels = new Float32Array(160);
   const spectrumLevels = new Float32Array(72);
   const spectrumPeakLevels = new Float32Array(72);
   const spectrumPeakHoldUntil = new Float64Array(72);
   const circularSpectrumLevels = new Float32Array(72);
-  const pitchDifference = new Float32Array(analyser.fftSize / 2 + 1);
-  const staffNoteTrail = [];
   let particles = [];
   let bassFloor = 0.1, lastBeatTime = 0, lastVisualBurstTime = 0, lastAmbientTime = 0, beatPulse = 0;
   let previousAnalyzerFrame = performance.now();
-  let lastOscilloscopeDraw = 0, lastPitchAnalysis = 0, lastPitchDetected = 0, lastStaffNoteAt = 0;
-  let currentPitchMidi = null, pitchCandidateMidi = null, pitchCandidateFrames = 0;
+  let lastOscilloscopeDraw = 0;
 
   function emitParticles(count, power, ambient = false, persistent = false) {
       const dpr = window.devicePixelRatio || 1;
@@ -2019,130 +2017,46 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       }
   }
 
-  function detectFundamental(samples) {
-      let mean = 0, squareSum = 0;
-      for (let i = 0; i < samples.length; i++) { mean += samples[i]; }
-      mean /= samples.length;
-      for (let i = 0; i < samples.length; i++) { const centered = samples[i] - mean; squareSum += centered * centered; }
-      if (Math.sqrt(squareSum / samples.length) < 0.009) return null;
-
-      const minLag = Math.max(2, Math.floor(AC.sampleRate / 1000));
-      const maxLag = Math.min(Math.floor(AC.sampleRate / 58), Math.floor(samples.length / 2));
-      const sampleCount = samples.length - maxLag;
-      for (let lag = 1; lag <= maxLag; lag++) {
-          let difference = 0;
-          for (let i = 0; i < sampleCount; i += 2) {
-              const a = samples[i] - mean, b = samples[i + lag] - mean;
-              const delta = a - b;
-              difference += delta * delta;
-          }
-          pitchDifference[lag] = difference;
-      }
-      let runningDifference = 0, selectedLag = -1;
-      for (let lag = 1; lag <= maxLag; lag++) {
-          const difference = pitchDifference[lag];
-          runningDifference += difference;
-          pitchDifference[lag] = runningDifference > 0 ? difference * lag / runningDifference : 1;
-      }
-      for (let lag = minLag; lag < maxLag; lag++) {
-          if (pitchDifference[lag] >= 0.12) continue;
-          while (lag < maxLag && pitchDifference[lag + 1] < pitchDifference[lag]) lag++;
-          // A minimum at the search boundary is not a reliable period.
-          if (lag < maxLag) selectedLag = lag;
-          break;
-      }
-      if (selectedLag < 1) return null;
-      const left = pitchDifference[Math.max(minLag, selectedLag - 1)];
-      const center = pitchDifference[selectedLag];
-      const right = pitchDifference[Math.min(maxLag, selectedLag + 1)];
-      const denominator = 2 * (2 * center - left - right);
-      const correction = Math.abs(denominator) > 1e-9 ? Math.max(-1, Math.min(1, (right - left) / denominator)) : 0;
-      const frequency = AC.sampleRate / (selectedLag + correction);
-      return frequency >= 58 && frequency <= 1000 ? frequency : null;
-  }
-
-  function pitchToStaffPosition(midi) {
-      const names = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
-      const pitchClass = ((midi % 12) + 12) % 12;
-      const octave = Math.floor(midi / 12) - 1;
-      const letter = names[pitchClass][0];
-      const letterSteps = {C:0,D:1,E:2,F:3,G:4,A:5,B:6};
-      const diatonicIndex = octave * 7 + letterSteps[letter];
-      return { name:`${names[pitchClass]}${octave}`, diatonicIndex, frequency:440 * Math.pow(2, (midi - 69) / 12) };
-  }
-
-  function drawPitchStaff(ctx, canvas, trail, activeMidi, now, dpr) {
+  function drawWaveform(ctx, canvas, data, levels, dpr, elapsed) {
       const width = canvas.width, height = canvas.height;
       ctx.clearRect(0, 0, width, height);
       const dark = document.documentElement.classList.contains('dark-theme');
-      const ink = dark ? '#e6edf8' : '#28364a';
-      const line = dark ? 'rgba(210,225,245,.48)' : 'rgba(55,72,96,.38)';
-      // Reserve a separate footer; noteheads and inward stems stay above it.
-      const footer = 20 * dpr;
-      const gap = Math.min(12 * dpr, (height - footer) / 10);
-      const top = (height - footer - gap * 4) / 2;
-      const bottom = top + gap * 4;
-      const left = 16 * dpr, right = width - 16 * dpr;
-      ctx.save();
-      ctx.lineWidth = dpr;
-      ctx.strokeStyle = line;
-      for (let i = 0; i < 5; i++) {
-          ctx.beginPath(); ctx.moveTo(left, top + i * gap);
-          ctx.lineTo(right, top + i * gap); ctx.stroke();
+      const center = height * .5;
+      const samples = levels.length;
+      for (let i = 0; i < samples; i++) {
+          const sourceIndex = Math.min(data.length - 1, Math.floor(i * data.length / samples));
+          const target = (data[sourceIndex] - 128) / 128;
+          // Smooth abrupt frame-to-frame changes so the trace follows the music without flickering.
+          const blend = Math.min(.32, Math.max(.12, elapsed / 180));
+          levels[i] += (target - levels[i]) * blend;
       }
-      ctx.fillStyle = ink;
-      ctx.font = `${gap * 5.5}px "Segoe UI Symbol", "Noto Music", serif`;
-      ctx.fillText('𝄞', left, bottom + gap * .65);
-      const palette = ['#0a84ff','#a855f7','#00a8a8','#f08c24','#e84d8a','#38a852'];
-      const spacing = 48 * dpr;
-      const count = Math.max(1, Math.min(6, Math.floor((width - 90 * dpr) / spacing)));
-      const visible = activeMidi === null ? [] : trail.slice(-count);
-      visible.forEach((entry, index) => {
-          // Fold extreme registers by whole octaves, explicitly labelled below.
-          let displayMidi = entry.midi;
-          while (displayMidi < 60) displayMidi += 12;
-          while (displayMidi > 81) displayMidi -= 12;
-          const pitch = pitchToStaffPosition(displayMidi);
-          const x = right - 20 * dpr - (visible.length - 1 - index) * spacing;
-          const y = bottom - (pitch.diatonicIndex - 30) * gap / 2;
-          const latest = index === visible.length - 1;
-          const color = palette[((entry.midi % 12) + 12) % palette.length];
-          const radius = Math.min(7 * dpr, gap * .72);
-          ctx.globalAlpha = latest ? 1 : .42;
-          ctx.strokeStyle = line;
-          ctx.lineWidth = dpr;
-          for (let ly = bottom + gap; ly <= y + .1 * gap; ly += gap) {
-              ctx.beginPath(); ctx.moveTo(x - radius * 1.5, ly);
-              ctx.lineTo(x + radius * 1.5, ly); ctx.stroke();
+      const path = () => {
+          ctx.beginPath();
+          for (let i = 0; i < samples; i++) {
+              const x = i * width / (samples - 1);
+              const y = center - levels[i] * height * .34;
+              if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
           }
-          ctx.fillStyle = color;
-          ctx.shadowColor = color;
-          ctx.shadowBlur = latest ? 5 * dpr : 0;
-          ctx.beginPath(); ctx.ellipse(x, y, radius, radius * .68, -.32, 0, Math.PI * 2); ctx.fill();
-          ctx.shadowBlur = 0;
-          const stemUp = y >= top + 2 * gap;
-          const stemX = x + (stemUp ? 1 : -1) * radius * .8;
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1.6 * dpr;
-          ctx.beginPath(); ctx.moveTo(stemX, y);
-          ctx.lineTo(stemX, y + (stemUp ? -1 : 1) * gap * 2.5); ctx.stroke();
-          if (pitch.name.includes('♯')) {
-              ctx.font = `${gap * 1.4}px "Segoe UI Symbol", sans-serif`;
-              ctx.fillText('♯', x - radius * 2.9, y + gap * .45);
-          }
-      });
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = ink;
-      ctx.font = `600 ${11 * dpr}px system-ui, sans-serif`;
-      ctx.textAlign = 'right';
-      const pitch = activeMidi === null ? null : pitchToStaffPosition(activeMidi);
-      ctx.fillText(pitch ? `${pitch.name} · ${Math.round(pitch.frequency)} Hz` : (isPlaying ? '等待穩定音高…' : '播放音訊以顯示音高'), right, height - 6 * dpr);
-      if (visible.some(entry => entry.midi < 60 || entry.midi > 81)) {
-          ctx.textAlign = 'left';
-          ctx.font = `${10 * dpr}px system-ui, sans-serif`;
-          ctx.fillText('超出音域以八度移位顯示', left, height - 6 * dpr);
-      }
-      ctx.restore();
+      };
+      path();
+      ctx.lineTo(width, center);
+      ctx.lineTo(0, center);
+      ctx.closePath();
+      const fill = ctx.createLinearGradient(0, center-height*.35, 0, center+height*.35);
+      fill.addColorStop(0, dark ? 'rgba(42,196,255,.05)' : 'rgba(10,132,255,.03)');
+      fill.addColorStop(.5, dark ? 'rgba(42,196,255,.22)' : 'rgba(10,132,255,.16)');
+      fill.addColorStop(1, dark ? 'rgba(165,92,255,.14)' : 'rgba(92,115,255,.10)');
+      ctx.fillStyle = fill;
+      ctx.fill();
+      path();
+      ctx.strokeStyle = dark ? '#42c4ff' : '#0a84ff';
+      ctx.lineWidth = 2 * dpr;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.shadowColor = dark ? 'rgba(42,196,255,.9)' : 'rgba(10,132,255,.48)';
+      ctx.shadowBlur = 5 * dpr;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
   }
 
   function drawAnalyzers(){
@@ -2171,40 +2085,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
 
     analyser.getByteFrequencyData(freqData);
     beatAnalyser.getByteFrequencyData(beatData);
-    if (isPlaying && now - lastPitchAnalysis >= 110) {
-        lastPitchAnalysis = now;
-        analyser.getFloatTimeDomainData(pitchTimeData);
-        const detectedHz = detectFundamental(pitchTimeData);
-        if (detectedHz) {
-            const detectedMidi = Math.round(69 + 12 * Math.log2(detectedHz / 440));
-            if (detectedMidi === pitchCandidateMidi) {
-                pitchCandidateFrames++;
-                pitchCandidateMidi = detectedMidi;
-            } else {
-                pitchCandidateMidi = detectedMidi;
-                pitchCandidateFrames = 1;
-            }
-            const requiredFrames = currentPitchMidi !== null && Math.abs(detectedMidi - currentPitchMidi) >= 7 ? 5 : 3;
-            if (detectedMidi === currentPitchMidi) lastPitchDetected = now;
-            if (pitchCandidateFrames >= requiredFrames) {
-                currentPitchMidi = pitchCandidateMidi;
-                lastPitchDetected = now;
-                if (staffNoteTrail.length === 0 || staffNoteTrail[staffNoteTrail.length - 1].midi !== currentPitchMidi) {
-                    staffNoteTrail.push({ midi: currentPitchMidi, time: now });
-                    if (staffNoteTrail.length > 14) staffNoteTrail.shift();
-                    lastStaffNoteAt = now;
-                }
-            }
-        } else {
-            pitchCandidateMidi = null;
-            pitchCandidateFrames = 0;
-        }
-    }
-    if (!isPlaying || now - lastPitchDetected > 900) {
-        currentPitchMidi = null;
-        staffNoteTrail.length = 0;
-        if (!isPlaying) { pitchCandidateMidi = null; pitchCandidateFrames = 0; }
-    }
+    analyser.getByteTimeDomainData(waveformData);
     const hzPerBin = AC.sampleRate / analyser.fftSize;
     const maxBin = Math.min(freqData.length - 1, Math.floor(16000 / hzPerBin));
     for (let bar = 0; bar < spectrumLevels.length; bar++) {
@@ -2264,7 +2145,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
 
     if (now - lastOscilloscopeDraw >= 50) {
         lastOscilloscopeDraw = now;
-        drawPitchStaff(oscilloscopeCtx, oscilloscopeCanvas, staffNoteTrail, currentPitchMidi, now, dpr);
+        drawWaveform(oscilloscopeCtx, oscilloscopeCanvas, waveformData, waveformLevels, dpr, elapsed);
     }
 
     vectorscopeCtx.clearRect(0, 0, vectorscopeCanvas.width, vectorscopeCanvas.height);
