@@ -1956,10 +1956,12 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   const spectrumPeakHoldUntil = new Float64Array(72);
   const circularSpectrumLevels = new Float32Array(72);
   const displayedWaveform = new Float32Array(timeData.length).fill(128);
+  const targetWaveform = new Float32Array(timeData.length).fill(128);
   let particles = [];
   let bassFloor = 0.1, lastBeatTime = 0, lastVisualBurstTime = 0, lastAmbientTime = 0, beatPulse = 0;
   let previousAnalyzerFrame = performance.now();
   let lastOscilloscopeDraw = 0;
+  let lastOscilloscopeSample = 0;
 
   function emitParticles(count, power, ambient = false, persistent = false) {
       const dpr = window.devicePixelRatio || 1;
@@ -2011,6 +2013,10 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     analyser.getByteFrequencyData(freqData);
     beatAnalyser.getByteFrequencyData(beatData);
     analyser.getByteTimeDomainData(timeData);
+    if (now - lastOscilloscopeSample >= 180) {
+        targetWaveform.set(timeData);
+        lastOscilloscopeSample = now;
+    }
     const hzPerBin = AC.sampleRate / analyser.fftSize;
     const maxBin = Math.min(freqData.length - 1, Math.floor(16000 / hzPerBin));
     for (let bar = 0; bar < spectrumLevels.length; bar++) {
@@ -2074,8 +2080,9 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
         const sliceWidth = oscilloscopeCanvas.width / bufferLength;
         const centerY = oscilloscopeCanvas.height / 2;
         let maxWaveDeviation = 0;
+        const waveformBlend = 1 - Math.exp(-elapsed / 260);
         for (let i = 0; i < bufferLength; i++) {
-            displayedWaveform[i] += (timeData[i] - displayedWaveform[i]) * 0.65;
+            displayedWaveform[i] += (targetWaveform[i] - displayedWaveform[i]) * waveformBlend;
             maxWaveDeviation = Math.max(maxWaveDeviation, Math.abs(displayedWaveform[i] - 128));
         }
         const waveformScale = Math.min(4.5, (38 * dpr * 256) / (oscilloscopeCanvas.height * Math.max(1, maxWaveDeviation)));
