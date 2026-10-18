@@ -117,6 +117,7 @@
     .zoom-controls .btn { padding: 6px 12px; font-size: 13px; border-radius: 10px; }
     #scope, #oscilloscopeCanvas, #vectorscopeCanvas, #peakMeterCanvas { height: 100px; }
     #scope { background: radial-gradient(circle at 50% 115%, #182746 0, #0d1932 42%, #070d1c 100%); border-color: #33415d; }
+    #oscilloscopeCanvas { background: radial-gradient(ellipse at 50% 50%, #112946 0, #09172a 60%, #06101e 100%); border-color: #263a55; }
     #loadingIndicator { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; gap: 10px; color: var(--muted); font-weight: 600; }
     html.dark-theme #loadingIndicator { background: rgba(0,0,0,0.6); }
     .spinner { width: 50px; height: 50px; border: 5px solid rgba(0,0,0,0.1); border-top-color: var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
@@ -2070,20 +2071,56 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     if (oscilloscopeResized || now - lastOscilloscopeDraw >= 60) {
         lastOscilloscopeDraw = now;
         oscilloscopeCtx.clearRect(0, 0, oscilloscopeCanvas.width, oscilloscopeCanvas.height);
-        oscilloscopeCtx.lineWidth = 2 * dpr;
-        oscilloscopeCtx.strokeStyle = 'rgb(10, 132, 255)';
-        oscilloscopeCtx.beginPath();
         const sliceWidth = oscilloscopeCanvas.width / bufferLength;
+        const centerY = oscilloscopeCanvas.height / 2;
+        let maxWaveDeviation = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            displayedWaveform[i] += (timeData[i] - displayedWaveform[i]) * 0.65;
+            maxWaveDeviation = Math.max(maxWaveDeviation, Math.abs(displayedWaveform[i] - 128));
+        }
+        const waveformScale = Math.min(4.5, (38 * dpr * 256) / (oscilloscopeCanvas.height * Math.max(1, maxWaveDeviation)));
+        oscilloscopeCtx.beginPath();
         let x = 0;
         for(let i = 0; i < bufferLength; i++) {
-            displayedWaveform[i] += (timeData[i] - displayedWaveform[i]) * 0.65;
-            const y = displayedWaveform[i] * oscilloscopeCanvas.height / 256;
+            const y = centerY + (displayedWaveform[i] - 128) * oscilloscopeCanvas.height / 256 * waveformScale;
             if(i === 0) oscilloscopeCtx.moveTo(x, y);
             else oscilloscopeCtx.lineTo(x, y);
             x += sliceWidth;
         }
-        oscilloscopeCtx.lineTo(oscilloscopeCanvas.width, oscilloscopeCanvas.height / 2);
+        oscilloscopeCtx.lineTo(oscilloscopeCanvas.width, centerY);
+        oscilloscopeCtx.lineTo(0, centerY);
+        oscilloscopeCtx.closePath();
+        const fill = oscilloscopeCtx.createLinearGradient(0, 0, 0, oscilloscopeCanvas.height);
+        fill.addColorStop(0, 'rgba(51, 214, 255, 0.12)');
+        fill.addColorStop(0.5, 'rgba(34, 137, 255, 0.46)');
+        fill.addColorStop(1, 'rgba(133, 91, 255, 0.14)');
+        oscilloscopeCtx.fillStyle = fill;
+        oscilloscopeCtx.shadowColor = 'rgba(38, 177, 255, 0.62)';
+        oscilloscopeCtx.shadowBlur = 15 * dpr;
+        oscilloscopeCtx.fill();
+        oscilloscopeCtx.shadowBlur = 0;
+
+        const stroke = oscilloscopeCtx.createLinearGradient(0, 0, oscilloscopeCanvas.width, 0);
+        stroke.addColorStop(0, '#52e7ff');
+        stroke.addColorStop(0.52, '#69baff');
+        stroke.addColorStop(1, '#bd83ff');
+        oscilloscopeCtx.beginPath();
+        for(let i = 0; i < bufferLength; i++) {
+            const y = centerY + (displayedWaveform[i] - 128) * oscilloscopeCanvas.height / 256 * waveformScale;
+            const pointX = i * sliceWidth;
+            if(i === 0) oscilloscopeCtx.moveTo(pointX, y);
+            else oscilloscopeCtx.lineTo(pointX, y);
+        }
+        oscilloscopeCtx.lineWidth = 7 * dpr;
+        oscilloscopeCtx.strokeStyle = 'rgba(48, 183, 255, 0.22)';
+        oscilloscopeCtx.shadowColor = '#39caff';
+        oscilloscopeCtx.shadowBlur = 12 * dpr;
         oscilloscopeCtx.stroke();
+        oscilloscopeCtx.lineWidth = 2.4 * dpr;
+        oscilloscopeCtx.strokeStyle = stroke;
+        oscilloscopeCtx.shadowBlur = 5 * dpr;
+        oscilloscopeCtx.stroke();
+        oscilloscopeCtx.shadowBlur = 0;
     }
 
     vectorscopeCtx.clearRect(0, 0, vectorscopeCanvas.width, vectorscopeCanvas.height);
