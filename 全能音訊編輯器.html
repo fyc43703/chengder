@@ -91,17 +91,19 @@
     .seg .format-btn, .seg button { background: transparent; border: none; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-weight: 600; color: var(--muted); font-size: 16px; line-height: 1; transition: .15s ease; }
     .seg .format-btn.active, .seg button.active { background: var(--seg-active-bg); color: var(--seg-active-text); box-shadow: 0 1px 3px rgba(0,0,0,.05); }
     canvas{width:100%; display:block; border-radius:14px; background:rgba(255,255,255,.65); border:1px solid var(--stroke)}
-    #waveformCanvas{height:100px; box-sizing:border-box;}
+    #waveformCanvas{height:118px; box-sizing:border-box; border:0; border-radius:13px; background:#0b1425;}
     .badge{font-size:12px; color:var(--muted)}
     .scope-container{ margin-top: 12px; grid-column: 1 / -1; }
     .analyzer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .analyzer-item { display: flex; flex-direction: column; gap: 6px; }
     .analyzer-item .badge { text-align: center; }
-    #waveformContainer { position: relative; margin-bottom: 4px; }
-    .playhead { position: absolute; top: 0; left: 0; width: 4px; height: 100%; background-color: var(--red); pointer-events: none; transform: translateX(-2px); }
-    .selection-rect { position: absolute; top: 0; background-color: rgba(10, 132, 255, 0.3); border: 2px solid var(--blue); pointer-events: none; height: 100%; box-sizing: border-box; }
+    #mainRightPanel > h3 { color:var(--text); display:flex; align-items:center; gap:9px; }
+    #mainRightPanel > h3::before { content:""; width:4px; height:18px; border-radius:4px; background:linear-gradient(#63f3e5,#0a84ff); box-shadow:0 0 8px rgba(10,132,255,.35); }
+    #waveformContainer { position: relative; margin-bottom: 4px; padding:4px; border-radius:18px; background:#101b2f; border:1px solid #243957; box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 20px rgba(17,35,62,.12); overflow:hidden; }
+    .playhead { position: absolute; top: 4px; left: 0; width: 2px; height: calc(100% - 8px); background-color: #ff6d74; box-shadow:0 0 7px rgba(255,109,116,.85); pointer-events: none; transform: translateX(-1px); }
+    .selection-rect { position: absolute; top: 4px; background-color: rgba(58, 158, 255, 0.24); border: 1px solid #67caff; pointer-events: none; height: calc(100% - 8px); box-sizing: border-box; }
     .time-container { margin-bottom: 0; position: relative; padding-top: 3px; }
-    #time-ruler { width: 100%; height: 20px; background: rgba(0,0,0,0.05); border-radius: 10px; cursor: pointer; position: relative; }
+    #time-ruler { width: 100%; height: 20px; background:repeating-linear-gradient(90deg,rgba(170,204,244,.18) 0 1px,transparent 1px 12.5%),#15233a; border-radius: 10px; cursor: pointer; position: relative; }
     #time-indicator { position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--blue); transform: translateX(-2px); }
     #time-indicator::before { content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 10px solid var(--blue); }
     #time-hover-info { position: absolute; bottom: 100%; left: 0; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; display: none; }
@@ -1365,34 +1367,87 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       clampWaveformView();
       const canvas = waveformCanvas;
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = canvas.clientWidth * dpr;
-      canvas.height = 100 * dpr;
+      const width = Math.max(1, canvas.clientWidth);
+      const height = Math.max(1, canvas.clientHeight);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
       const ctx = waveformCtx;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!audioBuffer) return;
-      ctx.scale(dpr, dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const surface = ctx.createLinearGradient(0, 0, 0, height);
+      surface.addColorStop(0, '#101f35');
+      surface.addColorStop(1, '#091321');
+      ctx.fillStyle = surface;
+      ctx.fillRect(0, 0, width, height);
+      ctx.strokeStyle = 'rgba(159, 197, 235, .11)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = 1; x < 8; x++) {
+          const position = Math.round(width * x / 8) + .5;
+          ctx.moveTo(position, 0);
+          ctx.lineTo(position, height);
+      }
+      for (const y of [height * .25, height * .75]) {
+          ctx.moveTo(0, Math.round(y) + .5);
+          ctx.lineTo(width, Math.round(y) + .5);
+      }
+      ctx.stroke();
+      if (!audioBuffer) {
+          ctx.fillStyle = 'rgba(183, 207, 233, .58)';
+          ctx.font = '12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('選擇音訊檔案以顯示波形', width / 2, height / 2 + 4);
+          return;
+      }
       const data = audioBuffer.getChannelData(0);
       const totalSamples = data.length;
       const visibleSamples = Math.floor(totalSamples / zoom);
       const startSample = Math.floor(viewOffset * audioBuffer.sampleRate);
-      const step = Math.ceil(visibleSamples / canvas.clientWidth);
-      const amp = canvas.clientHeight / 2;
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(10, 132, 255, 0.6)';
-      ctx.beginPath();
-      for (let i = 0; i < canvas.clientWidth; i++) {
-          const sampleIdx = startSample + (i * step);
-          let min = 1.0; let max = -1.0;
-          for (let j = 0; j < step; j++) {
-              if (sampleIdx + j < totalSamples) {
-                  const datum = data[sampleIdx + j];
-                  if (datum < min) min = datum;
-                  if (datum > max) max = datum;
-              }
+      const samplesPerPixel = visibleSamples / width;
+      const center = height / 2;
+      const amplitude = height * .43;
+      const upper = new Float32Array(width);
+      const lower = new Float32Array(width);
+      for (let x = 0; x < width; x++) {
+          const from = Math.min(totalSamples - 1, startSample + Math.floor(x * samplesPerPixel));
+          const to = Math.min(totalSamples, Math.max(from + 1, startSample + Math.floor((x + 1) * samplesPerPixel)));
+          let min = 0, max = 0;
+          for (let sample = from; sample < to; sample++) {
+              const value = data[sample];
+              if (value < min) min = value;
+              if (value > max) max = value;
           }
-          ctx.moveTo(i, (1 + min) * amp);
-          ctx.lineTo(i, (1 + max) * amp);
+          upper[x] = center - max * amplitude;
+          lower[x] = center - min * amplitude;
       }
+      const waveColor = ctx.createLinearGradient(0, 0, 0, height);
+      waveColor.addColorStop(0, '#82fff1');
+      waveColor.addColorStop(.5, '#36c5f5');
+      waveColor.addColorStop(1, '#386df5');
+      ctx.fillStyle = waveColor;
+      ctx.shadowColor = 'rgba(49, 189, 255, .45)';
+      ctx.shadowBlur = 9;
+      ctx.beginPath();
+      ctx.moveTo(0, upper[0]);
+      for (let x = 1; x < width; x++) ctx.lineTo(x, upper[x]);
+      for (let x = width - 1; x >= 0; x--) ctx.lineTo(x, lower[x]);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(204, 255, 255, .6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, upper[0]);
+      for (let x = 1; x < width; x++) ctx.lineTo(x, upper[x]);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(127, 188, 255, .5)';
+      ctx.beginPath();
+      ctx.moveTo(0, lower[0]);
+      for (let x = 1; x < width; x++) ctx.lineTo(x, lower[x]);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(206, 232, 255, .2)';
+      ctx.beginPath();
+      ctx.moveTo(0, center + .5);
+      ctx.lineTo(width, center + .5);
       ctx.stroke();
   }
 
