@@ -2067,8 +2067,8 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       const octave = Math.floor(midi / 12) - 1;
       const letter = names[pitchClass][0];
       const letterSteps = {C:0,D:1,E:2,F:3,G:4,A:5,B:6};
-      const diatonicStep = octave * 7 + letterSteps[letter] - (4 * 7 + letterSteps.E);
-      return { name:`${names[pitchClass]}${octave}`, diatonicStep, frequency:440 * Math.pow(2, (midi - 69) / 12) };
+      const diatonicIndex = octave * 7 + letterSteps[letter];
+      return { name:`${names[pitchClass]}${octave}`, diatonicIndex, frequency:440 * Math.pow(2, (midi - 69) / 12) };
   }
 
   function drawPitchStaff(ctx, canvas, trail, activeMidi, now, dpr) {
@@ -2078,27 +2078,34 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       const ink = dark ? '#e6edf8' : '#28364a';
       const line = dark ? 'rgba(210,225,245,.62)' : 'rgba(55,72,96,.52)';
       const muted = dark ? 'rgba(210,225,245,.72)' : 'rgba(55,72,96,.72)';
-      const gap = Math.min(16 * dpr, height / 7);
-      const middleY = height * 0.48;
-      const top = middleY - gap * 2;
-      const bottom = middleY + gap * 2;
+      const gap = Math.min(12 * dpr, height / 14);
+      const trebleTop = 8 * dpr;
+      const trebleBottom = trebleTop + gap * 4;
+      const bassTop = trebleBottom + gap * 1.8;
+      const bassBottom = bassTop + gap * 4;
       const left = 18 * dpr, right = width - 14 * dpr;
 
       ctx.lineWidth = Math.max(1, dpr);
       ctx.strokeStyle = line;
-      for (let i = 0; i < 5; i++) {
-          const y = top + i * gap;
-          ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
-      }
+      const drawStaffLines = top => {
+          for (let i = 0; i < 5; i++) {
+              const y = top + i * gap;
+              ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
+          }
+      };
+      drawStaffLines(trebleTop);
+      drawStaffLines(bassTop);
       ctx.fillStyle = ink;
-      ctx.font = `${Math.max(40, gap * 5)}px "Segoe UI Symbol", "Noto Music", serif`;
-      ctx.fillText('𝄞', 7 * dpr, bottom + gap * 0.48);
+      ctx.font = `${Math.min(54 * dpr, gap * 5)}px "Segoe UI Symbol", "Noto Music", serif`;
+      ctx.fillText('𝄞', 5 * dpr, trebleBottom + gap * 0.35);
+      ctx.font = `${Math.min(38 * dpr, gap * 3.5)}px "Segoe UI Symbol", "Noto Music", serif`;
+      ctx.fillText('𝄢', 7 * dpr, bassBottom - gap * 0.1);
 
       if (trail.length === 0 || activeMidi === null) {
           ctx.fillStyle = muted;
           ctx.font = `${12 * dpr}px system-ui, sans-serif`;
           ctx.textAlign = 'center';
-          ctx.fillText('播放音訊以顯示音高', width * 0.62, height - 11 * dpr);
+          ctx.fillText('播放音訊以顯示音高', width * 0.63, height - 7 * dpr);
           ctx.textAlign = 'start';
           return;
       }
@@ -2111,14 +2118,18 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       visible.forEach((entry, index) => {
           const pitch = pitchToStaffPosition(entry.midi);
           const x = currentX - (visible.length - index - 1) * spacing;
-          const y = bottom - pitch.diatonicStep * gap / 2 - (entry.midi === activeMidi ? Math.sin(now / 110) * 3.2 * dpr : 0);
+          const useTreble = pitch.diatonicIndex >= 4 * 7;
+          const staffTop = useTreble ? trebleTop : bassTop;
+          const staffBottom = useTreble ? trebleBottom : bassBottom;
+          const referenceIndex = useTreble ? (4 * 7 + 2) : (2 * 7 + 4);
+          const y = staffBottom - (pitch.diatonicIndex - referenceIndex) * gap / 2 - (entry.midi === activeMidi ? Math.sin(now / 110) * 3.2 * dpr : 0);
           const color = palette[((entry.midi % 12) + 12) % palette.length];
-          if (y < top - gap * 0.45) {
-              for (let ledgerY = top - gap; ledgerY >= y - gap * 0.25; ledgerY -= gap) {
+          if (y < staffTop - gap * 0.45) {
+              for (let ledgerY = staffTop - gap; ledgerY >= y - gap * 0.25; ledgerY -= gap) {
                   ctx.beginPath(); ctx.moveTo(x - 11 * dpr, ledgerY); ctx.lineTo(x + 11 * dpr, ledgerY); ctx.strokeStyle = line; ctx.stroke();
               }
-          } else if (y > bottom + gap * 0.45) {
-              for (let ledgerY = bottom + gap; ledgerY <= y + gap * 0.25; ledgerY += gap) {
+          } else if (y > staffBottom + gap * 0.45) {
+              for (let ledgerY = staffBottom + gap; ledgerY <= y + gap * 0.25; ledgerY += gap) {
                   ctx.beginPath(); ctx.moveTo(x - 11 * dpr, ledgerY); ctx.lineTo(x + 11 * dpr, ledgerY); ctx.strokeStyle = line; ctx.stroke();
               }
           }
@@ -2136,10 +2147,14 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       });
 
       const currentPitch = pitchToStaffPosition(activeMidi);
+      const currentUsesTreble = currentPitch.diatonicIndex >= 4 * 7;
+      const currentBottom = currentUsesTreble ? trebleBottom : bassBottom;
+      const currentReference = currentUsesTreble ? (4 * 7 + 2) : (2 * 7 + 4);
+      const currentY = currentBottom - (currentPitch.diatonicIndex - currentReference) * gap / 2;
       ctx.fillStyle = ink;
       ctx.font = `600 ${12 * dpr}px system-ui, sans-serif`;
       ctx.textAlign = 'right';
-      ctx.fillText(`${currentPitch.name} · ${Math.round(currentPitch.frequency)} Hz`, right - 6 * dpr, Math.max(14 * dpr, bottom - currentPitch.diatonicStep * gap / 2 - 20 * dpr));
+      ctx.fillText(`${currentPitch.name} · ${Math.round(currentPitch.frequency)} Hz`, right - 6 * dpr, Math.max(14 * dpr, currentY - 17 * dpr));
       ctx.textAlign = 'start';
   }
 
