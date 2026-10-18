@@ -1992,8 +1992,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   const peakMeterCanvas = $('peakMeterCanvas'), peakMeterCtx = peakMeterCanvas.getContext('2d');
   const freqData = new Uint8Array(analyser.frequencyBinCount);
   const beatData = new Uint8Array(beatAnalyser.frequencyBinCount);
-  const waveformData = new Uint8Array(analyser.fftSize);
-  const waveformLevels = new Float32Array(160);
+  const timeData = new Uint8Array(analyser.frequencyBinCount);
   const spectrumLevels = new Float32Array(72);
   const spectrumPeakLevels = new Float32Array(72);
   const spectrumPeakHoldUntil = new Float64Array(72);
@@ -2092,7 +2091,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
 
     analyser.getByteFrequencyData(freqData);
     beatAnalyser.getByteFrequencyData(beatData);
-    analyser.getByteTimeDomainData(waveformData);
+    analyser.getByteTimeDomainData(timeData);
     const hzPerBin = AC.sampleRate / analyser.fftSize;
     const maxBin = Math.min(freqData.length - 1, Math.floor(16000 / hzPerBin));
     for (let bar = 0; bar < spectrumLevels.length; bar++) {
@@ -2152,7 +2151,20 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
 
     if (now - lastOscilloscopeDraw >= 50) {
         lastOscilloscopeDraw = now;
-        drawWaveform(oscilloscopeCtx, oscilloscopeCanvas, waveformData, waveformLevels, dpr, elapsed);
+        oscilloscopeCtx.clearRect(0, 0, oscilloscopeCanvas.width, oscilloscopeCanvas.height);
+        oscilloscopeCtx.lineWidth = 2 * dpr;
+        oscilloscopeCtx.strokeStyle = 'rgb(10, 132, 255)';
+        oscilloscopeCtx.beginPath();
+        const sliceWidth = oscilloscopeCanvas.width / timeData.length;
+        let x = 0;
+        for (let i = 0; i < timeData.length; i++) {
+            const y = (timeData[i] / 128) * oscilloscopeCanvas.height / 2;
+            if (i === 0) oscilloscopeCtx.moveTo(x, y);
+            else oscilloscopeCtx.lineTo(x, y);
+            x += sliceWidth;
+        }
+        oscilloscopeCtx.lineTo(oscilloscopeCanvas.width, oscilloscopeCanvas.height / 2);
+        oscilloscopeCtx.stroke();
     }
 
     vectorscopeCtx.clearRect(0, 0, vectorscopeCanvas.width, vectorscopeCanvas.height);
