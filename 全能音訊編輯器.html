@@ -172,8 +172,9 @@
     #exportProgressFill { width: 0; height: 100%; border-radius: inherit; background: var(--blue); transition: width .15s ease; }
     #cancelProgressBtn { margin-top: 20px; border: 1px solid rgba(255,96,92,.3); color: #c83733; background: transparent; }
     .file-list-container { max-height: 140px; overflow-y: auto; border: 1px solid var(--stroke); border-radius: 8px; padding: 8px 12px; margin-top: 12px; background: rgba(0,0,0,.04); }
-    #fileList { list-style-type: decimal; list-style-position: inside; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
+    #fileList { list-style: none; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
     #fileList li { display:flex; align-items:center; gap:6px; min-width:0; font-size:13px; color:var(--text); padding:4px 8px; cursor:pointer; border-radius:6px; transition:background-color .15s ease; white-space:nowrap; overflow:hidden; }
+    #fileList .file-number { flex:0 0 auto; min-width:1.7em; font-variant-numeric:tabular-nums; text-align:right; }
     #fileList .file-name-window { display:block; flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap; }
     #fileList .file-name-static { flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     #fileList .file-name-track { display:inline-flex; width:max-content; white-space:nowrap; }
@@ -410,7 +411,7 @@
               選擇檔案
               <input id="file" type="file" accept="audio/*,.wma,.m4a,.ogg,.aac,.3gp" hidden multiple>
             </label>
-            <div class="badge">支援常見格式，如WAV、MP3、WMA、M4A、OGG等</div>
+            <div class="badge">支援 WAV、MP3、M4A、OGG 等；WMA 是否可讀取取決於瀏覽器編碼支援</div>
           </div>
           <div class="file-list-container">
               <label style="font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px;">已匯入檔案列表：</label>
@@ -1256,6 +1257,10 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
           const li = document.createElement('li');
           li.title = file.name;
           const isCurrentTrack = file.name === currentFileName;
+          const number = document.createElement('span');
+          number.className = 'file-number';
+          number.textContent = `${index + 1}.`;
+          li.appendChild(number);
           let nameWindow = null, nameTrack = null, nameText = null;
           if (isCurrentTrack) {
               li.classList.add('active');
@@ -1357,6 +1362,8 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
 
   async function loadFile(file) {
     const requestId = ++loadRequestId;
+    const previousBuffer = audioBuffer;
+    const previousFileIndex = currentFileIndex;
     stop();
     $('loadingIndicator').querySelector('div:last-child').textContent = '音訊載入中...';
     $('loadingIndicator').style.display = 'flex';
@@ -1381,9 +1388,17 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     } catch (e) {
       if (requestId !== loadRequestId) return;
       console.error("Error decoding audio file:", e);
-      audioBuffer = null;
+      audioBuffer = previousBuffer;
+      currentFileIndex = previousFileIndex;
       updateFileList();
-      alert("無法讀取此音訊檔案，請確認格式受瀏覽器支援。");
+      if (/\.wma$/i.test(file.name)) {
+        alert("此 WMA 檔案無法由目前的瀏覽器解碼。\n\n請先將檔案轉成 MP3 或 WAV 後再匯入；原本已開啟的曲目與波形會保留。\n\n提示：WMA 是否可讀取取決於瀏覽器及檔案使用的編碼格式。");
+      } else {
+        alert("無法讀取此音訊檔案，請確認格式及瀏覽器支援。原本已開啟的曲目與波形會保留。");
+      }
+      updateTimeDisplay();
+      drawWaveform();
+      updatePlayhead();
     } finally {
         if (requestId !== loadRequestId) return;
         $('loadingIndicator').style.display = 'none';
