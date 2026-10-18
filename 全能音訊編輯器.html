@@ -107,11 +107,15 @@
     #time-indicator { position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--blue); transform: translateX(-2px); }
     #time-indicator::before { content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 10px solid var(--blue); }
     #time-hover-info { position: absolute; bottom: 100%; left: 0; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; display: none; }
-    #timeDisplay { font-size: 20px; font-weight: 700; text-align: center; color: var(--muted); letter-spacing: 1px; margin-top: 2px; line-height: 1.15; font-variant-numeric: tabular-nums;}
+    #timeDisplay { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:center; gap:4px 10px; font-size:20px; font-weight:700; color:var(--muted); letter-spacing:1px; margin-top:2px; line-height:1.15; font-variant-numeric:tabular-nums; }
+    #timeDisplay .time-segment { display:inline-flex; align-items:baseline; gap:6px; white-space:nowrap; }
+    #timeDisplay .time-label { font-size:12px; font-weight:600; letter-spacing:0; color:var(--muted); }
+    #timeDisplay .time-separator { font-size:16px; font-weight:400; opacity:.5; }
     .player-controls { display: flex; flex-direction: column; align-items: center; gap: 5px; margin: 0 0 12px; padding: 6px 10px; background: rgba(0,0,0,0.04); border-radius: 16px;}
     .player-controls .slider-group { display: grid; grid-template-columns: repeat(3, 1fr); gap:8px; width:100%; }
     .player-controls .slider { grid-template-columns: 70px 1fr 50px; gap: 8px; font-size: 13px; }
-    .player-controls .transport-group { display: flex; flex-wrap:wrap; align-items: center; justify-content:center; gap: 10px; width:100%; }
+    .player-controls .transport-group { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:10px; width:100%; }
+    .transport-group .seg { grid-column:2; }
     #play { background:var(--blue); color:#fff; box-shadow:0 2px 6px rgba(10,132,255,.28); }
     #play:hover { background:#006fe6; color:#fff; }
     html.dark-theme #play { background:var(--blue); color:#fff; }
@@ -119,7 +123,7 @@
     .loop-controls .input-group { margin-top: 0; }
     .loop-controls label, .loop-controls .input-group { font-size: 13px; }
     .loop-controls .input-group input { width: 75px; text-align: center; }
-    .zoom-controls { display: flex; flex-wrap:wrap; gap: 6px; justify-content: center; margin-top: 0; grid-column: auto; }
+    .zoom-controls { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; justify-self:end; margin-top:0; grid-column:3; }
     .zoom-controls .btn { padding: 6px 12px; font-size: 13px; border-radius: 10px; }
     #scope, #oscilloscopeCanvas, #vectorscopeCanvas, #peakMeterCanvas { height: 100px; }
     #scope { background: radial-gradient(circle at 50% 115%, #182746 0, #0d1932 42%, #070d1c 100%); border-color: #33415d; }
@@ -222,6 +226,8 @@
     @media (max-width: 768px) {
         body { padding: 16px; }
         .layout { gap: 12px; }
+        .transport-group .seg { grid-column:1 / -1; justify-self:center; }
+        .zoom-controls { grid-column:1 / -1; }
         .titles h1 { font-size: 22px; letter-spacing:1px; }
         .title-note { width:34px; height:34px; }
         .titles h2 { font-size: 13px; }
@@ -488,7 +494,7 @@
                 <div id="time-indicator"></div>
                 <div id="time-hover-info">00:00.0</div>
             </div>
-            <div id="timeDisplay">00:00.0 / 00:00.0</div>
+            <div id="timeDisplay"><span class="time-segment"><span class="time-label">目前播放</span><span id="currentTimeValue">00:00.0</span></span><span class="time-separator">/</span><span class="time-segment"><span class="time-label">曲目總長</span><span id="totalTimeValue">00:00.0</span></span></div>
         </div>
 
         <div class="player-controls">
@@ -1300,7 +1306,8 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   }
   function updateTimeDisplay(currentTime = pausedAt) {
     const duration = audioBuffer ? audioBuffer.duration : 0;
-    $('timeDisplay').textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
+    $('currentTimeValue').textContent = formatTime(currentTime);
+    $('totalTimeValue').textContent = formatTime(duration);
   }
   
   function resetUI() {
