@@ -60,7 +60,7 @@
     .layout{display:grid; grid-template-columns:minmax(320px, 0.32fr) minmax(0, 0.68fr); gap:18px; align-items:start;}
     .sidebar{display:flex; flex-direction:column; gap:12px; grid-column:1;}
     .right-column{display:flex; flex-direction:column; gap:18px; min-width:0; grid-column:2;}
-    #mainRightPanel{display:flex; flex-direction:column; min-width:0;}
+    #mainRightPanel{display:flex; flex-direction:column; min-width:0; position:relative;}
     #mainRightPanel > .grid{flex:none; grid-template-rows:none; align-content:start;}
     #mainRightPanel .scope-container{grid-row:4; display:block; min-height:0;}
     #mainRightPanel .analyzer-grid{grid-template-rows:repeat(2,auto) auto; align-content:start;}
@@ -97,8 +97,23 @@
     .analyzer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .analyzer-item { display: flex; flex-direction: column; gap: 6px; }
     .analyzer-item .badge { text-align: center; }
-    #mainRightPanel > h3 { color:var(--text); display:flex; align-items:center; gap:9px; }
-    #mainRightPanel > h3::before { content:""; width:4px; height:18px; border-radius:4px; background:linear-gradient(#63f3e5,#0a84ff); box-shadow:0 0 8px rgba(10,132,255,.35); }
+    .editor-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    #mainRightPanel .editor-panel-heading h3 { margin:0; color:var(--text); display:flex; align-items:center; gap:9px; }
+    #mainRightPanel .editor-panel-heading h3::before { content:""; width:4px; height:18px; border-radius:4px; background:linear-gradient(#63f3e5,#0a84ff); box-shadow:0 0 8px rgba(10,132,255,.35); }
+    #editorExpandBtn { flex:none; background:var(--blue); color:#fff; font-size:13px; padding:7px 12px; }
+    #editorExpandBtn:hover { filter:brightness(1.08); }
+    body.editor-expanded { overflow:hidden; }
+    #editorBackdrop { position:fixed; inset:0; z-index:5000; background:rgba(6,15,29,.72); backdrop-filter:blur(5px); }
+    #editorBackdrop[hidden] { display:none; }
+    #mainRightPanel.editor-expanded { display:flex; position:fixed; inset:16px; z-index:5001; width:auto; max-width:none; max-height:none; padding:clamp(14px,2vw,28px); overflow-y:auto; overscroll-behavior:contain; box-shadow:0 24px 80px rgba(0,0,0,.35); }
+    #mainRightPanel.editor-expanded > * { flex-shrink:0; }
+    #mainRightPanel.editor-expanded .editor-panel-heading { position:sticky; top:-1px; z-index:2; padding:4px 0 10px; background:var(--panel-bg); }
+    #mainRightPanel.editor-expanded #waveformCanvas { height:clamp(220px,36vh,420px); }
+    .expanded-edit-tools { display:none; }
+    #mainRightPanel.editor-expanded .expanded-edit-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:4px 0 12px; }
+    .expanded-edit-tools .hint { color:var(--muted); font-size:12px; margin-right:auto; }
+    #expandedTrimBtn { background:#24a148; color:#fff; }
+    #expandedDeleteBtn { background:#e53935; color:#fff; }
     #waveformContainer { position: relative; margin-bottom: 4px; padding:4px; border-radius:18px; background:#101b2f; border:1px solid #243957; box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 20px rgba(17,35,62,.12); overflow:hidden; }
     .playhead { position: absolute; top: 4px; left: 0; width: 2px; height: calc(100% - 8px); background-color: #ff6d74; box-shadow:0 0 7px rgba(255,109,116,.85); pointer-events: none; transform: translateX(-1px); }
     .selection-rect { position: absolute; top: 4px; background-color: rgba(58, 158, 255, 0.24); border: 1px solid #67caff; pointer-events: none; height: calc(100% - 8px); box-sizing: border-box; }
@@ -482,7 +497,7 @@
       <div class="right-column">
       <!-- Right main area -->
       <div class="panel glass" id="mainRightPanel">
-        <h3>波形編輯與EQ</h3>
+        <div class="editor-panel-heading"><h3>波形編輯與EQ</h3><button type="button" id="editorExpandBtn" class="btn" aria-expanded="false" aria-controls="mainRightPanel">⛶ 大畫面編輯</button></div>
         <div id="waveformContainer">
             <canvas id="waveformCanvas"></canvas>
             <div id="playhead" class="playhead" style="display: none;"></div>
@@ -529,8 +544,8 @@
           <div class="slider-group">
             <div class="slider">
               <label>音量</label>
-              <input id="gain" type="range" min="0" max="2" step="0.01" value="0.6" title="調整播放音量"/>
-              <div class="value" id="gainV">0.60</div>
+              <input id="gain" type="range" min="0" max="2" step="0.01" value="0.5" title="調整播放音量"/>
+              <div class="value" id="gainV">0.50</div>
             </div>
             <div class="slider">
               <label>平衡</label>
@@ -543,6 +558,14 @@
               <div class="value" id="rateV">1.00x</div>
             </div>
           </div>
+        </div>
+
+        <div class="expanded-edit-tools">
+          <span class="hint">在波形上拖曳選取範圍，再裁剪或刪除</span>
+          <button type="button" id="expandedUndoBtn" class="btn ghost" disabled>↶ 復原</button>
+          <button type="button" id="expandedRedoBtn" class="btn ghost" disabled>↷ 重做</button>
+          <button type="button" id="expandedTrimBtn" class="btn">✂ 裁剪所選</button>
+          <button type="button" id="expandedDeleteBtn" class="btn">▣ 刪除所選</button>
         </div>
 
         <div class="grid">
@@ -733,6 +756,7 @@
     </div>
   </div>
 
+  <div id="editorBackdrop" hidden aria-hidden="true"></div>
   <div id="exportProgressOverlay" role="dialog" aria-modal="true" aria-labelledby="exportProgressTitle" aria-describedby="exportProgressStage" aria-hidden="true">
     <div class="export-progress-card">
       <div class="spinner" aria-hidden="true"></div>
@@ -1067,7 +1091,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   
   const preEffectNode = AC.createGain();
   const gain = AC.createGain(), pan = AC.createStereoPanner(), analyser = AC.createAnalyser();
-  const DEFAULT_VOLUME = 0.6;
+  const DEFAULT_VOLUME = 0.5;
   gain.gain.value = DEFAULT_VOLUME;
   analyser.fftSize = 2048;
   const beatAnalyser = AC.createAnalyser();
@@ -1110,6 +1134,8 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   function updateHistoryButtons() {
       $('undoBtn').disabled = editHistory.length === 0;
       $('redoBtn').disabled = redoHistory.length === 0;
+      $('expandedUndoBtn').disabled = editHistory.length === 0;
+      $('expandedRedoBtn').disabled = redoHistory.length === 0;
   }
   
   const waveformCanvas = $('waveformCanvas'), waveformCtx = waveformCanvas.getContext('2d');
@@ -1548,6 +1574,56 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     }
     selectionRect.style.display = 'none';
   }
+
+  const editorPanel = $('mainRightPanel');
+  const editorExpandBtn = $('editorExpandBtn');
+  const editorBackdrop = $('editorBackdrop');
+  function refreshSelectionPosition() {
+      if (!audioBuffer || selectionRect.style.display === 'none') return;
+      const visibleDuration = audioBuffer.duration / zoom;
+      const width = waveformCanvas.clientWidth;
+      const toPixels = seconds => Math.max(0, Math.min(width, (seconds - viewOffset) / visibleDuration * width));
+      const start = toPixels(Math.min(selectionStart, selectionEnd));
+      const end = toPixels(Math.max(selectionStart, selectionEnd));
+      selectionRect.style.left = `${start + 4}px`;
+      selectionRect.style.width = `${Math.max(2, end - start)}px`;
+  }
+  function setExpandedEditor(expanded) {
+      editorPanel.classList.toggle('editor-expanded', expanded);
+      document.body.classList.toggle('editor-expanded', expanded);
+      editorBackdrop.hidden = !expanded;
+      editorExpandBtn.setAttribute('aria-expanded', String(expanded));
+      editorExpandBtn.textContent = expanded ? '⤢ 結束大畫面' : '⛶ 大畫面編輯';
+      if (expanded) {
+          editorPanel.setAttribute('role', 'dialog');
+          editorPanel.setAttribute('aria-modal', 'true');
+          editorPanel.setAttribute('aria-label', '波形編輯與 EQ 大畫面');
+          editorPanel.scrollTop = 0;
+      } else {
+          editorPanel.removeAttribute('role');
+          editorPanel.removeAttribute('aria-modal');
+          editorPanel.removeAttribute('aria-label');
+      }
+      requestAnimationFrame(() => {
+          drawWaveform();
+          updatePlayhead();
+          refreshSelectionPosition();
+      });
+  }
+  editorExpandBtn.addEventListener('click', () => setExpandedEditor(!editorPanel.classList.contains('editor-expanded')));
+  editorBackdrop.addEventListener('click', () => setExpandedEditor(false));
+  $('expandedTrimBtn').addEventListener('click', () => $('trimBtn').click());
+  $('expandedDeleteBtn').addEventListener('click', () => $('deleteBtn').click());
+  $('expandedUndoBtn').addEventListener('click', () => $('undoBtn').click());
+  $('expandedRedoBtn').addEventListener('click', () => $('redoBtn').click());
+  document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && editorPanel.classList.contains('editor-expanded')) setExpandedEditor(false);
+  });
+  window.addEventListener('resize', () => {
+      drawWaveform();
+      updatePlayhead();
+      refreshSelectionPosition();
+  });
 
   $('zoomInBtn').onclick = () => {
       if (!audioBuffer || zoom >= 256) return;
