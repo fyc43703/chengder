@@ -411,7 +411,7 @@
               選擇檔案
               <input id="file" type="file" accept="audio/*,.wma,.m4a,.ogg,.aac,.3gp" hidden multiple>
             </label>
-            <div class="badge">支援 WAV、MP3、M4A、OGG 等；WMA 是否可讀取取決於瀏覽器編碼支援</div>
+            <div class="badge">支援 WAV、MP3、M4A、OGG 等常見格式</div>
           </div>
           <div class="file-list-container">
               <label style="font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px;">已匯入檔案列表：</label>
@@ -1167,6 +1167,10 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       return `${file.name}::${file.size}::${file.lastModified || 0}`;
   }
 
+  function isUnsupportedWma(file) {
+      return /\.wma$/i.test(file.name);
+  }
+
   async function rememberUserTracks(files) {
       if (!files.length) return;
       try {
@@ -1200,8 +1204,18 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
               request.onsuccess = () => resolve(request.result || []);
               request.onerror = () => reject(request.error || new Error('無法讀取已記憶曲目'));
           });
+          const unsupportedRecords = records.filter(isUnsupportedWma);
+          if (unsupportedRecords.length) {
+              await new Promise((resolve, reject) => {
+                  const transaction = db.transaction(TRACK_STORE_NAME, 'readwrite');
+                  const store = transaction.objectStore(TRACK_STORE_NAME);
+                  unsupportedRecords.forEach(record => store.delete(record.id));
+                  transaction.oncomplete = () => resolve();
+                  transaction.onerror = () => reject(transaction.error || new Error('無法移除舊版 WMA 曲目'));
+              });
+          }
           db.close();
-          const restoredFiles = records
+          const restoredFiles = records.filter(record => !isUnsupportedWma(record))
               .sort((a, b) => (a.savedAt || 0) - (b.savedAt || 0))
               .map(record => new File([record.blob], record.name, { type: record.type || record.blob?.type || '', lastModified: record.lastModified || Date.now() }));
           const newlyRestored = restoredFiles.filter(file => !importedFiles.some(existing => trackMemoryId(existing) === trackMemoryId(file)));
@@ -1337,11 +1351,16 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
 
   async function handleFiles(files) {
       if (!files || files.length === 0) return;
+      const supportedFiles = Array.from(files).filter(file => !isUnsupportedWma(file));
+      if (supportedFiles.length !== files.length) {
+          alert('不支援 WMA 格式，請先轉換為 MP3 或 WAV 後再匯入。');
+      }
+      if (!supportedFiles.length) return;
       const wasEmpty = audioBuffer === null;
       let newFilesAdded = false;
       const newUserFiles = [];
 
-      for (const file of files) {
+      for (const file of supportedFiles) {
           if (!importedFiles.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)) {
               importedFiles.push(file);
               rememberedTrackIds.add(trackMemoryId(file));
@@ -1355,7 +1374,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
          await rememberUserTracks(newUserFiles);
       }
 
-      if (wasEmpty && files.length > 0) {
+      if (wasEmpty && supportedFiles.length > 0) {
           loadFile(importedFiles[0]); 
       }
   }
@@ -1391,11 +1410,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       audioBuffer = previousBuffer;
       currentFileIndex = previousFileIndex;
       updateFileList();
-      if (/\.wma$/i.test(file.name)) {
-        alert("此 WMA 檔案無法由目前的瀏覽器解碼。\n\n請先將檔案轉成 MP3 或 WAV 後再匯入；原本已開啟的曲目與波形會保留。\n\n提示：WMA 是否可讀取取決於瀏覽器及檔案使用的編碼格式。");
-      } else {
-        alert("無法讀取此音訊檔案，請確認格式及瀏覽器支援。原本已開啟的曲目與波形會保留。");
-      }
+      alert("無法讀取此音訊檔案，請確認格式及瀏覽器支援。原本已開啟的曲目與波形會保留。");
       updateTimeDisplay();
       drawWaveform();
       updatePlayhead();
