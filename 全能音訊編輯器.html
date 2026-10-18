@@ -138,6 +138,12 @@
     .file-list-container { max-height: 140px; overflow-y: auto; border: 1px solid var(--stroke); border-radius: 8px; padding: 8px 12px; margin-top: 12px; background: rgba(0,0,0,.04); }
     #fileList { list-style-type: decimal; list-style-position: inside; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
     #fileList li { font-size: 13px; color: var(--text); padding: 4px 8px; cursor: pointer; border-radius: 6px; transition: background-color 0.15s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #fileList .file-name-window { display:inline-block; vertical-align:bottom; max-width:calc(100% - 20px); overflow:hidden; white-space:nowrap; }
+    #fileList .file-name-track { display:inline-flex; width:max-content; white-space:nowrap; }
+    #fileList .file-name-copy { margin-left:40px; }
+    #fileList li.marquee-overflow .file-name-track { animation:trackMarquee 16s linear infinite; }
+    @keyframes trackMarquee { 0%,10% { transform:translateX(100%); } 90%,100% { transform:translateX(-50%); } }
+    @media (prefers-reduced-motion: reduce) { #fileList li.marquee-overflow .file-name-track { animation-duration:32s; } }
     #fileList li:hover { background-color: rgba(0,0,0,.07); }
     html.dark-theme #fileList li:hover { background-color: rgba(255,255,255,.07); }
     #fileList li.active { background-color: var(--blue); color: white; font-weight: 600; }
@@ -152,9 +158,11 @@
     html.dark-theme #theme-icon-moon { display: none; }
     html.dark-theme #theme-icon-sun { display: block; }
     .edit-toolbar { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
-    .edit-toolbar > .btn, .effect-group > .btn, .effect-heading-row > .btn { display: inline-flex; align-items: center; gap: 8px; width: fit-content; max-width: 100%; justify-content: flex-start; text-align: left; background: var(--blue); color: #fff; padding: 6px 10px; line-height: 1.2; }
-    .edit-toolbar > .btn:hover, .effect-group > .btn:hover { filter: brightness(1.08); }
-    .edit-toolbar > .btn svg, .effect-group > .btn svg { width: 18px; height: 18px; flex-shrink: 0; filter: brightness(0) invert(1); }
+    .edit-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; }
+    .edit-panel-heading h3 { margin:0; }
+    .edit-toolbar > .btn, .edit-panel-heading > .btn, .effect-group > .btn, .effect-heading-row > .btn { display: inline-flex; align-items: center; gap: 8px; width: fit-content; max-width: 100%; justify-content: flex-start; text-align: left; background: var(--blue); color: #fff; padding: 6px 10px; line-height: 1.2; }
+    .edit-toolbar > .btn:hover, .edit-panel-heading > .btn:hover, .effect-group > .btn:hover { filter: brightness(1.08); }
+    .edit-toolbar > .btn svg, .edit-panel-heading > .btn svg, .effect-group > .btn svg { width: 18px; height: 18px; flex-shrink: 0; filter: brightness(0) invert(1); }
     .effect-group { border-top: 1px solid var(--stroke); padding-top: 10px; margin-top: 2px; width: 100%; display: flex; flex-direction: column; gap: 8px; }
     .effect-heading-row { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; }
     .effect-group h4 { margin: 0; min-width:0; font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
@@ -164,11 +172,14 @@
     .effect-group .btn { margin-top: 0; padding:6px 10px; line-height:1.2; background-color: var(--blue); color:#fff; }
     html.dark-theme .effect-group .btn { background-color: var(--blue); }
     .effect-group .btn:hover { filter:brightness(1.08); }
+    .effect-group .toolbar .btn { background:#fff; color:var(--blue); border:1px solid var(--blue); }
+    .effect-group .toolbar .btn:hover { background:rgba(10,132,255,.08); filter:none; }
+    html.dark-theme .effect-group .toolbar .btn { background:var(--panel-bg); color:var(--blue); border-color:var(--blue); }
     #trimBtn { background-color:#24a148; color:#fff; }
     #trimBtn:hover { background-color:#1e8e3e; }
     #deleteBtn { background-color:#e53935; color:#fff; }
     #deleteBtn:hover { background-color:#c62828; }
-    .edit-toolbar > .btn, .effect-group .btn, .history-toolbar .btn, .effect-group .toolbar .btn { min-height:0; line-height:1.2; }
+    .edit-toolbar > .btn, .edit-panel-heading > .btn, .effect-group .btn, .history-toolbar .btn, .effect-group .toolbar .btn { min-height:0; line-height:1.2; }
     .effect-scope { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; font-size:13px; }
     .effect-scope > span { color:var(--muted); }
     .effect-scope label { display:inline-flex; align-items:center; gap:4px; cursor:pointer; }
@@ -364,13 +375,14 @@
         </div>
 
         <div class="panel glass stack">
-            <h3>修復與編輯</h3>
-            <div class="edit-toolbar">
+            <div class="edit-panel-heading">
+              <h3>修復與編輯</h3>
               <button id="normalizeBtn" class="btn ghost" title="將音訊的最大音量調整至 -1 dBFS，使整體音量一致">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 15V9H6V15H4Z" fill="#FF605C"></path><path d="M8 17V7H10V17H8Z" fill="#FFBD44"></path><path d="M12 20V4H14V20H12Z" fill="#00CA4E"></path><path d="M16 17V7H18V17H16Z" fill="#FFBD44"></path><path d="M20 15V9H22V15H20Z" fill="#FF605C"></path></svg>
                 <span>音量標準化 (-1 dBFS)</span>
               </button>
-
+            </div>
+            <div class="edit-toolbar">
               <div class="history-toolbar">
                 <button id="undoBtn" class="btn ghost" title="復原上一個編輯操作" disabled>↶ 復原</button>
                 <button id="redoBtn" class="btn ghost" title="重做已復原的編輯操作" disabled>↷ 重做</button>
@@ -1095,11 +1107,22 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
 
       importedFiles.forEach((file, index) => {
           const li = document.createElement('li');
-          li.textContent = file.name;
           li.title = file.name;
-          
-          if (file.name === currentFileName) {
+          const isCurrentTrack = file.name === currentFileName;
+          let nameWindow = null, nameTrack = null, nameText = null;
+          if (isCurrentTrack) {
               li.classList.add('active');
+              nameWindow = document.createElement('span');
+              nameWindow.className = 'file-name-window';
+              nameTrack = document.createElement('span');
+              nameTrack.className = 'file-name-track';
+              nameText = document.createElement('span');
+              nameText.textContent = file.name;
+              nameTrack.appendChild(nameText);
+              nameWindow.appendChild(nameTrack);
+              li.appendChild(nameWindow);
+          } else {
+              li.textContent = file.name;
           }
 
           li.onclick = () => {
@@ -1108,6 +1131,13 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
               }
           };
           listElement.appendChild(li);
+          if (isCurrentTrack && nameText.scrollWidth > nameWindow.clientWidth + 1) {
+              li.classList.add('marquee-overflow');
+              const duplicate = nameText.cloneNode(true);
+              duplicate.classList.add('file-name-copy');
+              duplicate.setAttribute('aria-hidden', 'true');
+              nameTrack.appendChild(duplicate);
+          }
       });
 
       const trackButtons = [$('prevTrackBtn'), $('nextTrackBtn')];
