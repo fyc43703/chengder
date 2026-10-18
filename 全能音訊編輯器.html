@@ -2029,7 +2029,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       const minLag = Math.max(2, Math.floor(AC.sampleRate / 1000));
       const maxLag = Math.min(Math.floor(AC.sampleRate / 58), Math.floor(samples.length / 2));
       const sampleCount = samples.length - maxLag;
-      for (let lag = minLag; lag <= maxLag; lag++) {
+      for (let lag = 1; lag <= maxLag; lag++) {
           let difference = 0;
           for (let i = 0; i < sampleCount; i += 2) {
               const a = samples[i] - mean, b = samples[i + lag] - mean;
@@ -2038,20 +2038,20 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
           }
           pitchDifference[lag] = difference;
       }
-      let runningDifference = 0, selectedLag = -1, bestValue = Infinity;
-      for (let lag = minLag; lag <= maxLag; lag++) {
+      let runningDifference = 0, selectedLag = -1;
+      for (let lag = 1; lag <= maxLag; lag++) {
           const difference = pitchDifference[lag];
           runningDifference += difference;
-          const normalized = runningDifference > 0 ? difference * (lag - minLag + 1) / runningDifference : 1;
-          if (normalized < bestValue) { bestValue = normalized; selectedLag = lag; }
-          if (normalized < 0.16) {
-              while (lag < maxLag && pitchDifference[lag + 1] <= pitchDifference[lag]) lag++;
-              selectedLag = lag;
-              bestValue = normalized;
-              break;
-          }
+          pitchDifference[lag] = runningDifference > 0 ? difference * lag / runningDifference : 1;
       }
-      if (selectedLag < 1 || bestValue > 0.32) return null;
+      for (let lag = minLag; lag < maxLag; lag++) {
+          if (pitchDifference[lag] >= 0.12) continue;
+          while (lag < maxLag && pitchDifference[lag + 1] < pitchDifference[lag]) lag++;
+          // A minimum at the search boundary is not a reliable period.
+          if (lag < maxLag) selectedLag = lag;
+          break;
+      }
+      if (selectedLag < 1) return null;
       const left = pitchDifference[Math.max(minLag, selectedLag - 1)];
       const center = pitchDifference[selectedLag];
       const right = pitchDifference[Math.min(maxLag, selectedLag + 1)];
@@ -2076,86 +2076,73 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       ctx.clearRect(0, 0, width, height);
       const dark = document.documentElement.classList.contains('dark-theme');
       const ink = dark ? '#e6edf8' : '#28364a';
-      const line = dark ? 'rgba(210,225,245,.62)' : 'rgba(55,72,96,.52)';
-      const muted = dark ? 'rgba(210,225,245,.72)' : 'rgba(55,72,96,.72)';
-      const gap = Math.min(12 * dpr, height / 14);
-      const trebleTop = 8 * dpr;
-      const trebleBottom = trebleTop + gap * 4;
-      const bassTop = trebleBottom + gap * 1.8;
-      const bassBottom = bassTop + gap * 4;
-      const left = 18 * dpr, right = width - 14 * dpr;
-
-      ctx.lineWidth = Math.max(1, dpr);
+      const line = dark ? 'rgba(210,225,245,.48)' : 'rgba(55,72,96,.38)';
+      // Reserve a separate footer; noteheads and inward stems stay above it.
+      const footer = 20 * dpr;
+      const gap = Math.min(12 * dpr, (height - footer) / 10);
+      const top = (height - footer - gap * 4) / 2;
+      const bottom = top + gap * 4;
+      const left = 16 * dpr, right = width - 16 * dpr;
+      ctx.save();
+      ctx.lineWidth = dpr;
       ctx.strokeStyle = line;
-      const drawStaffLines = top => {
-          for (let i = 0; i < 5; i++) {
-              const y = top + i * gap;
-              ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
-          }
-      };
-      drawStaffLines(trebleTop);
-      drawStaffLines(bassTop);
-      ctx.fillStyle = ink;
-      ctx.font = `${Math.min(54 * dpr, gap * 5)}px "Segoe UI Symbol", "Noto Music", serif`;
-      ctx.fillText('𝄞', 5 * dpr, trebleBottom + gap * 0.35);
-      ctx.font = `${Math.min(38 * dpr, gap * 3.5)}px "Segoe UI Symbol", "Noto Music", serif`;
-      ctx.fillText('𝄢', 7 * dpr, bassBottom - gap * 0.1);
-
-      if (trail.length === 0 || activeMidi === null) {
-          ctx.fillStyle = muted;
-          ctx.font = `${12 * dpr}px system-ui, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.fillText('播放音訊以顯示音高', width * 0.63, height - 7 * dpr);
-          ctx.textAlign = 'start';
-          return;
+      for (let i = 0; i < 5; i++) {
+          ctx.beginPath(); ctx.moveTo(left, top + i * gap);
+          ctx.lineTo(right, top + i * gap); ctx.stroke();
       }
-
-      const palette = ['#0a84ff','#a855f7','#00a8a8','#f08c24','#e84d8a','#38a852'];
-      const spacing = 39 * dpr;
-      const maxVisible = Math.max(1, Math.floor((right - left - 68 * dpr) / spacing));
-      const visible = trail.slice(-maxVisible);
-      const currentX = right - 23 * dpr;
-      visible.forEach((entry, index) => {
-          const pitch = pitchToStaffPosition(entry.midi);
-          const x = currentX - (visible.length - index - 1) * spacing;
-          const useTreble = pitch.diatonicIndex >= 4 * 7;
-          const staffTop = useTreble ? trebleTop : bassTop;
-          const staffBottom = useTreble ? trebleBottom : bassBottom;
-          const referenceIndex = useTreble ? (4 * 7 + 2) : (2 * 7 + 4);
-          const y = staffBottom - (pitch.diatonicIndex - referenceIndex) * gap / 2 - (entry.midi === activeMidi ? Math.sin(now / 110) * 3.2 * dpr : 0);
-          const color = palette[((entry.midi % 12) + 12) % palette.length];
-          if (y < staffTop - gap * 0.45) {
-              for (let ledgerY = staffTop - gap; ledgerY >= y - gap * 0.25; ledgerY -= gap) {
-                  ctx.beginPath(); ctx.moveTo(x - 11 * dpr, ledgerY); ctx.lineTo(x + 11 * dpr, ledgerY); ctx.strokeStyle = line; ctx.stroke();
-              }
-          } else if (y > staffBottom + gap * 0.45) {
-              for (let ledgerY = staffBottom + gap; ledgerY <= y + gap * 0.25; ledgerY += gap) {
-                  ctx.beginPath(); ctx.moveTo(x - 11 * dpr, ledgerY); ctx.lineTo(x + 11 * dpr, ledgerY); ctx.strokeStyle = line; ctx.stroke();
-              }
-          }
-          ctx.save();
-          ctx.globalAlpha = entry.midi === activeMidi ? 1 : 0.35 + 0.55 * Math.max(0, 1 - (now - entry.time) / 2800);
-          ctx.shadowColor = color;
-          ctx.shadowBlur = entry.midi === activeMidi ? 12 * dpr : 3 * dpr;
-          ctx.fillStyle = color;
-          ctx.beginPath(); ctx.ellipse(x, y, 8.5 * dpr, 5.8 * dpr, -0.32, 0, Math.PI * 2); ctx.fill();
-          ctx.shadowBlur = 0;
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 2 * dpr;
-          ctx.beginPath(); ctx.moveTo(x + 6.5 * dpr, y - 1 * dpr); ctx.lineTo(x + 6.5 * dpr, y - 31 * dpr); ctx.stroke();
-          ctx.restore();
-      });
-
-      const currentPitch = pitchToStaffPosition(activeMidi);
-      const currentUsesTreble = currentPitch.diatonicIndex >= 4 * 7;
-      const currentBottom = currentUsesTreble ? trebleBottom : bassBottom;
-      const currentReference = currentUsesTreble ? (4 * 7 + 2) : (2 * 7 + 4);
-      const currentY = currentBottom - (currentPitch.diatonicIndex - currentReference) * gap / 2;
       ctx.fillStyle = ink;
-      ctx.font = `600 ${12 * dpr}px system-ui, sans-serif`;
+      ctx.font = `${gap * 5.5}px "Segoe UI Symbol", "Noto Music", serif`;
+      ctx.fillText('𝄞', left, bottom + gap * .65);
+      const palette = ['#0a84ff','#a855f7','#00a8a8','#f08c24','#e84d8a','#38a852'];
+      const spacing = 48 * dpr;
+      const count = Math.max(1, Math.min(6, Math.floor((width - 90 * dpr) / spacing)));
+      const visible = activeMidi === null ? [] : trail.slice(-count);
+      visible.forEach((entry, index) => {
+          // Fold extreme registers by whole octaves, explicitly labelled below.
+          let displayMidi = entry.midi;
+          while (displayMidi < 60) displayMidi += 12;
+          while (displayMidi > 81) displayMidi -= 12;
+          const pitch = pitchToStaffPosition(displayMidi);
+          const x = right - 20 * dpr - (visible.length - 1 - index) * spacing;
+          const y = bottom - (pitch.diatonicIndex - 30) * gap / 2;
+          const latest = index === visible.length - 1;
+          const color = palette[((entry.midi % 12) + 12) % palette.length];
+          const radius = Math.min(7 * dpr, gap * .72);
+          ctx.globalAlpha = latest ? 1 : .42;
+          ctx.strokeStyle = line;
+          ctx.lineWidth = dpr;
+          for (let ly = bottom + gap; ly <= y + .1 * gap; ly += gap) {
+              ctx.beginPath(); ctx.moveTo(x - radius * 1.5, ly);
+              ctx.lineTo(x + radius * 1.5, ly); ctx.stroke();
+          }
+          ctx.fillStyle = color;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = latest ? 5 * dpr : 0;
+          ctx.beginPath(); ctx.ellipse(x, y, radius, radius * .68, -.32, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0;
+          const stemUp = y >= top + 2 * gap;
+          const stemX = x + (stemUp ? 1 : -1) * radius * .8;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.6 * dpr;
+          ctx.beginPath(); ctx.moveTo(stemX, y);
+          ctx.lineTo(stemX, y + (stemUp ? -1 : 1) * gap * 2.5); ctx.stroke();
+          if (pitch.name.includes('♯')) {
+              ctx.font = `${gap * 1.4}px "Segoe UI Symbol", sans-serif`;
+              ctx.fillText('♯', x - radius * 2.9, y + gap * .45);
+          }
+      });
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = ink;
+      ctx.font = `600 ${11 * dpr}px system-ui, sans-serif`;
       ctx.textAlign = 'right';
-      ctx.fillText(`${currentPitch.name} · ${Math.round(currentPitch.frequency)} Hz`, right - 6 * dpr, Math.max(14 * dpr, currentY - 17 * dpr));
-      ctx.textAlign = 'start';
+      const pitch = activeMidi === null ? null : pitchToStaffPosition(activeMidi);
+      ctx.fillText(pitch ? `${pitch.name} · ${Math.round(pitch.frequency)} Hz` : (isPlaying ? '等待穩定音高…' : '播放音訊以顯示音高'), right, height - 6 * dpr);
+      if (visible.some(entry => entry.midi < 60 || entry.midi > 81)) {
+          ctx.textAlign = 'left';
+          ctx.font = `${10 * dpr}px system-ui, sans-serif`;
+          ctx.fillText('超出音域以八度移位顯示', left, height - 6 * dpr);
+      }
+      ctx.restore();
   }
 
   function drawAnalyzers(){
@@ -2190,17 +2177,19 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
         const detectedHz = detectFundamental(pitchTimeData);
         if (detectedHz) {
             const detectedMidi = Math.round(69 + 12 * Math.log2(detectedHz / 440));
-            if (pitchCandidateMidi !== null && Math.abs(detectedMidi - pitchCandidateMidi) <= 1) {
+            if (detectedMidi === pitchCandidateMidi) {
                 pitchCandidateFrames++;
                 pitchCandidateMidi = detectedMidi;
             } else {
                 pitchCandidateMidi = detectedMidi;
                 pitchCandidateFrames = 1;
             }
-            if (pitchCandidateFrames >= 2) {
+            const requiredFrames = currentPitchMidi !== null && Math.abs(detectedMidi - currentPitchMidi) >= 7 ? 5 : 3;
+            if (detectedMidi === currentPitchMidi) lastPitchDetected = now;
+            if (pitchCandidateFrames >= requiredFrames) {
                 currentPitchMidi = pitchCandidateMidi;
                 lastPitchDetected = now;
-                if (staffNoteTrail.length === 0 || staffNoteTrail[staffNoteTrail.length - 1].midi !== currentPitchMidi || now - lastStaffNoteAt > 380) {
+                if (staffNoteTrail.length === 0 || staffNoteTrail[staffNoteTrail.length - 1].midi !== currentPitchMidi) {
                     staffNoteTrail.push({ midi: currentPitchMidi, time: now });
                     if (staffNoteTrail.length > 14) staffNoteTrail.shift();
                     lastStaffNoteAt = now;
@@ -2211,8 +2200,11 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
             pitchCandidateFrames = 0;
         }
     }
-    if (!isPlaying || now - lastPitchDetected > 1300) currentPitchMidi = null;
-    while (staffNoteTrail.length && now - staffNoteTrail[0].time > 2800) staffNoteTrail.shift();
+    if (!isPlaying || now - lastPitchDetected > 900) {
+        currentPitchMidi = null;
+        staffNoteTrail.length = 0;
+        if (!isPlaying) { pitchCandidateMidi = null; pitchCandidateFrames = 0; }
+    }
     const hzPerBin = AC.sampleRate / analyser.fftSize;
     const maxBin = Math.min(freqData.length - 1, Math.floor(16000 / hzPerBin));
     for (let bar = 0; bar < spectrumLevels.length; bar++) {
