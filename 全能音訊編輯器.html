@@ -1177,6 +1177,8 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
 
   async function loadFile(file) {
     const requestId = ++loadRequestId;
+    const previousBuffer = audioBuffer;
+    const previousFileIndex = currentFileIndex;
     stop();
     $('loadingIndicator').querySelector('div:last-child').textContent = '音訊載入中...';
     $('loadingIndicator').style.display = 'flex';
@@ -1201,9 +1203,14 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     } catch (e) {
       if (requestId !== loadRequestId) return;
       console.error("Error decoding audio file:", e);
-      audioBuffer = null;
+      audioBuffer = previousBuffer;
+      currentFileIndex = previousFileIndex;
       updateFileList();
-      alert("無法讀取此音訊檔案，請確認格式受瀏覽器支援。");
+      const format = file.type || (file.name.includes('.') ? file.name.split('.').pop().toUpperCase() : '未知格式');
+      const reason = e && e.name === 'EncodingError'
+          ? '此檔案的編碼或格式不受目前瀏覽器支援，或檔案內容已損壞。'
+          : '瀏覽器無法解碼此檔案，檔案可能不完整或格式不相容。';
+      alert(`無法載入「${file.name}」（${format}）。\n${reason}\n請改用標準 MP3 或 WAV 檔再試一次。`);
     } finally {
         if (requestId !== loadRequestId) return;
         $('loadingIndicator').style.display = 'none';
