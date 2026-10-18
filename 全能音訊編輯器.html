@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="startup-loading">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -91,6 +91,7 @@
     .seg .format-btn, .seg button { background: transparent; border: none; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-weight: 600; color: var(--muted); font-size: 16px; line-height: 1; transition: .15s ease; }
     .seg .format-btn.active, .seg button.active { background: var(--seg-active-bg); color: var(--seg-active-text); box-shadow: 0 1px 3px rgba(0,0,0,.05); }
     canvas{width:100%; display:block; border-radius:14px; background:rgba(255,255,255,.65); border:1px solid var(--stroke)}
+    #waveformCanvas{height:100px; box-sizing:border-box;}
     .badge{font-size:12px; color:var(--muted)}
     .scope-container{ margin-top: 12px; grid-column: 1 / -1; }
     .analyzer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -123,7 +124,9 @@
     #oscilloscopeCanvas { background:rgba(255,255,255,.88); border-color:var(--stroke); }
     html.dark-theme #oscilloscopeCanvas { background:rgba(18,24,38,.96); border-color:rgba(255,255,255,.14); }
     #loadingIndicator { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; gap: 10px; color: var(--muted); font-weight: 600; }
+    html.startup-loading #loadingIndicator { background:var(--bg); backdrop-filter:none; }
     html.dark-theme #loadingIndicator { background: rgba(0,0,0,0.6); }
+    html.dark-theme.startup-loading #loadingIndicator { background:var(--bg); }
     .spinner { width: 50px; height: 50px; border: 5px solid rgba(0,0,0,0.1); border-top-color: var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #exportStatus { display: flex; align-items: center; justify-content: center; gap: 8px; }
@@ -716,9 +719,9 @@
       
     </div>
     
-    <div id="loadingIndicator" style="display: none;">
+    <div id="loadingIndicator" style="display: flex;">
         <div class="spinner"></div>
-        <div>處理中...</div>
+        <div>正在載入預設音訊...</div>
     </div>
   </div>
 
@@ -2639,11 +2642,16 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
     setDarkTheme(!htmlEl.classList.contains('dark-theme'));
   });
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     updateFileList();
     const savedTheme = localStorage.getItem('theme') || 'light';
     setDarkTheme(savedTheme === 'dark');
-    loadStartupAudio();
+    try {
+      await loadStartupAudio();
+    } finally {
+      document.documentElement.classList.remove('startup-loading');
+      $('loadingIndicator').style.display = 'none';
+    }
   });
 
   async function loadStartupAudio() {
