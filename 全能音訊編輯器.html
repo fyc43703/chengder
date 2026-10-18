@@ -173,8 +173,9 @@
     #cancelProgressBtn { margin-top: 20px; border: 1px solid rgba(255,96,92,.3); color: #c83733; background: transparent; }
     .file-list-container { max-height: 140px; overflow-y: auto; border: 1px solid var(--stroke); border-radius: 8px; padding: 8px 12px; margin-top: 12px; background: rgba(0,0,0,.04); }
     #fileList { list-style-type: decimal; list-style-position: inside; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
-    #fileList li { font-size: 13px; color: var(--text); padding: 4px 8px; cursor: pointer; border-radius: 6px; transition: background-color 0.15s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    #fileList .file-name-window { display:inline-block; vertical-align:bottom; max-width:calc(100% - 20px); overflow:hidden; white-space:nowrap; }
+    #fileList li { display:flex; align-items:center; gap:6px; min-width:0; font-size:13px; color:var(--text); padding:4px 8px; cursor:pointer; border-radius:6px; transition:background-color .15s ease; white-space:nowrap; overflow:hidden; }
+    #fileList .file-name-window { display:block; flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap; }
+    #fileList .file-name-static { flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     #fileList .file-name-track { display:inline-flex; width:max-content; white-space:nowrap; }
     #fileList .file-name-copy { margin-left:40px; }
     #fileList li.active .file-name-track { animation:trackMarquee 14s linear infinite; }
@@ -183,6 +184,11 @@
     #fileList li:hover { background-color: rgba(0,0,0,.07); }
     html.dark-theme #fileList li:hover { background-color: rgba(255,255,255,.07); }
     #fileList li.active { background-color: var(--blue); color: white; font-weight: 600; }
+    #fileList .file-delete-btn { display:inline-flex; align-items:center; justify-content:center; flex:0 0 26px; width:26px; height:26px; padding:0; border:0; border-radius:7px; background:rgba(255,59,48,.12); color:#d92d26; cursor:pointer; }
+    #fileList .file-delete-btn:hover { background:#ff3b30; color:#fff; }
+    #fileList .file-delete-btn svg { width:16px; height:16px; }
+    #fileList li.active .file-delete-btn { background:rgba(255,255,255,.22); color:#fff; }
+    #fileList li.active .file-delete-btn:hover { background:#ff625b; }
     #fileList:empty::after { content: "尚未匯入任何檔案"; color: var(--muted); font-style: italic; font-size: 13px; }
     .grid .slider { grid-template-columns: 95px 1fr 60px; gap: 8px; }
     .grid .slider label { font-size: 13px; }
@@ -402,9 +408,9 @@
           <div class="filedrop" id="drop" title="將音訊檔案拖曳至此處以上傳">
             <label id="chooseFileLabel" class="btn primary file-select-attention" title="點擊此處選擇一個或多個音訊檔案">
               選擇檔案
-              <input id="file" type="file" accept="audio/*,.m4a,.ogg,.aac,.3gp" hidden multiple>
+              <input id="file" type="file" accept="audio/*,.wma,.m4a,.ogg,.aac,.3gp" hidden multiple>
             </label>
-            <div class="badge">支援常見格式，如WAV, MP3, M4A, OGG等</div>
+            <div class="badge">支援常見格式，如WAV、MP3、WMA、M4A、OGG等</div>
           </div>
           <div class="file-list-container">
               <label style="font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px;">已匯入檔案列表：</label>
@@ -1137,6 +1143,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
   let zoom = 1; let viewOffset = 0;
   let importedFiles = []; // Array for storing imported File objects
   let currentFileIndex = -1; 
+  const rememberedTrackIds = new Set();
 
   const TRACK_DB_NAME = 'omniversal-audio-editor';
   const TRACK_DB_VERSION = 1;
@@ -1197,6 +1204,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
               .sort((a, b) => (a.savedAt || 0) - (b.savedAt || 0))
               .map(record => new File([record.blob], record.name, { type: record.type || record.blob?.type || '', lastModified: record.lastModified || Date.now() }));
           const newlyRestored = restoredFiles.filter(file => !importedFiles.some(existing => trackMemoryId(existing) === trackMemoryId(file)));
+          newlyRestored.forEach(file => rememberedTrackIds.add(trackMemoryId(file)));
           importedFiles.push(...newlyRestored);
           updateFileList();
           if (!audioBuffer && newlyRestored.length) await loadFile(newlyRestored[0]);
@@ -1204,6 +1212,23 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       } catch (error) {
           console.warn('無法恢復上次自行匯入的曲目：', error);
           return 0;
+      }
+  }
+
+  async function forgetRememberedTrack(file) {
+      const id = trackMemoryId(file);
+      rememberedTrackIds.delete(id);
+      try {
+          const db = await openTrackDatabase();
+          await new Promise((resolve, reject) => {
+              const transaction = db.transaction(TRACK_STORE_NAME, 'readwrite');
+              transaction.objectStore(TRACK_STORE_NAME).delete(id);
+              transaction.oncomplete = () => resolve();
+              transaction.onerror = () => reject(transaction.error || new Error('無法移除已記憶曲目'));
+          });
+          db.close();
+      } catch (error) {
+          console.warn('無法移除已記憶曲目：', error);
       }
   }
 
@@ -1244,7 +1269,10 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
               nameWindow.appendChild(nameTrack);
               li.appendChild(nameWindow);
           } else {
-              li.textContent = file.name;
+              const nameText = document.createElement('span');
+              nameText.className = 'file-name-static';
+              nameText.textContent = file.name;
+              li.appendChild(nameText);
           }
 
           li.onclick = () => {
@@ -1252,13 +1280,46 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
                   loadFile(file);
               }
           };
-          listElement.appendChild(li);
           if (isCurrentTrack) {
               const duplicate = nameText.cloneNode(true);
               duplicate.classList.add('file-name-copy');
               duplicate.setAttribute('aria-hidden', 'true');
               nameTrack.appendChild(duplicate);
           }
+          if (rememberedTrackIds.has(trackMemoryId(file))) {
+              const deleteButton = document.createElement('button');
+              deleteButton.type = 'button';
+              deleteButton.className = 'file-delete-btn';
+              deleteButton.title = `刪除「${file.name}」`;
+              deleteButton.setAttribute('aria-label', `刪除「${file.name}」`);
+              deleteButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M10 11v6m4-6v6M9 4h6l1 3H8l1-3Zm-2 3 1 13h8l1-13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+              deleteButton.onclick = async event => {
+                  event.stopPropagation();
+                  if (!confirm(`確定刪除「${file.name}」嗎？\n此曲目將不會在下次開啟時恢復。`)) return;
+                  const deleteIndex = importedFiles.indexOf(file);
+                  const wasCurrent = deleteIndex === currentFileIndex;
+                  importedFiles.splice(deleteIndex, 1);
+                  await forgetRememberedTrack(file);
+                  if (wasCurrent) {
+                      stop();
+                      audioBuffer = null;
+                      currentFileIndex = -1;
+                      const nextFile = importedFiles[Math.min(deleteIndex, importedFiles.length - 1)];
+                      if (nextFile) {
+                          loadFile(nextFile);
+                      } else {
+                          resetUI();
+                          drawWaveform();
+                          updateFileList();
+                      }
+                  } else {
+                      if (deleteIndex < currentFileIndex) currentFileIndex--;
+                      updateFileList();
+                  }
+              };
+              li.appendChild(deleteButton);
+          }
+          listElement.appendChild(li);
       });
 
       const trackButtons = [$('prevTrackBtn'), $('nextTrackBtn')];
@@ -1278,6 +1339,7 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       for (const file of files) {
           if (!importedFiles.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)) {
               importedFiles.push(file);
+              rememberedTrackIds.add(trackMemoryId(file));
               newUserFiles.push(file);
               newFilesAdded = true;
           }
