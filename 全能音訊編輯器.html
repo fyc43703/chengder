@@ -2016,48 +2016,6 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       }
   }
 
-  function drawWaveform(ctx, canvas, data, levels, dpr, elapsed) {
-      const width = canvas.width, height = canvas.height;
-      ctx.clearRect(0, 0, width, height);
-      const dark = document.documentElement.classList.contains('dark-theme');
-      const center = height * .5;
-      const samples = levels.length;
-      for (let i = 0; i < samples; i++) {
-          const sourceIndex = Math.min(data.length - 1, Math.floor(i * data.length / samples));
-          const target = (data[sourceIndex] - 128) / 128;
-          // Smooth abrupt frame-to-frame changes so the trace follows the music without flickering.
-          const blend = Math.min(.32, Math.max(.12, elapsed / 180));
-          levels[i] += (target - levels[i]) * blend;
-      }
-      const path = () => {
-          ctx.beginPath();
-          for (let i = 0; i < samples; i++) {
-              const x = i * width / (samples - 1);
-              const y = center - levels[i] * height * .34;
-              if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-          }
-      };
-      path();
-      ctx.lineTo(width, center);
-      ctx.lineTo(0, center);
-      ctx.closePath();
-      const fill = ctx.createLinearGradient(0, center-height*.35, 0, center+height*.35);
-      fill.addColorStop(0, dark ? 'rgba(42,196,255,.05)' : 'rgba(10,132,255,.03)');
-      fill.addColorStop(.5, dark ? 'rgba(42,196,255,.22)' : 'rgba(10,132,255,.16)');
-      fill.addColorStop(1, dark ? 'rgba(165,92,255,.14)' : 'rgba(92,115,255,.10)');
-      ctx.fillStyle = fill;
-      ctx.fill();
-      path();
-      ctx.strokeStyle = dark ? '#42c4ff' : '#0a84ff';
-      ctx.lineWidth = 2 * dpr;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.shadowColor = dark ? 'rgba(42,196,255,.9)' : 'rgba(10,132,255,.48)';
-      ctx.shadowBlur = 5 * dpr;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-  }
-
   function drawAnalyzers(){
     requestAnimationFrame(drawAnalyzers);
     const dpr = window.devicePixelRatio || 1;
