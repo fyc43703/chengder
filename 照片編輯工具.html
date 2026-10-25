@@ -773,7 +773,13 @@
         }
 
         function openHelpWindow() {
-            const helpWindow = window.open('', 'photoEditorHelp', 'popup=yes,width=1120,height=760,resizable=yes,scrollbars=yes');
+            const screenLeft = Number.isFinite(window.screen.availLeft) ? window.screen.availLeft : 0;
+            const screenTop = Number.isFinite(window.screen.availTop) ? window.screen.availTop : 0;
+            const initialWidth = Math.min(1180, Math.max(720, window.screen.availWidth - 120));
+            const initialHeight = Math.min(720, Math.max(560, window.screen.availHeight - 160));
+            const initialLeft = Math.round(screenLeft + (window.screen.availWidth - initialWidth) / 2);
+            const initialTop = Math.round(screenTop + (window.screen.availHeight - initialHeight) / 2);
+            const helpWindow = window.open('', 'photoEditorHelp', `popup=yes,width=${initialWidth},height=${initialHeight},left=${initialLeft},top=${initialTop},resizable=yes,scrollbars=yes`);
             if (!helpWindow) {
                 alert('瀏覽器已封鎖說明視窗，請允許此頁面開啟彈出式視窗。');
                 return;
@@ -783,7 +789,7 @@
 <html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>照片編輯工具－功能與操作說明</title>
 <style>
-:root{font-family:Inter,"Noto Sans TC",sans-serif;color:#1f2937;background:#f1f5f9}*{box-sizing:border-box}body{margin:0;padding:32px}h1{text-align:center;color:#3b82f6;margin:0 0 28px;font-size:26px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.card{background:#fff;border:1px solid #dbe3ee;border-radius:18px;padding:25px 28px;box-shadow:0 6px 16px rgba(15,23,42,.09)}h2{margin:0 0 18px;font-size:20px;color:#111827;display:flex;gap:14px;align-items:center}.icon{color:#3b82f6;font-size:30px;line-height:1}p{margin:0;line-height:1.75;font-size:16px}.key{color:#2563eb;font-weight:700}kbd{padding:2px 6px;border:1px solid #cbd5e1;border-radius:5px;background:#f8fafc}@media(max-width:850px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:560px){body{padding:18px}.grid{grid-template-columns:1fr}}
+:root{font-family:Inter,"Noto Sans TC",sans-serif;color:#1f2937;background:#f1f5f9}*{box-sizing:border-box}html,body{margin:0;background:#f1f5f9}body{padding:28px 32px}h1{text-align:center;color:#3b82f6;margin:0 0 24px;font-size:26px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.card{background:#fff;border:1px solid #dbe3ee;border-radius:18px;padding:25px 28px;box-shadow:0 6px 16px rgba(15,23,42,.09)}h2{margin:0 0 18px;font-size:20px;color:#111827;display:flex;gap:14px;align-items:center}.icon{color:#3b82f6;font-size:30px;line-height:1}p{margin:0;line-height:1.75;font-size:16px}.key{color:#2563eb;font-weight:700}kbd{padding:2px 6px;border:1px solid #cbd5e1;border-radius:5px;background:#f8fafc}@media(max-width:850px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:560px){body{padding:18px}.grid{grid-template-columns:1fr}}
 </style></head><body>
 <h1>📖 功能與操作說明</h1><main class="grid">
 <section class="card"><h2><span class="icon">☁</span>1. 選擇與插入照片</h2><p>點擊左側 <span class="key">「選擇照片」</span>，支援 JPG、PNG、PDF 及 HEIC；也可按 <kbd>Ctrl</kbd>＋<kbd>V</kbd> 貼上主照片，或用「插入圖片」疊加影像。</p></section>
@@ -794,6 +800,19 @@
 <section class="card"><h2><span class="icon">⬇</span>6. 下載成品</h2><p>選擇 JPG、PNG、SVG 或 PDF，以及所需解析度，再點擊 <span class="key">「下載照片」</span>。</p></section>
 </main></body></html>`);
             helpWindow.document.close();
+            const fitAndCenterHelpWindow = () => {
+                if (helpWindow.closed) return;
+                const chromeHeight = Math.max(80, helpWindow.outerHeight - helpWindow.innerHeight);
+                const contentHeight = helpWindow.document.documentElement.scrollHeight;
+                const fittedHeight = Math.min(window.screen.availHeight - 48, Math.ceil(contentHeight + chromeHeight + 2));
+                const fittedWidth = initialWidth;
+                const centeredLeft = Math.round(screenLeft + (window.screen.availWidth - fittedWidth) / 2);
+                const centeredTop = Math.round(screenTop + (window.screen.availHeight - fittedHeight) / 2);
+                helpWindow.resizeTo(fittedWidth, fittedHeight);
+                helpWindow.moveTo(centeredLeft, centeredTop);
+            };
+            helpWindow.setTimeout(fitAndCenterHelpWindow, 60);
+            helpWindow.setTimeout(fitAndCenterHelpWindow, 250);
             helpWindow.focus();
         }
         
