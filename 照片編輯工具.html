@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'none'">
     <title>照片編輯工具</title>
     <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous">
     <!-- Tailwind CSS CDN for styling -->
+    <!-- Tailwind CDN 會依瀏覽器動態回傳內容，因此不使用會造成本機檔案誤判的 SRI。 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Inter font for clean typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,13 +16,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     
     <!-- 載入 Fabric.js 函式庫 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js" integrity="sha512-CeIsOAsgJnmevfCi2C7Zsyy6bQKi43utIjdA87Q0ZY84oDqnI0uwfM9+bKiIkI75lUeI00WG/+uJzOmuHlesMA==" crossorigin="anonymous"></script>
     <!-- HEIC/HEIF format support -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js" integrity="sha512-VjmsArkf8Vv2yyvbXCyVxp+R3n4N2WyS1GEQ+YQxa7Hu0tx836WpY4nW9/T1W5JBmvuIsxkVH/DlHgp7NEMjDw==" crossorigin="anonymous"></script>
     <!-- jsPDF for PDF export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous"></script>
     <!-- PDF.js for PDF import -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js" integrity="sha512-tqaIiFJopq4lTBmFlWF0MNzzTpDsHyug8tJaaY0VkcH5AR2ANMJlcD+3fIL+RQ4JU3K6edt9OoySKfCCyKgkng==" crossorigin="anonymous"></script>
 
     <!-- 載入多種開源中文字型 -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC&family=Noto+Sans+TC:wght@400;700&family=Zhi+Mang+Xing&family=Long+Cang&family=Ma+Shan+Zheng&family=Hanalei+Fill&family=Liu+Jian+Mao+Cao&family=Yuji+Boku&family=Kaisei+Decol&family=Shippori+Mincho&display=swap" rel="stylesheet">
@@ -105,6 +107,9 @@
         .slider-arrow-btn:hover { background-color: #a0aec0; }
 
         #fullscreen-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); justify-content: center; align-items: center; z-index: 9999; cursor: zoom-out; overflow: hidden; }
+        /* 即使 Tailwind CDN 暫時無法載入，也絕不能讓全螢幕遮罩蓋住整個頁面。 */
+        #fullscreen-overlay.hidden { display: none !important; }
+        #fullscreen-overlay.flex { display: flex; }
         #fullscreen-image { max-width: none; max-height: none; cursor: grab; }
         #fullscreen-image.grabbing { cursor: grabbing; }
         #fullscreen-controls { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 10000; }
@@ -166,19 +171,40 @@
         .dot.red { background: #ff5f57; }
         .dot.yellow { background: #febc2e; }
         .dot.green { background: #28c840; }
+
+        .empty-canvas-state {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            padding: 2rem;
+            color: var(--text-muted-color);
+            text-align: center;
+            pointer-events: none;
+        }
+        .empty-canvas-state.hidden { display: none; }
+        .empty-canvas-state .upload-hint-icon { font-size: 2.5rem; color: var(--panel-heading-color); }
+        .empty-canvas-state kbd { padding: 0.1rem 0.4rem; border: 1px solid var(--border-color); border-radius: 0.25rem; background: var(--card-bg-color); font-size: 0.75rem; }
     </style>
 </head>
 <body class="flex flex-col items-center justify-start p-4 md:p-8 min-h-screen">
     
-    <!-- Theme Toggle Button -->
-    <div class="absolute top-4 right-4 z-50">
+    <!-- Help and Theme Buttons -->
+    <div class="absolute top-4 right-4 z-50 flex gap-2">
+        <button id="help-btn" title="開啟功能與操作說明" class="tool-button p-2 rounded-full shadow-md w-10 h-10 flex items-center justify-center" aria-label="開啟功能與操作說明">
+            <i class="fas fa-book-open"></i>
+        </button>
         <button id="theme-toggle" title="切換明暗主題" class="tool-button p-2 rounded-full shadow-md w-10 h-10 flex items-center justify-center">
             <i id="theme-icon" class="fas fa-sun"></i>
         </button>
     </div>
 
     <!-- (修正後) 新增主應用程式容器，用於統一佈局與定位 -->
-    <div class="relative w-full max-w-7xl p-4 md:p-6 rounded-xl container-card">
+    <div class="relative w-full max-w-none p-4 md:p-6 rounded-xl container-card">
         
         <!-- (修正後) macOS視窗圓點移至此處 -->
         <div class="traffic-lights" aria-hidden="true">
@@ -188,21 +214,27 @@
         </div>
         
         <!-- 標題區塊 -->
-        <div class="w-full mb-4 text-center pt-5">
+        <div class="w-full mb-4 text-center pl-16 pr-12 pt-1 min-h-8 flex flex-col justify-center">
             <h1 class="text-xl md:text-2xl font-bold panel-heading">照片編輯工具</h1>
-            <p class="text-sm text-muted mt-0.5">在瀏覽器端編輯照片，提供風格濾鏡特效、色彩光影調整及文字添加等功能</p>
+            <p class="text-sm text-muted mt-0.5">在瀏覽器本機完成照片裁切、色彩與濾鏡調整、圖層合成、標註繪製與多格式匯出；照片不會上傳至伺服器。</p>
             <p class="text-sm text-muted mt-0">製作者：陳政德</p>
         </div>
 
         <!-- 主要內容區塊 -->
         <div id="main-container" class="flex flex-col md:flex-row w-full gap-3 items-start">
             
-            <div id="canvas-wrapper" class="relative flex-1 w-full bg-gray-200 rounded-xl shadow-inner flex items-center justify-center p-2 overflow-auto container-card" style="height: 80vh;">
+            <div id="canvas-wrapper" class="order-2 relative flex-1 w-full bg-gray-200 rounded-xl shadow-inner flex items-center justify-center p-2 overflow-auto container-card" style="height: 80vh;">
                 <canvas id="photo-canvas" class="rounded-xl"></canvas>
                 <canvas id="grid-canvas" class="absolute top-0 left-0 pointer-events-none hidden"></canvas>
+                <div id="canvas-empty-state" class="empty-canvas-state" aria-live="polite">
+                    <i class="fas fa-image upload-hint-icon" aria-hidden="true"></i>
+                    <p class="font-bold text-base">尚未匯入照片</p>
+                    <p class="text-sm">請點選左側「選擇照片」，從電腦選取 JPG、PNG、HEIC 或 PDF 檔案。</p>
+                    <p class="text-xs">也可以直接將圖片貼到畫布：<kbd>Ctrl</kbd> + <kbd>V</kbd></p>
+                </div>
             </div>
 
-            <div id="tools-panel" class="w-full md:w-80 flex flex-col gap-2 p-2 rounded-xl container-card max-h-[80vh] overflow-y-auto">
+            <div id="tools-panel" class="order-1 w-full md:w-80 flex flex-col gap-2 p-2 rounded-xl container-card max-h-[80vh] overflow-y-auto">
                 
                 <!-- Layer Panel -->
                 <div>
@@ -494,61 +526,6 @@
         </div>
     </div>
     
-    <!-- [NEW] Instructions Section -->
-    <div id="instructions-section" class="w-full max-w-7xl mt-8">
-        <h2 class="text-xl font-bold panel-heading mb-6 text-center"><i class="fas fa-book-open mr-2"></i>功能與操作說明</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Card 1 -->
-            <div class="instruction-card">
-                <div class="flex items-center mb-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-                    <h3 class="font-bold">1. 選擇與插入照片</h3>
-                </div>
-                <p>點擊 <span class="font-bold text-apple-blue">「選擇照片」</span>，支援 <span class="font-bold text-apple-blue">JPG, PNG, PDF</span> 及 <span class="font-bold text-apple-blue">HEIC</span> 格式。也可使用 <span class="font-bold text-apple-blue">「插入圖片」</span> 疊加另一張圖。</p>
-            </div>
-            <!-- Card 2 -->
-            <div class="instruction-card">
-                 <div class="flex items-center mb-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M22 7h-7V2H9v5H2v2h7v3H9v5h2v-3h2v3h2v-5h7zM7 9H4V4h3v5zm10 0h3V4h-3v5zm-5 8H9v-5h3v5zm0-8H9V4h3v5z"/></svg>
-                    <h3 class="font-bold">2. 基本調整</h3>
-                </div>
-                <p>使用 <span class="font-bold text-apple-blue">縮放</span> 與 <span class="font-bold text-apple-blue">旋轉</span> 滑桿進行變形，透過 <span class="font-bold text-apple-blue">剪裁</span> 工具保留特定區域，亦可進行 <span class="font-bold text-apple-blue">水平/垂直翻轉</span>。</p>
-            </div>
-             <!-- Card 3 -->
-            <div class="instruction-card">
-                <div class="flex items-center mb-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.69l.94 2.06.94 2.05h2.16h2.16l-1.75 1.27-1.75 1.27.67 2.53.67 2.53-1.75-1.27-1.75-1.27-1.75 1.27-1.75 1.27.67-2.53.67-2.53-1.75-1.27L7.36 9.8l2.16-.01h2.16l.94-2.05L12 2.69zm-5 13.62l.94 2.06.94 2.05h2.16h2.16l-1.75 1.27-1.75 1.27.67 2.53.67 2.53-1.75-1.27-1.75-1.27-1.75 1.27-1.75 1.27.67-2.53.67-2.53-1.75-1.27-1.75-1.27h2.16h2.16l.94-2.05L7 16.31z"/></svg>
-                    <h3 class="font-bold">3. 濾鏡與進階工具</h3>
-                </div>
-                <p>套用多種一鍵 <span class="font-bold text-apple-blue">風格濾鏡</span>，或至 <span class="font-bold text-apple-blue">進階工具</span> 區塊，手動調整 <span class="font-bold text-apple-blue">亮度、對比度、飽和度</span> 等參數。</p>
-            </div>
-             <!-- Card 4 -->
-            <div class="instruction-card">
-                <div class="flex items-center mb-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83zM3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM5.92 19H5v-.92l9.06-9.06.92.92L5.92 19z"/></svg>
-                    <h3 class="font-bold">4. 添加文字與圖形</h3>
-                </div>
-                <p>使用 <span class="font-bold text-apple-blue">「加入文字」</span> 功能自訂內容，或透過 <span class="font-bold text-apple-blue">「加入圖形」</span> 繪製線條、方框，還能使用 <span class="font-bold text-apple-blue">自由劃線</span> 工具隨意塗鴉。</p>
-            </div>
-             <!-- Card 5 -->
-            <div class="instruction-card">
-                <div class="flex items-center mb-3">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-12h2v4h-2zm0 6h2v2h-2z" opacity=".3"/><path d="M21.99 12c0-5.52-4.47-10-9.99-10S2 6.48 2 12s4.47 10 9.99 10S21.99 17.52 21.99 12zM12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm1-8h-2V8h2v4zm0 4h-2v-2h2v2z"/></svg>
-                    <h3 class="font-bold">5. 圖層與物件管理</h3>
-                </div>
-                <p>在 <span class="font-bold text-apple-blue">圖層管理</span> 面板中調整物件順序、<span class="font-bold text-apple-blue">鎖定</span> 或 <span class="font-bold text-apple-blue">隱藏</span>。按住 Shift 鍵可選取多個物件進行 <span class="font-bold text-apple-blue">群組</span> 或 <span class="font-bold text-apple-blue">對齊</span> 操作。</p>
-            </div>
-            <!-- Card 6 -->
-            <div class="instruction-card">
-                 <div class="flex items-center mb-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                    <h3 class="font-bold">6. 下載成品</h3>
-                </div>
-                <p>選擇需要的 <span class="font-bold text-apple-blue">檔案格式</span> (JPG, PNG, SVG, PDF) 和 <span class="font-bold text-apple-blue">解析度</span>，然後點擊 <span class="font-bold text-apple-blue">「下載照片」</span> 即可儲存。</p>
-            </div>
-        </div>
-    </div>
-
     <div id="fullscreen-overlay" class="hidden">
         <img id="fullscreen-image" src="" alt="Fullscreen View">
         <div id="fullscreen-controls">
@@ -572,7 +549,11 @@
         let isColorPicking = false;
         let gridCanvas, isGridVisible = false;
         let isRestoringState = false;
-        const MAX_HISTORY_STATES = 50;
+        let trackedImageUrls = new Set();
+        const MAX_HISTORY_STATES = 15;
+        const MAX_FILE_BYTES = 30 * 1024 * 1024;
+        const MAX_IMAGE_PIXELS = 24_000_000;
+        let nextObjectId = 0;
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
 
@@ -596,6 +577,30 @@
         const debouncedSaveState = debounce(saveState, 300);
         const debouncedAdvancedAdjustments = debounce(handleAdvancedAdjustments, 100);
         const debouncedEffectAdjustments = debounce(handleEffectAdjustments, 100);
+        const debouncedRefreshViewport = debounce(() => {
+            if (isGridVisible && img) drawGrid(canvas.getWidth(), canvas.getHeight());
+        }, 150);
+
+        function releaseTrackedImageUrls() {
+            trackedImageUrls.forEach(url => URL.revokeObjectURL(url));
+            trackedImageUrls.clear();
+        }
+
+        function trackImageUrl(url) {
+            trackedImageUrls.add(url);
+            return url;
+        }
+
+        function isImageWithinLimits(image) {
+            return image && Number.isFinite(image.width) && Number.isFinite(image.height)
+                && image.width > 0 && image.height > 0 && image.width * image.height <= MAX_IMAGE_PIXELS;
+        }
+
+        function createObjectId() {
+            if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+            nextObjectId += 1;
+            return `object-${Date.now()}-${nextObjectId}`;
+        }
 
         // --- History Management ---
         function saveState() {
@@ -635,6 +640,10 @@
             document.getElementById('zoom-value').innerText = `${Math.round(img.scaleX * 100)}%`;
             document.getElementById('rotate-slider').value = img.angle;
             document.getElementById('rotate-value').innerText = `${Math.round(img.angle)}°`;
+        }
+
+        function setCanvasEmptyState(isEmpty) {
+            document.getElementById('canvas-empty-state')?.classList.toggle('hidden', !isEmpty);
         }
 
         function adjustSlider(id, delta) {
@@ -701,6 +710,7 @@
             document.getElementById('flip-h-btn').addEventListener('click', () => handleFlip('horizontal'));
             document.getElementById('flip-v-btn').addEventListener('click', () => handleFlip('vertical'));
             document.getElementById('grid-btn').addEventListener('click', toggleGrid);
+            document.getElementById('help-btn').addEventListener('click', openHelpWindow);
             document.getElementById('theme-toggle').addEventListener('click', toggleTheme); 
 
             ['brightness', 'contrast', 'saturation', 'hue', 'temperature'].forEach(id => {
@@ -731,6 +741,7 @@
             window.addEventListener('paste', handleSystemPaste);
             window.addEventListener('keydown', handleKeyDown);
             window.addEventListener('mousedown', handleOutsideCanvasClick);
+            window.addEventListener('resize', debouncedRefreshViewport);
             
             const fontSelect = document.getElementById('font-family');
             Array.from(fontSelect.options).forEach(option => { option.style.setProperty('--font-family-name', option.value); });
@@ -759,6 +770,31 @@
             const isDark = html.classList.contains('dark');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             applyInitialTheme();
+        }
+
+        function openHelpWindow() {
+            const helpWindow = window.open('', 'photoEditorHelp', 'popup=yes,width=1120,height=760,resizable=yes,scrollbars=yes');
+            if (!helpWindow) {
+                alert('瀏覽器已封鎖說明視窗，請允許此頁面開啟彈出式視窗。');
+                return;
+            }
+            helpWindow.document.open();
+            helpWindow.document.write(`<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>照片編輯工具－功能與操作說明</title>
+<style>
+:root{font-family:Inter,"Noto Sans TC",sans-serif;color:#1f2937;background:#f1f5f9}*{box-sizing:border-box}body{margin:0;padding:32px}h1{text-align:center;color:#3b82f6;margin:0 0 28px;font-size:26px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.card{background:#fff;border:1px solid #dbe3ee;border-radius:18px;padding:25px 28px;box-shadow:0 6px 16px rgba(15,23,42,.09)}h2{margin:0 0 18px;font-size:20px;color:#111827;display:flex;gap:14px;align-items:center}.icon{color:#3b82f6;font-size:30px;line-height:1}p{margin:0;line-height:1.75;font-size:16px}.key{color:#2563eb;font-weight:700}kbd{padding:2px 6px;border:1px solid #cbd5e1;border-radius:5px;background:#f8fafc}@media(max-width:850px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:560px){body{padding:18px}.grid{grid-template-columns:1fr}}
+</style></head><body>
+<h1>📖 功能與操作說明</h1><main class="grid">
+<section class="card"><h2><span class="icon">☁</span>1. 選擇與插入照片</h2><p>點擊左側 <span class="key">「選擇照片」</span>，支援 JPG、PNG、PDF 及 HEIC；也可按 <kbd>Ctrl</kbd>＋<kbd>V</kbd> 貼上主照片，或用「插入圖片」疊加影像。</p></section>
+<section class="card"><h2><span class="icon">✥</span>2. 基本調整</h2><p>使用 <span class="key">縮放、旋轉、剪裁</span> 與水平／垂直翻轉；剪裁後仍會保留可編輯圖層。</p></section>
+<section class="card"><h2><span class="icon">✦</span>3. 濾鏡與進階工具</h2><p>套用一鍵風格濾鏡，或手動調整 <span class="key">亮度、對比度、飽和度、色相與色溫</span>。</p></section>
+<section class="card"><h2><span class="icon">✎</span>4. 添加文字與圖形</h2><p>加入自訂文字、線條、方框、圓形、箭頭與其他圖形，也可使用自由劃線工具。</p></section>
+<section class="card"><h2><span class="icon">◉</span>5. 圖層與物件管理</h2><p>調整物件順序、鎖定或隱藏；按住 Shift 可選取多個物件進行群組或對齊。</p></section>
+<section class="card"><h2><span class="icon">⬇</span>6. 下載成品</h2><p>選擇 JPG、PNG、SVG 或 PDF，以及所需解析度，再點擊 <span class="key">「下載照片」</span>。</p></section>
+</main></body></html>`);
+            helpWindow.document.close();
+            helpWindow.focus();
         }
         
         // Tooltip setup
@@ -817,8 +853,15 @@
         }
 
         // HEIC & PDF handling
-        async function convertFileToDataURL(file) {
+        async function convertFileToObjectURL(file) {
+            if (file.size > MAX_FILE_BYTES) {
+                throw new Error('檔案超過 30 MB 上限');
+            }
             const isHeic = file.type.startsWith('image/heic') || file.type.startsWith('image/heif') || (file.type === '' && (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')));
+            const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+            if (!isHeic && !isPdf && !file.type.startsWith('image/')) {
+                throw new Error('不支援的檔案格式');
+            }
 
             let processedFile = file;
             if (isHeic) {
@@ -834,18 +877,22 @@
                 }
             }
             
-            if (file.type === 'application/pdf') {
+            if (isPdf) {
                 document.body.style.cursor = 'wait';
                 try {
                     const pdfData = new Uint8Array(await file.arrayBuffer());
                     const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
                     const page = await pdf.getPage(1);
-                    const viewport = page.getViewport({ scale: 2.0 });
+                    const baseViewport = page.getViewport({ scale: 1 });
+                    const scale = Math.min(2, Math.sqrt(MAX_IMAGE_PIXELS / (baseViewport.width * baseViewport.height)));
+                    if (!Number.isFinite(scale) || scale <= 0) throw new Error('PDF 頁面尺寸無效');
+                    const viewport = page.getViewport({ scale });
                     const tempCanvas = document.createElement('canvas');
                     tempCanvas.width = viewport.width;
                     tempCanvas.height = viewport.height;
                     await page.render({ canvasContext: tempCanvas.getContext('2d'), viewport }).promise;
-                    return tempCanvas.toDataURL('image/png');
+                    const pngBlob = await new Promise((resolve, reject) => tempCanvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PDF 轉圖失敗')), 'image/png'));
+                    return URL.createObjectURL(pngBlob);
                 } catch (err) {
                     console.error("PDF processing error:", err);
                     alert('無法讀取 PDF 檔案。');
@@ -855,26 +902,30 @@
                 }
             }
 
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (event) => resolve(event.target.result);
-                reader.onerror = () => reject(reader.error || new Error('檔案讀取失敗'));
-                reader.readAsDataURL(processedFile);
-            });
+            if (Array.isArray(processedFile)) processedFile = processedFile[0];
+            return URL.createObjectURL(processedFile);
         }
         
         async function handleImageUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
             try {
-                const dataURL = await convertFileToDataURL(file);
-                fabric.Image.fromURL(dataURL, (oImg) => {
+                const imageUrl = await convertFileToObjectURL(file);
+                fabric.Image.fromURL(imageUrl, (oImg, isError) => {
+                    if (isError || !isImageWithinLimits(oImg)) {
+                        URL.revokeObjectURL(imageUrl);
+                        alert('圖片無法讀取，或超過 2,400 萬像素上限。');
+                        return;
+                    }
+                    releaseTrackedImageUrls();
+                    trackImageUrl(imageUrl);
                     canvas.clear();
                     history = []; historyIndex = -1;
                     img = oImg;
-                    originalImageSrc = dataURL;
+                    originalImageSrc = imageUrl;
                     img.set({ selectable: false, evented: false, name: 'background' });
                     canvas.add(img);
+                    setCanvasEmptyState(false);
                     fitImageToCanvas();
                     saveState();
                 }, { crossOrigin: 'anonymous' });
@@ -888,10 +939,16 @@
             const file = e.target.files[0];
             if (!file || !canvas) return;
             try {
-                const dataURL = await convertFileToDataURL(file);
-                fabric.Image.fromURL(dataURL, (newImg) => {
+                const imageUrl = await convertFileToObjectURL(file);
+                fabric.Image.fromURL(imageUrl, (newImg, isError) => {
+                    if (isError || !isImageWithinLimits(newImg)) {
+                        URL.revokeObjectURL(imageUrl);
+                        alert('插入圖片無法讀取，或超過 2,400 萬像素上限。');
+                        return;
+                    }
+                    trackImageUrl(imageUrl);
                     const scale = Math.min((canvas.width * 0.5) / newImg.width, (canvas.height * 0.5) / newImg.height);
-                    newImg.scale(scale).set({ id: Date.now() });
+                    newImg.scale(scale).set({ id: createObjectId() });
                     canvas.add(newImg).centerObject(newImg).setActiveObject(newImg).requestRenderAll();
                 }, { crossOrigin: 'anonymous' });
             } catch (error) {
@@ -995,22 +1052,22 @@
         
         function toggleTextOptions() { const textOptions = document.getElementById('text-options'); if(textOptions.classList.contains('hidden')){ handleAddText(); } textOptions.classList.toggle('hidden'); document.getElementById('shape-options').classList.add('hidden'); }
         function toggleShapeOptions() { document.getElementById('shape-options').classList.toggle('hidden'); document.getElementById('text-options').classList.add('hidden'); }
-        function handleAddText() { if (!img) return; const text = new fabric.IText('點擊輸入文字', { left: canvas.getCenter().left, top: canvas.getCenter().top, fill: getComputedStyle(document.body).getPropertyValue('--text-color'), fontFamily: document.getElementById('font-family').value, fontSize: 40, originX: 'center', originY: 'center', id: Date.now() }); canvas.add(text); canvas.bringToFront(text); canvas.setActiveObject(text); canvas.requestRenderAll(); }
-        function updateTextOptions() { const activeObject = canvas.getActiveObject(); if (activeObject && activeObject.isType('i-text')) { activeObject.set({ fontFamily: document.getElementById('font-family').value, fontSize: parseInt(document.getElementById('font-size').value, 10), fill: document.getElementById('font-color').value }); canvas.renderAll(); renderLayerPanel(); } }
-        function handleAddShape(shapeType) { if (!img) return; const center = canvas.getCenter(); const options = { left: center.left, top: center.top, originX: 'center', originY: 'center', fill: 'transparent', stroke: document.getElementById('shape-stroke-color').value, strokeWidth: parseInt(document.getElementById('shape-stroke-width').value, 10), id: Date.now() }; let shape; switch(shapeType) { case 'line': shape = new fabric.Line([0,0,100,0], {left: center.left, top: center.top, ...options}); shape.set({ left: shape.left - shape.width / 2 }); break; case 'rect': shape = new fabric.Rect({ width: 100, height: 100, ...options }); break; case 'circle': shape = new fabric.Circle({ radius: 50, ...options }); break; case 'rounded-rect': shape = new fabric.Rect({ width: 100, height: 100, rx: 10, ry: 10, ...options }); break; case 'diamond': shape = new fabric.Polygon([{x: -50, y: 0}, {x: 0, y: -50}, {x: 50, y: 0}, {x: 0, y: 50}], { ...options, objectCaching: false }); break; case 'arrow': const arrowPath = 'M 0 7.5 L 80 7.5 L 80 0 L 100 15 L 80 30 L 80 22.5 L 0 22.5 Z'; shape = new fabric.Path(arrowPath, { ...options, fill: options.stroke, strokeWidth: 0, }); shape.scaleToWidth(150); break; } if (shape) { canvas.add(shape); canvas.bringToFront(shape); canvas.setActiveObject(shape); } }
+        function handleAddText() { if (!img) return; const text = new fabric.IText('點擊輸入文字', { left: canvas.getCenter().left, top: canvas.getCenter().top, fill: getComputedStyle(document.body).getPropertyValue('--text-color'), fontFamily: document.getElementById('font-family').value, fontSize: 40, originX: 'center', originY: 'center', id: createObjectId() }); canvas.add(text); canvas.bringToFront(text); canvas.setActiveObject(text); canvas.requestRenderAll(); }
+        function updateTextOptions() { const activeObject = canvas.getActiveObject(); if (activeObject && activeObject.isType('i-text')) { activeObject.set({ fontFamily: document.getElementById('font-family').value, fontSize: parseInt(document.getElementById('font-size').value, 10), fill: document.getElementById('font-color').value }); canvas.renderAll(); renderLayerPanel(); debouncedSaveState(); } }
+        function handleAddShape(shapeType) { if (!img) return; const center = canvas.getCenter(); const options = { left: center.left, top: center.top, originX: 'center', originY: 'center', fill: 'transparent', stroke: document.getElementById('shape-stroke-color').value, strokeWidth: parseInt(document.getElementById('shape-stroke-width').value, 10), id: createObjectId() }; let shape; switch(shapeType) { case 'line': shape = new fabric.Line([0,0,100,0], {left: center.left, top: center.top, ...options}); shape.set({ left: shape.left - shape.width / 2 }); break; case 'rect': shape = new fabric.Rect({ width: 100, height: 100, ...options }); break; case 'circle': shape = new fabric.Circle({ radius: 50, ...options }); break; case 'rounded-rect': shape = new fabric.Rect({ width: 100, height: 100, rx: 10, ry: 10, ...options }); break; case 'diamond': shape = new fabric.Polygon([{x: -50, y: 0}, {x: 0, y: -50}, {x: 50, y: 0}, {x: 0, y: 50}], { ...options, objectCaching: false }); break; case 'arrow': const arrowPath = 'M 0 7.5 L 80 7.5 L 80 0 L 100 15 L 80 30 L 80 22.5 L 0 22.5 Z'; shape = new fabric.Path(arrowPath, { ...options, fill: options.stroke, strokeWidth: 0, }); shape.scaleToWidth(150); break; } if (shape) { canvas.add(shape); canvas.bringToFront(shape); canvas.setActiveObject(shape); } }
         function toggleFreeDraw() { canvas.isDrawingMode = !canvas.isDrawingMode; document.getElementById('free-draw-btn').classList.toggle('mode-active', canvas.isDrawingMode); if (canvas.isDrawingMode) { canvas.freeDrawingBrush.color = document.getElementById('shape-stroke-color').value; canvas.freeDrawingBrush.width = parseInt(document.getElementById('shape-stroke-width').value, 10); } }
-        function updateShapeOptions() { const strokeWidth = parseInt(document.getElementById('shape-stroke-width').value, 10); const strokeColor = document.getElementById('shape-stroke-color').value; if (canvas.isDrawingMode) { canvas.freeDrawingBrush.width = strokeWidth; canvas.freeDrawingBrush.color = strokeColor; } const activeObject = canvas.getActiveObject(); if (activeObject && !activeObject.isType('i-text')) { if (activeObject.isType('path') || (activeObject.isType('group') && activeObject.getObjects('path').length > 0)) { activeObject.set({ fill: strokeColor }); } else { activeObject.set({ stroke: strokeColor, strokeWidth: strokeWidth }); } canvas.renderAll(); renderLayerPanel(); } }
+        function updateShapeOptions() { const strokeWidth = parseInt(document.getElementById('shape-stroke-width').value, 10); const strokeColor = document.getElementById('shape-stroke-color').value; if (canvas.isDrawingMode) { canvas.freeDrawingBrush.width = strokeWidth; canvas.freeDrawingBrush.color = strokeColor; } const activeObject = canvas.getActiveObject(); if (activeObject && !activeObject.isType('i-text')) { if (activeObject.isType('path') || (activeObject.isType('group') && activeObject.getObjects('path').length > 0)) { activeObject.set({ fill: strokeColor }); } else { activeObject.set({ stroke: strokeColor, strokeWidth: strokeWidth }); } canvas.renderAll(); renderLayerPanel(); debouncedSaveState(); } }
 
         function toggleColorPicker() { isColorPicking = !isColorPicking; const btn = document.getElementById('color-picker-btn'); const display = document.getElementById('color-picker-display'); btn.classList.toggle('mode-active', isColorPicking); display.classList.toggle('hidden', !isColorPicking); if (isColorPicking) { canvas.selection = false; canvas.defaultCursor = 'crosshair'; canvas.hoverCursor = 'crosshair'; } else { canvas.selection = true; canvas.defaultCursor = 'default'; canvas.hoverCursor = 'move'; } canvas.renderAll(); }
         function handleColorPickerMove(o) { if (!isColorPicking) return; const pointer = canvas.getPointer(o.e); const x = Math.round(pointer.x); const y = Math.round(pointer.y); const ctx = canvas.getContext('2d'); if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return; const pixel = ctx.getImageData(x, y, 1, 1).data; const r = pixel[0], g = pixel[1], b = pixel[2]; document.getElementById('rgb-value').textContent = `${r}, ${g}, ${b}`; function rgbToHex(r, g, b) { return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase(); } document.getElementById('hex-value').textContent = rgbToHex(r, g, b); }
         
         function handleCopy() { const activeObject = canvas.getActiveObject(); if (!activeObject) return; activeObject.clone(cloned => { clipboard = cloned; document.getElementById('paste-btn').disabled = false; }); }
         function handleCut() { const activeObject = canvas.getActiveObject(); if (!activeObject) return; activeObject.clone(cloned => { clipboard = cloned; document.getElementById('paste-btn').disabled = false; }); handleDeleteObject(); }
-        function handlePaste() { if (!clipboard) return; clipboard.clone(clonedObj => { canvas.discardActiveObject(); clonedObj.set({ left: clipboard.left + 10, top: clipboard.top + 10, evented: true, id: Date.now() }); if (clonedObj.type === 'activeSelection') { clonedObj.canvas = canvas; clonedObj.forEachObject(obj => { obj.set({id: Date.now() + Math.random()}); canvas.add(obj); }); clonedObj.setCoords(); } else { canvas.add(clonedObj); } clipboard.left += 10; clipboard.top += 10; canvas.setActiveObject(clonedObj); canvas.requestRenderAll(); }); }
+        function handlePaste() { if (!clipboard) return; clipboard.clone(clonedObj => { canvas.discardActiveObject(); clonedObj.set({ left: clipboard.left + 10, top: clipboard.top + 10, evented: true, id: createObjectId() }); if (clonedObj.type === 'activeSelection') { clonedObj.canvas = canvas; clonedObj.forEachObject(obj => { obj.set({ id: createObjectId() }); canvas.add(obj); }); clonedObj.setCoords(); } else { canvas.add(clonedObj); } clipboard.left += 10; clipboard.top += 10; canvas.setActiveObject(clonedObj); canvas.requestRenderAll(); }); }
         function handleDeleteObject() { canvas.getActiveObjects().forEach(obj => canvas.remove(obj)); canvas.discardActiveObject().renderAll(); }
-        function groupObjects() { const activeObj = canvas.getActiveObject(); if (!activeObj || activeObj.type !== 'activeSelection') return; activeObj.toGroup(); canvas.requestRenderAll(); }
-        function ungroupObjects() { const activeObj = canvas.getActiveObject(); if (!activeObj || activeObj.type !== 'group') return; activeObj.toActiveSelection(); canvas.requestRenderAll(); }
-        function handleObjectRotation(e) { const activeObject = canvas.getActiveObject(); if (activeObject) { const angle = parseInt(e.target.value, 10); activeObject.set('angle', angle).setCoords(); canvas.renderAll(); document.getElementById('object-rotate-value').innerText = `${angle}°`; } }
+        function groupObjects() { const activeObj = canvas.getActiveObject(); if (!activeObj || activeObj.type !== 'activeSelection') return; activeObj.toGroup(); canvas.requestRenderAll(); debouncedSaveState(); }
+        function ungroupObjects() { const activeObj = canvas.getActiveObject(); if (!activeObj || activeObj.type !== 'group') return; activeObj.toActiveSelection(); canvas.requestRenderAll(); debouncedSaveState(); }
+        function handleObjectRotation(e) { const activeObject = canvas.getActiveObject(); if (activeObject) { const angle = parseInt(e.target.value, 10); activeObject.set('angle', angle).setCoords(); canvas.renderAll(); document.getElementById('object-rotate-value').innerText = `${angle}°`; debouncedSaveState(); } }
 
         function handleKeyDown(e) {
             const target = e.target;
@@ -1048,8 +1105,9 @@
         function handleDownload() {
             const format = document.getElementById('download-format').value;
             const resolution = document.getElementById('download-resolution').value;
+            const originalScale = img ? Math.max(img.width / Math.max(1, img.getScaledWidth()), img.height / Math.max(1, img.getScaledHeight())) : 1;
             const [targetWidth, targetHeight] = resolution === 'original'
-                ? [canvas.getWidth(), canvas.getHeight()]
+                ? [canvas.getWidth() * originalScale, canvas.getHeight() * originalScale]
                 : resolution.split('x').map(Number);
             const exportCanvas = document.createElement('canvas');
             exportCanvas.width = Math.max(1, Math.round(targetWidth));
@@ -1142,7 +1200,8 @@
                 else if (action === 'toggle-lock') { const isLocked = !obj.lockMovementX; obj.set({ lockMovementX: isLocked, lockMovementY: isLocked, lockScalingX: isLocked, lockScalingY: isLocked, lockRotation: isLocked, }); }
                 else if (action === 'move-up') canvas.bringForward(obj);
                 else if (action === 'move-down') canvas.sendBackwards(obj);
-                canvas.renderAll(); renderLayerPanel(); 
+                canvas.renderAll(); renderLayerPanel();
+                if (action && action !== 'select') debouncedSaveState();
             });
         }
         
@@ -1174,19 +1233,41 @@
             if (!imageItem) return;
             const file = imageItem.getAsFile();
             if (!file) return;
+            if (file.size > MAX_FILE_BYTES) {
+                alert('剪貼簿圖片超過 30 MB 上限。');
+                return;
+            }
             e.preventDefault();
-            const reader = new FileReader();
-            reader.onload = event => {
-                fabric.Image.fromURL(event.target.result, pastedImage => {
+            const imageUrl = URL.createObjectURL(file);
+            fabric.Image.fromURL(imageUrl, (pastedImage, isError) => {
+                if (isError || !isImageWithinLimits(pastedImage)) {
+                    URL.revokeObjectURL(imageUrl);
+                    alert('剪貼簿圖片無法讀取，或超過 2,400 萬像素上限。');
+                    return;
+                }
+                if (!img) {
+                    releaseTrackedImageUrls();
+                    trackImageUrl(imageUrl);
+                    canvas.clear();
+                    history = [];
+                    historyIndex = -1;
+                    img = pastedImage;
+                    originalImageSrc = imageUrl;
+                    img.set({ selectable: false, evented: false, name: 'background' });
+                    canvas.add(img);
+                    setCanvasEmptyState(false);
+                    fitImageToCanvas();
+                    saveState();
+                } else {
+                    trackImageUrl(imageUrl);
                     const maxWidth = Math.max(1, canvas.getWidth() * 0.5);
                     const maxHeight = Math.max(1, canvas.getHeight() * 0.5);
                     const scale = Math.min(1, maxWidth / pastedImage.width, maxHeight / pastedImage.height);
-                    pastedImage.scale(scale).set({ id: Date.now() });
+                    pastedImage.scale(scale).set({ id: createObjectId() });
                     canvas.add(pastedImage).centerObject(pastedImage).setActiveObject(pastedImage).requestRenderAll();
-                });
-            };
-            reader.onerror = () => alert('無法讀取剪貼簿中的圖片。');
-            reader.readAsDataURL(file);
+                    debouncedSaveState();
+                }
+            }, { crossOrigin: 'anonymous' });
         }
 
         // Collapsed functions for brevity
@@ -1213,28 +1294,29 @@
 
             if (isCropping) { 
                 if (cropRect && cropRect.width > 0 && cropRect.height > 0) {
-                    cropRect.set({ visible: false }); 
-
-                    const dataURL = canvas.toDataURL({
-                        left: cropRect.left,
-                        top: cropRect.top,
-                        width: cropRect.getScaledWidth(),
-                        height: cropRect.getScaledHeight()
+                    const rawBounds = cropRect.getBoundingRect();
+                    const cropBounds = {
+                        left: Math.max(0, rawBounds.left),
+                        top: Math.max(0, rawBounds.top),
+                        width: Math.min(rawBounds.width, canvas.getWidth() - Math.max(0, rawBounds.left)),
+                        height: Math.min(rawBounds.height, canvas.getHeight() - Math.max(0, rawBounds.top))
+                    };
+                    if (cropBounds.width < 1 || cropBounds.height < 1) {
+                        exitCropMode();
+                        return;
+                    }
+                    canvas.remove(cropRect);
+                    cropRect = null;
+                    // Keep every object and layer editable; resize the canvas viewport instead of flattening it.
+                    canvas.getObjects().forEach(object => {
+                        object.set({ left: object.left - cropBounds.left, top: object.top - cropBounds.top });
+                        object.setCoords();
                     });
-                    
-                    canvas.clear();
-
-                    fabric.Image.fromURL(dataURL, (newImg) => {
-                        history = [];
-                        historyIndex = -1;
-                        img = newImg;
-                        originalImageSrc = dataURL;
-                        img.set({ selectable: false, evented: false, name: 'background' });
-                        canvas.add(img);
-                        fitImageToCanvas();
-                        saveState();
-                        exitCropMode(); 
-                    });
+                    canvas.setDimensions({ width: Math.max(1, cropBounds.width), height: Math.max(1, cropBounds.height) });
+                    canvas.discardActiveObject();
+                    canvas.renderAll();
+                    saveState();
+                    exitCropMode();
                 } else {
                     exitCropMode();
                 }
