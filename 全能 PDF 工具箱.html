@@ -140,6 +140,8 @@
           
           #main-title {
               color: var(--main-title-color);
+              margin-top: 0 !important;
+              line-height: 1.2;
           }
 
           /* 4. Header & macOS Traffic Lights */
@@ -151,6 +153,9 @@
             display: flex;
             gap: 8px;
             padding: 10px 12px 0;
+            position: absolute;
+            top: 0;
+            left: 0;
           }
           .traffic-lights .dot {
             width: 12px;
@@ -292,6 +297,11 @@
           #cancel-insert-btn:hover, #cancel-add-blank-page-btn:hover {
             background-color: var(--macos-secondary-btn-bg-hover) !important;
           }
+          #cancel-ocr-btn {
+            background-color: var(--macos-red) !important;
+            color: white !important;
+          }
+          #cancel-ocr-btn:hover { background-color: var(--macos-red-hover) !important; }
     
           /* Danger Button (Delete Pages) */
           #delete-selected-pages-btn {
@@ -545,7 +555,7 @@
                     </div>
                     <!-- END: 新增的主題切換按鈕 -->
                     <div class="text-center">
-                        <h1 id="main-title" class="text-3xl md:text-3xl font-bold tracking-tight mt-3">全能PDF工具箱</h1>
+                        <h1 id="main-title" class="text-3xl md:text-3xl font-bold tracking-tight">全能PDF工具箱</h1>
                         <p class="text-lg md:text-m mt-0 font-semibold">PDF 文件合併分割、壓縮旋轉、刪除排序、擷取文字圖片等功能</p>
                         <p class="text-sm text-sm mt-0">製作者：陳政德</p>
                     </div>
@@ -1218,14 +1228,16 @@
                                     <span>返回主頁</span>
                                 </button>
                             </div>
-                            <p class="mb-4">★文字擷取過程中，畫面持續顯示「轉圈圈」動畫，表示系統無法處理此檔案。</p>
+                            <p class="mb-4">文字型 PDF 會直接擷取；掃描頁面才會啟動 OCR。處理時間較長時會顯示每個步驟的剩餘等待上限，您可隨時停止。</p>
                             <div class="text-center mb-4">
                                 <label for="ocr-pdf-input" data-tooltip="選擇要進行文字辨識的 PDF">→ 點擊此處加入 PDF 檔案到這裡</label>
                                 <input type="file" id="ocr-pdf-input" accept=".pdf" class="hidden">
                             </div>
-                            <div id="ocr-status-container" class="flex items-center justify-start p-3 bg-gray-100 rounded-lg mb-4">
+                            <div id="ocr-status-container" class="flex flex-wrap items-center justify-start gap-2 p-3 bg-gray-100 rounded-lg mb-4">
                                 <div id="ocr-status" class="text-gray-700">請選擇一個 PDF 檔案開始處理...</div>
-                                <button id="download-ocr-btn" class="hidden ml-4" data-tooltip="將辨識結果下載為 .rtf 文字檔">下載為文字檔</button>
+                                <span id="ocr-wait-countdown" class="hidden text-sm text-gray-600"></span>
+                                <button id="cancel-ocr-btn" class="hidden" data-tooltip="停止目前的 OCR 處理並保留已完成的結果">停止處理</button>
+                                <button id="download-ocr-btn" class="hidden" data-tooltip="將辨識結果下載為 .rtf 文字檔">下載為文字檔</button>
                             </div>
                             <pre id="ocr-result" class="w-full bg-gray-50 border border-gray-300 rounded-md p-4 min-h-[200px] max-h-[500px] overflow-y-auto whitespace-pre-wrap break-words">尚未處理檔案。</pre>
                         </div>
@@ -1252,6 +1264,7 @@
                                     <input type="range" id="compress-ratio" min="10" max="100" value="70" step="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                                     <span id="compress-ratio-value" class="font-semibold w-12 text-center">70%</span>
                                 </div>
+                                <div id="compress-size-estimate" class="mt-3 text-sm text-gray-600" aria-live="polite">調整品質後，將顯示預估壓縮後大小。</div>
                             </div>
     
                             <div class="mt-6">
@@ -1778,12 +1791,12 @@
         <!-- END: New Modal for adding a blank page -->
     
         <!-- External Libraries -->
-        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.tailwindcss.com/3.4.17"></script>
         <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
         <script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
         <script src="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.min.js"></script>
-        <script src='https://unpkg.com/tesseract.js@5.0.0/dist/tesseract.min.js'></script>
+        <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.0/dist/tesseract.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
         <!-- ** INDUSTRY-STANDARD DRAG & DROP LIBRARY ** -->
@@ -1862,12 +1875,94 @@
         let pageEditorSortable = null;
         let handoutSortable = null;
         let modalTimeoutId = null;
+        let activeOcrRun = null;
         let currentPageThumbnailSize = 150;
         let handoutThumbnailSize = 80;
         let rotateThumbnailSize = 80; // New state for rotate view
         const ZOOM_STEP = 25;
         const MIN_ZOOM = 50;
         const MAX_ZOOM = 300;
+        const MAX_INPUT_BYTES = 200 * 1024 * 1024;
+        const MAX_PDF_PAGES = 500;
+
+        // Escape all file-derived text before placing it into HTML templates.
+        const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[char]);
+
+        // Mammoth and spreadsheet output are document-controlled HTML. Keep a small,
+        // useful formatting subset and discard scripts, event handlers and active URLs.
+        function sanitizeHtmlFragment(html) {
+            const allowedTags = new Set(['P','BR','DIV','SPAN','H1','H2','H3','H4','H5','H6','B','STRONG','I','EM','U','S','SUB','SUP','UL','OL','LI','TABLE','THEAD','TBODY','TFOOT','TR','TH','TD','A','IMG']);
+            const parsed = new DOMParser().parseFromString(String(html ?? ''), 'text/html');
+            const clean = document.createElement('div');
+            const copyNode = (source, destination) => {
+                if (source.nodeType === Node.TEXT_NODE) {
+                    destination.appendChild(document.createTextNode(source.nodeValue || ''));
+                    return;
+                }
+                if (source.nodeType !== Node.ELEMENT_NODE) return;
+                const tag = source.tagName.toUpperCase();
+                if (!allowedTags.has(tag)) {
+                    if (!['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','SVG','MATH','FORM','INPUT','BUTTON'].includes(tag)) {
+                        for (const child of source.childNodes) copyNode(child, destination);
+                    }
+                    return;
+                }
+                const target = document.createElement(tag.toLowerCase());
+                if (tag === 'A') {
+                    const href = source.getAttribute('href') || '';
+                    if (/^(https?:|mailto:)/i.test(href)) {
+                        target.setAttribute('href', href);
+                        target.setAttribute('rel', 'noopener noreferrer');
+                    }
+                }
+                if (tag === 'IMG') {
+                    const src = source.getAttribute('src') || '';
+                    if (!/^data:image\/(png|jpeg|gif|webp);base64,/i.test(src)) return;
+                    target.setAttribute('src', src);
+                    target.setAttribute('alt', source.getAttribute('alt') || '');
+                    target.style.maxWidth = '100%';
+                }
+                for (const attr of ['colspan','rowspan','width','height']) {
+                    const value = source.getAttribute(attr);
+                    if (value && /^\d{1,4}$/.test(value)) target.setAttribute(attr, value);
+                }
+                const style = source.getAttribute('style') || '';
+                const safeStyleProperties = new Set(['text-align','font-weight','font-style','text-decoration','border','border-collapse','padding','background-color','color','width','height','vertical-align']);
+                for (const declaration of style.split(';')) {
+                    const separator = declaration.indexOf(':');
+                    if (separator < 0) continue;
+                    const property = declaration.slice(0, separator).trim().toLowerCase();
+                    const value = declaration.slice(separator + 1).trim();
+                    if (safeStyleProperties.has(property) && !/(url\s*\(|expression\s*\(|javascript:|[<>])/i.test(value)) {
+                        target.style.setProperty(property, value);
+                    }
+                }
+                destination.appendChild(target);
+                for (const child of source.childNodes) copyNode(child, target);
+            };
+            for (const child of parsed.body.childNodes) copyNode(child, clean);
+            return clean.innerHTML;
+        }
+
+        async function loadPdfJsDocument(data, password = null) {
+            if (data?.byteLength > MAX_INPUT_BYTES) throw new Error('PDF 檔案超過 200 MB 限制。');
+            const task = pdfjsLib.getDocument({ data, ...(password ? { password } : {}) });
+            const document = await task.promise;
+            if (document.numPages > MAX_PDF_PAGES) {
+                await document.destroy();
+                throw new Error('PDF 超過 500 頁限制，以避免瀏覽器記憶體不足。');
+            }
+            return document;
+        }
+
+        async function loadPdfLibDocument(bytes, options) {
+            if (bytes?.byteLength > MAX_INPUT_BYTES) throw new Error('PDF 檔案超過 200 MB 限制。');
+            const document = await PDFDocument.load(bytes, options);
+            if (document.getPageCount() > MAX_PDF_PAGES) throw new Error('PDF 超過 500 頁限制，以避免瀏覽器記憶體不足。');
+            return document;
+        }
     
     
         function hexToRgb(hex) {
@@ -1905,6 +2000,7 @@
         // END: 新增的操作說明按鈕事件
 
         function showView(viewId) {
+            if (activeOcrRun?.cancel) activeOcrRun.cancel('已離開 OCR 畫面，停止處理。');
             if (pageEditorSortable) { pageEditorSortable.destroy(); pageEditorSortable = null; }
             if (handoutSortable) { handoutSortable.destroy(); handoutSortable = null; }
     
@@ -1929,8 +2025,14 @@
                     el.classList.add('hidden');
                     el.onclick = null;
                 },
+                'cancel-ocr-btn': el => el.classList.add('hidden'),
+                'ocr-wait-countdown': el => {
+                    el.textContent = '';
+                    el.classList.add('hidden');
+                },
                 'compress-pdf-info': el => el.textContent = '請選擇檔案',
                 'compress-options': el => el.classList.add('hidden'),
+                'compress-size-estimate': el => el.textContent = '調整品質後，將顯示預估壓縮後大小。',
                 'rotate-pdf-info': el => el.textContent = '請選擇檔案',
                 'rotate-options': el => el.classList.add('hidden'),
                 'rotate-pdf-pages-container': el => el.classList.add('hidden'), 
@@ -1993,7 +2095,8 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
+            // Browsers may dispatch the download after the click handler returns.
+            setTimeout(() => URL.revokeObjectURL(link.href), 60000);
         }
         
         function showDownloadModal(title, message, btnText, blob, filename) {
@@ -2155,7 +2258,8 @@
                     const listItem = document.createElement('div');
                     listItem.className = 'file-list-item draggable p-3 mb-2 flex items-center justify-between cursor-move';
                     listItem.dataset.name = file.name;
-                    listItem.innerHTML = `<span class="truncate">${file.name}</span><span class="close-btn font-bold" onclick="removeFile(this, 'merge-pdf-files')" data-tooltip="移除此檔案">✖</span>`;
+                    listItem.dataset.fileIndex = mergePdfList.children.length;
+                    listItem.innerHTML = `<span class="truncate">${escapeHtml(file.name)}</span><span class="close-btn font-bold" onclick="removeFile(this, 'merge-pdf-files')" data-tooltip="移除此檔案">✖</span>`;
                     mergePdfList.appendChild(listItem);
                 });
                 mergePdfBtn.disabled = mergePdfInput.files.length < 2;
@@ -2166,10 +2270,9 @@
                     const mergedPdf = await PDFDocument.create();
                     const fileItems = [...mergePdfList.querySelectorAll('.file-list-item')];
                     for (const item of fileItems) {
-                        const fileName = item.dataset.name;
-                        const file = Array.from(mergePdfInput.files).find(f => f.name === fileName);
+                        const file = mergePdfInput.files[Number(item.dataset.fileIndex)];
                         const pdfBytes = await readFileAsArrayBuffer(file);
-                        const pdf = await PDFDocument.load(pdfBytes);
+                        const pdf = await loadPdfLibDocument(pdfBytes);
                         const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
                         copiedPages.forEach(page => mergedPdf.addPage(page));
                     }
@@ -2195,7 +2298,7 @@
                 splitPdfBtn.disabled = true;
                 try {
                     const pdfBytes = await readFileAsArrayBuffer(file);
-                    const pdf = await PDFDocument.load(pdfBytes);
+                    const pdf = await loadPdfLibDocument(pdfBytes);
                     document.getElementById('split-pdf-info').textContent = `已選擇：${file.name} (共 ${pdf.getPageCount()} 頁)`;
                     document.getElementById('split-options').classList.remove('hidden');
                     splitPdfBtn.disabled = false;
@@ -2209,7 +2312,7 @@
                  showModal(`<div class="loader mx-auto"></div><p class="mt-4">正在分割 PDF...</p>`);
                  try {
                     const pdfBytes = await readFileAsArrayBuffer(file);
-                    const pdf = await PDFDocument.load(pdfBytes);
+                    const pdf = await loadPdfLibDocument(pdfBytes);
                     const totalPages = pdf.getPageCount();
                     if (mode === 'all') {
                         const zip = new JSZip();
@@ -2242,7 +2345,7 @@
                     }
                  } catch (error) {
                     console.error("分割失敗:", error);
-                    showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">分割失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                        showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">分割失敗</h3><p>${escapeHtml(error.message || '處理時發生錯誤。')}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
                  }
             });
             document.querySelectorAll('input[name="split-mode"]').forEach(radio => {
@@ -2263,7 +2366,7 @@
                 pdfToImageBtn.disabled = true;
                 try {
                     const pdfBytes = await readFileAsArrayBuffer(file);
-                    const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+                    const pdf = await loadPdfJsDocument(pdfBytes);
                     document.getElementById('pdf-to-image-info').textContent = `已選擇：${file.name} (共 ${pdf.numPages} 頁)`;
                     document.getElementById('pdf-to-image-options').classList.remove('hidden');
                     pdfToImageBtn.disabled = false;
@@ -2280,7 +2383,7 @@
                     const format = document.getElementById('image-format').value;
                     const ext = format === 'image/jpeg' ? 'jpg' : 'png';
                     const pdfBytes = await readFileAsArrayBuffer(file);
-                    const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+                    const pdf = await loadPdfJsDocument(pdfBytes);
                     const zip = new JSZip();
                     for (let i = 1; i <= pdf.numPages; i++) {
                         document.getElementById('modal-progress').textContent = `正在轉換第 ${i} / ${pdf.numPages} 頁...`;
@@ -2297,7 +2400,7 @@
                     showDownloadModal('轉換成功！', `已將 ${pdf.numPages} 頁轉換為圖片。`, '下載 ZIP', blob, 'converted_images.zip');
                 } catch (error) {
                     console.error("PDF轉圖片失敗:", error);
-                    showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                    showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${escapeHtml(error.message || '處理時發生錯誤。')}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
                 }
             });
         }
@@ -2341,8 +2444,8 @@
                 for (const file of Array.from(imagesInput.files)) {
                     const listItem = document.createElement('div');
                     listItem.className = 'draggable relative p-2 border rounded-md group';
-                    listItem.dataset.name = file.name;
-                    listItem.innerHTML = `<img src="${await readFileAsDataURL(file)}" class="w-full h-24 object-cover rounded-md"/><div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><span class="text-white text-xs truncate px-1">${file.name}</span></div><span class="close-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold cursor-pointer" onclick="removeFile(this, 'images-files')" data-tooltip="移除此圖片">✖</span>`;
+                    listItem.dataset.fileIndex = Array.from(imagesList.children).length;
+                    listItem.innerHTML = `<img src="${await readFileAsDataURL(file)}" class="w-full h-24 object-cover rounded-md"/><div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><span class="text-white text-xs truncate px-1">${escapeHtml(file.name)}</span></div><span class="close-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold cursor-pointer" onclick="removeFile(this, 'images-files')" data-tooltip="移除此圖片">✖</span>`;
                     imagesList.appendChild(listItem);
                 }
                 imagesToPdfBtn.disabled = imagesInput.files.length === 0;
@@ -2358,7 +2461,7 @@
                     if (document.getElementById('images-orientation').value === 'landscape') pageSize = [pageSize[1], pageSize[0]];
                     const files = Array.from(imagesInput.files);
                     for (const item of [...imagesList.querySelectorAll('.draggable')]) {
-                        const file = files.find(f => f.name === item.dataset.name);
+                        const file = files[Number(item.dataset.fileIndex)];
                         if (!file) continue;
                         const imageBytes = await convertImageToPngArrayBuffer(file);
                         const image = await pdfDoc.embedPng(imageBytes);
@@ -2408,15 +2511,19 @@
             const file = event.target.files[0];
             const ocrStatusDiv = document.getElementById('ocr-status');
             const downloadOcrBtn = document.getElementById('download-ocr-btn');
+            const cancelOcrBtn = document.getElementById('cancel-ocr-btn');
             const ocrResultDiv = document.getElementById('ocr-result');
+            if (activeOcrRun?.cancel) activeOcrRun.cancel('已選擇新的檔案，停止前一項處理。');
             if (!file || file.type !== 'application/pdf') {
                 ocrStatusDiv.textContent = '錯誤：請選擇一個 PDF 檔案！';
                 downloadOcrBtn.classList.add('hidden');
+                cancelOcrBtn.classList.add('hidden');
                 return;
             }
             ocrStatusDiv.innerHTML = '正在讀取檔案...';
             downloadOcrBtn.classList.add('hidden');
             downloadOcrBtn.onclick = null;
+            cancelOcrBtn.classList.add('hidden');
             ocrResultDiv.textContent = '';
             try {
                 const fileReader = new FileReader();
@@ -2425,7 +2532,7 @@
                         await processOcrPdf(new Uint8Array(this.result));
                     } catch (procError) {
                         console.error('OCR 處理程序失敗:', procError);
-                        ocrStatusDiv.innerHTML = `<span class="text-red-600">處理失敗：${procError.message}</span>`;
+                        ocrStatusDiv.innerHTML = `<span class="text-red-600">處理失敗：${escapeHtml(procError.message)}</span>`;
                         downloadOcrBtn.classList.add('hidden');
                     }
                 };
@@ -2433,44 +2540,166 @@
             } catch (error) { ocrStatusDiv.textContent = `檔案讀取錯誤：${error.message}`; }
         }
         
+        function setOcrWaitCountdown(seconds) {
+            const countdown = document.getElementById('ocr-wait-countdown');
+            if (!countdown) return;
+            if (seconds === null) {
+                countdown.textContent = '';
+                countdown.classList.add('hidden');
+                return;
+            }
+            countdown.textContent = `預計最多還要等待 ${Math.max(0, Math.ceil(seconds))} 秒`;
+            countdown.classList.remove('hidden');
+        }
+
+        function createOcrRun() {
+            let cancelPromiseReject;
+            const run = {
+                cancelled: false,
+                reason: '',
+                cancelPromise: new Promise((_, reject) => { cancelPromiseReject = reject; }),
+                cancel(reason = '使用者停止處理。') {
+                    if (this.cancelled) return;
+                    this.cancelled = true;
+                    this.reason = reason;
+                    cancelPromiseReject(new Error(reason));
+                }
+            };
+            // A cancellation can occur while PDF.js is between await points.
+            // Keep that rejection handled until the next cancellable operation observes it.
+            run.cancelPromise.catch(() => {});
+            return run;
+        }
+
+        function withTimeout(promise, timeoutMs, message, run = null) {
+            let timer;
+            let countdownTimer;
+            const startedAt = Date.now();
+            const timeout = new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+            });
+            setOcrWaitCountdown(timeoutMs / 1000);
+            countdownTimer = setInterval(() => {
+                setOcrWaitCountdown((timeoutMs - (Date.now() - startedAt)) / 1000);
+            }, 1000);
+            const races = run ? [promise, timeout, run.cancelPromise] : [promise, timeout];
+            return Promise.race(races).finally(() => {
+                clearTimeout(timer);
+                clearInterval(countdownTimer);
+                setOcrWaitCountdown(null);
+            });
+        }
+
         async function processOcrPdf(pdfData) {
             const ocrStatusDiv = document.getElementById('ocr-status');
             const ocrResultDiv = document.getElementById('ocr-result');
             const downloadOcrBtn = document.getElementById('download-ocr-btn');
+            const cancelOcrBtn = document.getElementById('cancel-ocr-btn');
+            const skippedPages = [];
             let fullText = '';
-            let worker; 
+            let worker = null;
+            let workerStartupError = null;
+            const run = createOcrRun();
+            activeOcrRun = run;
+            cancelOcrBtn.classList.remove('hidden');
+            cancelOcrBtn.onclick = () => run.cancel();
+
+            const stopWorker = async () => {
+                if (!worker) return;
+                const currentWorker = worker;
+                worker = null;
+                try { await currentWorker.terminate(); } catch (_) { /* Worker is already stopped. */ }
+            };
+
+            const getWorker = async () => {
+                if (worker) return worker;
+                if (workerStartupError) throw workerStartupError;
+                ocrStatusDiv.innerHTML = '正在下載並初始化 OCR 引擎…<div class="loader inline-block ml-2 w-5 h-5"></div>';
+                try {
+                    worker = await withTimeout(
+                        Tesseract.createWorker('chi_tra', 1, {
+                            workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.0/dist/worker.min.js',
+                            corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0',
+                            langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+                            cacheMethod: 'write',
+                            logger: message => {
+                                if (message.status) {
+                                    const progress = Number.isFinite(message.progress)
+                                        ? ` ${Math.round(message.progress * 100)}%`
+                                        : '';
+                                    ocrStatusDiv.innerHTML = `OCR 引擎：${escapeHtml(message.status)}${progress}…<div class="loader inline-block ml-2 w-5 h-5"></div>`;
+                                }
+                            }
+                        }),
+                        60000,
+                        'OCR 語言資料載入逾時，請確認網路連線後重試。',
+                        run
+                    );
+                    return worker;
+                } catch (error) {
+                    workerStartupError = error;
+                    throw error;
+                }
+            };
+
             try {
-                ocrStatusDiv.innerHTML = '正在初始化 OCR 引擎...<div class="loader inline-block ml-2 w-5 h-5"></div>';
-                worker = await Tesseract.createWorker('chi_tra+eng');
-                ocrStatusDiv.innerHTML = '正在載入 PDF...<div class="loader inline-block ml-2 w-5 h-5"></div>';
-                const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+                ocrStatusDiv.innerHTML = '正在載入 PDF…<div class="loader inline-block ml-2 w-5 h-5"></div>';
+                const pdf = await loadPdfJsDocument(pdfData);
+
                 for (let i = 1; i <= pdf.numPages; i++) {
-                    ocrStatusDiv.innerHTML = `正在處理第 ${i} / ${pdf.numPages} 頁...<div class="loader inline-block ml-2 w-5 h-5"></div>`;
+                    if (run.cancelled) break;
+                    ocrStatusDiv.innerHTML = `正在處理第 ${i} / ${pdf.numPages} 頁…<div class="loader inline-block ml-2 w-5 h-5"></div>`;
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(' ');
-                    if (pageText.trim().length > 50) {
+                    const pageText = textContent.items.map(item => item.str).join(' ').trim();
+
+                    if (pageText.length > 0) {
                         fullText += pageText;
-                    } else { 
-                        const viewport = page.getViewport({ scale: 2.0 });
-                        const canvas = document.createElement('canvas');
-                        canvas.height = viewport.height;
-                        canvas.width = viewport.width;
-                        await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
-                        const { data: { text } } = await worker.recognize(canvas, {}, {
-                            logger: m => {
-                               if (m.status === 'recognizing text') {
-                                    ocrStatusDiv.innerHTML = `第 ${i} / ${pdf.numPages} 頁：OCR 辨識中... ${Math.round(m.progress * 100)}%<div class="loader inline-block ml-2 w-5 h-5"></div>`;
-                               }
-                            }
-                        });
-                        fullText += text;
+                    } else {
+                        try {
+                            // Render at 144 DPI so that small text inside scanned graphics
+                            // remains readable to the OCR engine.
+                            const viewport = page.getViewport({ scale: 2.0 });
+                            const canvas = document.createElement('canvas');
+                            canvas.height = Math.ceil(viewport.height);
+                            canvas.width = Math.ceil(viewport.width);
+                            await withTimeout(
+                                page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise,
+                                30000,
+                                `第 ${i} 頁畫面轉換逾時。`,
+                                run
+                            );
+
+                            const activeWorker = await getWorker();
+                            const result = await withTimeout(
+                                activeWorker.recognize(canvas, { tessedit_pageseg_mode: '3' }),
+                                120000,
+                                `第 ${i} 頁 OCR 辨識逾時。`,
+                                run
+                            );
+                            fullText += result.data.text.trim();
+                        } catch (pageError) {
+                            if (run.cancelled) break;
+                            skippedPages.push(i);
+                            await stopWorker();
+                            fullText += `[第 ${i} 頁未完成辨識：${pageError.message}]`;
+                        }
                     }
+
                     fullText += `\n\n--- 第 ${i} 頁結束 ---\n\n`;
                     ocrResultDiv.textContent = fullText;
                 }
-                ocrStatusDiv.textContent = `處理完成！共辨識 ${pdf.numPages} 頁。`;
-                
+
+                const skippedMessage = skippedPages.length
+                    ? `；略過 ${skippedPages.length} 頁（${skippedPages.join('、')}）`
+                    : '';
+                const hasResult = fullText.trim().length > 0;
+                ocrStatusDiv.textContent = run.cancelled
+                    ? `已停止處理${hasResult ? '，可下載已完成的文字。' : '，尚未取得文字結果。'}`
+                    : workerStartupError
+                        ? `OCR 引擎啟動失敗：${workerStartupError.message} 請重新選擇檔案後再試。`
+                        : `處理完成！共處理 ${pdf.numPages} 頁${skippedMessage}。`;
+
                 downloadOcrBtn.onclick = () => {
                     const textToDownload = ocrResultDiv.textContent;
                     if (!textToDownload || textToDownload === '尚未處理檔案。') {
@@ -2481,10 +2710,13 @@
                     const blob = new Blob([rtfContent], { type: 'application/rtf' });
                     downloadFile(blob, '辨識結果.rtf');
                 };
-                downloadOcrBtn.classList.remove('hidden');
-    
+                downloadOcrBtn.classList.toggle('hidden', !hasResult);
             } finally {
-                if (worker) await worker.terminate();
+                await stopWorker();
+                setOcrWaitCountdown(null);
+                cancelOcrBtn.classList.add('hidden');
+                cancelOcrBtn.onclick = null;
+                if (activeOcrRun === run) activeOcrRun = null;
             }
         }
     
@@ -2493,15 +2725,76 @@
             const compressPdfBtn = document.getElementById('compress-pdf-btn');
             const compressRatioSlider = document.getElementById('compress-ratio');
             const compressRatioValue = document.getElementById('compress-ratio-value');
+            const compressSizeEstimate = document.getElementById('compress-size-estimate');
+            let estimateTimer = null;
+            let estimateRequestId = 0;
+
+            const formatFileSize = bytes => {
+                if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+                return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+            };
+
+            const estimateCompressedSize = async () => {
+                const requestId = ++estimateRequestId;
+                const file = compressPdfInput.files[0];
+                if (!file) return;
+                const quality = Number(compressRatioSlider.value) / 100;
+                compressSizeEstimate.textContent = '正在依目前品質估算壓縮後大小…';
+
+                try {
+                    const pdfBytes = await readFileAsArrayBuffer(file);
+                    const pdf = await loadPdfJsDocument(pdfBytes);
+                    const samplePageNumbers = [...new Set([1, Math.ceil(pdf.numPages / 2), pdf.numPages])];
+                    let sampleBytes = 0;
+
+                    for (const pageNumber of samplePageNumbers) {
+                        if (requestId !== estimateRequestId) return;
+                        const page = await pdf.getPage(pageNumber);
+                        const viewport = page.getViewport({ scale: 1.5 });
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.ceil(viewport.width);
+                        canvas.height = Math.ceil(viewport.height);
+                        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                        const jpegBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+                        if (!jpegBlob) throw new Error('無法建立預覽影像。');
+                        sampleBytes += jpegBlob.size;
+                    }
+
+                    if (requestId !== estimateRequestId) return;
+                    // The final PDF also stores an invisible text layer and document structure.
+                    const estimatedBytes = Math.round(
+                        (sampleBytes / samplePageNumbers.length) * pdf.numPages + (pdf.numPages * 2048) + 8192
+                    );
+                    const savings = ((file.size - estimatedBytes) / file.size) * 100;
+                    const savingsText = savings >= 0
+                        ? `，預估節省 ${savings.toFixed(1)}%`
+                        : `，預估增加 ${Math.abs(savings).toFixed(1)}%`;
+                    compressSizeEstimate.textContent = `預估壓縮後：約 ${formatFileSize(estimatedBytes)}${savingsText}。開始壓縮後將顯示精確大小。`;
+                } catch (error) {
+                    if (requestId === estimateRequestId) {
+                        compressSizeEstimate.textContent = '目前無法估算大小；完成壓縮後會顯示精確檔案大小。';
+                    }
+                }
+            };
+
+            const scheduleCompressedSizeEstimate = () => {
+                if (estimateTimer) clearTimeout(estimateTimer);
+                estimateTimer = setTimeout(estimateCompressedSize, 350);
+            };
+
             compressRatioSlider.addEventListener('input', (e) => {
                 compressRatioValue.textContent = `${e.target.value}%`;
+                scheduleCompressedSizeEstimate();
             });
     
             compressPdfInput.addEventListener('change', () => {
                 if (!compressPdfInput.files.length) {
+                    estimateRequestId++;
+                    if (estimateTimer) clearTimeout(estimateTimer);
                     document.getElementById('compress-pdf-info').textContent = '請選擇檔案';
                     compressPdfBtn.disabled = true;
                     document.getElementById('compress-options').classList.add('hidden');
+                    compressSizeEstimate.textContent = '調整品質後，將顯示預估壓縮後大小。';
                     return;
                 }
                 const file = compressPdfInput.files[0];
@@ -2509,6 +2802,7 @@
                 document.getElementById('compress-pdf-info').textContent = `已選擇：${file.name} (大小: ${originalSize} MB)`;
                 compressPdfBtn.disabled = false;
                 document.getElementById('compress-options').classList.remove('hidden');
+                scheduleCompressedSizeEstimate();
             });
     
             compressPdfBtn.addEventListener('click', async () => {
@@ -2516,6 +2810,10 @@
                 if (!file) return;
     
                 const originalSize = file.size;
+                if (file.size > 100 * 1024 * 1024) {
+                    showModal('<h3 class="text-xl font-bold text-yellow-600 mb-4">檔案過大</h3><p>壓縮功能目前限制單一檔案為 100 MB，以避免瀏覽器記憶體不足。</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>');
+                    return;
+                }
                 showModal(`<div class="loader mx-auto"></div><p id="modal-progress" class="mt-4">準備壓縮...</p>`);
     
                 try {
@@ -2542,7 +2840,7 @@
                     const quality = parseInt(document.getElementById('compress-ratio').value) / 100;
                     const pdfBytes = await readFileAsArrayBuffer(file);
                     
-                    const pdfjsDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+                    const pdfjsDoc = await loadPdfJsDocument(pdfBytes);
                     const newPdfDoc = await PDFDocument.create();
     
                     newPdfDoc.registerFontkit(fontkit);
@@ -2609,7 +2907,7 @@
                     showDownloadModal('壓縮成功！', message, '下載壓縮後的 PDF', blob, `compressed_${file.name}`);
                 } catch (error) {
                     console.error("壓縮失敗:", error);
-                    showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">壓縮失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                    showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">壓縮失敗</h3><p>${escapeHtml(error.message || '處理時發生錯誤。')}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
                 }
             });
         }
@@ -2649,7 +2947,7 @@
     
                 try {
                     const pdfBytes = await readFileAsArrayBuffer(file);
-                    const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+                    const pdf = await loadPdfJsDocument(pdfBytes);
                     
                     const fragment = document.createDocumentFragment();
                     const renderPromises = [];
@@ -2729,7 +3027,7 @@
                     const { degrees } = PDFLib;
     
                     const pdfBytes = await readFileAsArrayBuffer(file);
-                    const pdfDoc = await PDFDocument.load(pdfBytes);
+                    const pdfDoc = await loadPdfLibDocument(pdfBytes);
                     const totalPages = pdfDoc.getPageCount();
     
                     const pagesToRotate = new Set();
@@ -2774,7 +3072,7 @@
     
                 } catch (error) {
                     console.error("旋轉失敗:", error);
-                    showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">旋轉失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                    showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">旋轉失敗</h3><p>${escapeHtml(error.message || '處理時發生錯誤。')}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
                 }
             });
         }
@@ -2803,7 +3101,7 @@
 
             try {
                 const pdfBytes = await readFileAsArrayBuffer(file);
-                const pdfDoc = await PDFDocument.load(pdfBytes);
+                const pdfDoc = await loadPdfLibDocument(pdfBytes);
                 
                 const isBold = document.getElementById('page-number-bold').checked;
                 const font = await pdfDoc.embedFont(isBold ? StandardFonts.HelveticaBold : StandardFonts.Helvetica);
@@ -2858,7 +3156,7 @@
 
             } catch (error) {
                 console.error("加頁碼失敗:", error);
-                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">加頁碼失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">加頁碼失敗</h3><p>${escapeHtml(error.message || '處理時發生錯誤。')}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
             }
         });
     }
@@ -2964,9 +3262,14 @@
 
             try {
                 const pdfBytes = await readFileAsArrayBuffer(file);
-                const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice(0), password: password });
+                if (pdfBytes.byteLength > MAX_INPUT_BYTES) throw new Error('PDF 檔案超過 200 MB 限制。');
+                const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice(0), ...(password ? { password } : {}) });
                 const pdfjsDoc = await loadingTask.promise;
-                const pdfLibDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: !!password });
+                if (pdfjsDoc.numPages > MAX_PDF_PAGES) {
+                    await pdfjsDoc.destroy();
+                    throw new Error('PDF 超過 500 頁限制，以避免瀏覽器記憶體不足。');
+                }
+                const pdfLibDoc = await loadPdfLibDocument(pdfBytes, { ignoreEncryption: !!password });
                 const sourceIndex = pageSources.push(pdfLibDoc) - 1;
 
                 const fragment = document.createDocumentFragment();
@@ -3058,10 +3361,10 @@
                 const blankPdfDoc = await PDFDocument.create();
                 const size = document.getElementById('blank-page-size').value;
                 const orientation = document.getElementById('blank-page-orientation').value;
-                let pageSize = PageSizes[size];
-                if (orientation === 'landscape') {
-                    pageSize = [pageSize[1], pageSize[0]];
-                }
+                const selectedPageSize = PageSizes[size];
+                const pageSize = orientation === 'landscape'
+                    ? [Math.max(...selectedPageSize), Math.min(...selectedPageSize)]
+                    : [Math.min(...selectedPageSize), Math.max(...selectedPageSize)];
                 blankPdfDoc.addPage(pageSize);
                 
                 const sourceIndex = pageSources.push(blankPdfDoc) - 1;
@@ -3141,8 +3444,18 @@
             pageItem.dataset.pageIndex = pageIndex;
             pageItem.dataset.isBlank = true;
 
+            const blankPage = pageSources[sourceIndex]?.getPage(pageIndex);
+            const { width = 150, height = 180 } = blankPage?.getSize() || {};
+            const maxWidth = 150;
+            const maxHeight = 180;
+            const previewScale = Math.min(maxWidth / width, maxHeight / height);
+            const previewWidth = Math.max(1, Math.round(width * previewScale));
+            const previewHeight = Math.max(1, Math.round(height * previewScale));
+
             const blankIndicator = document.createElement('div');
-            blankIndicator.className = 'w-[150px] h-[180px] bg-white border-2 border-dashed border-gray-300 flex items-center justify-center text-sm text-gray-500';
+            blankIndicator.className = 'bg-white border-2 border-dashed border-gray-300 flex items-center justify-center text-sm text-gray-500';
+            blankIndicator.style.width = `${previewWidth}px`;
+            blankIndicator.style.height = `${previewHeight}px`;
             blankIndicator.textContent = '空白頁';
             pageItem.appendChild(blankIndicator);
 
@@ -3191,7 +3504,7 @@
                 showDownloadModal('儲存成功！', '您的 PDF 已根據變更重新儲存。', '下載編輯後的 PDF', blob, `edited_document.pdf`);
             } catch(error) {
                 console.error("編輯儲存失敗:", error);
-                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">儲存失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">儲存失敗</h3><p>${escapeHtml(error.message || '處理時發生錯誤。')}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
             }
         });
     }
@@ -3217,7 +3530,7 @@
             
             try {
                 const pdfBytes = await readFileAsArrayBuffer(file);
-                const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+                const pdf = await loadPdfJsDocument(pdfBytes);
                 const zip = new JSZip();
                 let imageCount = 0;
 
@@ -3302,7 +3615,7 @@
 
             } catch (error) {
                 console.error("圖片擷取失敗:", error);
-                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">擷取失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">擷取失敗</h3><p>${escapeHtml(error.message || '處理時發生錯誤。')}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
             }
         });
     }
@@ -3334,7 +3647,7 @@
 
             try {
                 const pdfBytes = await readFileAsArrayBuffer(file);
-                const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+                const pdf = await loadPdfJsDocument(pdfBytes);
                 const totalPages = pdf.numPages;
                 let bodyContent = '';
                 let finalHtml = '';
@@ -3368,22 +3681,23 @@
 
             } catch (error) {
                  console.error("PDF轉網頁失敗:", error);
-                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                 showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${escapeHtml(error.message || '處理時發生錯誤。')}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
             }
         });
     }
 
     function getScrollableHtml(title, bodyContent, maxWidth) {
+        const safeWidth = [375, 800, 1024, 1366, 1920].includes(Number(maxWidth)) ? Number(maxWidth) : 800;
         return `
             <!DOCTYPE html>
             <html lang="zh-Hant">
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>${title}</title>
+                <title>${escapeHtml(title)}</title>
                 <style>
                     body { margin: 0; background-color: #f0f0f0; display: flex; justify-content: center; }
-                    .container { max-width: ${maxWidth}px; width: 100%; }
+                    .container { max-width: ${safeWidth}px; width: 100%; }
                     img { display: block; width: 100%; height: auto; margin-bottom: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
                 </style>
             </head>
@@ -3402,7 +3716,7 @@
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>${title}</title>
+                <title>${escapeHtml(title)}</title>
                 <style>
                     body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #222; color: white; font-family: sans-serif; }
                     .slideshow-container { position: relative; width: 100%; height: 100%; }
@@ -3469,15 +3783,21 @@
         wordToPdfBtn.addEventListener('click', async () => {
             const file = wordFileInput.files[0];
             if (!file) return;
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                showModal('<p>瀏覽器封鎖了列印視窗，請允許此頁開啟新視窗後重試。</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>');
+                return;
+            }
             showModal(`<div class="loader mx-auto"></div><p class="mt-4">正在轉換 Word 檔案...</p>`);
             try {
                 const arrayBuffer = await readFileAsArrayBuffer(file);
                 const result = await mammoth.convertToHtml({ arrayBuffer });
-                printHtml(result.value, file.name);
+                printHtml(result.value, file.name, printWindow);
                 hideModal();
             } catch (error) {
+                printWindow.close();
                 console.error("Word 轉換失敗:", error);
-                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${error.message || '無法處理此 Word 檔案。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${escapeHtml(error.message || '無法處理此 Word 檔案。')}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
             }
         });
     }
@@ -3492,21 +3812,27 @@
         excelToPdfBtn.addEventListener('click', async () => {
             const file = excelFileInput.files[0];
             if (!file) return;
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                showModal('<p>瀏覽器封鎖了列印視窗，請允許此頁開啟新視窗後重試。</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>');
+                return;
+            }
             showModal(`<div class="loader mx-auto"></div><p class="mt-4">正在轉換 Excel 檔案...</p>`);
             try {
                 const data = await readFileAsArrayBuffer(file);
                 const workbook = XLSX.read(data, { type: 'array' });
                 let finalHtml = '';
                 workbook.SheetNames.forEach(sheetName => {
-                    finalHtml += `<h2>${sheetName}</h2>`;
+                    finalHtml += `<h2>${escapeHtml(sheetName)}</h2>`;
                     const worksheet = workbook.Sheets[sheetName];
                     finalHtml += XLSX.utils.sheet_to_html(worksheet);
                 });
-                printHtml(finalHtml, file.name);
+                printHtml(finalHtml, file.name, printWindow);
                 hideModal();
             } catch (error) {
+                printWindow.close();
                 console.error("Excel 轉換失敗:", error);
-                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${error.message || '無法處理此 Excel 檔案。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">轉換失敗</h3><p>${escapeHtml(error.message || '無法處理此 Excel 檔案。')}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
             }
         });
     }
@@ -3593,7 +3919,7 @@
             
             try {
                 const pdfBytes = await readFileAsArrayBuffer(file);
-                const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+                const pdf = await loadPdfJsDocument(pdfBytes);
                 
                 const fragment = document.createDocumentFragment();
                 const renderPromises = [];
@@ -3929,19 +4255,18 @@ const customTextFirstPageOnly = document.getElementById('handout-custom-text-fir
 
             } catch (error) {
                 console.error("講義製作失敗:", error);
-                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">製作失敗</h3><p>${error.message || '處理時發生錯誤。'}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
+                showModal(`<h3 class="text-xl font-bold text-red-600 mb-4">製作失敗</h3><p>${escapeHtml(error.message || '處理時發生錯誤。')}</p><button onclick="hideModal()" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">關閉</button>`);
             }
         });
     }
 
-    function printHtml(htmlContent, title) {
-        const printWindow = window.open('', '_blank');
+    function printHtml(htmlContent, title, printWindow) {
         printWindow.document.write(`
             <!DOCTYPE html>
             <html lang="zh-Hant">
             <head>
                 <meta charset="UTF-8">
-                <title>列印預覽 - ${title}</title>
+                <title>列印預覽 - ${escapeHtml(title)}</title>
                 <style>
                     body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; margin: 2rem; }
                     table { border-collapse: collapse; width: 100%; margin-bottom: 2rem; page-break-inside: auto; }
@@ -3958,7 +4283,7 @@ const customTextFirstPageOnly = document.getElementById('handout-custom-text-fir
                 </style>
             </head>
             <body>
-                ${htmlContent}
+                ${sanitizeHtmlFragment(htmlContent)}
                 <script>
                     window.onload = function() {
                         setTimeout(function() { 
@@ -3974,4 +4299,4 @@ const customTextFirstPageOnly = document.getElementById('handout-custom-text-fir
 });
 </script>
 </body>
-</html></div></body></html></div></body></html></div></body></html></div></body></html>
+</html>
