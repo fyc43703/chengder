@@ -822,7 +822,8 @@
                 if (!String(term || '').trim()) return episodes;
                 const matched = [], others = [];
                 episodes.forEach(episode => (episodeMatchesSearch(episode, term) ? matched : others).push(episode));
-                return matched.concat(others);
+                const newestFirst = (a, b) => (Date.parse(b.releaseDate) || 0) - (Date.parse(a.releaseDate) || 0);
+                return matched.sort(newestFirst).concat(others.sort(newestFirst));
             };
             const getEpisodeSearchExcerpt = (episode, term) => {
                 const description = plainText(episode.description);
@@ -1564,11 +1565,33 @@
                 throw new Error(`Apple 各區商店均無單集（${failures.join('；')}）`);
             }
 
+            // 搜尋單集索引可補足 RSS 或 lookup 未收錄的舊單集。
+            async function searchITunesEpisodes(collectionId, podcastInfo, term, signal) {
+                const url = `${ITUNES_BASE}/search?term=${encodeURIComponent(term)}&entity=podcastEpisode&limit=200&country=tw`;
+                const data = await fetchJsonp(url, 12000, signal);
+                return (data.results || []).filter(item =>
+                    String(item.collectionId) === String(collectionId) && item.episodeUrl
+                ).map(item => ({
+                    trackId: item.trackId || item.episodeGuid || item.episodeUrl,
+                    trackName: item.trackName || '未命名單集',
+                    episodeUrl: item.episodeUrl,
+                    podcastCollectionId: collectionId,
+                    _source: 'itunes',
+                    releaseDate: item.releaseDate || '',
+                    description: item.description || item.shortDescription || '',
+                    artworkUrl60: item.artworkUrl60 || podcastInfo.artworkUrl60,
+                    artworkUrl600: item.artworkUrl600 || item.artworkUrl160 || podcastInfo.artworkUrl600,
+                    duration: Math.round((item.trackTimeMillis || 0) / 1000),
+                    fileSize: 0,
+                }));
+            }
+
             async function fetchEpisodesForSearch(collectionId, podcastInfo, signal) {
                 // 深度搜尋僅在使用者進入搜尋結果後啟動，並行合併公開 RSS 與 Apple 資料。
                 const results = await Promise.allSettled([
                     parseFeed(podcastInfo.feedUrl, podcastInfo, signal),
                     fetchEpisodesFromITunes(collectionId, podcastInfo, signal),
+                    searchITunesEpisodes(collectionId, podcastInfo, searchState.term.trim(), signal),
                 ]);
                 const episodes = [];
                 const knownUrls = new Set();
@@ -1716,7 +1739,7 @@
                         : '・此批載入的單集未含此關鍵字';
                 }
 
-                const episodesHTML = orderedEpisodes.slice(0, 50).map((ep, index) => {
+                const episodesHTML = orderedEpisodes.slice(0, 20).map((ep, index) => {
                     const durationFormatted = formatDuration(ep.duration);
                     const sizeFormatted = formatFileSize(ep.fileSize);
                     
