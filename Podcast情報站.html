@@ -1109,36 +1109,27 @@
                 } catch (error) { domElements.semanticStatus.textContent = `匯入失敗：${error.message}`; showToast(error.message, 'error'); }
                 finally { event.target.value = ''; }
             };
-            const APPLE_CHARTS_FEED = 'https://rss.marketingtools.apple.com/api/v2/tw/podcasts/top-podcasts/20/podcasts.json';
+            // Apple 舊版 iTunes 排行 JSON Feed 支援瀏覽器跨網域讀取；Marketing Tools Feed 不開放此頁面所需的 CORS。
+            const APPLE_CHARTS_FEED = 'https://itunes.apple.com/tw/rss/toppodcasts/limit=20/json';
             const fetchAppleCharts = async () => {
                 domElements.appleChartsStatus.textContent = '正在向 Apple 載入台灣熱門排行…';
                 domElements.appleChartsList.innerHTML = '';
                 domElements.appleChartsUpdated.textContent = '';
                 try {
-                    let payload = null;
-                    const candidates = [
-                        { name: 'Apple Feed', url: APPLE_CHARTS_FEED },
-                        ...RSS_PROXY_BUILDERS.map((build, index) => ({ name: `公開讀取代理 ${index + 1}`, url: build(APPLE_CHARTS_FEED) })),
-                    ];
-                    const failures = [];
-                    for (const candidate of candidates) {
-                        try {
-                            const response = await fetchWithTimeout(candidate.url, { timeout: 12000, headers: { Accept: 'application/json' } });
-                            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                            const data = await response.json();
-                            if (!Array.isArray(data.feed?.results)) throw new Error('回應格式不符');
-                            payload = data;
-                            break;
-                        } catch (error) {
-                            failures.push(`${candidate.name}: ${error.message}`);
-                            console.warn('[Apple Charts]', candidate.name, error.message);
-                        }
-                    }
-                    if (!payload) throw new Error(failures.join('；'));
+                    const response = await fetchWithTimeout(APPLE_CHARTS_FEED, { timeout: 15000, headers: { Accept: 'application/json' } });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const payload = await response.json();
                     const feed = payload.feed;
-                    const results = Array.isArray(feed?.results) ? feed.results.slice(0, 20) : [];
+                    const entries = Array.isArray(feed?.entry) ? feed.entry : [];
+                    const results = entries.slice(0, 20).map(entry => ({
+                        name: entry['im:name']?.label || entry.title?.label || '',
+                        artistName: entry['im:artist']?.label || '',
+                        artworkUrl: entry['im:image']?.at(-1)?.label || '',
+                        url: entry.link?.attributes?.href || entry.id?.label || '',
+                        genres: entry.category?.attributes?.label ? [{ name: entry.category.attributes.label }] : [],
+                    }));
                     if (!results.length) throw new Error('Apple Feed 沒有回傳排行資料');
-                    const updated = feed.updated || payload.updated;
+                    const updated = feed.updated?.label || feed.updated;
                     if (updated) domElements.appleChartsUpdated.textContent = `Apple Feed 更新時間：${new Date(updated).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}`;
                     domElements.appleChartsStatus.textContent = `Apple Podcasts 台灣區熱門節目，共 ${results.length} 筆。`;
                     domElements.appleChartsList.innerHTML = results.map((podcast, index) => {
