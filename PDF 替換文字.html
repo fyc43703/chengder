@@ -1,26 +1,15 @@
-<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>PDF替換文字與編輯</title>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
-      <style>
-      html, body { margin: 0; padding: 0; background: #FFFFFF; color: #1d1d1f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; font-size: 15px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-      h1, h2, h3, h4, h5, h6, b, strong { font-weight: 600; } h1 { font-weight: 700; }
-      ul, ol { padding-left: 2em; margin-top: 1em; margin-bottom: 1em; } ul { list-style-type: disc; } ol { list-style-type: decimal; } li { display: list-item; }
-      .hljs-container { padding: 1.5rem; border-radius: .75rem; overflow-x: auto; background: #fcfcfd; border: 1px solid #d2d2d7; }
-      .text-highlight{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-multiline{background:linear-gradient(180deg,transparent 25%,#B3D7FF 25%,#B3D7FF 75%,transparent 75%);background-size:100% 1.5em;background-repeat:repeat;padding:0 2px;margin:0;display:inline;line-height:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px;font-weight:500}
-      .text-highlight-error{background:linear-gradient(180deg,transparent 25%,#FFD7D8 25%,#FFD7D8 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#D92525}
-      .text-highlight-success{background:linear-gradient(180deg,transparent 25%,#D4EDDA 25%,#D4EDDA 75%,transparent 75%);padding:0 2px;border-radius:2px;color:#155724}
-    </style></head><body><div><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF替換文字與編輯</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <title>PDF 文件編輯 · 木紋工作室 v3</title>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- 載入 Google Fonts 以確保字型可用性 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@400;700&family=Zen+Hei:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             /* --- Light Mode (Default) --- */
@@ -374,6 +363,7 @@
             opacity: 0.5;
         }
 
+        .theme-switch:focus-within {outline:3px solid #24a5c7;outline-offset:3px;}
         .btn:hover:not(:disabled) {
             transform: translateY(-1px);
             filter: brightness(1.05);
@@ -1066,6 +1056,190 @@
             margin-bottom: 0;
         }
         .feature-card p { font-size: 0.95em; line-height: 1.7; color: var(--system-text); }
+
+        :root { --system-blue:#185b70; --system-gray-bg:#f4f6f8; --control-panel-bg:#fff; --system-text:#233342; }
+        .container {padding:0;perspective:none;}
+        .main-window {box-shadow:none;}
+        .fixed-content {padding:12px 24px 6px;max-height:52vh;overflow:auto;background:var(--control-panel-bg);}
+        .title-bar {padding:0 0 12px;gap:12px;border-bottom:1px solid var(--input-border);}
+        .title-bar-left {display:none;}
+        .title-bar-center {align-items:flex-start;}
+        .title-bar h1 {font-size:24px;color:var(--system-text);}
+        .title-bar-subtitle {font-size:13px;font-weight:400;text-align:left;}
+        .title-bar-creator {font-size:11px;align-self:flex-start;}
+        .btn,.tool-btn {min-height:40px;box-shadow:none!important;}
+        .theme-switch:focus-within {outline:3px solid #24a5c7;outline-offset:3px;}
+        .btn:hover:not(:disabled) {transform:none;}
+        button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible {outline:3px solid #24a5c7;outline-offset:3px;}
+        .btn-primary,.btn-navy,.btn-success,#previewBtn {background:#185b70;color:white;}
+        .btn-success {background:#176847;}
+        .primary-toolbar {display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 0;}
+        .primary-toolbar #openExportModalBtn {margin-left:auto;}
+        .document-strip {display:flex;justify-content:space-between;gap:12px;font-size:12px;padding-top:10px;color:var(--placeholder-text);}
+        body,input,button,select,summary {font-family:'Microsoft JhengHei','Segoe UI',sans-serif;}
+        .editing-hint,.export-note {font-size:13px;line-height:1.6;color:var(--placeholder-text);margin:8px 0;}
+        #searchReplacePanel {display:flex;flex-wrap:wrap;gap:10px;padding:12px;background:var(--system-gray-bg);}
+        #searchReplacePanel .search-replace-group {flex:1 1 300px;flex-wrap:wrap;}
+        #searchReplacePanel input[type=text] {min-width:130px;min-height:42px;}
+        #searchText {padding-right:65px!important;}
+        #replaceText {flex:1;width:auto!important;}
+        .toolbar-label {width:100%;font-size:12px;font-weight:700;letter-spacing:.05em;}
+        .main-action-bar-wrapper {margin-bottom:6px;}
+        summary {cursor:pointer;padding:8px 0;font-size:13px;font-weight:600;}
+        .main-action-bar {justify-content:flex-start;padding:10px;}
+        .drawing-tools {flex-wrap:wrap;height:auto;gap:4px;}
+        .scrollable-content {min-height:0;background:var(--system-gray-bg-tint);}
+        .welcome-card {max-width:920px;margin:24px auto;padding:36px;text-align:left;background:var(--control-panel-bg);border:1px solid var(--input-border);border-radius:18px;}
+        .welcome-card h2 {font-size:28px;margin:12px 0;color:var(--system-text);}
+        .welcome-card p {color:var(--placeholder-text);font-size:14px;line-height:1.8;}
+        .eyebrow {font-size:11px;letter-spacing:.16em;color:var(--system-blue);font-weight:700;}
+        .welcome-steps {display:grid;grid-template-columns:repeat(3,1fr);gap:24px;padding:28px 0;border-bottom:1px solid var(--input-border);margin-bottom:18px;}
+        .welcome-note {font-size:12px!important;}
+        #initial-import-section {padding:16px 0 8px;text-align:left;}
+        #importFileBtn {background:#185b70;color:white;padding:12px 24px;height:46px;}
+        #exportModal {max-height:90vh;overflow:auto;max-width:520px;}
+        .preview-header {flex-wrap:wrap;gap:10px;}
+        .preview-nav-controls,.preview-zoom-controls {flex-wrap:wrap;}
+        #previewModal {width:96vw;height:94vh;}
+        @media(max-width:700px) {
+          .fixed-content {padding:10px 12px 4px;max-height:58vh;}
+          .title-bar h1 {font-size:21px;} .title-bar-subtitle{font-size:11px;}
+          .document-strip {flex-direction:column;gap:2px;}
+          .editing-hint {font-size:11px;line-height:1.4;margin:4px 0;}
+          .title-bar-creator {display:none;}
+          .primary-toolbar {gap:5px;padding:6px 0;}
+          .primary-toolbar .btn {padding:6px 9px;font-size:12px;}
+          .document-strip {font-size:11px;}
+          #searchReplacePanel {padding:8px;gap:6px;}
+          .status-message {padding:8px!important;font-size:12px!important;margin:4px 0!important;}
+          .welcome-card {margin:14px;padding:22px;}.welcome-card h2{font-size:22px;}
+          .welcome-steps {grid-template-columns:1fr;gap:16px;padding:18px 0;}
+          .primary-toolbar #openExportModalBtn{margin-left:0;}
+          .preview-header h3 {display:none;}.preview-nav-controls{gap:4px;}
+          #previewThumbnailContainer {width:110px;min-width:110px;}
+          #searchReplacePanel .search-replace-group{flex-basis:100%;}
+        }
+
+        /* v2: Apple-inspired controls, light timber and paper tones */
+        :root {
+          --system-blue:#436b5b;--system-green:#527c66;--system-gray-bg:#f8f6f1;
+          --system-gray-bg-tint:#eee7da;--system-text:#363c37;--control-panel-bg:rgba(255,254,250,.94);
+          --input-bg:#fffefa;--input-border:#deded5;--secondary-btn-bg:#f1f1eb;--secondary-btn-border:#e1e2da;
+          --secondary-btn-hover:#e8ebe3;--placeholder-text:#73796e;--placeholder-heading:#363c37;
+          --glass-bg:rgba(255,254,250,.82);--modal-bg:#fffefa;--highlight-bg:rgba(111,151,115,.2);
+          --wood-base:#eee5d5;--wood-grain:rgba(160,126,78,.055);--wood-grain-fine:rgba(141,111,69,.035);
+        }
+        body,input,button,select,summary {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft JhengHei',sans-serif;}
+        body {background:var(--wood-base);letter-spacing:.01em;}
+        .scrollable-content {background-color:var(--wood-base);background-image:linear-gradient(105deg,rgba(255,255,255,.5),transparent 65%),repeating-linear-gradient(91deg,transparent 0px,transparent 73px,var(--wood-grain) 74px,transparent 76px,transparent 139px),repeating-linear-gradient(89deg,transparent 0px,transparent 7px,var(--wood-grain-fine) 8px,transparent 10px,transparent 19px);}
+        .fixed-content {background:var(--glass-bg);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 1px 0 #645d4b1f,0 6px 20px #45361c09;padding:16px 28px 8px;}
+        .title-bar {padding-bottom:14px;border-color:#787d6c29;}
+        .brand-line {display:flex;align-items:center;gap:12px;}
+        .brand-mark {display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:linear-gradient(145deg,#fffefa,#ede8dc);border:1px solid #e0dfd3;box-shadow:0 3px 8px #51442b0a;color:#677b65;font-size:30px;font-weight:300;}
+        .brand-eyebrow {font-size:9px;letter-spacing:.19em;color:var(--placeholder-text);margin-bottom:2px;}
+        .title-bar h1 {font-size:21px;letter-spacing:.04em;font-weight:600;line-height:1.25;}
+        .title-bar-subtitle {margin:8px 0 0 56px;font-size:11px;color:var(--placeholder-text);letter-spacing:.03em;}
+        .title-bar-creator {margin-left:56px;margin-top:3px;font-size:10px;font-weight:400;color:var(--placeholder-text);}
+        .version-chip {margin-left:6px;border-left:1px solid var(--input-border);padding-left:8px;}
+        .theme-switch-wrapper {gap:9px;}.theme-caption {font-size:11px;color:var(--placeholder-text);}
+        .theme-switch {width:38px;height:22px;}.slider:before {height:16px;width:16px;bottom:3px;left:3px;}
+        input:checked + .slider:before {transform:translateX(16px);}input:checked + .slider {background:#6b846e;}
+        .btn {border-radius:9px;font-size:13px;font-weight:500;min-height:38px;height:38px;transition:background .15s,box-shadow .15s;}
+        .btn-secondary,.btn-warning {border:1px solid var(--secondary-btn-border);background:var(--secondary-btn-bg);color:var(--system-text);}
+        .btn-primary,.btn-navy,#previewBtn {background:#506e5d;color:#fff;}.btn-success {background:#3f6653;color:white;}
+        .btn:hover:not(:disabled) {filter:none;box-shadow:0 2px 7px #304c3520!important;}.btn:disabled {opacity:.42;}
+        .primary-toolbar {padding:12px 0;gap:7px;}
+        .primary-toolbar .zoom-group {display:flex;background:var(--secondary-btn-bg);border:1px solid var(--secondary-btn-border);border-radius:10px;padding:2px;gap:2px;}
+        .primary-toolbar .zoom-group .btn {border:0;background:transparent;min-height:32px;height:32px;padding:6px 10px;}
+        .primary-toolbar .zoom-group .btn:hover {background:var(--input-bg);}
+        .primary-toolbar #previewBtn {background:var(--secondary-btn-bg);border:1px solid var(--secondary-btn-border);color:var(--system-text);}
+        .page-indicator {border:none;background:transparent;font-size:12px;color:var(--placeholder-text);}
+        .document-strip {padding-top:10px;align-items:center;}
+        .document-identity {display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;}
+        #fileNameLabel {max-width:330px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--system-text);font-weight:600;font-size:12px;}
+        #documentInfo {font-size:11px;color:var(--placeholder-text);font-weight:400;}
+        .file-dot {height:6px;width:6px;background:#7a9774;border-radius:50%;flex-shrink:0;}
+        .safe-tag {white-space:nowrap;font-size:10px;color:var(--placeholder-text);}
+        .editing-hint {font-size:11px;margin:6px 0 0;line-height:1.6;}
+        #searchReplacePanel {background:rgba(246,246,239,.7);border-color:var(--input-border);border-radius:12px;padding:10px 12px;gap:8px;margin-bottom:5px;}
+        .toolbar-label {font-size:11px;letter-spacing:.05em;color:var(--placeholder-text);font-weight:500;}
+        #searchReplacePanel input[type=text] {background:var(--input-bg);border:1px solid var(--input-border);border-radius:8px;min-height:38px;font-size:13px;}
+        #searchReplacePanel label {font-size:12px;font-weight:500;color:var(--system-text);}
+        #searchCount {border:0;border-radius:5px;background:#ecefe5;color:#65745c;font-size:10px;}
+        .btn-nav {background:#e6ebdf;width:32px;padding:6px;border:1px solid #dce3d4;}.btn-nav svg {stroke:#577251;stroke-width:2;}
+        .action-buttons-group {gap:6px;}summary {font-size:12px;font-weight:400;color:var(--placeholder-text);padding:8px 2px;}
+        .main-action-bar {background:var(--input-bg);border-radius:12px;border-color:var(--input-border);box-shadow:none;}
+        .main-action-bar .btn-like-group {background:#7d806b;border-radius:8px;height:36px;}.main-action-bar .btn-like-group label {font-size:11px;}
+        .drawing-tools {border-color:var(--input-border);background:var(--secondary-btn-bg);padding:4px;border-radius:8px;}
+        .tool-btn.active {background:#53715e;color:#fff;border-color:#53715e;}
+        #initial-import-section {padding:12px 0 4px;text-align:right;}
+        #importFileBtn {background:var(--secondary-btn-bg);color:var(--system-text);border:1px solid var(--secondary-btn-border);border-radius:9px;height:36px;font-size:12px;padding:8px 16px;}
+        .welcome-card {display:grid;grid-template-columns:1.1fr 1fr;position:relative;max-width:1000px;margin:38px auto 28px;padding:48px 54px 22px;border-radius:22px;border:1px solid #ffffffbf;background:rgba(255,254,249,.9);box-shadow:0 22px 60px #5e4c2d12,0 2px 6px #5e4c2d06;overflow:hidden;}
+        .welcome-copy {padding:16px 0 25px;z-index:1;}.eyebrow {font-size:11px;letter-spacing:.14em;color:#82927c;font-weight:500;}
+        .welcome-card h2 {font-size:32px;font-weight:500;line-height:1.5;letter-spacing:.08em;margin:20px 0 16px;color:#3e493c;}
+        .welcome-card .welcome-lead {font-size:14px;line-height:2.05;color:#798071;font-weight:400;}
+        .welcome-import {margin-top:24px;padding:10px 18px;background:#4d6b55;color:#fff;height:42px;box-shadow:0 4px 10px #41634d16!important;gap:24px;}
+        .welcome-import span {font-size:17px;font-weight:300;}.welcome-small {font-size:10px!important;margin-top:10px;letter-spacing:.04em;}
+        .paper-scene {height:300px;position:relative;align-self:center;justify-self:center;width:300px;pointer-events:none;}
+        .paper-front,.paper-back {position:absolute;width:185px;height:245px;left:48px;top:8px;border-radius:3px;border:1px solid #deded2;}
+        .paper-back {background:#ede8da;transform:rotate(-9deg);left:39px;top:13px;}
+        .paper-front {background:linear-gradient(135deg,#fff,#fdfcf5);transform:rotate(5deg);box-shadow:8px 16px 28px #75684920;padding:22px 19px;color:#89927e;z-index:2;}
+        .paper-head {font-size:8px;letter-spacing:.17em;color:#a5ac9b;}.paper-rule {width:24px;height:2px;background:#a4b494;margin:10px 0 15px;}
+        .paper-title {font-size:11px;font-weight:600;letter-spacing:.025em;white-space:nowrap;}
+        .paper-lines {margin:14px 0;display:flex;flex-direction:column;gap:5px;}.paper-lines i {height:2px;display:block;background:#e3e7dc;width:100%;}
+        .paper-lines i:last-child {width:73%;}.paper-lines.short i {width:90%;}.paper-lines.short i:last-child {width:56%;}
+        .paper-highlight {font-size:8px;background:#eff2e6;padding:5px 4px;margin-left:-4px;white-space:nowrap;}
+        .paper-check {position:absolute;right:15px;bottom:17px;color:#99ac8c;background:#f0f4ea;border:1px solid #dce5d2;width:22px;height:22px;display:grid;place-items:center;border-radius:50%;font-size:12px;}
+        .paper-number {position:absolute;bottom:20px;left:19px;font-size:7px;letter-spacing:.1em;color:#b2b6a7;}
+        .botanical {position:absolute;width:91px;height:140px;right:0;bottom:21px;color:#9aa987;transform:rotate(16deg);z-index:3;}
+        .scene-note {position:absolute;bottom:0;left:46px;font-family:Georgia,serif;font-style:italic;font-size:11px;color:#9a9d8f;letter-spacing:.04em;}
+        .welcome-steps {grid-column:1/-1;grid-template-columns:repeat(3,1fr);gap:34px;padding:25px 0 23px;margin:8px 0 0;border-top:1px solid #e5e6dc;border-bottom:0;}
+        .welcome-steps > div {position:relative;padding-left:31px;}
+        .step-number {position:absolute;left:0;top:0;font-size:10px;color:#9ba88e;border:1px solid #dfe5d5;border-radius:50%;width:22px;height:22px;display:grid;place-items:center;}
+        .welcome-steps b {font-size:12px;font-weight:500;letter-spacing:.04em;color:#596751;}.welcome-steps p {font-size:11px;margin-top:6px;line-height:1.85;color:#8b9082;}
+        .welcome-note {grid-column:1/-1;font-size:10px!important;color:#929687!important;border-top:1px solid #ecece3;padding-top:14px;text-align:center;}
+        .pdf-page-container {box-shadow:0 8px 28px #53432b24;border-radius:2px;overflow:hidden;}
+        #exportModal,#previewModal {background:var(--control-panel-bg);border:1px solid #ffffff99;box-shadow:0 24px 80px #302b2433;border-radius:20px;}
+        #exportModal {padding:28px;}#exportModal h3 {font-size:21px;font-weight:500;}
+        #exportModalOverlay,#previewModalOverlay {background:#423e354d;backdrop-filter:blur(12px);}
+        .preview-header {border-bottom-color:var(--input-border);}.preview-header h3 {font-size:20px;font-weight:500;color:var(--system-text);}
+        #previewImageContainer {background:#eae8df;}#previewThumbnailContainer {background:var(--secondary-btn-bg);border-color:var(--input-border);}
+        .preview-thumbnail.active {border-color:#76916a;box-shadow:0 0 0 2px #76916a22;}
+        #previewDeletePageBtn,#closePreviewModalBtn {background:#f3e9e1!important;color:#8a5a48!important;}#previewFitPageBtn {background:#e7eddf;color:#53704c;}
+        .preview-zoom-controls .btn,.preview-nav-controls .btn {border-radius:8px;font-size:12px;}
+        .status-message {border-radius:10px;font-size:13px;padding:10px 14px;}
+        body.dark-mode {--system-gray-bg:#272923;--system-gray-bg-tint:#292821;--system-text:#e0e4d9;--control-panel-bg:rgba(43,46,38,.97);--input-bg:#30342b;--input-border:#4a5041;--secondary-btn-bg:#343a2f;--secondary-btn-border:#48513d;--secondary-btn-hover:#424b3b;--placeholder-text:#a8b19c;--glass-bg:rgba(38,43,34,.92);--wood-base:#353125;--wood-grain:rgba(182,157,112,.055);--wood-grain-fine:rgba(175,148,101,.04);}
+        body.dark-mode .scrollable-content {background-image:repeating-linear-gradient(91deg,transparent 0px,transparent 73px,var(--wood-grain) 74px,transparent 76px,transparent 139px),repeating-linear-gradient(89deg,transparent 0px,transparent 7px,var(--wood-grain-fine) 8px,transparent 10px,transparent 19px);}
+        body.dark-mode .welcome-card {background:rgba(42,47,36,.94);border-color:#4a5140;}body.dark-mode .welcome-card h2 {color:#d7dfca;}body.dark-mode .welcome-card .welcome-lead {color:#acb79e;}
+        body.dark-mode .welcome-steps {border-color:#49523d;}body.dark-mode .welcome-steps b {color:#bfceb0;}body.dark-mode .welcome-note {border-color:#424b37;}
+        body.dark-mode .brand-mark {background:#3b4433;border-color:#566248;color:#c5d3b4;}body.dark-mode #searchReplacePanel {background:#30372b;}body.dark-mode #previewImageContainer {background:#252a21;}
+        @media(max-width:900px) {.welcome-card{margin:24px;padding:28px 30px 18px;}.welcome-card h2{font-size:27px;}.paper-scene{transform:scale(.85);width:260px;}.welcome-steps{gap:14px;}}
+        @media(max-width:700px) {
+          .fixed-content{padding:12px 14px 6px;max-height:57vh;}.brand-mark{width:35px;height:35px;font-size:24px;border-radius:10px;}.brand-line{gap:9px;}
+          .title-bar h1{font-size:18px;}.brand-eyebrow{font-size:8px;}.title-bar-subtitle{margin-left:44px;font-size:9px;}.theme-caption{display:none;}.title-bar{padding-bottom:10px;}
+          .document-strip{align-items:flex-start;}.document-identity{gap:5px;}#fileNameLabel{max-width:210px;}#documentInfo{width:100%;font-size:10px;}.safe-tag{display:none;}.editing-hint{font-size:10px;line-height:1.5;}
+          .primary-toolbar{gap:5px;padding:8px 0;}.primary-toolbar .btn{font-size:11px;padding:6px 9px;}.primary-toolbar .zoom-group .btn{padding:5px 8px;}
+          #searchReplacePanel{padding:8px;gap:5px;}#searchReplacePanel .toolbar-label{font-size:10px;}#searchReplacePanel input[type=text]{font-size:12px;min-height:35px;}
+          .welcome-card{grid-template-columns:1fr;margin:18px;padding:24px 22px 16px;border-radius:18px;}.welcome-copy{padding:0;}.welcome-card h2{font-size:26px;margin:12px 0;}.welcome-card .welcome-lead{font-size:12px;}
+          .paper-scene{display:none;}.welcome-import{margin-top:18px;}.welcome-steps{grid-template-columns:1fr;gap:16px;margin-top:22px;padding:20px 0;}
+          .welcome-steps p br{display:none;}.welcome-steps p{margin-top:3px;font-size:11px;}.welcome-steps > div{padding-left:34px;}.welcome-note{text-align:left;font-size:9px!important;}
+          #initial-import-section{padding:8px 0 0;}.preview-header{max-height:35vh;overflow:auto;}
+        }
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important;animation:none!important;}}
+
+
+        /* v3: contrast refinements, retaining v2 as a separate version */
+        .primary-toolbar .zoom-group .btn {color:var(--system-text);}
+        .welcome-card .welcome-lead {color:#65705d;}
+        .welcome-steps p {font-size:12px;color:#69745f;}
+        .welcome-note {font-size:11px!important;color:#707962!important;}
+        .welcome-small {font-size:11px!important;}
+        .editing-hint {font-size:12px;}
+        body.dark-mode .welcome-steps p {color:#b4bfa4;}
+        body.dark-mode .welcome-note {color:#aab69a!important;}
+        body.dark-mode .welcome-card .welcome-lead {color:#bdc9ac;}
+        @media(max-width:700px) {.editing-hint {font-size:11px;}.welcome-note {font-size:10px!important;}}
+
     </style>
 </head>
 <body>
@@ -1082,13 +1256,13 @@
                     </div>
 
                     <div class="title-bar-center">
-                        <h1>PDF 替換文字與編輯</h1>
-                        <div class="title-bar-subtitle">匯入 PDF 後，可搜尋並替換文字，編輯內容及繪圖，並匯出為 PDF 或 PNG 檔</div>
-                        <div class="title-bar-creator">製作者：陳政德</div>
+                        <div class="brand-line"><span class="brand-mark" aria-hidden="true">▤</span><div><div class="brand-eyebrow">PAPER &amp; WOOD · v3</div><h1>PDF 文件編輯</h1></div></div>
+                        <div class="title-bar-subtitle">匯入文件 → 編輯文字與標註 → 整理頁面 → 匯出副本</div>
+                        <div class="title-bar-creator">製作者：陳政德 <span class="version-chip">蘋果木紋版</span></div>
                     </div>
 
                     <div class="title-bar-right">
-                        <div class="theme-switch-wrapper">
+                        <div class="theme-switch-wrapper"><span class="theme-caption">明暗外觀</span>
                             <label class="theme-switch" for="themeToggle" title="切換明暗主題">
                                 <input type="checkbox" id="themeToggle" />
                                 <span class="slider round"></span>
@@ -1100,13 +1274,15 @@
                 <div class="main-section-top-controls">
                     <input type="file" id="fileInput" accept=".pdf" style="display: none;">
                     <input type="file" id="imageInput" accept="image/*" style="display: none;">
-                    <div class="status-message" id="statusMessage"></div>
+                    <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
                     
                     <div id="initial-import-section">
                         <button class="btn btn-import" id="importFileBtn" title="從您的電腦選擇一個 PDF 檔案">📂 匯入 PDF 檔案</button>
                     </div>
 
                     <div id="controlsContainer" style="display:none;">
+                        <div class="document-strip"><div class="document-identity"><span class="file-dot"></span><strong id="fileNameLabel">尚未開啟文件</strong><span id="documentInfo" role="status"></span></div><span class="safe-tag">另存副本 · 保留原檔</span></div>
+                        <p class="editing-hint">搜尋範圍：單一橫排文字區塊。點選文字可編輯整段；新文字過長會縮窄以符合原寬度。掃描頁、直排與旋轉文字請使用標註工具。</p>
                         <div class="control-panel" id="searchReplacePanel">
                             <div class="search-replace-group">
                                 <button class="btn btn-secondary" id="importFileBtnInPanel" title="匯入新的 PDF 檔案">
@@ -1146,7 +1322,7 @@
                             <div class="action-buttons-group">
                                 <button class="btn btn-secondary" id="undoBtn" title="還原上一步">
                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v6h6"></path><path d="M21 12A9 9 0 0 0 6.47 6.5L3 10"></path></svg>
-                                    上一步
+                                    復原
                                 </button>
                                 <button class="btn btn-warning" id="clearBtn" title="清除搜尋與取代輸入框">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.48 7.42L10.5 2.5c.34-.2.75-.24 1.13-.13.38.11.7.39.87.75l1.37 2.88 4.3 1.07c.45.1.83.43.95.88.13.45.01.94-.3 1.28l-3.32 3.32 1.21 4.75c.13.51-.12 1.03-.6 1.28-.49.25-1.06.1-1.41-.35l-3.75-3.75-3.75 3.75c-.35.45-.92.6-1.41.35-.49-.25-.73-.77-.6-1.28l1.2-4.75-3.32-3.32c-.31-.34-.43-.83-.3-1.28.12-.45.5-.78.96-.88l4.3-1.07L7.6 3.12c.17-.36.49-.64.87-.75.38-.11.79-.07 1.13.13L15 5.5l-3.07 6.13a.5.5 0 0 1-.86 0L3.48 7.42z"/></svg>
@@ -1155,12 +1331,12 @@
                                 <button class="btn btn-navy" id="replaceAllBtn" title="將所有找到的「搜尋文字」替換為「取代文字」">全部替換</button>
                                 <button class="btn btn-success" id="openExportModalBtn" title="儲存檔案" style="display: none;">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                                    儲存...
+                                    匯出副本
                                 </button>
                             </div>
                         </div>
 
-                        <div class="main-action-bar-wrapper">
+                        <details class="main-action-bar-wrapper"><summary>文字樣式與標註工具</summary>
                             <div class="main-action-bar">
                                  <div class="zoom-group">
                                     <button class="btn" id="zoomOutBtn" title="縮小頁面檢視">
@@ -1178,7 +1354,7 @@
                                 </div>
                                  <button class="btn" id="previewBtn" title="預覽目前頁面">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                    預覽
+                                    頁面管理
                                 </button>
                                 <!-- 繪圖與文字工具 -->
                                 <div class="drawing-tools">
@@ -1260,7 +1436,7 @@
                                     </select>
                                 </div>
                             </div>
-                        </div>
+                        </details>
                     </div>
                 </div>
             </div>
@@ -1268,9 +1444,7 @@
                 <div class="pdf-viewer" id="pdfViewer">
                     <!-- Initial UI is injected here by JavaScript -->
                 </div>
-                <div class="feature-explanation-container">
-                    <img src="https://fyc43703.github.io/chengder/%E4%B8%BB%E8%A6%81%E5%8A%9F%E8%83%BD%E8%AA%AA%E6%98%8E.png" alt="主要功能說明" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-                </div>
+                
             </div>
         </div>
     </div>
@@ -1283,7 +1457,7 @@
 
     <div id="exportModalOverlay">
         <div id="exportModal">
-            <h3>儲存選項</h3>
+            <h3>匯出副本</h3><p class="export-note">PDF 將匯出為整頁圖片，保留原紙張尺寸；不保留可搜尋文字、連結或互動表單。請先預覽確認。</p>
             <div class="export-option-group">
                 <label>頁數範圍 (共 <span id="totalPagesInModal">N</span> 頁)</label>
                 <div>
@@ -1300,10 +1474,10 @@
             </div>
             <div class="export-option-group">
                 <label for="exportResolution">解析度</label>
-                <select id="exportResolution">
-                    <option value="2.0">標準 (150 DPI)</option>
-                    <option value="4.0" selected>高 (300 DPI)</option>
-                    <option value="8.0">極高 (600 DPI)</option>
+                <p class="export-note">大型頁面會自動降低解析度，避免記憶體不足。</p><select id="exportResolution">
+                    <option value="2.0">標準（144 DPI）</option>
+                    <option value="4.0" selected>清晰（288 DPI）</option>
+                    <option value="8.0">精細（576 DPI，較慢）</option>
                 </select>
             </div>
             <button class="btn btn-success" id="exportPdfBtn">💾 另存為 PDF</button>
@@ -1352,8 +1526,16 @@
         </div>
     </div>
 
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    <script type="module">
+        let pdfjsLib;
+        try {
+            pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');
+        } catch (error) {
+            document.getElementById('statusMessage').textContent = '無法載入 PDF 元件。請確認網路連線後重新整理。';
+            document.getElementById('statusMessage').style.display = 'block';
+            throw error;
+        }
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
 
         let pdfDoc = null;
         let pdfPageData = {};
@@ -1490,19 +1672,20 @@
         }
 
         async function handleFile(file) {
-            if (!file || file.type !== 'application/pdf') {
+            if (!file || (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf')) {
                 showStatus('請選擇一個 PDF 檔案', 'error');
                 return;
             }
+            if (historyStack.length && !confirm('目前的修改尚未保存在原檔。確定要開啟另一份 PDF？請先匯出需要保留的副本。')) { fileInput.value = ''; return; }
             resetTool(false);
             showStatus('載入 PDF 中...', 'info', 0);
             pdfViewer.classList.remove('initial-state');
             initialImportSection.style.display = 'none';
             controlsContainer.style.display = 'block';
 
-            const arrayBuffer = await file.arrayBuffer();
             try {
-                const loadingTask = pdfjsLib.getDocument({data: arrayBuffer});
+                const arrayBuffer = await file.arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument({data: arrayBuffer, isEvalSupported: false});
                 pdfDoc = await loadingTask.promise;
                 await processAllPages(pdfDoc, 1);
                 
@@ -1511,7 +1694,9 @@
                 await renderAllPages();
                 findAndHighlightAll();
 
+                document.getElementById('fileNameLabel').textContent = file.name;
                 setEditingControlsState(true);
+                findAndHighlightAll();
                 toggleDrawingTool('select', true);
                 
                 totalPagesIndicator.textContent = Object.keys(pdfPageData).length;
@@ -1523,6 +1708,7 @@
                 console.error('PDF 載入失敗:', error);
                 showStatus('PDF 載入失敗: ' + (error.message || error), 'error');
                 resetTool(true);
+                hideSpinner();
             }
         }
 
@@ -1558,82 +1744,52 @@
         }
         
         async function processAllPages(doc, startPageNum, newPagesArray = null) {
-            let globalItemId = Object.keys(pdfPageData).reduce((max, key) => {
-                return Math.max(max, pdfPageData[key].textItems.reduce((itemMax, item) => {
-                    const idNum = parseInt(item.id.split('-i')[1]);
-                    return Math.max(itemMax, isNaN(idNum) ? 0 : idNum);
-                }, 0));
-            }, 0);
-        
-            if (newPagesArray) {
-                updateSpinnerStatus(`正在處理插入的 ${doc.numPages} 頁...`);
-            } else {
-                pdfPageData = {};
-                globalItemId = 0;
-                showSpinner('正在分析 PDF 結構...');
-            }
-
+            if (!newPagesArray) pdfPageData = {};
+            showSpinner('正在分析 PDF 文字區塊…');
+            let skipped = 0;
             for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
-                if (!newPagesArray) updateSpinnerStatus(`正在分析第 ${pageNum} / ${doc.numPages} 頁...`);
+                updateSpinnerStatus('正在分析第 ' + pageNum + ' / ' + doc.numPages + ' 頁…');
                 const page = await doc.getPage(pageNum);
-                const textContent = await page.getTextContent();
-                const pageObject = { textItems: [], pageRef: page, drawings: [] };
-
-                for (const item of textContent.items) {
-                    if (!item.str || item.str.trim() === '') continue;
-                    const charWidth = item.width / item.str.length;
-
-                    for (let i = 0; i < item.str.length; i++) {
-                        const char = item.str[i];
-                        const newTransform = [...item.transform];
-                        newTransform[4] += i * charWidth;
-                        
-                        const currentGlobalId = ++globalItemId;
-                        pageObject.textItems.push({
-                            id: `p${startPageNum + pageNum - 1}-i${currentGlobalId}`,
-                            originalText: char,
-                            currentText: char,
-                            isModified: false,
-                            transform: newTransform,
-                            width: charWidth,
-                            height: item.height,
-                            styles: null,
-                            originalColors: null
-                        });
-                    }
+                const content = await page.getTextContent();
+                const viewport = page.getViewport({scale: 1});
+                const pageObject = {id: crypto.randomUUID(), textItems: [], pageRef: page, drawings: []};
+                for (const item of content.items) {
+                    if (!item.str || !item.str.trim()) continue;
+                    const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+                    const horizontal = tx[0] > 0 && tx[3] < 0 && Math.abs(tx[1]) < 0.01 && Math.abs(tx[2]) < 0.01 && !content.styles[item.fontName]?.vertical;
+                    if (!horizontal) skipped++;
+                    pageObject.textItems.push({
+                        id: 'text-' + crypto.randomUUID(), originalText: item.str, currentText: item.str,
+                        isModified: false, transform: [...item.transform], width: item.width, height: item.height,
+                        editable: horizontal && item.width > 0, styles: null, originalColors: null,
+                        ascent: content.styles[item.fontName]?.ascent ?? 0.9,
+                        descent: content.styles[item.fontName]?.descent ?? -0.25
+                    });
                 }
-                if (newPagesArray) {
-                    newPagesArray.push(pageObject);
-                } else {
-                    pdfPageData[pageNum] = pageObject;
-                }
+                if (newPagesArray) newPagesArray.push(pageObject);
+                else pdfPageData[pageNum] = pageObject;
             }
-             if (!newPagesArray) hideSpinner();
+            const count = Object.values(pdfPageData).reduce((n,p) => n + p.textItems.filter(t => t.editable).length, 0);
+            document.getElementById('documentInfo').textContent = newPagesArray ? '已加入新文件。可使用「復原」取消。' :
+                '共 ' + doc.numPages + ' 頁 · ' + count + ' 個可編輯文字區塊' +
+                (skipped ? ' · ' + skipped + ' 個直排／旋轉區塊保留原樣' : '') +
+                (!count ? ' · 此文件沒有可替換的橫排文字；可使用新增文字或圖形工具。' : '');
+            hideSpinner();
         }
-
 
         function drawModifiedTextOnCanvas(ctx, item, scale, viewport) {
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
-            
-            const fontSizeInPixels = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
-            const effectiveHeight = fontSizeInPixels * 1.2;
-            const boxTop = tx[5] - fontSizeInPixels;
-            const scaledWidth = item.width * scale;
-
+            const size = Math.hypot(tx[2], tx[3]);
+            const width = item.width * scale;
             const styles = item.styles || {};
-            
-            const bgColor = styles.backgroundColor || (item.originalColors ? item.originalColors.background : backgroundColor.value);
-            const fgColor = styles.foregroundColor || (item.originalColors ? item.originalColors.foreground : fontColor.value);
-            const fontWeight = styles.fontWeight || 'normal';
-            const fontFamily = styles.fontFamily || fontSelect.value;
-            
-            ctx.fillStyle = bgColor;
-            ctx.fillRect(tx[4], boxTop, scaledWidth, effectiveHeight);
-            
-            ctx.font = `${fontWeight} ${fontSizeInPixels}px ${fontFamily}`;
-            ctx.fillStyle = fgColor;
+            ctx.save();
+            ctx.fillStyle = styles.backgroundColor || item.originalColors?.background || '#ffffff';
+            ctx.fillRect(tx[4], tx[5] - size * item.ascent, width, size * (item.ascent - item.descent));
+            ctx.font = (styles.fontWeight || 'normal') + ' ' + size + 'px ' + (styles.fontFamily || fontSelect.value);
+            ctx.fillStyle = styles.foregroundColor || item.originalColors?.foreground || '#000000';
             ctx.textBaseline = 'alphabetic';
-            ctx.fillText(item.currentText, tx[4], tx[5]);
+            ctx.fillText(item.currentText, tx[4], tx[5], width);
+            ctx.restore();
         }
 
         function drawSavedItem(ctx, item, scale) {
@@ -1686,8 +1842,21 @@
             ctx.restore();
         }
 
+        let allPageRender = null;
         async function renderAllPages() {
+            const job = (allPageRender || Promise.resolve()).catch(() => {}).then(renderAllPagesNow);
+            allPageRender = job;
+            try { await job; }
+            catch (error) { showStatus('頁面讀取失敗：' + error.message, 'error'); }
+            finally { if (allPageRender === job) allPageRender = null; hideSpinner(); }
+        }
+        async function renderAllPagesNow() {
             if (Object.keys(pdfPageData).length === 0) return;
+            totalPagesIndicator.textContent = Object.keys(pdfPageData).length;
+            const pages = Object.values(pdfPageData);
+            const editable = pages.reduce((n,p) => n+p.textItems.filter(t=>t.editable).length,0);
+            const unsupported = pages.reduce((n,p) => n+p.textItems.filter(t=>!t.editable).length,0);
+            document.getElementById('documentInfo').textContent = '共 ' + pages.length + ' 頁 · ' + editable + ' 個可編輯文字區塊' + (unsupported ? ' · ' + unsupported + ' 個區塊保留原樣' : '') + (!editable ? ' · 無可替換文字，可使用標註工具' : '');
             showSpinner('正在讀取所有頁面...');
             pdfViewer.innerHTML = '';
             
@@ -1698,6 +1867,7 @@
 
                 const pageData = pdfPageData[pageNum];
                 if (!pageData) continue;
+                if (pageData.redrawPromise) await pageData.redrawPromise;
                 const page = pageData.pageRef;
                 const viewport = page.getViewport({ scale: currentScale });
                 const pageContainer = document.createElement('div');
@@ -1732,7 +1902,8 @@
 
                 pageData.textItems.forEach((item, index) => {
                     const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
-                    const fontSize = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
+                    if (!item.editable) return;
+                    const fontSize = Math.hypot(tx[2], tx[3]);
                     const effectiveHeight = fontSize * 1.2;
                     item.scaled = { tx, fontSize, effectiveHeight, width: item.width * currentScale };
 
@@ -1756,110 +1927,72 @@
 
         async function redrawPageCanvas(pageNum) {
             const pageData = pdfPageData[pageNum];
-            if (!pageData || !pageData.canvas) return;
-
-            const canvas = pageData.canvas;
-            const ctx = canvas.getContext('2d');
-            const page = pageData.pageRef;
-            const viewport = page.getViewport({ scale: currentScale });
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
-            pageData.textItems.forEach(item => {
-                if (item.isModified) {
-                    drawModifiedTextOnCanvas(ctx, item, currentScale, viewport);
+            if (!pageData?.canvas) return;
+            pageData.redrawRequested = true;
+            if (pageData.redrawPromise) return pageData.redrawPromise;
+            pageData.redrawPromise = (async () => {
+                while (pageData.redrawRequested) {
+                    pageData.redrawRequested = false;
+                    const canvas = pageData.canvas;
+                    const ctx = canvas.getContext('2d');
+                    const scale = canvas.width / pageData.pageRef.getViewport({scale: 1}).width;
+                    const viewport = pageData.pageRef.getViewport({scale});
+                    await pageData.pageRef.render({canvasContext: ctx, viewport}).promise;
+                    for (const item of pageData.textItems) if (item.isModified) drawModifiedTextOnCanvas(ctx, item, scale, viewport);
+                    for (const item of pageData.drawings) drawSavedItem(ctx, item, scale);
                 }
-            });
-
-            pageData.drawings.forEach(item => {
-                drawSavedItem(ctx, item, currentScale);
-            });
+            })();
+            try { await pageData.redrawPromise; }
+            catch (error) { showStatus('頁面更新失敗：' + error.message, 'error'); }
+            finally { pageData.redrawPromise = null; }
         }
-        
+
         function getDetectedColor(result) {
-            const item = pdfPageData[result.pageNum].textItems[result.startItemIndex];
-            if (!item) return null;
-
+            const page = pdfPageData[result.pageNum];
+            const item = page.textItems[result.startItemIndex];
+            if (!item?.scaled || !page.canvas) return null;
             if (item.originalColors) return item.originalColors;
-
-            const canvas = pdfPageData[result.pageNum].canvas;
-            if (!canvas || !item.scaled) return null;
-
-            const s = item.scaled;
-            const ctx = canvas.getContext('2d');
-            
-            const rect = {
-                x: Math.floor(s.tx[4]),
-                y: Math.floor(s.tx[5] - s.fontSize),
-                w: Math.ceil(s.width),
-                h: Math.ceil(s.effectiveHeight)
-            };
-            
-            if (rect.w < 1 || rect.h < 1 || rect.x < 0 || rect.y < 0 || (rect.x + rect.w) > canvas.width || (rect.y + rect.h) > canvas.height) {
-                return null;
-            }
-
+            const {canvas} = page;
+            const scaled = item.scaled;
+            const x = Math.max(0, Math.floor(scaled.tx[4]));
+            const y = Math.max(0, Math.floor(scaled.tx[5] - scaled.fontSize * item.ascent));
+            const w = Math.min(canvas.width-x, Math.ceil(scaled.width));
+            const h = Math.min(canvas.height-y, Math.ceil(scaled.fontSize*(item.ascent-item.descent)));
+            if (w <= 0 || h <= 0) return null;
             try {
-                const imageData = ctx.getImageData(rect.x, rect.y, rect.w, rect.h);
-                const data = imageData.data;
-                const colorCounts = new Map();
-
-                for (let i = 0; i < data.length; i += 4) {
-                    if (data[i + 3] < 128) continue; 
-                    const colorKey = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
-                    colorCounts.set(colorKey, (colorCounts.get(colorKey) || 0) + 1);
+                const pixels = canvas.getContext('2d').getImageData(x,y,w,h).data;
+                const all = new Map(), border = new Map();
+                for (let row=0;row<h;row++) for (let col=0;col<w;col++) {
+                    const i=(row*w+col)*4;
+                    if (pixels[i+3] < 128) continue;
+                    const rgb=[pixels[i],pixels[i+1],pixels[i+2]];
+                    const key=rgb.map(v=>Math.floor(v/16)).join(',');
+                    if (!all.has(key)) all.set(key,{count:0,sum:[0,0,0]});
+                    const bucket=all.get(key);bucket.count++;
+                    rgb.forEach((v,n)=>bucket.sum[n]+=v);
+                    if (row===0 || col===0 || row===h-1 || col===w-1) border.set(key,(border.get(key)||0)+1);
                 }
-
-                const sortedColors = Array.from(colorCounts.entries()).sort((a, b) => b[1] - a[1]);
-                const numberToHex = (num) => '#' + num.toString(16).padStart(6, '0');
-
-                if (sortedColors.length === 0) return null;
-                
-                if (sortedColors.length === 1) {
-                    item.originalColors = { foreground: numberToHex(sortedColors[0][0]), background: '#ffffff' };
-                    return item.originalColors;
+                if (!all.size) return null;
+                const average=b=>b.sum.map(v=>Math.round(v/b.count));
+                const bgKey=[...border].sort((a,b)=>b[1]-a[1])[0]?.[0] || [...all].sort((a,b)=>b[1].count-a[1].count)[0][0];
+                const bg=average(all.get(bgKey));
+                let foreground=[0,0,0],best=0;
+                for (const bucket of all.values()) {
+                    const rgb=average(bucket);
+                    const contrast=rgb.reduce((n,v,i)=>n+(v-bg[i])**2,0);
+                    // Avoid treating near-background antialiasing as the foreground color.
+                    if (contrast < 1600) continue;
+                    const score=bucket.count*contrast;
+                    if (score>best) {best=score;foreground=rgb;}
                 }
-                
-                const colorA_key = sortedColors[0][0];
-                const colorB_key = sortedColors[1][0];
-                let borderA = 0;
-                let borderB = 0;
-                const width = rect.w;
-                const height = rect.h;
-
-                const checkPixel = (x, y) => {
-                    const index = (y * width + x) * 4;
-                    if (data[index + 3] < 128) return; 
-                    const key = (data[index] << 16) | (data[index + 1] << 8) | data[index + 2];
-                    if (key === colorA_key) borderA++;
-                    else if (key === colorB_key) borderB++;
-                };
-
-                for (let i = 0; i < width; i++) {
-                    checkPixel(i, 0); 
-                    if (height > 1) checkPixel(i, height - 1);
-                }
-                for (let j = 1; j < height - 1; j++) {
-                    checkPixel(0, j); 
-                    if (width > 1) checkPixel(width - 1, j);
-                }
-
-                const colors = (borderA >= borderB) 
-                    ? { background: numberToHex(colorA_key), foreground: numberToHex(colorB_key) } 
-                    : { background: numberToHex(colorB_key), foreground: numberToHex(colorA_key) };
-                
-                item.originalColors = colors;
-                return colors;
-
-            } catch (e) {
-                console.error("Color detection failed:", e);
-                return null;
-            }
+                const hex=rgb=>'#'+rgb.map(v=>v.toString(16).padStart(2,'0')).join('');
+                item.originalColors={background:hex(bg),foreground:hex(foreground)};
+                return item.originalColors;
+            } catch { return null; }
         }
 
         function createEditor(pageNum, itemIndex) {
-            if (colorPickerTarget || currentDrawingTool !== 'select') return;
+            if (colorPickerTarget || currentDrawingTool !== 'select' || !pdfPageData[pageNum].textItems[itemIndex].editable) return;
             document.querySelector('.text-editor')?.blur();
             const item = pdfPageData[pageNum].textItems[itemIndex];
             const interactionLayer = document.getElementById(`interaction-layer-${pageNum}`);
@@ -1873,7 +2006,8 @@
             editor.value = item.currentText;
             editor.style.left = (s.tx[4] - 2) + 'px';
             editor.style.top = (s.tx[5] - s.fontSize - 2) + 'px';
-            editor.style.width = (s.width + 4) + 'px';
+            editor.style.width = Math.max(180, s.width + 4) + 'px';
+            editor.setAttribute('aria-label', '編輯整個文字區塊，Enter 套用、Escape 取消');
             editor.style.height = (s.effectiveHeight + 4) + 'px';
 
             const selectedFontSize = parseFloat(fontSizeSelect.value);
@@ -1881,13 +2015,15 @@
             editor.style.fontFamily = fontSelect.value;
 
             editor.addEventListener('blur', () => {
-                const newValue = editor.value || ' ';
-                updateTextAndCanvas(pageNum, itemIndex, newValue.charAt(0));
+                const newValue = editor.value;
+                updateTextAndCanvas(pageNum, itemIndex, newValue);
                 findAndHighlightAll();
                 editor.remove();
             });
             editor.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === 'Escape') editor.blur();
+                if (e.isComposing) return;
+                if (e.key === 'Escape') { editor.value = item.currentText; editor.blur(); }
+                else if (e.key === 'Enter') editor.blur();
             });
 
             interactionLayer.appendChild(editor);
@@ -1951,8 +2087,9 @@
             }
 
             item.styles = item.styles || {};
-            item.styles.foregroundColor = fontColor.value;
-            item.styles.backgroundColor = backgroundColor.value;
+            const colors = autoColorDetect.checked ? getDetectedColor({pageNum, startItemIndex: itemIndex}) : null;
+            item.styles.foregroundColor = colors?.foreground || fontColor.value;
+            item.styles.backgroundColor = colors?.background || backgroundColor.value;
             item.styles.fontFamily = fontSelect.value;
             item.styles.fontWeight = fontBoldBtn.classList.contains('active') ? 'bold' : 'normal';
 
@@ -1974,49 +2111,26 @@
 
 
         function findAndHighlightAll() {
-            const term = searchText.value;
             searchResults = [];
-            originalSearchResults = [];
-            document.querySelectorAll('.highlight-box, .highlight-box-next').forEach(box => box.remove());
-
-            if (term) {
-                for (const pageNum in pdfPageData) {
-                    const textItems = pdfPageData[pageNum].textItems;
-                    if(textItems.length === 0) continue;
-
-                    const pageText = textItems.map(item => item.currentText).join('');
-
-                    let startIndex = 0;
-                    let index;
-                    while ((index = pageText.indexOf(term, startIndex)) > -1) {
-                        const endIndex = index + term.length - 1;
-                        searchResults.push({
-                            pageNum: parseInt(pageNum),
-                            startItemIndex: index,
-                            endItemIndex: endIndex,
-                            term: term
-                        });
-                        startIndex = index + 1;
+            const term = searchText.value;
+            document.querySelectorAll('.highlight-box, .highlight-box-next').forEach(el => el.remove());
+            if (term) for (const [pageNum, page] of Object.entries(pdfPageData)) {
+                page.textItems.forEach((item, itemIndex) => {
+                    if (!item.editable) return;
+                    let start = 0, found;
+                    while ((found = item.currentText.indexOf(term, start)) !== -1) {
+                        searchResults.push({pageNum: Number(pageNum), startItemIndex: itemIndex,
+                            endItemIndex: itemIndex, offset: found, term});
+                        start = found + term.length;
                     }
-                }
+                });
             }
-            
             originalSearchResults = [...searchResults];
-            initialTotalResults = originalSearchResults.length;
+            initialTotalResults = searchResults.length;
             currentSearchIndex = 0;
-
-            const hasResults = originalSearchResults.length > 0;
-            replaceNextBtn.disabled = !hasResults;
-            replaceAllBtn.disabled = !hasResults;
-            prevResultBtn.disabled = !hasResults;
-            nextResultBtn.disabled = !hasResults;
-
-            if (hasResults) {
-                drawAllHighlights();
-                drawNextHighlight();
-            } else {
-                 updateSearchCountDisplay();
-            }
+            replaceNextBtn.disabled = replaceAllBtn.disabled = prevResultBtn.disabled = nextResultBtn.disabled = !searchResults.length;
+            drawAllHighlights();
+            drawNextHighlight();
         }
 
         function drawHighlightForRange(result, className) {
@@ -2111,7 +2225,7 @@
             if (historyArray.length > 6) {
                 historyArray.pop();
             }
-            localStorage.setItem(storageKey, JSON.stringify(historyArray));
+            // Session-only suggestions; document text is not persisted.
         }
 
         function updateDatalist(datalistElement, historyArray) {
@@ -2145,128 +2259,73 @@
             item.styles.fontWeight = fontBoldBtn.classList.contains('active') ? 'bold' : 'normal';
         }
 
-        function replaceNext() {
-            if (originalSearchResults.length === 0 || replaceNextBtn.disabled) return;
-
-            updateHistoryAndDatalists();
-
-            const searchTextValue = searchText.value;
-            const replaceTextValue = replaceText.value;
-            if (searchTextValue.length > 0 && searchTextValue.length !== replaceTextValue.length) {
-                showStatus('錯誤：搜尋與取代文字的字數長度必須相同！', 'error');
-                return;
-            }
-            
-            const itemToReplace = originalSearchResults[currentSearchIndex];
-            const dynamicIndex = searchResults.findIndex(res => 
-                res.pageNum === itemToReplace.pageNum && 
-                res.startItemIndex === itemToReplace.startItemIndex
-            );
-
-            if (dynamicIndex > -1) {
-                const result = searchResults[dynamicIndex];
-                const changesToRecord = [];
-                
-                const detectedColors = getDetectedColor(result);
-
-                for (let i = 0; i < result.term.length; i++) {
-                    const itemIndex = result.startItemIndex + i;
-                    const item = pdfPageData[result.pageNum].textItems[itemIndex];
-                    
-                    const oldState = { currentText: item.currentText, isModified: item.isModified, styles: item.styles ? { ...item.styles } : null, originalColors: item.originalColors ? { ...item.originalColors } : null };
-                    changesToRecord.push({ pageNum: result.pageNum, itemIndex, oldState });
-
-                    applyStylesToItem(item, detectedColors);
-                    const newChar = i < replaceTextValue.length ? replaceTextValue[i] : ' ';
-                    item.currentText = newChar;
-                    item.isModified = true;
-                }
-
-                if(changesToRecord.length > 0) {
-                    historyStack.push({ actionType: 'replaceNext', changes: changesToRecord });
-                    updateUndoButtonState();
-                }
-                
-                redrawPageCanvas(result.pageNum);
-                searchResults.splice(dynamicIndex, 1);
-                
-                drawAllHighlights();
-                drawNextHighlight();
-            }
-            
-            if (searchResults.length === 0) {
-                replaceNextBtn.disabled = true;
-                replaceAllBtn.disabled = true;
-            }
+        async function replaceNext() {
+            const result = originalSearchResults[currentSearchIndex];
+            if (!result || replaceNextBtn.disabled) return;
+            await applyReplacements([result]);
         }
 
-
         async function replaceAll() {
-            if (searchResults.length === 0 || replaceAllBtn.disabled) return;
+            if (!searchResults.length || replaceAllBtn.disabled) return;
+            await applyReplacements([...searchResults]);
+        }
 
+        async function applyReplacements(results) {
             updateHistoryAndDatalists();
-
-            const searchTextValue = searchText.value;
-            const replaceTextValue = replaceText.value;
-            if (searchTextValue.length > 0 && searchTextValue.length !== replaceTextValue.length) {
-                showStatus('錯誤：搜尋與取代文字的字數長度必須相同！', 'error');
-                return;
-            }
-
-            showSpinner('正在全部替換...');
-            const changesToRecord = [];
-            const pagesToUpdate = new Set();
-            
-            const currentSearchResults = [...searchResults];
-            searchResults = [];
-
-            for(const result of currentSearchResults) {
-                const textItems = pdfPageData[result.pageNum].textItems;
-                pagesToUpdate.add(result.pageNum);
-                
-                const detectedColors = getDetectedColor(result);
-
-                for(let j = 0; j < result.term.length; j++) {
-                    const itemIndex = result.startItemIndex + j;
-                    if (itemIndex < textItems.length) {
-                        const item = textItems[itemIndex];
-                        
-                        const oldState = { currentText: item.currentText, isModified: item.isModified, styles: item.styles ? { ...item.styles } : null, originalColors: item.originalColors ? { ...item.originalColors } : null };
-                        changesToRecord.push({ pageNum: result.pageNum, itemIndex, oldState });
-
-                        applyStylesToItem(item, detectedColors);
-                        const newChar = j < replaceTextValue.length ? replaceTextValue[j] : ' ';
-                        item.currentText = newChar;
-                        item.isModified = true;
-                    }
+            showSpinner('正在替換文字…');
+            try {
+                const groups = new Map();
+                for (const result of results) {
+                    const key = result.pageNum + ':' + result.startItemIndex;
+                    if (!groups.has(key)) groups.set(key, []);
+                    groups.get(key).push(result);
                 }
-            }
-
-            if(changesToRecord.length > 0) {
-                historyStack.push({ actionType: 'replaceAll', changes: changesToRecord });
+                const changes = [];
+                const pages = new Set();
+                for (const matches of groups.values()) {
+                    const result = matches[0];
+                    const item = pdfPageData[result.pageNum].textItems[result.startItemIndex];
+                    const oldState = {currentText: item.currentText, isModified: item.isModified,
+                        styles: item.styles ? {...item.styles} : null,
+                        originalColors: item.originalColors ? {...item.originalColors} : null};
+                    let value = item.currentText;
+                    for (const match of matches.sort((a,b) => b.offset - a.offset)) {
+                        value = value.slice(0, match.offset) + replaceText.value + value.slice(match.offset + match.term.length);
+                    }
+                    if (value === item.currentText) continue;
+                    changes.push({pageNum: result.pageNum, itemIndex: result.startItemIndex, oldState});
+                    applyStylesToItem(item, getDetectedColor(result));
+                    item.currentText = value;
+                    item.isModified = true;
+                    pages.add(result.pageNum);
+                }
+                if (changes.length) historyStack.push({actionType: 'replaceAll', changes});
                 updateUndoButtonState();
-            }
-            
-            for(const pageNum of pagesToUpdate) {
-                await redrawPageCanvas(pageNum);
-            }
-            
-            drawAllHighlights();
-            drawNextHighlight();
-            
-            replaceNextBtn.disabled = true;
-            replaceAllBtn.disabled = true;
-            
-            hideSpinner();
+                for (const num of pages) await redrawPageCanvas(num);
+                findAndHighlightAll();
+                showStatus('已處理 ' + results.length + ' 個符合項目。可按「復原」取消。', 'success');
+            } finally { hideSpinner(); }
         }
 
         async function undoLastAction() {
             if (historyStack.length === 0) return;
+            selectedObject = null;
+            document.getElementById('resize-handle-div')?.remove();
             const lastAction = historyStack.pop();
             const pagesToUpdate = new Set();
 
             showSpinner('正在還原...');
 
+            if (lastAction.actionType === 'pageLayout') {
+                pdfPageData = Object.fromEntries(lastAction.pages.map((p, i) => [i + 1, p]));
+                selectedObject = null;
+                await renderAllPages();
+                totalPagesIndicator.textContent = Object.keys(pdfPageData).length;
+                updateUndoButtonState();
+                findAndHighlightAll();
+                hideSpinner();
+                return;
+            }
             if (lastAction.actionType === 'addDrawing') {
                 const { pageNum } = lastAction;
                 pdfPageData[pageNum].drawings.pop();
@@ -2372,44 +2431,25 @@
          * @returns {Promise<void>}
          */
         function loadScript(src, globalVar) {
-            // If already loaded, return immediately.
-            if (typeof window[globalVar] !== 'undefined') {
-                return Promise.resolve();
-            }
-
-            return new Promise((resolve, reject) => {
+            if (window[globalVar]) return Promise.resolve();
+            loadScript.pending ||= new Map();
+            if (loadScript.pending.has(src)) return loadScript.pending.get(src);
+            const promise = new Promise((resolve, reject) => {
                 const script = document.createElement('script');
-                script.src = src;
-                script.async = true;
-                script.id = `script-${globalVar}`; // Add an ID for easy lookup
-
-                script.onload = () => {
-                    // Script has been downloaded and executed. Now, we poll until the global var is ready.
-                    const timeout = 5000; // 5 seconds timeout
-                    const interval = 50;   // check every 50ms
-                    let elapsedTime = 0;
-
-                    const poll = setInterval(() => {
-                        elapsedTime += interval;
-                        if (typeof window[globalVar] !== 'undefined') {
-                            clearInterval(poll);
-                            resolve();
-                        } else if (elapsedTime >= timeout) {
-                            clearInterval(poll);
-                            reject(new Error(`核心程式庫 (${globalVar}) 載入成功但逾時，可能檔案有問題。`));
-                        }
-                    }, interval);
-                };
-
-                script.onerror = () => {
-                    reject(new Error(`無法載入 PDF 核心程式庫。`));
-                };
-                
-                // Prevent duplicate script tags
-                if (!document.getElementById(script.id)) {
-                    document.head.appendChild(script);
+                const timer = setTimeout(() => done(new Error('元件下載逾時，請重試。')), 20000);
+                function done(error) {
+                    clearTimeout(timer);
+                    script.onload = script.onerror = null;
+                    if (error) { script.remove(); reject(error); } else resolve();
                 }
+                script.src = src;
+                script.onload = () => done(window[globalVar] ? null : new Error('元件未正確啟動。'));
+                script.onerror = () => done(new Error('無法下載元件，請確認連線後重試。'));
+                document.head.appendChild(script);
             });
+            loadScript.pending.set(src, promise);
+            promise.catch(() => loadScript.pending.delete(src));
+            return promise;
         }
 
         async function createExportCanvas(pageNum, initialScale) {
@@ -2478,8 +2518,9 @@
                     if (!tempCanvas) continue;
 
                     const pngImageBytes = await pdfLibDoc.embedPng(tempCanvas.toDataURL('image/png'));
-                    const pdfPage = pdfLibDoc.addPage([tempCanvas.width, tempCanvas.height]);
-                    pdfPage.drawImage(pngImageBytes, { x: 0, y: 0, width: tempCanvas.width, height: tempCanvas.height });
+                    const original = pdfPageData[pageNum].pageRef.getViewport({scale: 1});
+                    const pdfPage = pdfLibDoc.addPage([original.width, original.height]);
+                    pdfPage.drawImage(pngImageBytes, { x: 0, y: 0, width: original.width, height: original.height });
                 }
 
                 updateSpinnerStatus('正在產生最終 PDF 檔案...');
@@ -2498,7 +2539,7 @@
             } catch (error) {
                 hideSpinner();
                 const errorMessage = error.message || '未知錯誤';
-                const finalMessage = `PDF 匯出失敗：${errorMessage}。請檢查您的網路連線，或嘗試停用瀏覽器擴充功能後，重新整理頁面再試一次。`;
+                const finalMessage = `PDF 匯出失敗：${errorMessage}。請確認網路連線後重試，或降低匯出解析度；目前的修改仍保留於此頁面。`;
                 showStatus(finalMessage, 'error', 10000);
                 console.error("PDF Export failed:", error);
             }
@@ -2516,9 +2557,7 @@
             showSpinner('正在準備匯出 PNG (ZIP)...');
 
             try {
-                if (typeof JSZip === 'undefined') {
-                    throw new Error("無法載入 ZIP 核心程式庫。");
-                }
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'JSZip');
                 const zip = new JSZip();
 
                 for (let pageNum = settings.startPage; pageNum <= settings.endPage; pageNum++) {
@@ -2615,7 +2654,33 @@
                 pdfViewer.className = 'pdf-viewer initial-state';
                 pdfViewer.innerHTML = `
                 <div class="initial-message-container" style="text-align: center;">
-                    <img src="https://fyc43703.github.io/chengder/%E5%BF%AB%E9%80%9F%E4%B8%8A%E6%89%8B%E6%8C%87%E5%8D%97.png" alt="快速上手指南" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+                    <div class="welcome-card">
+                    <div class="welcome-copy">
+                      <span class="eyebrow">一方安靜的文件工作台</span>
+                      <h2>從一份文件開始。</h2>
+                      <p class="welcome-lead">修改文字、留下標註、整理頁序。<br>每一步都清楚，原始文件也安心保留。</p>
+                      <button type="button" class="welcome-import btn" onclick="document.getElementById('fileInput').click()">選擇 PDF 檔案 <span aria-hidden="true">↗</span></button>
+                      <p class="welcome-small">支援多頁 PDF · 修改可復原</p>
+                    </div>
+                    <div class="paper-scene" aria-hidden="true">
+                      <div class="paper-back"></div><div class="paper-front">
+                        <div class="paper-head">DOCUMENT</div><div class="paper-rule"></div>
+                        <div class="paper-title">把複雜，整理成清楚。</div>
+                        <div class="paper-lines"><i></i><i></i><i></i></div>
+                        <div class="paper-highlight">文字 · 頁面 · 新的版本</div>
+                        <div class="paper-lines short"><i></i><i></i><i></i></div>
+                        <span class="paper-check">✓</span><div class="paper-number">01 / 03</div>
+                      </div>
+                      <svg class="botanical" viewBox="0 0 130 200" fill="none"><path d="M65 195C60 135 80 95 57 12" stroke="currentColor" stroke-width="2"/><path d="M65 155C20 143 8 110 18 89C47 91 66 117 65 155ZM67 120C107 109 123 84 115 63C89 67 71 88 67 120ZM65 87C35 73 30 47 36 32C56 42 66 61 65 87ZM60 48C80 38 86 18 79 5C65 14 60 28 60 48Z" fill="currentColor" opacity=".3"/></svg>
+                      <span class="scene-note">a little space, a clearer page</span>
+                    </div>
+                    <div class="welcome-steps">
+                      <div><span class="step-number">01</span><b>編輯文字</b><p>搜尋取代或直接點選區塊，<br>隨時復原上一步。</p></div>
+                      <div><span class="step-number">02</span><b>整理頁面</b><p>預覽、移動、刪除頁面，<br>也能插入另一份文件。</p></div>
+                      <div><span class="step-number">03</span><b>匯出副本</b><p>另存圖片式 PDF 或 PNG，<br>保留原紙張尺寸。</p></div>
+                    </div>
+                    <p class="welcome-note">文件在瀏覽器內處理。程式元件與字型需連網下載；搜尋紀錄僅保留於本次開啟期間。</p>
+                    </div>
                 </div>`;
             } else {
                 pdfViewer.className = 'pdf-viewer';
@@ -2801,17 +2866,23 @@
                  return;
             }
             
-            previewDeletePageBtn.style.display = 'none';
+            previewDeletePageBtn.style.display = 'inline-flex';
+            previewDeletePageBtn.disabled = totalPages <= 1;
 
             const newActivePage = targetPage ? targetPage : updateCurrentPage();
             await setActivePreviewPage(newActivePage);
             
             hideSpinner();
             previewModalOverlay.style.display = 'flex';
+            closePreviewModalBtn.focus();
             window.addEventListener('keydown', handlePreviewKeyDown);
         }
         
         function rekeyPdfPageData(pagesArray) {
+            historyStack.push({actionType: 'pageLayout', pages: Object.values(pdfPageData)});
+            updateUndoButtonState();
+            selectedObject = null;
+            document.getElementById('resize-handle-div')?.remove();
             const newPageData = {};
             pagesArray.forEach((page, index) => {
                 const newPageNum = index + 1;
@@ -3390,6 +3461,7 @@
         }
 
         function handleGlobalKeyDown(e) {
+            if (spinnerOverlay.style.display === 'flex' || previewModalOverlay.style.display === 'flex' || exportModalOverlay.style.display === 'flex') return;
             const activeEl = document.activeElement;
             if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.isContentEditable)) {
                 return;
@@ -3463,7 +3535,7 @@
             fontColorGroup.classList.toggle('disabled-group', isDisabled);
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function initializeApp() {
             const fontSizeFragment = document.createDocumentFragment();
             for (let i = 2; i <= 100; i++) {
                 const option = document.createElement('option');
@@ -3474,17 +3546,6 @@
             }
             fontSizeSelect.appendChild(fontSizeFragment);
             
-            const savedSearchHistory = localStorage.getItem('pdfSearchHistory');
-            const savedReplaceHistory = localStorage.getItem('pdfReplaceHistory');
-            if (savedSearchHistory) {
-                searchHistory = JSON.parse(savedSearchHistory);
-                updateDatalist(searchHistoryList, searchHistory);
-            }
-            if (savedReplaceHistory) {
-                replaceHistory = JSON.parse(savedReplaceHistory);
-                updateDatalist(replaceHistoryList, replaceHistory);
-            }
-
             importFileBtn.addEventListener('click', () => fileInput.click());
             importFileBtnInPanel.addEventListener('click', () => fileInput.click());
 
@@ -3563,8 +3624,7 @@
             closePreviewModalBtn.addEventListener('click', () => {
                 previewModalOverlay.style.display = 'none';
                 window.removeEventListener('keydown', handlePreviewKeyDown);
-                renderAllPages(); 
-                findAndHighlightAll();
+                renderAllPages().then(findAndHighlightAll);
             });
 
             previewZoomInBtn.addEventListener('click', () => {
@@ -3768,6 +3828,7 @@
                 const insertAfterPageStr = prompt(`請輸入要將新PDF插入在哪一頁之後？\n(輸入 0 表示插入到最前面，輸入 ${currentPreviewPage} 表示插入在目前選定頁之後)`, currentPreviewPage);
                 const insertAfterPage = parseInt(insertAfterPageStr);
 
+                if (insertAfterPageStr === null) { insertPdfInput.value = ''; return; }
                 if (isNaN(insertAfterPage) || insertAfterPage < 0 || insertAfterPage > totalPages) {
                     alert('輸入的頁碼無效。');
                     insertPdfInput.value = '';
@@ -3777,7 +3838,7 @@
                 showSpinner('正在插入新的 PDF...');
                 try {
                     const arrayBuffer = await file.arrayBuffer();
-                    const newDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                    const newDoc = await pdfjsLib.getDocument({data: arrayBuffer, isEvalSupported: false}).promise;
                     
                     let newPages = [];
                     await processAllPages(newDoc, 0, newPages);
@@ -3800,9 +3861,62 @@
             });
 
 
+
+            const primary = document.createElement('div');
+            primary.className = 'primary-toolbar';
+            const controls = document.getElementById('controlsContainer');
+            controls.insertBefore(primary, document.getElementById('searchReplacePanel'));
+            for (const el of [importFileBtnInPanel, document.querySelector('.zoom-group'), pageIndicator, previewBtn, undoBtn, openExportModalBtn]) primary.appendChild(el);
+            for (const button of document.querySelectorAll('button[title]')) button.setAttribute('aria-label', button.title);
+            const hint = document.createElement('span');
+            hint.className = 'toolbar-label'; hint.textContent = '搜尋與替換';
+            document.getElementById('searchReplacePanel').prepend(hint);
+            replaceNextBtn.textContent = '替換此項';
+            document.querySelector('.action-buttons-group').insertBefore(replaceNextBtn, replaceAllBtn);
+            clearBtn.textContent = '清除搜尋';
+            document.querySelector('.theme-switch').setAttribute('aria-label','切換深色模式');
+            window.addEventListener('beforeunload', e => { if (historyStack.length) { e.preventDefault(); e.returnValue = ''; } });
+            window.addEventListener('keydown', e => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName) && !document.activeElement.isContentEditable && previewModalOverlay.style.display !== 'flex') {
+                    e.preventDefault(); if (!undoBtn.disabled) undoLastAction();
+                }
+            });
+
             toggleFontColorControls();
             resetTool(true);
+        }
+        initializeApp();
+        // Keyboard dialog navigation and accessible names.
+        for (const overlay of [exportModalOverlay, previewModalOverlay]) {
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', overlay === exportModalOverlay ? '匯出副本' : '頁面管理');
+            overlay.addEventListener('keydown', e => {
+                if (e.key === 'Escape' && spinnerOverlay.style.display !== 'flex') {
+                    e.preventDefault();
+                    (overlay === exportModalOverlay ? closeExportModalBtn : closePreviewModalBtn).click();
+                }
+                if (e.key !== 'Tab') return;
+                const focusable = [...overlay.querySelectorAll('button:not(:disabled),input:not(:disabled):not([type=hidden]),select:not(:disabled)')].filter(el => el.getClientRects().length);
+                if (!focusable.length) return;
+                const first=focusable[0], last=focusable.at(-1);
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            });
+        }
+        openExportModalBtn.addEventListener('click', () => closeExportModalBtn.focus());
+        closeExportModalBtn.addEventListener('click', () => openExportModalBtn.focus());
+        closePreviewModalBtn.addEventListener('click', () => previewBtn.focus());
+        // Readjust fit-to-width after the window changes, debounced to avoid repeated renders.
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer=setTimeout(async () => {
+                if (!Object.keys(pdfPageData).length || spinnerOverlay.style.display === 'flex') return;
+                await setPageScale('width'); await renderAllPages(); findAndHighlightAll();
+            }, 250);
         });
+
     </script>
 </body>
-</html></div></body></html>
+</html>
