@@ -797,6 +797,31 @@ body.font-kai .doc-paper [contenteditable="true"],
     [contenteditable="true"]:empty::before { display: none; }
     @page { margin: 1.5cm; }
   }
+
+.magic-highlight { white-space: pre-wrap; }
+
+/* 功能區：兩列固定，依用途使用柔和的藍／青綠／紫／玫瑰色。 */
+:root {--feature-blue:#607fa7;--feature-teal:#5d918a;--feature-purple:#8a79a8;--feature-rose:#af7482;}
+.raw-footer {background:#f4f7fa !important;border-top:1px solid #dbe4ec !important;overflow-x:auto;}
+.footer-actions-row1,.footer-actions-row2 {display:grid !important;gap:8px !important;width:100%;min-width:1040px;align-items:stretch;}
+.footer-actions-row1 {grid-template-columns:repeat(11,minmax(0,1fr));}
+.footer-actions-row2 {grid-template-columns:repeat(9,minmax(0,1fr));margin-top:8px;}
+.footer-actions-row1 .btn,.footer-actions-row2 .btn {min-width:0 !important;width:100%;height:40px;box-sizing:border-box;display:flex;justify-content:center;align-items:center;gap:4px;padding:0 5px !important;font-size:clamp(11px,.82vw,13px) !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff !important;font-weight:700;border-radius:10px !important;border:1px solid rgba(30,50,75,.12) !important;background:var(--feature-blue) !important;box-shadow:0 2px 5px rgba(30,45,60,.12) !important;text-shadow:none !important;transition:filter .16s,transform .16s;}
+.footer-actions-row1 .btn svg,.footer-actions-row2 .btn svg {flex:0 0 14px;width:14px;height:14px;}
+.footer-actions-row1 .btn:hover,.footer-actions-row2 .btn:hover {filter:brightness(1.08);transform:translateY(-1px);}
+.footer-actions-row1 .btn:hover svg,.footer-actions-row2 .btn:hover svg {transform:none;}
+:is(.footer-actions-row1,.footer-actions-row2) .btn:is([onclick*="openBossViewModal"],[onclick*="openDiagramModal"],[onclick*="openContextModal"],[onclick*="openSimulateModal"],[onclick*="openTimelineModal"]) {background:var(--feature-teal) !important;}
+:is(.footer-actions-row1,.footer-actions-row2) .btn:is([onclick*="openAIModal"],[onclick*="openTranslateModal"],[onclick*="openDraftModal"],[onclick*="openBatchModal"],[onclick*="openReplyModal"],[onclick*="openDynastyModal"],[onclick*="openPresentModal"]) {background:var(--feature-purple) !important;}
+:is(.footer-actions-row1,.footer-actions-row2) .btn:is([onclick*="openRiskModal"],[onclick*="openLawEngineModal"]) {background:var(--feature-rose) !important;}
+.modal-content {border:1px solid #dbe4ec !important;box-shadow:0 24px 64px rgba(15,35,55,.22) !important;}
+.modal-header {background:var(--feature-blue) !important;}
+#bossViewModal .modal-header,#diagramModal .modal-header,#contextModal .modal-header,#simulateModal .modal-header,#timelineModal .modal-header {background:var(--feature-teal) !important;}
+#aiModal .modal-header,#translateModal .modal-header,#draftModal .modal-header,#batchModal .modal-header,#replyModal .modal-header,#dynastyModal .modal-header,#presentModal .modal-header {background:var(--feature-purple) !important;}
+#riskModal .modal-header,#lawEngineModal .modal-header {background:var(--feature-rose) !important;}
+.modal-header h3 {font-family:'Noto Sans TC',sans-serif !important;font-weight:700;letter-spacing:.02em;}
+.footer-actions-row1 .btn:focus-visible,.footer-actions-row2 .btn:focus-visible {outline:3px solid #a7bfd2;outline-offset:2px;}
+.top-bar {margin-bottom:4px !important;}
+@media(max-width:720px){.footer-actions-row1 .btn,.footer-actions-row2 .btn{font-size:11px !important;}}
 </style>
 <style>
   .gemini-export-button {
@@ -1669,7 +1694,7 @@ body.font-kai .doc-paper [contenteditable="true"],
         <button class="btn btn-secondary" onclick="autoFillLawKeyword()" style="font-size:12px;height:42px;" title="自動從目前公文主旨與說明擷取關鍵字">⚡ 自動擷取全文</button>
       </div>
       <div id="lawEngineResultBox" style="min-height:350px;overflow-y:auto;">
-        <div style="text-align:center;padding-top:18%;opacity:0.5;font-weight:600;">輸入關鍵字後點擊搜尋，AI 將推薦最精準的法條依據</div>
+        <div style="text-align:center;padding-top:18%;opacity:0.5;font-weight:600;">輸入關鍵字後點擊搜尋，AI 將推薦待核對的法條依據</div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1927,6 +1952,7 @@ const nativeFetch = window.fetch.bind(window);
 window.fetch = async function(input, init = {}) {
   const url = typeof input === 'string' ? input : input?.url;
   if (!url || !url.includes('api.groq.com/openai/v1/chat/completions') || !init.body) return nativeFetch(input, init);
+  if (!confirm('此操作會將本次輸入的文字傳送至 ' + (localStorage.getItem('geminiApiKey') ? 'Gemini' : 'Groq') + '。請確認內容適合傳送後繼續。')) throw new Error('已取消傳送');
   const geminiKey = localStorage.getItem('geminiApiKey');
   const groqKey = localStorage.getItem('groqApiKey');
   if (!geminiKey) return nativeFetch(input, init);
@@ -1941,14 +1967,14 @@ window.fetch = async function(input, init = {}) {
     const response = await nativeFetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(geminiKey)}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ contents, generationConfig:{ temperature:payload.temperature ?? 0.3, maxOutputTokens:payload.max_tokens || 4096 } }) });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      if (groqKey && [408,429,500,502,503,504].includes(response.status)) return nativeFetch(url, { ...init, headers:{ ...init.headers, Authorization:`Bearer ${groqKey}` } });
+      if (groqKey && localStorage.getItem('allowGroqFallback') === 'true' && [408,429,500,502,503,504].includes(response.status)) return nativeFetch(url, { ...init, headers:{ ...init.headers, Authorization:`Bearer ${groqKey}` } });
       return new Response(JSON.stringify({ error:{ message:err.error?.message || `Gemini HTTP ${response.status}` } }), { status:response.status, headers:{'Content-Type':'application/json'} });
     }
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
     return new Response(JSON.stringify({ choices:[{ message:{ content:text } }] }), { status:200, headers:{'Content-Type':'application/json'} });
   } catch (error) {
-    if (groqKey) return nativeFetch(url, { ...init, headers:{ ...init.headers, Authorization:`Bearer ${groqKey}` } });
+    if (groqKey && localStorage.getItem('allowGroqFallback') === 'true') return nativeFetch(url, { ...init, headers:{ ...init.headers, Authorization:`Bearer ${groqKey}` } });
     throw error;
   }
 };
@@ -2203,7 +2229,7 @@ btnMagic.onclick = () => {
     btnMagic.classList.remove('active');
     showToast("標點偵測已關閉。");
   }
-  if (lastParsedData) render(lastParsedData, lastRawText);
+  if (lastParsedData) render(lastParsedData, lastRawText, false);
 };
 
 // 移除內文多餘空白功能
@@ -2261,10 +2287,15 @@ function removeSpacesFromDoc() {
   });
   docContainer.addEventListener('input', (e) => {
    const target = e.target;
-   if (target.hasAttribute('contenteditable') && target.hasAttribute('data-key')) {
-     const key = target.getAttribute('data-key');
+   if (target.closest?.('[contenteditable="true"][data-key]')) {
+     const editable = target.closest('[contenteditable="true"][data-key]');
+      const key = editable.getAttribute('data-key');
       if (key && lastParsedData) {
-        lastParsedData[key] = target.innerText.replace(/\n$/, '');
+        const clean = editable.cloneNode(true);
+        clean.querySelectorAll('.magic-period-warning').forEach(el => el.remove());
+        clean.querySelectorAll('br').forEach(el=>el.replaceWith('\n'));
+        clean.querySelectorAll('div').forEach(el=>el.append('\n'));
+        lastParsedData[key] = clean.textContent.replace(/\n$/, '');
         scheduleHistorySave();
       }
    }
@@ -2272,7 +2303,7 @@ function removeSpacesFromDoc() {
  
  docContainer.addEventListener('paste', (e) => {
    const target = e.target;
-   if (target.hasAttribute('contenteditable')) {
+   if (target.closest?.('[contenteditable="true"]')) {
      e.preventDefault();
     const text = (e.originalEvent || e).clipboardData.getData('text/plain');
     document.execCommand('insertText', false, text);
@@ -2286,7 +2317,7 @@ async function extractPdfText(file) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   let fullText = "";
-  
+  const pageTexts = []; const scanPages = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     parseStatus.textContent = `掃描文件 第 ${i} / ${pdf.numPages} 頁...`;
     const page = await pdf.getPage(i);
@@ -2312,10 +2343,11 @@ async function extractPdfText(file) {
       if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 6) pageText += "\n";
       pageText += item.str; lastY = item.transform[5];
     });
+    pageTexts[i-1] = pageText; if (!pageText.trim()) scanPages.push(i);
     fullText += pageText + "\n";
   }
 
-  if (fullText.trim().length < 50) {
+  if (scanPages.length) {
     if(typeof Tesseract === 'undefined') throw new Error("Tesseract.js 未載入，請確認網路連線。");
     showToast("🕵️ 偵測到純圖片掃描檔，啟動 OCR 辨識引擎...");
     parseStatus.innerHTML = `⏳ 正在下載繁體中文語言包 (視網路約需10~20秒)...`;
@@ -2327,7 +2359,7 @@ async function extractPdfText(file) {
           else if (m.status.includes('loading')) parseStatus.innerHTML = `⏳ 載入 OCR 引擎中...`;
         }
       });
-      for (let i = 1; i <= pdf.numPages; i++) {
+      for (const i of scanPages) {
         parseStatus.innerHTML = `📸 正在擷取第 ${i} 頁圖片準備辨識...`;
         const page = await pdf.getPage(i);
         const viewport = page.getViewport({ scale: 1.5 }); 
@@ -2337,10 +2369,11 @@ async function extractPdfText(file) {
         canvas.width = viewport.width;
         await page.render({ canvasContext: ctx, viewport: viewport }).promise;
         const { data: { text } } = await worker.recognize(canvas);
-        fullText += text + "\n";
+        pageTexts[i-1] = text;
         canvas.width = 0; canvas.height = 0;
       }
       await worker.terminate();
+      fullText = pageTexts.join("\n");
       fullText = fullText.replace(/[|｜]/g, '').replace(/主\s+旨/g, '主旨').replace(/說\s+明/g, '說明').replace(/擬\s+辦/g, '擬辦').replace(/正\s+本/g, '正本').replace(/副\s+本/g, '副本');
       fullText = fullText.replace(/(發文日期|發文字號|速別|密等及解密條件或保密期限|附件|主旨|說明|擬辦|正本|副本)\s*[:：;.。]?\s*/g, '\n$1：');
       fullText = fullText.replace(/([。；])\s*([一二三四五六七八九十]+[、])/g, '$1\n$2');
@@ -2400,6 +2433,7 @@ function cleanOrgList(s) {
 function parseXML(text) {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(text, "text/xml");
+  if (xmlDoc.querySelector("parsererror")) throw new Error("XML 格式錯誤，請檢查原始檔。");
   const getTagValue = (tagName) => xmlDoc.getElementsByTagName(tagName)[0]?.textContent.trim() || "";
   
   const recursiveText = (node) => {
@@ -2435,8 +2469,10 @@ function parseXML(text) {
           if (txt) results.push(txt.textContent.trim()); else results.push(cleanOrgList(un.textContent.trim()));
         }
       } else {
+        const fullNames = node.getElementsByTagName("全銜");
         const textNodes = node.getElementsByTagName("文字");
-        if (textNodes.length > 0) { for (let tn of textNodes) results.push(tn.textContent.trim()); } 
+        if (fullNames.length > 0) { for (const name of fullNames) results.push(name.textContent.trim()); }
+        else if (textNodes.length > 0) { for (const tn of textNodes) results.push(tn.textContent.trim()); }
         else results.push(cleanOrgList(node.textContent.trim()));
       }
     }
@@ -2444,7 +2480,7 @@ function parseXML(text) {
   };
 
   const rootTag = xmlDoc.documentElement.localName;
-  const isSign = rootTag === "簽" || text.includes("簽於");
+  const isSign = rootTag === "簽";
   const isBianJian = rootTag === "便箋";
   const isBianQian = rootTag === "便簽";
   const isNoteType = isBianJian || isBianQian;
@@ -2457,17 +2493,18 @@ function parseXML(text) {
   } else if (isBianQian) {
     docTypeResolved = "便簽";
   } else {
-    docTypeResolved = getTagValue("類別") || "函";
+    docTypeResolved = xmlDoc.querySelector("函類別")?.getAttribute("代碼") || getTagValue("類別") || "函";
   }
 
   const data = {
     orgName: getTagValue("全銜") || getTagValue("發文機關") || getTagValue("簽於"),
     docType: docTypeResolved,
-    docNo: getTagValue("發文字號") || getTagValue("文號") || getTagValue("於"),
+    docNo: xmlDoc.querySelector("發文字號 > 字") ? `${xmlDoc.querySelector("發文字號 > 字").textContent}字第${getTagValue("文號")}號` : getTagValue("發文字號") || getTagValue("文號") || getTagValue("於"),
     docDate: getTagValue("發文日期") || getTagValue("年月日"),
-    fileNo: getTagValue("檔號"), keepYear: getTagValue("保存年限") || "10", address: getTagValue("地址"), contact: getTagValue("承辦人"),
+    orgCode: getTagValue("機關代碼"),
+    fileNo: [...(xmlDoc.querySelector("檔號")?.children || [])].map(n=>n.textContent.trim()).join("/"), keepYear: getTagValue("保存年限") || "10", address: getTagValue("地址"), contact: getTagValue("承辦人"),
     originalCopy: cleanOrgList(getOrgListFromXML("正本")), carbonCopy: cleanOrgList(getOrgListFromXML("副本")),
-    phone: "", fax: "", email: "", priority: getTagValue("速別") || "普通件", secret: getTagValue("密等及解密條件或保密期限") || "普通",
+    phone: "", fax: "", email: "", priority: xmlDoc.querySelector("速別")?.getAttribute("代碼") || getTagValue("速別") || "普通件", secret: getTagValue("密等及解密條件或保密期限") || "普通",
     subject: isNoteType
       ? getSec("段落", "段落").replace(/\r?\n/g, "").replace(/\s{2,}/g, " ").trim()
       : getSec("主旨", "主旨"),
@@ -2479,7 +2516,8 @@ function parseXML(text) {
 
   const ct = xmlDoc.getElementsByTagName("聯絡方式")[0];
   if (ct) {
-    const s = ct.textContent;
+    const s = [...xmlDoc.getElementsByTagName("聯絡方式")].map(n=>n.textContent).join("\n");
+    data.contact = data.contact || s.match(/承辦人[：: ]*([^\n]+)/)?.[1] || "";
     const ph = s.match(/電話[：: ]*([\d\-轉]+)/); const fx = s.match(/傳真[：: ]*([\d\-]+)/); const em = s.match(/電子信箱[：: ]*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
     data.phone = ph ? ph[1] : ""; data.fax = fx ? fx[1] : ""; data.email = em ? em[1] : "";
   }
@@ -2671,7 +2709,7 @@ function cleanNoise(text) {
 function handleExportDI() {
   if (!lastParsedData) return;
   const d = lastParsedData;
-  const isSign = d.docType.includes("簽");
+  const isSign = String(d.docType || "").trim() === "簽";
   const isBianJian = d.docType === "便箋";
   const isBianQian = d.docType === "便簽";
   const isNoteType = isBianJian || isBianQian;
@@ -2696,7 +2734,7 @@ function handleExportDI() {
   }
 
   // 檔號、保存年限與稿面註記
-  xml += `  <檔號><年度>115</年度><分類號></分類號><案次號></案次號></檔號>\n`;
+  xml += `  <檔號><年度>${esc((d.fileNo || "").split("/")[0] || String(new Date().getFullYear()-1911))}</年度><分類號>${esc((d.fileNo || "").split("/")[1] || "")}</分類號><案次號>${esc((d.fileNo || "").split("/").slice(2).join("/"))}</案次號></檔號>\n`;
   xml += `  <保存年限>${esc(d.keepYear || "10")}</保存年限>\n`;
 
   if (!isNoteType) {
@@ -2717,7 +2755,7 @@ function handleExportDI() {
     xml += `  <機關><全銜>${esc(d.orgName)}</全銜></機關>\n`;
   } else {
     // 函的排版標頭
-    xml += `  <發文機關><全銜>${esc(d.orgName)}</全銜><機關代碼>379510000H</機關代碼></發文機關>\n`;
+    xml += `  <發文機關><全銜>${esc(d.orgName)}</全銜><機關代碼>${esc(d.orgCode || "")}</機關代碼></發文機關>\n`;
     xml += `  <函類別 代碼="${esc(d.docType)}" />\n`;
     xml += `  <地址>${esc(d.address)}</地址>\n`;
     if (d.contact) xml += `  <聯絡方式>承辦人：${esc(d.contact)}</聯絡方式>\n`;
@@ -2746,7 +2784,7 @@ function handleExportDI() {
 
     xml += `  <發文日期><年月日>${esc(displayDate)}</年月日></發文日期>\n`;
 
-    let docPrefix = "北市捷工", docYear = "115", docSerial = "0000000";
+    let docPrefix = "北市捷工", docYear = String(new Date().getFullYear()-1911), docSerial = "0000000";
     if (d.docNo) {
       const dnMatch = d.docNo.match(/(.*?)字第(\d{3})(\d+)號/);
       if (dnMatch) { [ , docPrefix, docYear, docSerial ] = dnMatch; } else { docPrefix = d.docNo; }
@@ -2890,89 +2928,137 @@ function checkUnpairedBrackets(text) {
   return issues;
 }
 
-function renderText(text) {
-  if (!text) return "";
-  if (!isMagicMode) return esc(text);
-
-  // 定義公文常見錯別字與提示說明的字典
-  const officialWordDict = {
-    "計劃": { correct: "計畫", desc: "公文統一使用「計畫」" },
-    "公佈": { correct: "公布", desc: "公文統一使用「公布」" },
-    "身份": { correct: "身分", desc: "公文統一使用「身分」" },
-    "部份": { correct: "部分", desc: "公文統一使用「部分」" },
-    "僱主": { correct: "雇主", desc: "公文統一使用「雇主」" },
-    "僱員": { correct: "雇員", desc: "公文統一使用「雇員」" },
-    "規畫": { correct: "規劃", desc: "公文統一使用「規劃」" },
-    "徹底": { correct: "澈底", desc: "公文統一使用「澈底」" },
-    "給與": { correct: "給予", desc: "動詞請用「給予」" },
-    "盡量": { correct: "儘量", desc: "公文統一使用「儘量」" },
-    "貫澈": { correct: "貫徹", desc: "公文統一使用「貫徹」" },
-    "策畫": { correct: "策劃", desc: "公文統一使用「策劃」" },
-    "獨佔": { correct: "獨占", desc: "公文統一使用「獨占」" },
-    "佔有": { correct: "占有", desc: "公文統一使用「占有」" },
-    "抵觸": { correct: "牴觸", desc: "公文統一使用「牴觸」" },
-    "聘雇": { correct: "聘僱", desc: "公文統一使用「聘僱」" },
-    "聲請": { correct: "申請", desc: "對行政機關用「申請」" },
-    "複核": { correct: "覆核", desc: "公文統一使用「覆核」" },
-    "複查": { correct: "覆查", desc: "公文統一使用「覆查」" },
-    "復驗": { correct: "複驗", desc: "公文統一使用「複驗」" }
-  };
-
-  // 成對符號缺漏偵測（整段文字層級）
-  const unpairedChars = checkUnpairedBrackets(text);
-  const bracketRuleMap = {
-    '「': { msg: '偵測到「 左引號，但缺少對應的 」右引號' },
-    '」': { msg: '偵測到 」右引號，但缺少對應的「 左引號' },
-    '（': { msg: '偵測到（ 左括號，但缺少對應的 ）右括號' },
-    '）': { msg: '偵測到 ）右括號，但缺少對應的（ 左括號' },
-    '(': { msg: '偵測到( 左括號，但缺少對應的 )右括號' },
-    ')': { msg: '偵測到 )右括號，但缺少對應的( 左括號' }
-  };
-
-  const regex = /(^[？；，、。：.,/*\-+]+|[ \t\u3000]+|[\(\),]|(?:([ ，。、？！；：「」『』（）《》〈〉【】—～…])\2+)|安慰|記錄|捷局|、。|。、|：、|、：|。，|，。|AXAR|AXAA|捷工管處|第\s*\d+\s*頁|共\s*\d+\s*頁|11[3-7]\*+|11[3-7]\d{4,10}|AAAA|\*+|審核決行|會辦單位[：:]?|計劃|貫澈|公佈|身份|部份|佔有|僱主|聘雇|規畫|策畫|盡量|徹底|聲請|給與|複核|複查|復驗|「|」|（|）|\(|\))/g;
-
-  let lastIndex = 0;
-  let result = "";
-  let match;
-
-  while ((match = regex.exec(text)) !== null) {
-    result += esc(text.substring(lastIndex, match.index));
-
-    let matchedWord = match[0];
-    let titleMsg = "偵測到異常格式或關鍵字";
-    let isUnpaired = false;
-
-    // 優先判斷：成對符號缺漏
-    if (unpairedChars.has(matchedWord) && bracketRuleMap[matchedWord]) {
-      titleMsg = `⚠️ 符號未成對：${bracketRuleMap[matchedWord].msg}`;
-      isUnpaired = true;
+// 標點檢查只提示，不改寫原文；索引使用 UTF-16，與 slice 一致。
+function punctuationIssues(text) {
+  text = String(text || '');
+  const issues = new Map();
+  const mark = (i, message) => issues.set(i, [...(issues.get(i) || []), message]);
+  const opens = {'「':'」','『':'』','（':'）','《':'》','〈':'〉','【':'】','〔':'〕','(':')','[':']','{':'}'};
+  const closes = new Set(Object.values(opens));
+  const stack = [];
+  for (let i=0;i<text.length;i++) {
+    const c=text[i];
+    if (/[^\S\r\n]/u.test(c)) mark(i,'公文內容不得含空格：包含半形、全形空格、Tab 及不換行空格，請刪除');
+    if (/[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]/.test(c)) mark(i,'半形符號：請確認是否應改用全形；網址、電子郵件、數值及代碼可人工保留');
+    if (opens[c]) stack.push({c,i});
+    else if (closes.has(c)) {
+      if (stack.length && opens[stack[stack.length-1].c]===c) stack.pop();
+      else mark(i,'括號或引號缺少對應開頭，或配對順序錯誤');
     }
-    // 判斷是否為公文易錯字
-    else if (officialWordDict[matchedWord]) {
-      const info = officialWordDict[matchedWord];
-      titleMsg = `💡 建議修正為「${info.correct}」\n說明：${info.desc}`;
-    }
-    // 其他原有的雜訊判斷
-    else if (matchedWord.includes("AAAA")) {
-      titleMsg = "偵測到測試字串 AAAA";
-    } else if (matchedWord.includes("*")) {
-      titleMsg = "偵測到星號雜訊";
-    } else if (/第\s*\d+\s*頁|共\s*\d+\s*頁/.test(matchedWord)) {
-      titleMsg = "偵測到分頁雜訊";
-    } else if (/會辦單位|審核決行/.test(matchedWord)) {
-      titleMsg = "偵測到公文表單殘留文字";
-    }
-
-    // 成對符號缺漏時採用紅色警示樣式，其餘維持原黃色
-    if (isUnpaired) {
-      result += `<span class="magic-highlight" style="background:rgba(215,0,21,0.18);border-color:#D70015;color:#D70015;" title="${titleMsg}">${esc(matchedWord)}</span>`;
-    } else {
-      result += `<span class="magic-highlight" title="${titleMsg}">${esc(matchedWord)}</span>`;
-    }
-    lastIndex = regex.lastIndex;
   }
-  result += esc(text.substring(lastIndex));
-  return result;
+  stack.forEach(x=>mark(x.i,'括號或引號缺少對應結尾，或配對順序錯誤'));
+  // 點號連用（含空白隔開）均提醒；合法的句號加右引號不在此集合。
+  for (const m of text.matchAll(/[，。、；：？！,.!?:;](?:[ \t\u3000]*[，。、；：？！,.!?:;])+/g)) {
+    for(let j=0;j<m[0].length;j++) if(!/\s/.test(m[0][j])) mark(m.index+j,'重複或不合理的標點組合：請逐一核對');
+  }
+  for (const m of text.matchAll(/[…—]+/g)) {
+    if(m[0] !== '……' && m[0] !== '——') for(let j=0;j<m[0].length;j++) mark(m.index+j,'刪節號或破折號長度異常，請確認');
+  }
+  // 24 小時制時間：冒號改用「時、分」，13 至 23 時不再加下午等時段詞。
+  const timePattern = /(?<![0-9０-９])(?:(凌晨|清晨|早上|上午|中午|下午|傍晚|晚上|夜間)[ \t\u3000]*)?([0-9０-９]{1,2})(?:([:：])([0-9０-９]{2})|時([0-9０-９]{1,2})分)(?![0-9０-９])/g;
+  const toNumber = value => Number(value.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248)));
+  for (const m of text.matchAll(timePattern)) {
+    const hour=toNumber(m[2]), minute=toNumber(m[4] || m[5]);
+    let message='';
+    if(hour>23 || minute>59) message='時間數值超出範圍：小時須為 0 至 23，分鐘須為 0 至 59，請核對原文';
+    else if(m[3] || (m[1] && hour>=13)) {
+      const period = m[1] && hour<13 ? m[1] : '';
+      message=`時間敘述建議改為「${period}${hour}時${minute}分」`;
+      if(m[1] && hour>=13) message+='；已採 24 小時制，請移除贅餘時段詞並確認時段無矛盾';
+    }
+    if(message) for(let j=0;j<m[0].length;j++) mark(m.index+j,message);
+  }
+  return issues;
+}
+// 用字舉例：僅標示附件可核對的完整誤寫詞組；承辦人自行確認語意。
+function officialWordIssues(text) {
+  // 依附件例詞核對完整詞組；只標示常見誤寫，不對單字作全域判斷。
+  const replacements = {
+    '公佈':'公布',
+    '分佈':'分布',
+    '頒佈':'頒布',
+    '征兵':'徵兵',
+    '征稅':'徵稅',
+    '稽征':'稽徵',
+    '部份':'部分',
+    '身份':'身分',
+    '賬目':'帳目',
+    '賬戶':'帳戶',
+    '韮菜':'韭菜',
+    '鑛物':'礦物',
+    '鑛藏':'礦藏',
+    '領舘':'領館',
+    '圖書舘':'圖書館',
+    '谷物':'穀物',
+    '行踪':'行蹤',
+    '失踪':'失蹤',
+    '佔有':'占有',
+    '獨佔':'獨占',
+    '抵觝':'抵觸',
+    '僱員':'雇員',
+    '僱主':'雇主',
+    '僱工':'雇工',
+    '雇用':'僱用',
+    '聘雇':'聘僱',
+    '粘貼':'黏貼',
+    '計劃':'計畫',
+    '策畫':'策劃',
+    '規畫':'規劃',
+    '擘畫':'擘劃',
+    '搜集':'蒐集',
+    '煙葉':'菸葉',
+    '煙酒':'菸酒',
+    '盡先':'儘先',
+    '盡量':'儘量',
+    '電錶':'電表',
+    '水錶':'水表',
+    '硫化燐':'硫化磷',
+    '貫澈':'貫徹',
+    '徹底':'澈底',
+    '關于':'關於',
+    '對于':'對於',
+    '給于':'給予',
+    '授于':'授予',
+    '會議記錄':'會議紀錄',
+    '事跡':'事蹟',
+    '史跡':'史蹟',
+    '遺跡':'遺蹟',
+    '踪跡':'蹤跡',
+    '複查':'復查',
+    '複核':'覆核',
+    '取銷':'取消'
+  };
+  const issues = new Map();
+  const words = Object.keys(replacements).sort((a,b)=>b.length-a.length);
+  const occupied = new Set();
+  for (const word of words) {
+    let start = 0, at;
+    while ((at = text.indexOf(word, start)) !== -1) {
+      if (![...word].some((_,offset)=>occupied.has(at+offset))) {
+        const hint = `用字提醒：建議「${replacements[word]}」；僅提醒，由承辦人自行判斷`;
+        for (let i=at;i<at+word.length;i++) { issues.set(i,[hint]); occupied.add(i); }
+      }
+      start = at+word.length;
+    }
+  }
+  return issues;
+}
+function renderText(text) {
+  text=String(text || '');
+  if (!isMagicMode) return esc(text);
+  const issues=punctuationIssues(text);
+  for(const [i,msg] of officialWordIssues(text)) issues.set(i,[...(issues.get(i)||[]),msg]);
+  let html='';
+  for(let i=0;i<text.length;i++) html+=issues.has(i)
+    ? `<span class="magic-highlight" title="${esc([...new Set(issues.get(i))].join('；'))}">${esc(text[i])}</span>`
+    : esc(text[i]);
+  return html;
+}
+function missingEndPunctuation(text) {
+  const tail=String(text || '').trim().replace(/[」』）》〉】〕)\]}]+$/u,'').trimEnd();
+  if(!tail) return false;
+  // 檢查段落最後有無標點；半形句尾另由半形規則提醒。
+  return !/[，。、；：？！…—,.!?:;]$/u.test(tail);
 }
 
 function zhToInt(zhStr) {
@@ -2991,20 +3077,19 @@ function formatSectionText(text, key) {
   let expectL3 = 1; 
 
   return text.split('\n').map(line => {
-    let cleanLine = line.trim();
-    if (!cleanLine) return `<div><br></div>`;
-    
+    let cleanLine = line;
+    if (!cleanLine.length) return `<div><br></div>`;
     let warningHtml = "";
-    if (isMagicMode && key === 'content') {
-      if (!cleanLine.endsWith('。') && !cleanLine.endsWith('：')) warningHtml = `<span class="magic-period-warning" contenteditable="false" title="段落結尾應為全形句號">⚠️缺 「。」</span>`;
+    if (isMagicMode && ['subject','content','proposal'].includes(key) && missingEndPunctuation(cleanLine)) {
+      warningHtml = `<span class="magic-period-warning" contenteditable="false" title="本段落句尾沒有標點，請依語意補上句號或適當標點">⚠️句尾缺標點</span>`;
     }
-
+    
     let pad = "2em";    
     let indent = "0em"; 
 
-    let m1 = cleanLine.match(/^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+)\s*[、.]\s*(.*)/);
-    let m2 = cleanLine.match(/^[\(（]\s*([一二三四五六七八九十]+)\s*[\)）]\s*(.*)/);
-    let m3 = cleanLine.match(/^([0-9\uFF10-\uFF19]+)\s*[、.．]\s*(.*)/);
+    let m1 = cleanLine.match(/^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+)\s*[、.](.*)/);
+    let m2 = cleanLine.match(/^[\(（]\s*([一二三四五六七八九十]+)\s*[\)）](.*)/);
+    let m3 = cleanLine.match(/^([0-9\uFF10-\uFF19]+)\s*[、.．](.*)/);
 
     let finalHtml = "";
 
@@ -3067,7 +3152,7 @@ function formatSectionText(text, key) {
       finalHtml = renderText(cleanLine);
     }
 
-    return `<div style="padding-left: ${pad}; text-indent: ${indent}; margin-bottom: 4px; text-align: justify; line-height: 1.8;">${finalHtml}${warningHtml}</div>`;
+    return `<div style="padding-left: ${pad}; text-indent: ${indent}; margin-bottom: 4px; text-align: justify; white-space: pre-wrap; line-height: 1.8;">${finalHtml}${warningHtml}</div>`;
   }).join('');
 }
 
@@ -3081,7 +3166,7 @@ function highlightRawText(rawText) {
   return safeText;
 }
 
-function render(d, raw) {
+function render(d, raw, saveHistory = true) {
   if (!d.subjectTitle) d.subjectTitle = d.subject ? d.subject.split('\n')[0] : '';
   const attachmentText = (d.attachments && typeof d.attachments === 'string' && d.attachments.trim() !== "") ? d.attachments : (Array.isArray(d.attachments) && d.attachments.length > 0) ? d.attachments.join('\n') : "";
   
@@ -3267,6 +3352,8 @@ function render(d, raw) {
     </div>
   `;
   docContainer.innerHTML = html;
+  arrangeFeatureButtons();
+  if (saveHistory) scheduleHistorySave();
 }
 
 // ==========================================
@@ -4039,14 +4126,6 @@ function restoreFromHistory(index) {
 
 // 頁面載入時初始化儀表板
 document.addEventListener('DOMContentLoaded', renderHistoryDashboard);
-
-// ❗️ 必須綁定：在解析完成後存入紀錄 (尋找 btnParse.onclick)
-// 為了不影響原有代碼，我們在此處攔截解析成功後的狀態：
-const originalRender = render;
-render = function(d, raw) {
-  originalRender(d, raw);
-  saveToHistory(d, raw);
-};
 
 // ==========================================
 // 🚀 新增功能：4. 罐頭語錄庫 (Snippet Manager)
@@ -5486,7 +5565,8 @@ async function generateReply() {
 function applyReplyDraft() {
   if (!window._replyDraft || !lastParsedData) return;
   const text = window._replyDraft;
-  const d = lastParsedData;
+  const d = structuredClone(lastParsedData);
+  delete d._historyId;
   const subMatch = text.match(/主旨[：:]\s*([\s\S]*?)(?=說明[：:]|$)/);
   const conMatch = text.match(/說明[：:]\s*([\s\S]*?)(?=擬辦[：:]|$)/);
   const proMatch = text.match(/擬辦[：:]\s*([\s\S]*?)$/);
@@ -5496,7 +5576,8 @@ function applyReplyDraft() {
   if (subMatch) d.subject = subMatch[1].trim();
   if (conMatch) d.content = conMatch[1].trim();
   if (proMatch) d.proposal = proMatch[1].trim();
-  d.docNo = ''; d.docDate = '';
+  d.docNo = ''; d.docDate = ''; d.originalCopy = d.receiveOrg; d.carbonCopy = ''; d.orgCode = ''; d.subjectTitle = ''; d.proposal = proMatch ? proMatch[1].trim() : '';
+  lastParsedData = d; lastRawText = ''; currentFile = null;
   render(d, lastRawText);
   closeReplyModal();
   showToast('✅ 回復草稿已套用！請確認各欄位後匯出。');
@@ -5903,7 +5984,7 @@ function openLawEngineModal() {
   const keyStatus = document.getElementById('lawEngineKeyStatus');
   keyStatus.textContent = key ? '✅ 已載入' : '⚠️ 尚未設定（請至主畫面右上角輸入）';
   keyStatus.style.color = key ? 'var(--nature-green-main)' : 'var(--seal-red)';
-  document.getElementById('lawEngineResultBox').innerHTML = '<div style="text-align:center;padding-top:18%;opacity:0.5;font-weight:600;">輸入關鍵字後點擊搜尋，AI 將推薦最精準的法條依據</div>';
+  document.getElementById('lawEngineResultBox').innerHTML = '<div style="text-align:center;padding-top:18%;opacity:0.5;font-weight:600;">輸入關鍵字後點擊搜尋，AI 將推薦待核對的法條依據</div>';
   document.getElementById('lawEngineModal').classList.add('show');
 }
 function closeLawEngineModal() { document.getElementById('lawEngineModal').classList.remove('show'); }
@@ -5933,7 +6014,7 @@ async function generateLawEngine() {
   const btn = document.getElementById('btnGenLaw');
   const box = document.getElementById('lawEngineResultBox');
   btn.disabled = true;
-  box.innerHTML = '<div style="text-align:center;padding-top:15%;font-weight:700;color:var(--apple-blue);">⏳ AI 正在跨領域比對法規資料庫，推薦最適用的法條...</div>';
+  box.innerHTML = '<div style="text-align:center;padding-top:15%;font-weight:700;color:var(--apple-blue);">⏳ AI 正在推薦待核對法規（未連線查詢法規資料庫）...</div>';
 
   const sys = `你是精通中華民國法律體系的資深法制專家。請根據使用者的事由關鍵字，自動判斷適用的法規領域，並推薦「所有最精準且必要」的法律依據（不限數量，依實際需求完整列出）。
 
@@ -6211,6 +6292,34 @@ const keyGuide = document.createElement('p');
 keyGuide.className = 'gemini-export-guide';
 keyGuide.textContent = '有 API Key 可在各模組直接執行 AI 分析；未設定金鑰或本頁分析失敗時，按該模組「匯出至 Gemini」。此操作會複製提示詞及目前內容並開啟 Gemini，需登入、貼上後自行送出。';
 document.getElementById('controlsBar')?.insertAdjacentElement('afterend', keyGuide);
+</script>
+<script>
+const privacyTools = document.createElement('div');
+privacyTools.style.cssText='margin:16px auto;padding:16px;max-width:1100px;background:var(--doc-bg);border-radius:12px;line-height:1.8';
+privacyTools.innerHTML='<strong>資料保存與 AI 傳送</strong><p>最近五份公文與金鑰保存在此瀏覽器。AI 功能會傳送本次文字至 Gemini 或 Groq；解析 PDF 與 OCR 在瀏覽器執行，外部元件與語言包仍需網路。</p><label><input id="fallbackConsent" type="checkbox"> 允許 Gemini 失敗時將同一內容改送 Groq</label><br><button id="clearKeys" type="button">清除已保存金鑰</button> <button id="clearDocs" type="button">清除公文歷史紀錄</button>';
+document.body.appendChild(privacyTools);
+const fallbackConsent=document.getElementById('fallbackConsent');
+fallbackConsent.checked=localStorage.getItem('allowGroqFallback')==='true';
+fallbackConsent.onchange=()=>localStorage.setItem('allowGroqFallback',String(fallbackConsent.checked));
+document.getElementById('clearKeys').onclick=()=>{localStorage.removeItem('geminiApiKey');localStorage.removeItem('groqApiKey');document.querySelectorAll('input[type="password"]').forEach(el=>el.value='');showToast('已清除金鑰');};
+document.getElementById('clearDocs').onclick=()=>{clearTimeout(historySaveTimer);historySaveTimer=null;pendingHistoryData=null;localStorage.removeItem('di_doc_history');renderHistoryDashboard();showToast('已清除歷史紀錄；後續編輯會重新保存');};
+</script>
+<script>
+// 每次 render 重建按鈕後立即排序，同色功能保持相鄰。
+function arrangeFeatureButtons() {
+  const rows=[document.querySelector('.footer-actions-row1'),document.querySelector('.footer-actions-row2')];
+  if (!rows.every(Boolean)) return;
+  const buttons=rows.flatMap(row=>[...row.querySelectorAll(':scope > button')]);
+  const find=term=>buttons.find(btn=>btn.getAttribute('onclick')?.includes(term));
+  const order=['toggleZenMode','copyContent','rawView','openProfileModal','openSnippetModal','openDiffModal',
+    'openBossViewModal','openDiagramModal','openContextModal','openSimulateModal','openTimelineModal',
+    'openAIModal','openTranslateModal','openDraftModal','openBatchModal','openReplyModal','openDynastyModal','openPresentModal',
+    'openRiskModal','openLawEngineModal'];
+  const sorted=order.map(find).filter(Boolean);
+  if(sorted.length!==buttons.length || new Set(sorted).size!==buttons.length) return;
+  sorted.slice(0,11).forEach(btn=>rows[0].appendChild(btn));
+  sorted.slice(11).forEach(btn=>rows[1].appendChild(btn));
+}
 </script>
 </body>
 </html>
