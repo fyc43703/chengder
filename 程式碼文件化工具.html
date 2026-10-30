@@ -1095,6 +1095,41 @@ export function ResponseBoard() {
     outputFormatSelect.addEventListener('change', updateControlsVisibility); pdfScale.addEventListener('input', updateScaleDisplay); codeInput.addEventListener('input', updateCharCount);
     document.addEventListener('keydown', e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();convertBtn.click();} if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='P'){e.preventDefault();previewBtn.click();} });
     updateControlsVisibility(); updateCharCount(); updateScaleDisplay(); themeCheck();
+    const detectionNotice=document.createElement('p');
+    detectionNotice.setAttribute('role','status');
+    detectionNotice.style.cssText='font-size:12px;margin:4px 0;color:#64748b';
+    detectionNotice.textContent='貼上內容可自動辨識類型；辨識後仍可手動調整。';
+    document.querySelector('.code-type-picker').appendChild(detectionNotice);
+    function detectPastedCode(source){
+      const text=source.trim();
+      if(!text) return null;
+      try { JSON.parse(text); if(/^[\[{]/.test(text)) return 'json'; } catch(_) {}
+      if(/^(?:<\?xml[^>]*>\s*)?<svg\b/i.test(text)) return 'svg';
+      if(/<!doctype\s+html|<html\b|<(?:div|section|article|p|h[1-6]|table|head|body)\b/i.test(text)) return 'html';
+      if(/^(?:%%[^\n]*\n\s*)*(?:graph\s|flowchart\s|sequenceDiagram\b|classDiagram\b|stateDiagram(?:-v2)?\b|erDiagram\b|gantt\b|pie\b|mindmap\b|timeline\b|gitGraph\b)/.test(text)) return 'mermaid';
+      if(/^(?:#{1,6}\s|```|\|.+\|\s*$)|\[[^\]]+\]\([^)]+\)/m.test(text)) return 'markdown';
+      if(/^<\?xml\b/.test(text)) return 'xml';
+      if(/^(?:from\s+\w+\s+import\b|def\s+\w+\s*\(|class\s+\w+.*:|import\s+\w+\s*$)/m.test(text)) return 'python';
+      if(/\b(?:SELECT\s+.+\s+FROM|CREATE\s+TABLE|INSERT\s+INTO|UPDATE\s+\w+\s+SET)\b/is.test(text)) return 'sql';
+      if(/(?:^|\n)\s*[.#][\w-]+[^{}]*\{[^{}]*[\w-]+\s*:/s.test(text)) return 'css';
+      if(/\b(?:interface\s+\w+|type\s+\w+\s*=)|:\s*(?:string|number|boolean)\b/.test(text)) return /<\w+[^>]*>/.test(text) ? 'tsx' : 'typescript';
+      if(/\b(?:const|let|var)\s+\w+\s*=|\bfunction\s+\w+\s*\(|console\.log\s*\(/.test(text)) return /<\w+[^>]*>/.test(text) ? 'jsx' : 'javascript';
+      if(/^#include\s*[<"]|\bstd::/m.test(text)) return 'cpp';
+      if(/\bpublic\s+(?:static\s+)?(?:class|void)\b|System\.out\.println/.test(text)) return 'java';
+      if(/^#!.*\b(?:bash|sh)\b/.test(text)) return 'bash';
+      if(/^<\?php\b/.test(text)) return 'php';
+      return null;
+    }
+    codeInput.addEventListener('paste',()=>{
+      setTimeout(()=>{
+        const type=detectPastedCode(codeInput.value);
+        codeTypeSelect.value=type || 'plaintext';
+        codeTypeSelect.dispatchEvent(new Event('change',{bubbles:true}));
+        document.querySelectorAll('.sample-grid > button').forEach(button=>{button.classList.remove('sample-active');button.setAttribute('aria-pressed','false');});
+        detectionNotice.textContent=type ? `已自動辨識：${codeTypeSelect.selectedOptions[0].textContent}。可按「預覽效果」檢視，或手動修正類型。` : '無法確定程式碼類型，暫以純文字處理；請手動選擇正確類型。';
+        updateCharCount();
+      },0);
+    });
     window.insertSample=insertSample;
   </script>
 </body>
