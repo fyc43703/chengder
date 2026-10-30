@@ -207,6 +207,28 @@
         transform: translateX(-50%) translateY(-4px);
     }
 
+    .sample-grid > button.sample-active { background: #007aff; color: #fff; }
+    .dark .sample-grid > button.sample-active { background: #0a84ff; color: #fff; }
+    /* 桌面版將主要操作固定在單一視窗高度，長程式碼只在輸入區捲動。 */
+    @media (min-width: 769px) {
+      html, body { min-height: 100%; }
+      body { height: 100dvh; overflow: hidden; }
+      #app { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+      #app > header { flex: 0 0 auto; margin-bottom: .75rem; }
+      #app > main { flex: 1 1 auto; min-height: 0; }
+      #app > main > .panel { min-height: 0; overflow: hidden; }
+      #app > main > .panel:first-child { padding-top: 1rem; padding-bottom: 1rem; }
+      #code_input { height: 100%; min-height: 7rem; }
+      #code_input + div { pointer-events: none; }
+      #app > main .sample-grid { flex: 0 0 auto; margin-top: .75rem; max-height: 8.6rem; overflow-y: auto; align-content: start; }
+      #app > main .sample-grid > button { padding-top: .3rem; padding-bottom: .3rem; }
+      #app > main > .panel:last-child { padding-top: 1rem; padding-bottom: 1rem; }
+      #app > main > .panel:last-child .space-y-5 { row-gap: .75rem; }
+      #app > main > .panel:last-child .space-y-4 { row-gap: .5rem; }
+      #app > main > .panel:last-child label { margin-bottom: .25rem; }
+      #app > main > .panel:last-child .mt-4 { margin-top: .75rem; }
+      #preview_section:not(.hidden) { position: fixed; inset: 5vh 4vw; z-index: 40; overflow: auto; margin: 0; background: #fff; box-shadow: 0 20px 60px #0005; border-radius: 1rem; }
+    }
     @media (max-width: 768px) {
       .grid-responsive { grid-template-columns: 1fr; }
       .mobile-stack { flex-direction: column; align-items: stretch; }
@@ -734,6 +756,12 @@ export function ResponseBoard() {
       if(!sampleCodes[type]) return;
       codeInput.value=sampleCodes[type];
       codeTypeSelect.value=type==='jsonGraph' ? 'json' : type;
+      codeTypeSelect.dispatchEvent(new Event('change',{bubbles:true}));
+      document.querySelectorAll('.sample-grid > button').forEach(button => {
+        const selected=button.getAttribute('onclick')===`insertSample('${type}')`;
+        button.setAttribute('aria-pressed', String(selected));
+        button.classList.toggle('sample-active', selected);
+      });
       updateCharCount();
       await showPreview();
     }
@@ -848,20 +876,62 @@ export function ResponseBoard() {
     function writePreviewWindow(previewWin,contentHtml){
       if(!previewWin) return;
       previewWin.document.open();
-      previewWin.document.write(`<!DOCTYPE html><html lang="zh-Hant"><head>${buildHeadHTML(getFileName()+'_preview')}</head><body><div style="max-width:1200px;margin:0 auto">${contentHtml}</div></body></html>`);
+      previewWin.document.write(`<!DOCTYPE html><html lang="zh-Hant"><head>${buildHeadHTML(getFileName()+'_preview')}<style>body{max-width:none;margin:0;padding:16px;box-sizing:border-box}#preview-heading{font:600 18px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0 0 12px;padding:0;border:0;color:#1d1d1f}#preview-content{display:table;width:max-content;max-width:1200px;margin:0}#preview-content .json-visual{width:fit-content;max-width:none;margin:0}#preview-content .json-timeline{width:780px}</style></head><body><h1 id="preview-heading">👁️ 預覽效果</h1><div id="preview-content">${contentHtml}</div></body></html>`);
       previewWin.document.close(); previewWin.focus();
+      const fitPreviewWindow=async()=>{
+        try{
+          await previewWin.document.fonts.ready;
+          await Promise.all(Array.from(previewWin.document.images, image => image.complete ? Promise.resolve() : new Promise(resolve => { image.addEventListener('load',resolve,{once:true}); image.addEventListener('error',resolve,{once:true}); })));
+          const doc=previewWin.document;
+          const chromeWidth=previewWin.outerWidth-previewWin.innerWidth;
+          const chromeHeight=previewWin.outerHeight-previewWin.innerHeight;
+          const maxWidth=previewWin.screen.availWidth;
+          const maxHeight=previewWin.screen.availHeight;
+          const content=doc.getElementById('preview-content');
+          const heading=doc.getElementById('preview-heading');
+          const graph=content.querySelector('.json-graph');
+          if(graph){
+            const graphWidth=Number(graph.getAttribute('width'));
+            if(graphWidth>0){ graph.style.width=`${graphWidth}px`; graph.closest('.json-visual').style.width=`${graphWidth}px`; }
+          }
+          // Reset exported page spacing; HTML examples may include their own body rules.
+          doc.documentElement.style.cssText='margin:0!important;padding:0!important';
+          doc.body.style.cssText='margin:0!important;padding:16px!important;max-width:none!important;box-sizing:border-box';
+          const timeline=content.querySelector('.json-timeline');
+          const graphic=content.querySelector('svg');
+          const naturalWidth=timeline ? 780 : graph ? Number(graph.getAttribute('width')) : graphic ? (Number(graphic.getAttribute('width')) || 900) : 900;
+          content.style.cssText=`display:flow-root;width:${naturalWidth}px;max-width:none;margin:0`;
+          const contentWidth=Math.max(naturalWidth,content.scrollWidth);
+          const targetWidth=Math.min(maxWidth,Math.max(360,contentWidth+32+chromeWidth));
+          previewWin.resizeTo(targetWidth,previewWin.outerHeight);
+          previewWin.requestAnimationFrame(()=>{
+            const contentHeight=heading.offsetHeight+12+Math.max(content.scrollHeight,content.getBoundingClientRect().height);
+            const targetHeight=Math.min(maxHeight,Math.max(240,contentHeight+32+chromeHeight));
+            previewWin.resizeTo(targetWidth,targetHeight);
+            previewWin.moveTo(Math.max(0,Math.round((maxWidth-targetWidth)/2)),Math.max(0,Math.round((maxHeight-targetHeight)/2)));
+          });
+        }catch(e){ console.warn('預覽視窗無法自動調整大小',e); }
+      };
+      // Schedule directly: document.close() can finish before a load listener is attached.
+      previewWin.setTimeout(fitPreviewWindow,150);
     }
+    let activePreviewWindow=null;
+    document.addEventListener('pointerdown',()=>{
+      if(activePreviewWindow && !activePreviewWindow.closed) activePreviewWindow.close();
+      activePreviewWindow=null;
+    },true);
     async function showPreview(){
       const previewWidth=860, previewHeight=640;
       const previewLeft=Math.max(0,Math.round((window.screen.availWidth-previewWidth)/2));
       const previewTop=Math.max(0,Math.round((window.screen.availHeight-previewHeight)/2));
-      const previewWin=window.open('','code_document_preview',`width=${previewWidth},height=${previewHeight},left=${previewLeft},top=${previewTop},resizable=no,scrollbars=yes`);
+      const previewWin=window.open('','code_document_preview',`width=${previewWidth},height=${previewHeight},left=${previewLeft},top=${previewTop},resizable=yes,scrollbars=yes`);
+      activePreviewWindow=previewWin;
       try{
         toggleLoader(true,'正在生成預覽...'); const contentHtml=await prepareContentForRender();
-        previewSection.classList.remove('hidden'); await writePreview(contentHtml); writePreviewWindow(previewWin,contentHtml);
+        writePreviewWindow(previewWin,contentHtml);
       }catch(e){ alert(e.message||'無法生成預覽'); } finally{ toggleLoader(false); }
     }
-    async function printPreview(){ try{ const contentHtml=await prepareContentForRender(); const printWin=window.open('','_blank'); printWin.document.open(); printWin.document.write(`<!DOCTYPE html><html lang="zh-Hant"><head>${buildHeadHTML(getFileName()+'_preview')}<style>@page{margin:16mm}</style></head><body>${contentHtml}<script>window.onload=function(){setTimeout(function(){window.print();window.close();},100)}<\/script></body></html>`); printWin.document.close(); previewSection.classList.remove('hidden'); await writePreview(contentHtml); }catch(e){ alert(e.message||'列印預覽失敗'); } }
+    async function printPreview(){ try{ const contentHtml=await prepareContentForRender(); const printWin=window.open('','_blank'); printWin.document.open(); printWin.document.write(`<!DOCTYPE html><html lang="zh-Hant"><head>${buildHeadHTML(getFileName()+'_preview')}<style>@page{margin:16mm}</style></head><body>${contentHtml}<script>window.onload=function(){setTimeout(function(){window.print();window.close();},100)}<\/script></body></html>`); printWin.document.close(); }catch(e){ alert(e.message||'列印預覽失敗'); } }
     
     async function convertToPdf(){
       try{
