@@ -927,7 +927,8 @@ body>.ai-settings-window .ai-settings-close:hover,body>.ai-settings-window .ai-s
 #aiInsightPage .ai-route-card small{font-size:13px;line-height:1.6;color:#52677c}
 #aiInsightPage .ai-route-details{margin:6px 0 16px;color:#52677c;font-size:13px;line-height:1.7}
 #aiInsightPage .ai-route-details summary{width:fit-content;cursor:pointer;color:#1769aa;padding:5px 0;font-weight:700}
-#aiInsightPage .ai-route-details p{max-width:85ch;margin:8px 0}
+#aiInsightPage .ai-route-details p{max-width:none;margin:8px 0}
+#aiInsightPage .ai-route-details .ai-keep-phrase{white-space:nowrap}
 #aiInsightPage .ai-result-meta{display:flex;flex-wrap:wrap;gap:12px 26px;margin:0 0 16px;padding:14px 16px;border:1px solid #dce7ef;border-radius:12px;background:#f7fafc}
 #aiInsightPage .ai-result-meta div{min-width:100px;max-width:100%}
 #aiInsightPage .ai-result-meta dt{font-size:12px;color:#52677c}
@@ -1006,7 +1007,7 @@ body>.ai-settings-window .ai-settings-close:hover,body>.ai-settings-window .ai-s
 </head>
 <body>
 <script>
-window.AI_OFFICE_CONFIG = Object.freeze({ version:'19', geminiModel:'gemini-3.6-flash', groqModel:'openai/gpt-oss-20b', requestTimeoutMs:180000, maxFileBytes:50*1024*1024, maxPdfPages:200, maxInputChars:180000, pdfCanvasPixels:4000000 });
+window.AI_OFFICE_CONFIG = Object.freeze({ version:'21', geminiModel:'gemini-3.6-flash', groqModel:'openai/gpt-oss-20b', requestTimeoutMs:180000, maxFileBytes:50*1024*1024, maxPdfPages:200, maxInputChars:180000, pdfCanvasPixels:4000000 });
 window.aiOfficeGenerate = async (prompt, onProgress = () => {}, options = {}) => {
   let settings;
   try { settings = window.getAiOfficeSettings ? window.getAiOfficeSettings() : JSON.parse(localStorage.getItem('aiOfficeSettingsV1') || '{}'); }
@@ -2632,7 +2633,8 @@ const relocatedShortcuts = panel.querySelector('.ai-header-shortcuts');
   routeHeading.classList.add('ai-section-spaced');
   routeCards.innerHTML='<div class="ai-route-card"><b>本頁 AI 分析</b><small>需 API Key，結果顯示於下方。</small></div><div class="ai-route-card"><b>匯出至 Gemini</b><small>免 API Key，貼上後在 Gemini 送出及查看結果。</small></div><div class="ai-route-card"><b>下載本頁結果</b><small>分析完成後，在結果工具列選擇格式匯出。</small></div>';
   const routeDetails=document.createElement('details');routeDetails.className='ai-route-details';
-  routeDetails.innerHTML='<summary>查看處理與簡報下載說明</summary><p>本頁 AI 分析：文字依設定送至 Gemini／Groq；完成後可下載 DOCX、PDF、PPTX 等格式。本頁 PPTX 為文字型可編輯簡報。</p><p>匯出至 Gemini：會複製提示詞並開啟 Gemini，請貼上並自行送出；若 Gemini 提供簡報檔，請在 Gemini 下載。照片須另外附加到同一則訊息。</p>';
+  const routeDescriptionMarkdown = '**本頁 AI 分析：**文字依設定送至 Gemini／Groq 處理，完成後可下載 DOCX、PDF、PPTX 等格式。其中，PPTX 為文字型可編輯簡報，可在 PowerPoint 中繼續修改。\n\n**匯出至 Gemini：**系統會複製提示詞並開啟 Gemini，請貼上後自行送出。若 Gemini 提供簡報檔，請在 Gemini 下載；需要分析照片時，請將原始照片附加至同一則訊息。';
+  routeDetails.innerHTML='<summary>查看處理與簡報下載說明</summary>'+markdownHtml(routeDescriptionMarkdown).replace('其中，PPTX','<span class="ai-keep-phrase">其中，PPTX</span>').replace('請在 Gemini','<span class="ai-keep-phrase">請在 Gemini</span>');
   routeCards.after(routeDetails);
 
   // 結果資訊與工具列。
