@@ -97,9 +97,11 @@
     .analyzer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .analyzer-item { display: flex; flex-direction: column; gap: 6px; }
     .analyzer-item .badge { text-align: center; }
-    .editor-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    .editor-panel-heading { position:relative; display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
     #mainRightPanel .editor-panel-heading h3 { margin:0; color:var(--text); display:flex; align-items:center; gap:9px; }
     #mainRightPanel .editor-panel-heading h3::before { content:""; width:4px; height:18px; border-radius:4px; background:linear-gradient(#63f3e5,#0a84ff); box-shadow:0 0 8px rgba(10,132,255,.35); }
+    #currentTrackTitle { position:absolute; left:50%; max-width:42%; overflow:hidden; color:var(--muted); font-size:15px; font-weight:700; line-height:1.3; text-align:center; white-space:nowrap; text-overflow:ellipsis; transform:translateX(-50%); }
+    #currentTrackTitle:empty { visibility:hidden; }
     #editorExpandBtn { flex:none; background:var(--blue); color:#fff; font-size:13px; padding:7px 12px; }
     #editorExpandBtn:hover { filter:brightness(1.08); }
     body.editor-expanded { overflow:hidden; }
@@ -567,7 +569,7 @@
       <div class="right-column">
       <!-- Right main area -->
       <div class="panel glass" id="mainRightPanel">
-        <div class="editor-panel-heading"><h3>波形編輯與EQ</h3><button type="button" id="editorExpandBtn" class="btn" aria-expanded="false" aria-controls="mainRightPanel">⛶ 大畫面編輯</button></div>
+        <div class="editor-panel-heading"><h3>波形編輯與EQ</h3><div id="currentTrackTitle" aria-live="polite" title=""></div><button type="button" id="editorExpandBtn" class="btn" aria-expanded="false" aria-controls="mainRightPanel">⛶ 大畫面編輯</button></div>
         <div id="waveformContainer">
             <canvas id="waveformCanvas"></canvas>
             <div id="waveformHoverTime" hidden aria-hidden="true"></div>
@@ -1322,6 +1324,11 @@ k;t.out_samplerate=k;t.brate=r;t.mode=ka.STEREO;t.quality=3;t.bWriteVbrTag=!1;t.
       listElement.innerHTML = '';
       
       const currentFileName = importedFiles[currentFileIndex]?.name;
+      const currentTrackTitle = $('currentTrackTitle');
+      if (currentTrackTitle) {
+          currentTrackTitle.textContent = currentFileName || '';
+          currentTrackTitle.title = currentFileName || '';
+      }
 
       importedFiles.forEach((file, index) => {
           const li = document.createElement('li');
