@@ -2373,17 +2373,27 @@
                     tr.querySelector('.download-saved-btn').addEventListener('click', (e) => e.stopPropagation());
                     tr.querySelector('.play-saved-btn').addEventListener('click', async (e) => {
                         e.stopPropagation();
-                        showToast('正在準備播放...');
+                        // 已收藏的單集已包含 episodeUrl；播放不應依賴重新載入整份 RSS。
+                        // 先立即啟播以保留瀏覽器的使用者手勢，然後背景嘗試補上播放佇列。
+                        const podcastId = ep.podcastCollectionId;
+                        const host = ep.podcastArtistName || '';
+                        playEpisode(ep, host, [ep]);
+                        if (!podcastId) return;
+
                         try {
-                             if (!collectionCache[ep.podcastCollectionId] || !collectionCache[ep.podcastCollectionId].episodes) {
-                                const podcastInfo = await getPodcastInfo(ep.podcastCollectionId);
-                                const episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
-                                if(collectionCache[ep.podcastCollectionId]) collectionCache[ep.podcastCollectionId].episodes = episodes;
-                             }
-                            const fullPlaylist = collectionCache[ep.podcastCollectionId].episodes;
-                            playEpisode(ep, ep.podcastArtistName, fullPlaylist);
+                            let podcastInfo = collectionCache[podcastId];
+                            if (!podcastInfo?.feedUrl) podcastInfo = await getPodcastInfo(podcastId);
+                            let episodes = podcastInfo.episodes;
+                            if (!episodes?.length) episodes = await parseFeed(podcastInfo.feedUrl, podcastInfo);
+                            if (!episodes.some(item => sameTrackId(item.trackId, ep.trackId))) episodes.unshift(ep);
+                            collectionCache[podcastId] = { ...podcastInfo, episodes };
+                            // 若使用者在載入期間已切換到其他內容，不覆寫目前佇列。
+                            if (playerState.currentEpisode?.episodeUrl === ep.episodeUrl) {
+                                playerState.playlist = episodes;
+                                playerState.currentIndex = episodes.findIndex(item => sameTrackId(item.trackId, ep.trackId));
+                            }
                         } catch (error) {
-                            showToast('無法載入節目完整列表，播放失敗。', 'error');
+                            console.warn('[Saved episode] 無法補載節目播放清單，維持單集播放：', error);
                         }
                     });
 
