@@ -219,7 +219,7 @@
 </head>
 <body><div class="app">
   <aside class="sidebar"><div class="brand"><span class="logo">▤</span>我的記事簿</div><nav class="nav"><a class="active" href="#">▦　日曆</a><a href="#" onclick="showToast('搜尋功能已在右上角啟用')">⌕　搜尋記事</a><a href="#" onclick="showToast('附件會依日期集中管理')">▱　我的附件</a><a href="#" onclick="showToast('設定功能即將提供')">⚙　設定</a></nav><div class="mini"><b>Google Drive</b><div class="drive" id="driveState">尚未連結帳戶</div><button class="connect" onclick="connectDrive()">連結 Google Drive</button></div></aside>
-  <main class="main"><header class="topbar"><div><h1><a href="https://fyc43703.github.io/chengder/%E6%88%91%E7%9A%84%E8%A8%98%E4%BA%8B%E7%B0%BF.html" title="開啟 AI 雲端辦公記事簿線上版本">AI 雲端辦公記事簿</a></h1><p><span class="subtitle-line">整合每日行程、記事附件、Google 日曆與 Google Drive</span><span class="subtitle-line">提供 AI 辦公助理、文件解析、語音轉文字與內容整理</span></p></div><input id="search" class="search" placeholder="搜尋記事、附件或關鍵字…" oninput="searchNotes()"></header>
+  <main class="main"><header class="topbar"><div><h1><a href="https://fyc43703.github.io/chengder/%E6%88%91%E7%9A%84%E8%A8%98%E4%BA%8B%E7%B0%BF.html" title="開啟 AI 雲端辦公記事簿線上版本">AI 雲端辦公記事簿</a></h1><p><span class="subtitle-line">整合每日行程、記事附件、Google 日曆與 Google Drive，提供 AI 辦公助理、文件解析、語音轉文字與內容整理</span></p></div><input id="search" class="search" placeholder="搜尋記事、附件或關鍵字…" oninput="searchNotes()"></header>
   <section class="content"><div class="calendar-card"><div class="cal-head"><button class="arrow" aria-label="上個月">‹</button><h2>2026 年 9 月</h2><button class="arrow" aria-label="下個月">›</button></div><div class="week"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div class="days" id="calendar"></div></div>
   <aside class="agenda"><h2 id="agendaTitle">今日行程</h2><div class="date-label" id="dateLabel">2026 年 9 月 13 日，星期日</div><button class="add" onclick="openEditor()">＋ 新增記事</button><div id="noteList"></div><div class="drive-path">☁ 儲存位置<br><b>Google Drive／我的記事簿／115-09-13</b></div></aside></section></main></div>
   <div class="modal" id="editor"><div class="dialog"><h2>新增記事</h2><p id="editorDate">儲存到民國 115 年 9 月 13 日</p><div class="field"><label>標題</label><input id="title" placeholder="例如：專案進度會議"></div><div class="row"><div class="field"><label>時間</label><input id="time" type="time" value="10:00"></div><div class="field"><label>重要程度</label><select id="priority"><option value="red">重要</option><option value="amber">較重要</option><option value="blue" selected>一般</option></select></div></div><div class="field"><label>會前注意事項</label><textarea id="detail" placeholder="輸入需要準備、確認或提醒自己的事項…"></textarea></div><div class="field"><label>附件</label><div class="drop">📎 選擇 PDF、圖片或文件　<input id="file" type="file" multiple></div></div><div class="modal-actions"><button class="cancel" onclick="closeEditor()">取消</button><button class="save" onclick="saveNote()">儲存記事</button></div></div></div>
@@ -1370,7 +1370,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyMainBrand = () => {
       if (!mainTitle) return;
       if (!mainTitle.querySelector('a') || mainTitle.textContent !== 'AI 雲端辦公記事簿') mainTitle.innerHTML = '<a href="https://fyc43703.github.io/chengder/%E6%88%91%E7%9A%84%E8%A8%98%E4%BA%8B%E7%B0%BF.html" title="開啟 AI 雲端辦公記事簿線上版本">AI 雲端辦公記事簿</a>';
-      const description = document.querySelector('.topbar p'); if (description) description.innerHTML = '<span class="subtitle-line">整合每日行程、記事附件、Google 日曆與 Google Drive</span><span class="subtitle-line">提供 AI 辦公助理、文件解析、語音轉文字與內容整理</span>';
+      const description = document.querySelector('.topbar p'); if (description) description.innerHTML = '<span class="subtitle-line">整合每日行程、記事附件、Google 日曆與 Google Drive，提供 AI 辦公助理、文件解析、語音轉文字與內容整理</span>';
     };
     applyMainBrand();
     if (mainTitle) new MutationObserver(applyMainBrand).observe(mainTitle, { childList:true, subtree:true, characterData:true });
@@ -1493,13 +1493,16 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 星期列僅保留必要的文字高度。 */
   body:not(.dark-mode) .calendar-card .week{min-height:24px!important;padding:0 18px!important;line-height:24px!important}
   body.dark-mode .calendar-card .week{min-height:24px!important;padding:0 18px!important;line-height:24px!important}
+  /* 星期列：藍底白字，欄位之間以白色直線清楚分隔。 */
+  body:not(.dark-mode) .calendar-card .week span{display:grid;place-items:center;align-self:stretch}
+  body:not(.dark-mode) .calendar-card .week span:not(:last-child){border-right:1px solid rgba(255,255,255,.96)}
 
   /* 當月日期格統一為純白；僅跨月補位格維持灰色。 */
   body:not(.dark-mode) #calendar .day:not(.empty),
   body:not(.dark-mode) #calendar .day.selected{background:#fff!important}
 
   /* 常用系統捷徑與左側新增記事區塊等寬對齊。 */
-  .notebook-toolbar .quick-links{width:280px!important;justify-content:space-between!important;gap:0!important}
+  .notebook-toolbar .quick-links{width:316px!important;justify-content:flex-start!important;gap:4px!important}
   .notebook-toolbar .quick-links a{width:28px!important;height:28px!important;border:0!important;border-radius:8px!important;background:#16835d!important;color:#fff!important;font-size:15px!important;line-height:1!important;box-shadow:0 2px 5px rgba(17,104,74,.2)!important}
   .notebook-toolbar .quick-links a svg{width:18px;height:18px;display:block}
   .notebook-toolbar .quick-links a.ai-shortcut{background:transparent!important;box-shadow:none!important;border-radius:0!important}
