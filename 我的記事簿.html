@@ -203,7 +203,7 @@
         } catch(error) { window.showToast?.('無法移動記事：'+error.message); }
       });
     };
-    const applyDisplay = () => { const s = readSettings(); document.body.classList.toggle('hide-lunar', s.lunar === false); document.body.classList.toggle('no-weekend-tint', s.weekend === false); document.body.classList.toggle('high-contrast', !!s.contrast); document.body.classList.toggle('color-blind', !!s.colorBlind); const scale = s.scale || '1'; document.querySelector('.calendar-card')?.style.setProperty('--calendar-scale', scale); const scaleControl = document.querySelector('[aria-label="日曆文字大小"]'); if (scaleControl) scaleControl.value = scale; const week = document.querySelector('.week'); if (week) week.innerHTML = (s.weekStart === '1' ? ['一','二','三','四','五','六','日'] : ['日','一','二','三','四','五','六']).map(day => `<span>${day}</span>`).join(''); const places = String(s.places || '').split('、').map(x => x.trim()).filter(Boolean); let list = document.getElementById('savedPlaces'); if (!list) { list = document.createElement('datalist'); list.id = 'savedPlaces'; document.body.append(list); } list.innerHTML = places.map(place => `<option value="${place}">`).join(''); document.getElementById('location')?.setAttribute('list','savedPlaces'); setupDrag(); document.querySelectorAll('#calendar .event').forEach(event => { event.draggable = !!s.drag; }); };
+    const applyDisplay = () => { const s = readSettings(); document.body.classList.toggle('hide-lunar', s.lunar === false); document.body.classList.toggle('no-weekend-tint', s.weekend === false); document.body.classList.toggle('high-contrast', !!s.contrast); document.body.classList.toggle('color-blind', !!s.colorBlind); const scale = s.scale || '1'; document.querySelector('.calendar-card')?.style.setProperty('--calendar-scale', scale); const scaleControl = document.querySelector('[aria-label="日曆文字大小"]'); if (scaleControl) scaleControl.value = scale; const week = document.querySelector('.week'); if (week) week.innerHTML = (s.weekStart === '1' ? ['一','二','三','四','五','六','日'] : ['日','一','二','三','四','五','六']).map(day => `<span>${day}</span>`).join(''); const places = String(s.places || '').split('、').map(x => x.trim()).filter(Boolean); let list = document.getElementById('savedPlaces'); if (!list) { list = document.createElement('datalist'); list.id = 'savedPlaces'; document.body.append(list); } list.innerHTML = places.map(place => `<option value="${place}">`).join(''); document.getElementById('location')?.removeAttribute('list'); setupDrag(); document.querySelectorAll('#calendar .event').forEach(event => { event.draggable = !!s.drag; }); };
     const openSettings = () => { const s = readSettings(); $('#settingScale').value = s.scale || '1'; $('#settingWeekStart').value = s.weekStart || '0'; $('#settingLunar').checked = s.lunar !== false; $('#settingWeekend').checked = s.weekend !== false; $('#settingTemplates').value = s.templates || ''; $('#settingRoot').value = s.root || '我的記事簿'; $('#settingDateFormat').value = s.dateFormat || '民國年-月-日_標題'; $('#settingFileTypes').value = s.fileTypes || 'PDF、PPT、圖片'; $('#settingCacheStats').textContent = `目前快取：${cacheStats()}`; $('#settingDriveState').textContent = document.getElementById('driveState')?.textContent || '尚未連結帳戶'; const stamp = localStorage.getItem('notebookLastSync'); $('#settingLastSync').textContent = stamp ? new Date(stamp).toLocaleString('zh-TW') : '尚無紀錄'; page.classList.add('show'); };
     window.showSettings = openSettings;
     const settingsLink = document.querySelector('.notebook-toolbar .nav a:nth-child(4)'); if (settingsLink) settingsLink.onclick = event => { event.preventDefault(); openSettings(); };
@@ -217,13 +217,27 @@
     applyDisplay();
   });
 </script>
-<style>#editor .meetingKinds{display:flex;margin:4px 0;gap:12px;flex-wrap:wrap}#editor .meetingKinds label{display:inline-flex;align-items:center;gap:4px;cursor:pointer}#editor .meetingKinds input{width:16px;height:16px;margin:0;accent-color:#087f5b}</style></head>
+<style>#editor .meetingKinds{display:flex;margin:4px 0;gap:12px;flex-wrap:wrap}#editor .meetingKinds label{display:inline-flex;align-items:center;gap:4px;cursor:pointer}#editor .meetingKinds input{width:16px;height:16px;margin:0;accent-color:#087f5b}</style><style id="editor-compact-fields-v1">
+  #editor .dialog { padding: 20px 28px 12px !important; }
+  #editor .dialog h2 { margin-bottom: 2px !important; }
+  #editor #editorDate { margin: 0 0 7px !important; font-size: 13px; line-height: 1.35; }
+  #editor .field { margin: 4px 0 !important; }
+  #editor .field > label { margin-bottom: 3px !important; line-height: 1.25; }
+  #editor input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  #editor select { min-height: 36px !important; height: 36px !important; padding: 6px 10px !important; }
+  #editor textarea { min-height: 52px !important; height: 52px; max-height: none !important; resize: both !important; overflow: auto !important; min-width: 180px !important; width: 100%; max-width: none !important; padding: 6px 10px !important; line-height: 1.45 !important; }
+  #editor .row { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 10px !important; }
+  #editor .drop { min-height: 42px; padding: 7px 10px !important; }
+  #editor .modal-actions { margin-top: 7px !important; padding-top: 8px !important; padding-bottom: 8px !important; }
+  @media (max-width: 620px) { #editor .dialog { padding: 18px 16px 10px !important; } #editor .row { grid-template-columns: 1fr !important; } }
+</style>
+</head>
 <body><div class="app">
   <aside class="sidebar"><div class="brand"><span class="logo">▤</span>我的記事簿</div><nav class="nav"><a class="active" href="#">▦　日曆</a><a href="#" onclick="showToast('搜尋功能已在右上角啟用')">⌕　搜尋記事</a><a href="#" onclick="showToast('附件會依日期集中管理')">▱　我的附件</a><a href="#" onclick="showToast('設定功能即將提供')">⚙　設定</a></nav><div class="mini"><b>Google Drive</b><div class="drive" id="driveState">尚未連結帳戶</div><button class="connect" onclick="connectDrive()">連結 Google Drive</button></div></aside>
-  <main class="main"><header class="topbar"><div><h1><a href="https://fyc43703.github.io/chengder/%E6%88%91%E7%9A%84%E8%A8%98%E4%BA%8B%E7%B0%BF.html" title="開啟 AI 雲端辦公記事簿線上版本">AI 雲端辦公記事簿</a></h1><p><span class="subtitle-line">整合每日行程、記事附件、Google 日曆與 Google Drive，提供 AI 辦公助理、文件解析、語音轉文字與內容整理</span></p></div><input id="search" class="search" placeholder="搜尋記事、附件或關鍵字…" oninput="searchNotes()"></header>
+  <main class="main"><header class="topbar"><div><h1><a href="https://fyc43703.github.io/chengder/%E6%88%91%E7%9A%84%E8%A8%98%E4%BA%8B%E7%B0%BF.html" title="開啟 AI 雲端辦公記事簿線上版本">AI 雲端辦公記事簿</a></h1><p><span class="subtitle-line">集中管理每日行程與記事，串接 Google 日曆及雲端硬碟，並支援附件整理、文件辨識、語音輸入與 AI 摘要，讓會議準備和資料查找更有效率。</span></p></div><input id="search" class="search" placeholder="搜尋記事、附件或關鍵字…" oninput="searchNotes()"></header>
   <section class="content"><div class="calendar-card"><div class="cal-head"><button class="arrow" aria-label="上個月">‹</button><h2>2026 年 9 月</h2><button class="arrow" aria-label="下個月">›</button></div><div class="week"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div class="days" id="calendar"></div></div>
   <aside class="agenda"><h2 id="agendaTitle">今日行程</h2><div class="date-label" id="dateLabel">2026 年 9 月 13 日，星期日</div><button class="add" onclick="openEditor()">＋ 新增記事</button><div id="noteList"></div><div class="drive-path">☁ 儲存位置<br><b>Google Drive／我的記事簿／115-09-13</b></div></aside></section></main></div>
-  <div class="modal" id="editor"><div class="dialog"><h2>新增記事</h2><p id="editorDate">儲存到民國 115 年 9 月 13 日</p><div class="field"><label>標題</label><input id="title" placeholder="例如：專案進度會議"></div><div class="row"><div class="field"><label>時間</label><input id="time" type="time" value="10:00"></div><div class="field"><label>重要程度</label><select id="priority"><option value="red">重要</option><option value="amber">較重要</option><option value="blue" selected>一般</option></select></div></div><div class="field meeting-detail-field"><label id="meetingKindHeading" for="detail">會前注意事項或會議摘要整理</label><div class="meetingKinds" role="radiogroup" aria-labelledby="meetingKindHeading"><label><input name="meetingKind" type="radio" value="會前注意事項">會前注意事項</label><label><input name="meetingKind" type="radio" value="會議摘要整理">會議摘要整理</label></div><textarea id="detail" placeholder="輸入需要準備、確認或提醒自己的事項…"></textarea></div><div class="field"><label>附件</label><div class="drop"><span class="attachment-file-hint">📎 選擇 PDF、圖片或文件</span><input id="file" type="file" multiple></div></div><div class="modal-actions"><button class="cancel" onclick="closeEditor()">取消</button><button class="save" onclick="saveNote()">儲存記事</button></div></div></div>
+  <div class="modal" id="editor"><div class="dialog"><h2>新增記事</h2><p id="editorDate">儲存至雲端硬碟「我的記事簿」 115 年 9 月 13 日</p><div class="field"><label>標題</label><input id="title" placeholder="例如：專案進度會議"></div><div class="row"><div class="field"><label>時間</label><input id="time" type="time" value="10:00"></div><div class="field"><label>重要程度</label><select id="priority"><option value="red">重要</option><option value="amber">較重要</option><option value="blue" selected>一般</option></select></div></div><div class="field meeting-detail-field"><label id="meetingKindHeading" for="detail">會前注意事項或會議摘要整理</label><div class="meetingKinds" role="radiogroup" aria-labelledby="meetingKindHeading"><label><input name="meetingKind" type="radio" value="會前注意事項">會前注意事項</label><label><input name="meetingKind" type="radio" value="會議摘要整理">會議摘要整理</label></div><textarea id="detail" placeholder="輸入需要準備、確認或提醒自己的事項…"></textarea></div><div class="field"><label>附件</label><div class="drop"><span class="attachment-file-hint">📎 選擇 PDF、圖片或文件</span><input id="file" type="file" multiple></div></div><div class="modal-actions"><button class="cancel" onclick="closeEditor()">取消</button><button class="save" onclick="saveNote()">儲存記事</button></div></div></div>
   <div class="toast" id="toast"></div>
   <script>
     const notes={12:[{title:'工程專案進度會議',time:'10:00',kind:'red',detail:'確認簡報、上週待辦與施工照片。',file:'專案簡報.pdf',tags:'會議　工作'},{title:'整理現場照片',time:'15:30',kind:'amber',detail:'挑選要附在週報的照片。',file:'現場照片-09-12.jpg',tags:'工作'}],15:[{title:'繳交月報初稿',time:'17:00',kind:'blue',detail:'',file:'',tags:'工作'}],18:[{title:'客戶會議',time:'14:00',kind:'red',detail:'',file:'',tags:'會議'}],24:[{title:'安全教育訓練',time:'09:00',kind:'amber',detail:'',file:'',tags:'工作'}]}; let selected=13;
@@ -308,7 +322,7 @@
   const renderAgendaAttachments=n=>{const files=n.driveAttachments||[];if(files.length)return `<div class="attachment attachment-links"><span>📎 附件</span><ul>${files.map(file=>`<li><a href="${driveFileLink(file.id)}" target="_blank" rel="noopener" title="在 Google Drive 開啟：${esc(file.name)}">${esc(file.name)}</a></li>`).join('')}</ul></div>`;return n.file?`<div class="attachment">📎 ${esc(n.file)}</div>`:'';};
   function renderAgenda() {
     const d=state().selected, data=ledger[pickedKey()]||[];
-    document.getElementById('agendaTitle').textContent='當日行程'; document.getElementById('dateLabel').textContent=`民國 ${shownMonth.getFullYear()-1911} 年 ${shownMonth.getMonth()+1} 月 ${d} 日`; document.getElementById('editorDate').textContent=`儲存到民國 ${shownMonth.getFullYear()-1911} 年 ${shownMonth.getMonth()+1} 月 ${d} 日`;
+    document.getElementById('agendaTitle').textContent='當日行程'; document.getElementById('dateLabel').textContent=`民國 ${shownMonth.getFullYear()-1911} 年 ${shownMonth.getMonth()+1} 月 ${d} 日`; document.getElementById('editorDate').textContent=`儲存至雲端硬碟「我的記事簿」 ${shownMonth.getFullYear()-1911} 年 ${shownMonth.getMonth()+1} 月 ${d} 日`;
     document.getElementById('noteList').innerHTML=data.length?data.map((n,index)=>`<article class="note"><button class="note-delete" type="button" title="從記事簿移除" onclick="deleteAgendaItem('${pickedKey()}',${index})">×</button><div class="note-top"><span class="dot ${esc(n.kind||'blue')}" ${n.color?`style="background:${esc(n.color)}"`:''}></span>${esc(n.title)}</div><small>${esc(n.time||'全天')}　${esc(n.detail||'尚未加入備註')}</small>${n.chairRole||n.chairName?`<small>主席：${esc([n.chairRole,n.chairName].filter(Boolean).join('　'))}</small>`:''}${n.location?`<a class="map-link" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(n.location)}" target="_blank" rel="noopener">⌖ ${esc(n.location)}　開啟導航</a>`:''}<div class="tags">${String(n.tags||'記事').split('　').map(x=>`<span>${esc(x)}</span>`).join('')}</div>${renderAgendaAttachments(n)}</article>`).join(''):'<p style="color:#7a8799;font-size:14px;margin-top:22px">可新增記事、附件與地點，並同步至雲端硬碟，方便日後搜尋與管理。</p>';
     document.querySelector('.drive-path b').textContent=`Google Drive／${rootName()}／${minguo()}`;
   }
@@ -372,10 +386,10 @@
       document.querySelector('#editor input[name="meetingKind"]').focus();
       return window.showToast('請選擇記事分類');
     }
-    const filename=title+'｜'+selectedKind.value+'.md';
+    const filename=title+'_'+selectedKind.value+'.md';
     const key=pickedKey(), id=noteId(), note={id,title,chairRole:document.getElementById('chairRole')?.value||'',chairName:document.getElementById('chairName')?.value||'',time:document.getElementById('time').value,kind:document.getElementById('priority').value,detail:document.getElementById('detail').value,color:document.getElementById('activityColor')?.value,location:document.getElementById('location')?.value.trim()};
     try {
-      const root=await folder(rootName()), day=await folder(folderName(key,title),root,{notebookDate:key});
+      const root=await folder(rootName()), day=await folder(folderName(key,title)+'_'+selectedKind.value,root,{notebookDate:key});
       const driveAttachments=[];
       for(const f of files){ const uploaded=await upload(day,f); driveAttachments.push({id:uploaded.id,name:f.name,mimeType:f.type}); }
       const md=`# ${title}\n\n日期：民國 ${Number(key.slice(0,4))-1911}-${key.slice(5)}\n主席：${note.chairRole||'未設定'}\n姓名：${note.chairName||'未設定'}\n時間：${note.time}\n地點：${note.location||'未設定'}\n\n${note.detail||''}\n`;
@@ -383,7 +397,7 @@
       (ledger[key]??=[]).push({...note,driveFileId:saved.id,file:files.map(f=>f.name).join('、'),driveAttachments,tags:'記事'});
       saveLedger();window.closeEditor();renderCalendar();renderAgenda();
       for(const name of ['title','detail','location','file','chairRole','chairName'])document.getElementById(name).value='';
-      pendingAttachments.length=0;renderAttachmentList();window.showToast('已同步到 Google Drive／'+rootName()+'／'+folderName(key,title));
+      pendingAttachments.length=0;renderAttachmentList();window.showToast('已同步到 Google Drive／'+rootName()+'／'+folderName(key,title)+'_'+selectedKind.value);
     }catch(error){window.showToast('儲存失敗：'+error.message)}finally{button.disabled=false}
   };
   window.searchNotes=async()=>{const q=document.getElementById('search').value.trim();if(q.length<2)return;const matched=[];Object.entries(ledger).forEach(([date,items])=>items.forEach(item=>{const text=`${item.title} ${item.detail||''} ${item.file||''}`.toLowerCase();if(text.includes(q.toLowerCase()))matched.push({date,item});}));let drive=[];if(token)try{drive=(await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`fullText contains '${q.replace(/'/g,"\\'")}' and trashed = false`)}&fields=files(name,mimeType,thumbnailLink,modifiedTime,webViewLink)&pageSize=20`)).files||[]}catch(_){ }showSearchPage(q,matched,drive)};
@@ -1499,7 +1513,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyMainBrand = () => {
       if (!mainTitle) return;
       if (!mainTitle.querySelector('a') || mainTitle.textContent !== 'AI 雲端辦公記事簿') mainTitle.innerHTML = '<a href="https://fyc43703.github.io/chengder/%E6%88%91%E7%9A%84%E8%A8%98%E4%BA%8B%E7%B0%BF.html" title="開啟 AI 雲端辦公記事簿線上版本">AI 雲端辦公記事簿</a>';
-      const description = document.querySelector('.topbar p'); if (description) description.innerHTML = '<span class="subtitle-line">整合每日行程、記事附件、Google 日曆與 Google Drive，提供 AI 辦公助理、文件解析、語音轉文字與內容整理</span>';
+      const description = document.querySelector('.topbar p'); if (description) description.innerHTML = '<span class="subtitle-line">集中管理每日行程與記事，串接 Google 日曆及雲端硬碟，並支援附件整理、文件辨識、語音輸入與 AI 摘要，讓會議準備和資料查找更有效率。</span>';
     };
     applyMainBrand();
     if (mainTitle) new MutationObserver(applyMainBrand).observe(mainTitle, { childList:true, subtree:true, characterData:true });
@@ -2255,6 +2269,76 @@ window.openNotebookSearchItem=function(row){
   dialog.showModal();
 };
 </script>
+<style id="notebook-memory-style">
+  #editor .memory-field { position: relative; }
+  #editor .memory-menu { position: absolute; top: 100%; left: 0; right: 0; z-index: 50; max-height: 220px; overflow-y: auto; background: #fffdf8; border: 1px solid #cfc6b5; border-radius: 9px; box-shadow: 0 10px 25px #28271f33; }
+  #editor .memory-menu[hidden] { display: none !important; }
+  #editor .memory-item { display: flex; align-items: center; min-height: 34px; }
+  #editor .memory-pick { flex: 1; min-width: 0; border: 0; background: transparent; color: #30372e; padding: 7px 10px; text-align: left; font: inherit; cursor: pointer; }
+  #editor .memory-pick:hover { background: #e4ebdd; }
+  #editor .memory-delete { flex: 0 0 30px; border: 0; background: transparent; color: #8b554e; font-size: 18px; cursor: pointer; }
+  #editor .memory-delete:hover { background: #f7e8e5; }
+</style>
+<script id="notebook-memory-script">
+(() => {
+  const key = 'notebookFieldMemoryV1';
+  const fields = { title: 'activityTitles', chairRole: 'chairRoles', chairName: 'chairNames', location: 'meetingLocations' };
+  const read = () => { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; } };
+  const memory = read();
+  const save = () => { try { localStorage.setItem(key, JSON.stringify(memory)); } catch (_) {} };
+  const controls = {};
+  for (const [id, listId] of Object.entries(fields)) {
+    const input = document.getElementById(id);
+    if (!input) continue;
+    const defaults = [...(document.getElementById(listId)?.options || []), ...(id === 'location' ? [...(document.getElementById('savedPlaces')?.options || [])] : [])].map(option => option.value);
+    const entry = memory[id] || {};
+    const removed = new Set(entry.removed || []);
+    const values = [...new Set([...(entry.values || []), ...defaults])].filter(value => value && !removed.has(value));
+    memory[id] = { values, removed: [...removed] };
+    input.removeAttribute('list');
+    input.setAttribute('autocomplete', 'off');
+    const field = input.closest('.field');
+    field.classList.add('memory-field');
+    const menu = document.createElement('div');
+    menu.className = 'memory-menu'; menu.hidden = true;
+    field.appendChild(menu);
+    const draw = () => {
+      menu.replaceChildren();
+      const query = input.value.trim().toLocaleLowerCase();
+      for (const value of memory[id].values.filter(value => value.toLocaleLowerCase().includes(query))) {
+        const row = document.createElement('div'); row.className = 'memory-item';
+        const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'memory-pick'; pick.textContent = value;
+        pick.addEventListener('pointerdown', event => event.preventDefault());
+        pick.addEventListener('click', () => { input.value = value; menu.hidden = true; input.dispatchEvent(new Event('input', { bubbles: true })); });
+        const del = document.createElement('button'); del.type = 'button'; del.className = 'memory-delete'; del.textContent = '×'; del.setAttribute('aria-label', `刪除記憶：${value}`);
+        del.addEventListener('pointerdown', event => event.preventDefault());
+        del.addEventListener('click', () => { memory[id].values = memory[id].values.filter(item => item !== value); memory[id].removed = [...new Set([...memory[id].removed, value])]; save(); draw(); input.focus(); });
+        row.append(pick, del); menu.appendChild(row);
+      }
+      menu.hidden = !menu.childElementCount;
+    };
+    input.addEventListener('focus', draw);
+    input.addEventListener('input', draw);
+    input.addEventListener('keydown', event => { if (event.key === 'Escape') menu.hidden = true; });
+    document.addEventListener('pointerdown', event => { if (!field.contains(event.target)) menu.hidden = true; });
+    controls[id] = { input, draw };
+  }
+  const originalSave = window.saveNote;
+  window.saveNote = async (...args) => {
+    const entered = Object.fromEntries(Object.entries(controls).map(([id, control]) => [id, control.input.value.trim()]));
+    const result = await originalSave(...args);
+    if (entered.title && !controls.title.input.value.trim()) {
+      for (const [id, value] of Object.entries(entered)) {
+        if (!value) continue;
+        memory[id].values = [value, ...memory[id].values.filter(item => item !== value)];
+        memory[id].removed = memory[id].removed.filter(item => item !== value);
+        controls[id].draw();
+      }
+      save();
+    }
+    return result;
+  };
+})();
+</script>
 </body>
 </html>
-
