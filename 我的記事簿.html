@@ -387,7 +387,7 @@
     }catch(error){window.showToast('儲存失敗：'+error.message)}finally{button.disabled=false}
   };
   window.searchNotes=async()=>{const q=document.getElementById('search').value.trim();if(q.length<2)return;const matched=[];Object.entries(ledger).forEach(([date,items])=>items.forEach(item=>{const text=`${item.title} ${item.detail||''} ${item.file||''}`.toLowerCase();if(text.includes(q.toLowerCase()))matched.push({date,item});}));let drive=[];if(token)try{drive=(await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`fullText contains '${q.replace(/'/g,"\\'")}' and trashed = false`)}&fields=files(name,mimeType,thumbnailLink,modifiedTime,webViewLink)&pageSize=20`)).files||[]}catch(_){ }showSearchPage(q,matched,drive)};
-  function showSearchPage(q,matched,drive){const page=document.getElementById('searchPage');const local=matched.map(({date,item})=>{const [year,month,day]=date.split('-');return `<button class="search-result" type="button" onclick="closeSearchPage()"><b>民國 ${Number(year)-1911} 年 ${Number(month)} 月 ${Number(day)} 日｜${esc(item.title)}</b><span>${esc(item.detail||'沒有補充說明')}</span>${item.file?`<small>附件：${esc(item.file)}</small>`:''}</button>`}).join('');const cloud=drive.map(file=>`<a class="search-result" style="padding-left:82px;background-image:url('${file.thumbnailLink||''}');background-size:64px 48px;background-position:12px center;background-repeat:no-repeat" href="${esc(file.webViewLink||'#')}" target="_blank" rel="noopener"><b>Google Drive｜${esc(file.name)}</b><span>${file.modifiedTime?`更新時間：${new Date(file.modifiedTime).toLocaleString('zh-TW')}`:'雲端檔案'}</span></a>`).join('');page.querySelector('.search-query').textContent=`「${q}」的搜尋結果`;page.querySelector('.search-results').innerHTML=local||cloud?`<h3>記事簿（${matched.length}）</h3>${local||'<p>沒有本機記事結果。</p>'}<h3>Google Drive（${drive.length}）</h3>${cloud||'<p>沒有雲端檔案結果。</p>'}`:'<p class="search-empty">沒有符合的記事或附件。</p>';page.classList.add('show')}
+  function showSearchPage(q,matched,drive){const page=document.getElementById('searchPage');window.notebookSearchMatches=matched;const local=matched.map(({date,item},index)=>{const [year,month,day]=date.split('-');return `<button class="search-result" type="button" onclick="openNotebookSearchItem(this)" data-result-index="${index}"><b>民國 ${Number(year)-1911} 年 ${Number(month)} 月 ${Number(day)} 日｜${esc(item.title)}</b><span>${esc(item.detail||'沒有補充說明')}</span>${item.file?`<small>附件：${esc(item.file)}</small>`:''}</button>`}).join('');const cloud=drive.map(file=>`<a class="search-result" style="padding-left:82px;background-image:url('${file.thumbnailLink||''}');background-size:64px 48px;background-position:12px center;background-repeat:no-repeat" href="${esc(file.webViewLink||'#')}" target="_blank" rel="noopener"><b>Google Drive｜${esc(file.name)}</b><span>${file.modifiedTime?`更新時間：${new Date(file.modifiedTime).toLocaleString('zh-TW')}`:'雲端檔案'}</span></a>`).join('');page.querySelector('.search-query').textContent=`「${q}」的搜尋結果`;page.querySelector('.search-results').innerHTML=local||cloud?`<h3>記事簿（${matched.length}）</h3>${local||'<p>沒有本機記事結果。</p>'}<h3>Google Drive（${drive.length}）</h3>${cloud||'<p>沒有雲端檔案結果。</p>'}`:'<p class="search-empty">沒有符合的記事或附件。</p>';page.classList.add('show')}
   window.closeSearchPage=()=>document.getElementById('searchPage').classList.remove('show');
   window.deleteAgendaItem=(key,index)=>{const item=ledger[key]?.[index];if(!item)return;const warning=item.calendarImport?'\n\n這只會從記事簿隱藏，不會刪除 Google 日曆原始行程。':'';if(!window.confirm(`確定要移除「${item.title}」嗎？${warning}`))return;if(item.calendarEventId){hiddenCalendarEvents.add(item.calendarEventId);localStorage.setItem('notebookHiddenCalendarEvents',JSON.stringify([...hiddenCalendarEvents]));}ledger[key].splice(index,1);saveLedger();renderCalendar();renderAgenda();window.showToast('已從記事簿移除這筆行程');};
   const changeMonth=delta=>{shownMonth=new Date(shownMonth.getFullYear(),shownMonth.getMonth()+delta,1);setSelected(1);renderCalendar();renderAgenda();if(token)Promise.all([importCalendar(),importDriveNotes()]).catch(e=>window.showToast(`匯入失敗：${e.message}`));};document.querySelector('[aria-label="上個月"]')?.addEventListener('click',()=>changeMonth(-1));document.querySelector('[aria-label="下個月"]')?.addEventListener('click',()=>changeMonth(1));
@@ -2002,25 +2002,6 @@ body.dark-mode .ai-result h2{border-color:#4c555a!important;color:#b9cde2!import
 <script>
 /* 搜尋結果開啟該筆記事；全頁提示採三秒。 */
 (() => {
-  document.querySelectorAll('.search-result').forEach(row=>row.addEventListener('click',event=>{
-    if(row.tagName==='A')return;
-    event.preventDefault();
-    const date=row.querySelector('b')?.textContent||'';
-    const match=date.match(/民國\s*(\d+)\s*年\s*(\d+)\s*月\s*(\d+)\s*日/);
-    const ledger=JSON.parse(localStorage.getItem('notebookLedgerV1')||'{}');
-    const noteTitle=row.querySelector('b')?.textContent.split('｜').slice(1).join('｜')||'';
-    const found=Object.entries(ledger).find(([key,items])=>items.some(item=>item.title===noteTitle));
-    if(found){window.closeSearchPage?.();location.href=found[1].find(item=>item.title===noteTitle)?.driveFileId?`https://drive.google.com/open?id=${encodeURIComponent(found[1].find(item=>item.title===noteTitle).driveFileId)}`:'#';}
-    else if(match){window.closeSearchPage?.();}
-  }));
-  document.addEventListener('click',event=>{
-    const row=event.target.closest('#searchPage .search-result');
-    if(!row||row.tagName==='A')return;
-    const title=row.querySelector('b')?.textContent.split('｜').slice(1).join('｜')||'';
-    const ledger=JSON.parse(localStorage.getItem('notebookLedgerV1')||'{}');
-    const item=Object.values(ledger).flat().find(note=>note.title===title&&note.driveFileId);
-    if(item){event.preventDefault();event.stopImmediatePropagation();window.open(`https://drive.google.com/open?id=${encodeURIComponent(item.driveFileId)}`,'_blank','noopener');}
-  },true);
   const tip=document.getElementById('siteHoverHelp');
   if(tip){const observer=new MutationObserver(()=>{if(!tip.hidden){clearTimeout(window.__tipTimer);window.__tipTimer=setTimeout(()=>tip.hidden=true,2000)}});observer.observe(tip,{attributes:true,attributeFilter:['hidden']});}
 
@@ -2224,6 +2205,56 @@ body.dark-mode :is(#settingsPage,#attachmentPage,#searchPage){
 @media(max-width:980px){#settingsPage .settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){#settingsPage .settings-grid{grid-template-columns:1fr}#attachmentPage .attachment-filters input:first-child{flex-basis:100%}}
 </style>
+
+<style>
+#attachmentPage .attachment-card{padding:5px 8px!important;gap:10px!important;min-height:0;align-items:center}
+#attachmentPage .attachment-card>:first-child{width:34px!important;height:34px!important;flex:0 0 34px;font-size:22px}
+#attachmentPage .attachment-card>div:last-child{min-width:0;flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:12px;line-height:20px}
+#attachmentPage .attachment-card :is(b,span){display:block!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0!important;font-size:14px}
+#attachmentPage .attachment-card a{grid-column:1/-1;white-space:nowrap;line-height:18px;font-size:12px;margin:0!important}
+#notebookSearchDetail{width:min(760px,94vw);max-height:88vh;overflow:auto;background:#faf7ef;color:#353c31;border:1px solid #d8cebc;border-radius:16px;padding:24px}
+#notebookSearchDetail::backdrop{background:#36312766}
+#notebookSearchDetail h2{margin:0 0 12px;font-size:22px}
+#notebookSearchDetail p{white-space:pre-wrap;overflow-wrap:anywhere}
+#notebookSearchDetail button{float:right;border:1px solid #d8cebc;background:#e6ebde;padding:6px 12px;border-radius:8px}
+#notebookSearchDetail a{display:block;color:#486248;margin:6px 0}
+</style>
+<script>
+window.openNotebookSearchItem=function(row){
+  const record=window.notebookSearchMatches?.[Number(row.dataset.resultIndex)];
+  if(!record)return;
+  const {date,item}=record;
+  if(item.driveFileId){
+    window.open('https://drive.google.com/open?id='+encodeURIComponent(item.driveFileId),'_blank','noopener');
+    return;
+  }
+  let dialog=document.getElementById('notebookSearchDetail');
+  if(!dialog){
+    dialog=document.createElement('dialog');
+    dialog.id='notebookSearchDetail';
+    document.body.appendChild(dialog);
+  }
+  dialog.replaceChildren();
+  const close=document.createElement('button');
+  close.textContent='關閉';close.onclick=()=>dialog.close();
+  const title=document.createElement('h2');title.textContent=item.title;
+  const meta=document.createElement('p');
+  meta.textContent=[date,item.time,item.location,[item.chairRole,item.chairName].filter(Boolean).join(' ')].filter(Boolean).join('　');
+  const body=document.createElement('p');body.textContent=item.detail||'沒有補充說明';
+  dialog.append(close,title,meta,body);
+  for(const attachment of item.driveAttachments||[]){
+    const link=document.createElement('a');
+    link.textContent=attachment.name;
+    link.href='https://drive.google.com/open?id='+encodeURIComponent(attachment.id);
+    link.target='_blank';link.rel='noopener';
+    dialog.appendChild(link);
+  }
+  if(item.file&&!item.driveAttachments?.length){
+    const files=document.createElement('p');files.textContent='附件：'+item.file;dialog.appendChild(files);
+  }
+  dialog.showModal();
+};
+</script>
 </body>
 </html>
 
