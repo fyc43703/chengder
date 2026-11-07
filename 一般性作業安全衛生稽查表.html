@@ -636,8 +636,8 @@ table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layou
             <div><strong>檢查地點：</strong> <span id="sys-loc"></span></div>
             <div><strong>檢查位置：</strong> <span id="sys-pos"></span></div>
         </div>
-            <div class="sys-warning">🔔 上傳稽查紀錄前<br>請先透過 GlobalProtect App 完成 VPN 連線</div>
-            <div class="sys-warning">📝 請再次檢核資料內容<br>「確認」後即刻進行傳送</div>
+            <div class="sys-warning">🔔 使用管理系統前<br>請先確認 VPN 連線與正式上傳流程</div>
+            <div class="sys-warning">📝 請再次檢核資料內容<br>「確認」將顯示資料尚未連線傳送的說明</div>
             <div class="sys-actions">
                 <div class="sys-btn-group" onclick="closeSystemModal()"><div class="sys-icon red"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></div><div class="sys-label">清除</div></div>
                 <div class="sys-btn-group" onclick="submitSystemData()"><div class="sys-icon green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg></div><div class="sys-label">確認</div></div>
@@ -973,6 +973,11 @@ function safeImage(value) { return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0
                 const state = tr.querySelector('.pass-radio').checked ? 'pass' : tr.querySelector('.fail-radio').checked ? 'fail' : '';
                 xmlString += `<項目狀態 編號="${el.textContent.trim()}" 狀態="${state}">${escapeXML(tr.querySelector('.defect-desc-input').textContent)}</項目狀態>\n`;
             });
+            xmlString += `  <勞檢備註>${escapeXML(document.getElementById('labor-inspection-note')?.textContent || '')}</勞檢備註>\n`;
+            document.querySelectorAll('.form-code').forEach((el,i) => {
+                const parts=Array.from(el.querySelectorAll('.code-part')).map(x=>x.value);
+                xmlString += `  <表單編碼欄位 表序="${i}" 年份="${escapeXML(parts[0])}" 類別="${escapeXML(parts[1])}" 版次="${escapeXML(parts[2])}" />\n`;
+            });
             xmlString += signaturesXML;
             xmlString += photosXML;
             xmlString += `</稽查紀錄>`;
@@ -1006,6 +1011,12 @@ function safeImage(value) { return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0
     
                     const getNodeText = (tag) => { const node = xmlDoc.getElementsByTagName(tag)[0]; return node ? node.textContent : ""; };
     
+                    const laborNote = document.getElementById('labor-inspection-note');
+                    if(laborNote) laborNote.textContent = getNodeText('勞檢備註');
+                    Array.from(xmlDoc.getElementsByTagName('表單編碼欄位')).forEach(node => {
+                        const el=document.querySelectorAll('.form-code')[Number(node.getAttribute('表序'))];
+                        if(el) ['年份','類別','版次'].forEach((name,j) => { const input=el.querySelectorAll('.code-part')[j]; if(input) input.value=node.getAttribute(name)||''; });
+                    });
                     const year = getNodeText("年"); const month = getNodeText("月"); const day = getNodeText("日");
                     if(year) syncDate('year', year); 
                     if(month) syncDate('month', parseInt(month).toString()); 
@@ -1141,6 +1152,8 @@ function safeImage(value) { return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0
         window.openSystemModal = function() {
             document.querySelectorAll('.error-highlight').forEach(el => el.classList.remove('error-highlight'));
             let errors = [];
+            const laborNote = document.getElementById('labor-inspection-note');
+            if (laborNote && !laborNote.textContent.trim()) errors.push(laborNote);
     
             let loc = document.querySelector('.sync-loc');
             if(!loc.textContent.trim()) errors.push(loc);
@@ -1156,7 +1169,10 @@ function safeImage(value) { return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0
             let missingPhotos = [];
             document.querySelectorAll('.fail-radio:checked').forEach(radio => {
                 hasFailures = true;
-                let code = radio.closest('tr').querySelector('.item-id-code').textContent.trim();
+                const tr = radio.closest('tr');
+                const code = tr.querySelector('.item-id-code').textContent.trim();
+                const description = tr.querySelector('.defect-desc-input');
+                if (!description.textContent.trim() || description.textContent.trim() === '無此作業項目') errors.push(description);
                 if(!uploadedPhotosDB[code]) missingPhotos.push(code);
             });
     
@@ -1171,7 +1187,7 @@ function safeImage(value) { return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0
             if(errors.length > 0) {
                 errors.forEach(el => el.classList.add('error-highlight'));
                 errors[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                showCustomAlert("請完成所有必填項目（請見紅框標示處：包含檢查地點、檢查位置、缺失照片或簽章）");
+                showCustomAlert("請完成所有必填項目（請見紅框標示處：包含表三勞檢備註、檢查地點、檢查位置、不合格缺失說明、缺失照片或簽章）");
                 return;
             }
     
@@ -1523,6 +1539,7 @@ window.openExportFormatModal = function() { document.getElementById('export-form
                     scrollY: 0, 
                     windowWidth: document.documentElement.scrollWidth,
                     onclone: (doc) => {
+                        doc.defaultView?.document?.documentElement?.style?.setProperty("width","1100px");
                         const saveNotice = doc.getElementById("autosave-bar");
                         if (saveNotice) saveNotice.style.setProperty("display", "none", "important"); 
                         doc.documentElement.style.overflow = 'visible';
@@ -1590,6 +1607,7 @@ window.openExportFormatModal = function() { document.getElementById('export-form
                     scrollY: 0, 
                     windowWidth: document.documentElement.scrollWidth,
                     onclone: (doc) => {
+                        doc.defaultView?.document?.documentElement?.style?.setProperty("width","1100px");
                         const saveNotice = doc.getElementById("autosave-bar");
                         if (saveNotice) saveNotice.style.setProperty("display", "none", "important"); 
                         doc.documentElement.style.overflow = 'visible';
@@ -2071,7 +2089,7 @@ document.querySelectorAll('.checklist-table tbody').forEach(tbody => {
             htmlContent += `
             <div class="form-page">
                 <div class="form-header-row">
-                    <div class="form-code">表單編碼：${form.formCode}</div>
+                    <div class="form-code">表單編碼：<span class="code-fields">FP<input class="code-part code-year" value="23" maxlength="2" inputmode="numeric" aria-label="表單編碼年份">-EMA2-50-<input class="code-part code-letter" value="B" maxlength="3" aria-label="表單編碼類別">-<input class="code-part code-revision" value="R00" maxlength="8" aria-label="表單編碼版次"></span></div>
                     <div class="form-title-group">
                         <h1>${form.title}</h1>
                         ${form.subtitle ? `<h2>${form.subtitle}</h2>` : '<div style="height:20px;"></div>'}
@@ -2161,6 +2179,7 @@ document.querySelectorAll('.checklist-table tbody').forEach(tbody => {
             });
         });
 htmlContent += `</tbody></table></div><div style="background:#f9f9f9; padding:15px; border:1px solid #ddd; font-size:14px; margin-bottom:20px;">${form.notes}</div>
+                ${fIndex === 2 ? `<div class="labor-note"><label for="labor-inspection-note">備註：勞檢機構稽查日期及缺失內容：</label><div id="labor-inspection-note" class="labor-note-input" contenteditable="true" role="textbox" aria-label="勞檢機構稽查日期及缺失內容" data-placeholder="請填寫稽查日期及缺失內容"></div></div>` : ''}
                 <div class="signatures">
                     <div class="sign-column" style="justify-content: center;"><div class="sign-row"><span class="sign-label" style="width: 140px; white-space: pre-wrap; line-height: 1.4;">會同單位：<br>會同人員：</span><div class="sign-box" style="height: 100px;" data-form-index="${fIndex}" data-sign-type="joint" onclick="openSignaturePad(this)"><svg class="signature-placeholder-icon" viewBox="0 -20 64 60" width="52" height="49" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path class="signature-ink" d="M5 28 C10 27 11 12 15 10 C18 9 12 27 16 28 C19 29 22 21 24 22 C26 23 23 28 26 28 C29 28 30 24 32 25 C34 26 33 28 36 28"/><path d="M5 33 H48" opacity=".55"/><g class="signature-pen"><path d="M0 0 L2 -6 L17 -24 Q19 -26 21 -24 L23 -22 Q25 -20 23 -18 L8 -3 Z" fill="#aab8c8" stroke="#708294"/><path d="M2 -6 L8 -3 L0 0 Z" fill="#f1d2ad" stroke="#708294"/><path d="M3 -7 L9 -4 M17 -22 L22 -17" stroke="#fff"/><path d="M0 0 L2 -1" stroke="#485565"/></g></svg><span>請簽名</span></div></div></div>
                     <div class="sign-column" style="justify-content: center;"><div class="sign-row"><span class="sign-label" style="width: 140px; white-space: pre-wrap; line-height: 1.4;">稽查單位：<br>稽查人員：</span><div class="sign-box" style="height: 100px;" data-form-index="${fIndex}" data-sign-type="inspector" onclick="openSignaturePad(this)"><svg class="signature-placeholder-icon" viewBox="0 -20 64 60" width="52" height="49" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path class="signature-ink" d="M5 28 C10 27 11 12 15 10 C18 9 12 27 16 28 C19 29 22 21 24 22 C26 23 23 28 26 28 C29 28 30 24 32 25 C34 26 33 28 36 28"/><path d="M5 33 H48" opacity=".55"/><g class="signature-pen"><path d="M0 0 L2 -6 L17 -24 Q19 -26 21 -24 L23 -22 Q25 -20 23 -18 L8 -3 Z" fill="#aab8c8" stroke="#708294"/><path d="M2 -6 L8 -3 L0 0 Z" fill="#f1d2ad" stroke="#708294"/><path d="M3 -7 L9 -4 M17 -22 L22 -17" stroke="#fff"/><path d="M0 0 L2 -1" stroke="#485565"/></g></svg><span>請簽名</span></div></div></div>
@@ -5141,6 +5160,8 @@ function appendMessage(role, text, isRawHtml = false) {
                     pm: document.querySelector('.sync-pm').textContent
                 },
                 checklist: {},
+                laborNote: document.getElementById('labor-inspection-note')?.textContent || '',
+                formCodes: Array.from(document.querySelectorAll('.form-code')).map(el => Array.from(el.querySelectorAll('.code-part')).map(input => input.value)),
                 signatures: [],
                 photos: uploadedPhotosDB,
                 exifs: photoExifDB
@@ -5201,6 +5222,9 @@ function appendMessage(role, text, isRawHtml = false) {
         try {
             const draft = JSON.parse(draftStr);
             
+            const note = document.getElementById('labor-inspection-note');
+            if(note) note.textContent = draft.laborNote || '';
+            if(Array.isArray(draft.formCodes)) document.querySelectorAll('.form-code').forEach((el,i) => el.querySelectorAll('.code-part').forEach((input,j) => { if(draft.formCodes[i]?.[j] != null) input.value = draft.formCodes[i][j]; }));
             // 恢復日期
             if(draft.date) {
                 if(draft.date.y) syncDate('year', draft.date.y);
@@ -5351,44 +5375,150 @@ const bar=document.getElementById('autosave-bar'); document.querySelector('.cont
 
 <script>
 (function setupRequiredFieldGuide(){
- let pending=[], timer=null;
+ let pending=[];
  const originalOpen=window.openSystemModal;
- const valid=el=>{
-   if(el.matches('.sign-box')) return !!el.querySelector('img[src]');
-   if(el.id.startsWith('photo-cell-')) {const code=el.id.slice(11);const p=uploadedPhotosDB[code];return Array.isArray(p)?p.some(Boolean):!!p;}
+ const resolve=el=>el.id?.startsWith('photo-cell-')?document.getElementById(el.id)||el:el;
+ const complete=el=>{
+   el=resolve(el);
+   if(!el?.isConnected)return false;
+   if(el.matches('.sign-box'))return !!el.querySelector('img[src]');
+   if(el.matches('.defect-desc-input'))return !!el.closest('tr')?.querySelector('.fail-radio:checked') && !!el.textContent.trim() && el.textContent.trim()!=='無此作業項目';
+   if(el.id?.startsWith('photo-cell-')){const photos=uploadedPhotosDB[el.id.slice(11)];return Array.isArray(photos)?photos.some(Boolean):!!photos;}
    return !!el.textContent.trim();
  };
- function advance(){
-   if(!pending.length)return;
-   // Preserve navigation until text editing finishes or a signature dialog closes.
-   const active=document.activeElement;
-   if(pending.some(el=>el===active||el.contains(active)))return;
-   const signature=document.getElementById('sig-modal');
-   if(signature && getComputedStyle(signature).display!=='none')return;
-   let completed=false;
-   pending=pending.map(el=>el.id?document.getElementById(el.id)||el:el).filter(el=>{
-     if(!el.isConnected || valid(el)){el.classList.remove('error-highlight');completed=true;return false;}
-     el.classList.add('error-highlight');return true;
-   });
-   if(!completed)return;
-   if(pending.length) pending[0].scrollIntoView({behavior:'smooth',block:'center'});
+ function finish(el){
+   let index=pending.findIndex(item=>item===el || (item.id && item.id===el?.id));
+   if(index<0)return;
+   const item=resolve(pending[index]);
+   if(!complete(item))return;
+   item.classList.remove('error-highlight');
+   pending.splice(index,1);
+   if(index!==0 || !pending.length)return;
+   const next=resolve(pending[0]);
+   if(next?.isConnected)requestAnimationFrame(()=>next.scrollIntoView({behavior:'smooth',block:'center'}));
  }
- function schedule(){clearTimeout(timer);timer=setTimeout(advance,180);}
  window.openSystemModal=function(){
-   originalOpen.apply(this,arguments);
-   pending=[...document.querySelectorAll('.error-highlight')].filter(el=>el.matches('.sync-loc,.sync-pos,.sign-box,[id^="photo-cell-"]'));
+   pending=[];
+   const result=originalOpen.apply(this,arguments);
+   pending=[...document.querySelectorAll('.error-highlight')].filter(el=>el.matches('.sync-loc,.sync-pos,.sign-box,.defect-desc-input,.labor-note-input,[id^="photo-cell-"]'));
+   const forms=[...document.querySelectorAll('.form-page')];
+   const key=el=>{
+     const id=el.id?.startsWith('photo-cell-')?el.id.slice('photo-cell-'.length):el.closest('tr')?.querySelector('.item-id-code')?.textContent.trim();
+     let page=el.closest('.form-page');
+     if(!page && id)page=forms.find(f=>[...f.querySelectorAll('.item-id-code')].some(n=>n.textContent.trim()===id));
+     const form=Math.max(0,forms.indexOf(page));
+     if(el.matches('.sync-loc'))return form*100000;
+     if(el.matches('.sync-pos'))return form*100000+1;
+     if(id){const rows=[...page.querySelectorAll('.item-id-code')];const index=rows.findIndex(n=>n.textContent.trim()===id);return el.id?.startsWith('photo-cell-') ? 1000000+form*100000+index : form*100000+100+index;}
+     if(el.matches('.labor-note-input'))return form*100000+90000;
+     if(el.matches('.sign-box'))return form*100000+90001+(el.dataset.signType==='inspector'?1:0);
+     return form*100000+99999;
+   };
+   pending.sort((a,b)=>key(a)-key(b));
+   return result;
  };
- document.addEventListener('focusout',schedule);
- document.addEventListener('change',schedule);
- // Observe saved signatures and newly rendered photo cells, including remote signing.
- const observer=new MutationObserver(records=>{
-   if(!pending.length)return;
-   if(records.some(r=>r.type==='childList'))schedule();
+ const oldCloseAlert=window.closeCustomAlert;
+ window.closeCustomAlert=function(){const result=oldCloseAlert.apply(this,arguments);if(pending.length)requestAnimationFrame(()=>resolve(pending[0])?.scrollIntoView({behavior:'smooth',block:'center'}));return result;};
+ let textTimer;
+ document.addEventListener('input',e=>{
+   if(!e.target.matches('.sync-loc,.sync-pos,.defect-desc-input,.labor-note-input'))return;
+   clearTimeout(textTimer);
+   const field=e.target;
+   textTimer=setTimeout(()=>{if(complete(field))finish(field);},2500);
  });
- observer.observe(document.querySelector('.container'),{subtree:true,childList:true});
- const closeSign=window.closeSignaturePad;
- if(closeSign)window.closeSignaturePad=function(){const result=closeSign.apply(this,arguments);schedule();return result;};
+ document.addEventListener('focusout',e=>{
+   if(!e.target.matches('.sync-loc,.sync-pos,.defect-desc-input,.labor-note-input'))return;
+   clearTimeout(textTimer);
+   finish(e.target);
+ });
+
+ const oldOption=window.selectDefectOption;
+ window.selectDefectOption=function(event,optionEl){
+   const input=optionEl.closest('tr')?.querySelector('.defect-desc-input');
+   const result=oldOption.apply(this,arguments);
+   if(input)finish(input);
+   return result;
+ };
+ const oldPolish=window.applyAIPolish;
+ window.applyAIPolish=function(){
+   const before=pending.filter(el=>el.matches('.defect-desc-input'));
+   const result=oldPolish.apply(this,arguments);
+   before.forEach(el=>finish(el));
+   return result;
+ };
+ const oldSave=window.saveSignature;
+ window.saveSignature=function(){const box=document.querySelector('.sign-box.error-highlight');const result=oldSave.apply(this,arguments);if(box)finish(box);return result;};
+ // FileReader and image decoding finish after handleImageFile returns, so watch the photo table redraw.
+ const photoBody=document.getElementById('photo-table-body');
+ if(photoBody){
+   const photoObserver=new MutationObserver(()=>{
+     pending.filter(el=>el.id?.startsWith('photo-cell-')).forEach(el=>{
+       const current=document.getElementById(el.id);
+       if(!current)return;
+       if(complete(current))finish(current);
+       else current.classList.add('error-highlight');
+     });
+   });
+   photoObserver.observe(photoBody,{childList:true,subtree:true});
+ }
+
+ // Remote signatures update the sign box without invoking the local save function.
+ const signs=new MutationObserver(records=>records.forEach(r=>{const box=r.target.closest?.('.sign-box');if(box)finish(box);}));
+ document.querySelectorAll('.sign-box').forEach(box=>signs.observe(box,{childList:true,subtree:true}));
 })();
 </script>
+
+
+
+<style>
+.proj-sel-trigger,.custom-option { white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; }
+.custom-options { min-width:100%; }
+.custom-option { line-height:1.4!important; }
+.form-code .code-fields { white-space:nowrap; }
+.code-part { width:2.3em; padding:1px 2px; border:0; border-bottom:1px solid #9fb6c3; border-radius:0; background:#f5faff; color:#35566a; font:inherit; text-align:center; }
+.code-letter { width:2em; } .code-revision { width:3.2em; }
+.labor-note { display:flex; align-items:flex-start; gap:8px; margin:-8px 0 22px; color:#296a9c; font-size:17px; }
+.labor-note label { flex:none; }
+.labor-note-input { flex:1; min-height:38px; padding:5px 8px; border:2px solid #24a7c8; border-radius:3px; background:#f4fbfe; color:#273b48; outline-offset:2px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.labor-note-input:empty:before { content:attr(data-placeholder); color:#98aebb; }
+.col-remark > div { display:flow-root!important; }
+.col-remark .mic-btn,.col-remark .dropdown-btn,.col-remark .ai-btn { float:right; margin:0 0 5px 5px; }
+.col-remark .defect-desc-input { display:block; min-width:0; width:auto; overflow-wrap:anywhere; }
+@media(max-width:700px){.labor-note{display:block;font-size:15px}.labor-note-input{margin-top:6px}.code-part{font-size:13px}}
+</style>
+<script>
+(function(){
+ document.querySelectorAll('.col-remark > div').forEach(w=>{const input=w.querySelector('.defect-desc-input');if(input){const firstButton=w.querySelector('.mic-btn');if(firstButton)w.insertBefore(input,w.querySelector('.defect-dropdown-menu'));[...w.querySelectorAll('.mic-btn,.dropdown-btn,.ai-btn')].reverse().forEach(b=>w.insertBefore(b,input));}});
+ document.addEventListener('input',e=>{if(e.target.closest('.code-fields')||e.target.id==='labor-inspection-note'){if(window.saveToLocalStorage)saveToLocalStorage();e.target.classList.remove('error-highlight');}});
+})();
+</script>
+
+<style>
+/* 工程名稱：選單展開時完整顯示；收合時維持單行 */
+.custom-options.open { width:max(100%, 540px); max-width:min(90vw, 720px); }
+.custom-options.open .custom-option { white-space:normal!important; overflow:visible!important; text-overflow:clip!important; overflow-wrap:anywhere; }
+.proj-sel-trigger { white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; }
+/* 表三勞檢備註 */
+.labor-note { align-items:center; margin:-8px 0 18px; font-size:14px; font-weight:700; color:#333; }
+.labor-note label { font-weight:700; }
+.labor-note-input { min-height:28px; padding:3px 7px; border:1px solid #37a8c2; border-radius:3px; font-size:14px; font-weight:700; line-height:1.35; background:#f7fcfe; }
+@media(max-width:700px) { .custom-options.open { width:min(90vw,540px); } .labor-note{font-size:14px;} }
+</style>
+
+<style>
+/* 工程名稱：統一字級，欄內最多自然換行 */
+.custom-select-wrapper { width:100%!important; max-width:100%!important; min-width:0; }
+.proj-sel-trigger,.custom-select-wrapper:has(.custom-options.open) .proj-sel-trigger { font-size:15px!important; white-space:normal!important; overflow:visible!important; text-overflow:clip!important; height:auto!important; min-height:35px; line-height:1.4; overflow-wrap:anywhere; }
+.custom-options,.custom-options.open { width:100%!important; min-width:0!important; max-width:100%!important; left:0!important; right:0!important; box-sizing:border-box; }
+.custom-options .custom-option,.custom-options.open .custom-option { font-size:15px!important; white-space:normal!important; overflow:visible!important; text-overflow:clip!important; overflow-wrap:anywhere; line-height:1.45!important; padding:9px 10px; }
+</style>
+
+<style>
+/* 自動儲存狀態：置頂且背景僅包住訊息 */
+#autosave-bar { position:fixed!important; top:12px!important; right:16px!important; left:auto!important; z-index:9500!important; width:max-content!important; max-width:min(90vw,480px)!important; margin:0!important; padding:7px 12px!important; border-radius:999px!important; box-shadow:0 3px 12px rgba(45,75,65,.12); text-align:center; line-height:1.35; }
+#autosave-bar[data-state="warning"],#autosave-bar[data-state="error"] { border-radius:12px!important; }
+@media(max-width:600px){#autosave-bar { top:8px!important; right:8px!important; font-size:12px!important; }}
+@media print {#autosave-bar {display:none!important;}}
+</style>
 </body>
     </html>    
