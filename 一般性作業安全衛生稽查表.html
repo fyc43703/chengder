@@ -626,7 +626,7 @@ table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layou
 <!-- 系統確認 Modal -->
 <div id="system-modal" class="custom-modal">
     <div class="sys-container">
-        <h2 class="sys-title">系統登錄確認</h2>
+        <h2 class="sys-title">登錄資料檢視</h2>
         <div class="sys-details">
             <div><strong>日　　期：</strong> <span id="sys-datetime"></span></div>
             <div><strong>工程名稱：</strong> <span id="sys-proj"></span></div>
@@ -637,10 +637,10 @@ table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layou
             <div><strong>檢查位置：</strong> <span id="sys-pos"></span></div>
         </div>
             <div class="sys-warning">🔔 使用管理系統前<br>請先確認 VPN 連線與正式上傳流程</div>
-            <div class="sys-warning">📝 請再次檢核資料內容<br>「確認」將顯示資料尚未連線傳送的說明</div>
+            <div class="sys-warning">📝 請再次檢核資料內容<br>本頁僅供核對；資料尚未傳送管理系統</div>
             <div class="sys-actions">
-                <div class="sys-btn-group" onclick="closeSystemModal()"><div class="sys-icon red"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></div><div class="sys-label">清除</div></div>
-                <div class="sys-btn-group" onclick="submitSystemData()"><div class="sys-icon green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg></div><div class="sys-label">確認</div></div>
+                <button type="button" class="sys-btn-group" onclick="closeSystemModal()"><div class="sys-icon red"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></div><div class="sys-label">返回表單</div></button>
+                <button type="button" class="sys-btn-group" onclick="submitSystemData()"><div class="sys-icon green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg></div><div class="sys-label">了解</div></button>
             </div>
         </div>
     </div>
@@ -1173,7 +1173,8 @@ function safeImage(value) { return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0
                 const code = tr.querySelector('.item-id-code').textContent.trim();
                 const description = tr.querySelector('.defect-desc-input');
                 if (!description.textContent.trim() || description.textContent.trim() === '無此作業項目') errors.push(description);
-                if(!uploadedPhotosDB[code]) missingPhotos.push(code);
+                const photos=uploadedPhotosDB[code];
+                if (!(Array.isArray(photos) ? photos.some(Boolean) : !!photos)) missingPhotos.push(code);
             });
     
             if(hasFailures && missingPhotos.length > 0) {
@@ -1187,7 +1188,15 @@ function safeImage(value) { return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0
             if(errors.length > 0) {
                 errors.forEach(el => el.classList.add('error-highlight'));
                 errors[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                showCustomAlert("請完成所有必填項目（請見紅框標示處：包含表三勞檢備註、檢查地點、檢查位置、不合格缺失說明、缺失照片或簽章）");
+                const first=errors[0];
+                const code=first.closest('tr')?.querySelector('.item-id-code')?.textContent.trim();
+                const detail=first.matches('.labor-note-input') ? '請填寫表三勞檢機構稽查日期及缺失內容。' :
+                    first.matches('.sync-loc') ? '請填寫檢查地點。' :
+                    first.matches('.sync-pos') ? '請填寫檢查位置。' :
+                    first.matches('.defect-desc-input') ? `項目 ${code}：請填寫缺失情形／改善期限。` :
+                    first.matches('.sign-box') ? '請完成紅框標示的簽名。' :
+                    first.id.startsWith('photo-cell-') ? `項目 ${first.id.slice('photo-cell-'.length)}：請加入缺失照片。` : '請補齊紅框標示的欄位。';
+                showCustomAlert(detail + ' 完成後可繼續依序處理其他紅框。');
                 return;
             }
     
@@ -1204,7 +1213,7 @@ function safeImage(value) { return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0
             document.getElementById('system-modal').style.display = 'flex';
         };
         window.closeSystemModal = function() { document.getElementById('system-modal').style.display = 'none'; };
-        window.submitSystemData = function() { showCustomAlert("此功能尚未串接管理系統，資料未傳送。請先匯出暫存檔或 PDF，依既有流程提交。"); closeSystemModal(); };
+        window.submitSystemData = function() { closeSystemModal(); showCustomAlert("資料尚未傳送管理系統。請依既有流程提交暫存檔或 PDF。"); };
         
         const projectData = {
             "環狀線北環段CF680A區段標之CF681標土建工程": { main: "第一區工程處", super: "土木第八工務所", contractor: "工信工程股份有限公司" },
@@ -1512,6 +1521,16 @@ window.openExportFormatModal = function() { document.getElementById('export-form
         // ==========================================
         // ★ 新增：匯出長圖片 (JPG) 功能補齊
         // ==========================================
+        function prepareDefectCellsForExport(doc) {
+            const style = doc.createElement('style');
+            style.textContent = '.col-remark .defect-desc-input:empty::before { content: none !important; } .col-remark .mic-btn, .col-remark .dropdown-btn, .col-remark .ai-btn, .col-remark .defect-dropdown-menu { display: none !important; }';
+            style.textContent += ' .form-page .ref-links { visibility: hidden !important; }';
+            doc.head.appendChild(style);
+            doc.querySelectorAll('.col-remark .defect-desc-input').forEach(input => {
+                if (input.textContent.trim() === '點此輸入...') input.textContent = '';
+            });
+        }
+
         window.executeExportPNG = async function() {
             closeExportFormatModal();
             
@@ -1539,6 +1558,7 @@ window.openExportFormatModal = function() { document.getElementById('export-form
                     scrollY: 0, 
                     windowWidth: document.documentElement.scrollWidth,
                     onclone: (doc) => {
+                        prepareDefectCellsForExport(doc);
                         doc.defaultView?.document?.documentElement?.style?.setProperty("width","1100px");
                         const saveNotice = doc.getElementById("autosave-bar");
                         if (saveNotice) saveNotice.style.setProperty("display", "none", "important"); 
@@ -1607,6 +1627,7 @@ window.openExportFormatModal = function() { document.getElementById('export-form
                     scrollY: 0, 
                     windowWidth: document.documentElement.scrollWidth,
                     onclone: (doc) => {
+                        prepareDefectCellsForExport(doc);
                         doc.defaultView?.document?.documentElement?.style?.setProperty("width","1100px");
                         const saveNotice = doc.getElementById("autosave-bar");
                         if (saveNotice) saveNotice.style.setProperty("display", "none", "important"); 
@@ -2208,6 +2229,14 @@ window.deletePhoto = function(itemCode, index) {
     }
 };
 
+function docPhotoSize(bytes) {
+    const caption = document.createElement('div');
+    caption.className = 'photo-file-size';
+    caption.textContent = bytes >= 1048576
+        ? (bytes / 1048576).toFixed(2) + ' MB'
+        : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+    return caption;
+}
 window.generatePhotoReport = function() {
     const failRadios = document.querySelectorAll('.fail-radio:checked');
     const reportSection = document.getElementById('photo-report-section');
@@ -2216,7 +2245,7 @@ window.generatePhotoReport = function() {
     let tableHTML = '';
     failRadios.forEach(radio => {
         const tr = radio.closest('tr'); const itemCode = tr.querySelector('.item-id-code').textContent.trim();
-        let defectText = tr.querySelector('.defect-desc-input').textContent.trim(); if(!defectText) defectText = '<span style="color:#aaa;">(未填寫說明)</span>';
+        let defectText = tr.querySelector('.defect-desc-input').textContent.trim(); if(!defectText) defectText = '(未填寫說明)';
         
         // ★ 修正：改用 Flexbox 並排顯示陣列中的照片 (最多 3 張)
         let photoContent = `<div style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center; align-items:center;">`;
@@ -2262,7 +2291,27 @@ window.generatePhotoReport = function() {
             
         tableHTML += `<tr><td style="font-size: 18px; font-weight: bold;">${itemCode}</td><td style="text-align: left;">${safeText(defectText)}</td><td id="photo-cell-${itemCode}">${photoContent}</td></tr>`;
     });
-    tbody.innerHTML = tableHTML; reportSection.style.display = 'block'; 
+    tbody.innerHTML = tableHTML; reportSection.style.display = 'block';
+    tbody.querySelectorAll('[id^="photo-cell-"]').forEach(cell => {
+        const code = cell.id.slice('photo-cell-'.length);
+        const entries = uploadedPhotosDB[code];
+        const count = Array.isArray(entries) ? entries.filter(Boolean).length : (entries ? 1 : 0);
+        cell.dataset.photoStatus = count ? 'saved' : 'missing';
+        const badge = document.createElement('div');
+        badge.className = 'photo-status-badge';
+        badge.textContent = count ? `✓ 已加入 ${count} 張照片` : '待補照片';
+        cell.closest('tr').cells[0].append(document.createElement('br'), badge);
+        cell.closest('tr').cells[0].dataset.photoStatus = cell.dataset.photoStatus;
+        cell.querySelectorAll('img').forEach(img => {
+            const data = img.getAttribute('src') || '';
+            if (!data.startsWith('data:image/') || !data.includes(';base64,')) return;
+            const encoded = data.slice(data.indexOf(',') + 1);
+            const padding = encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0;
+            const size = Math.floor(encoded.length * 3 / 4) - padding;
+            const caption = docPhotoSize(size);
+            img.after(caption);
+        });
+    }); 
     if(!event || event.type !== 'click') return; 
     reportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
@@ -2505,16 +2554,66 @@ window.autoFitText = function(el) {
 };
 
         // ★ 修正：加入 photoIndex 參數 (-1 代表新增，>=0 代表替換)
+        window.confirmLargePhoto = function(file) {
+            return new Promise(resolve => {
+                const overlay = document.createElement('div');
+                overlay.className = 'custom-modal photo-size-modal';
+                overlay.style.display = 'flex';
+                overlay.style.zIndex = '30000';
+                const box = document.createElement('div');
+                box.className = 'photo-size-box';
+                const title = document.createElement('h2');
+                title.textContent = '照片超過 3 MB';
+                const detail = document.createElement('p');
+                detail.textContent = `這張照片為 ${(file.size / 1048576).toFixed(2)} MB。繼續後會自動壓縮到 3 MB 以下；無法壓縮成功時不會加入照片。`;
+                const actions = document.createElement('div');
+                actions.className = 'photo-size-actions';
+                const cancel = document.createElement('button');
+                cancel.type = 'button'; cancel.textContent = '取消上傳';
+                const proceed = document.createElement('button');
+                proceed.type = 'button'; proceed.textContent = '繼續並壓縮';
+                const done = answer => { overlay.remove(); resolve(answer); };
+                cancel.onclick = () => done(false);
+                proceed.onclick = () => done(true);
+                actions.append(cancel, proceed); box.append(title, detail, actions);
+                overlay.append(box); document.body.append(overlay); cancel.focus();
+            });
+        };
         window.handleImageFile = async function(inputElement, itemCode, photoIndex = -1) {
             const file = inputElement.files[0];
             if (file) {
-                const cell = document.getElementById(`photo-cell-${itemCode}`);
-                cell.classList.remove('error-highlight'); 
+                const limit = 3 * 1024 * 1024;
+                if (file.size > limit && !(await confirmLargePhoto(file))) {
+                    inputElement.value = '';
+                    return;
+                }
+                const cell = document.getElementById(`photo-cell-${itemCode}`); 
                 
                 // 為了不讓畫面閃爍太嚴重，我們只在該儲存格上方加一個小提示，而不是清空內容
                 const loadingTip = document.createElement('div');
                 loadingTip.innerHTML = `<div style="padding: 10px; color:#0056b3; font-weight:bold; text-align:center;">⏳ 照片解析與壓縮中...</div>`;
                 cell.prepend(loadingTip);
+                loadingTip.setAttribute('role', 'status');
+                const reportFailure = message => {
+                    inputElement.value = '';
+                    loadingTip.remove();
+                    const currentCell = document.getElementById(`photo-cell-${itemCode}`);
+                    if (!currentCell) return;
+                    currentCell.querySelector('.photo-retry')?.remove();
+                    const notice = document.createElement('div');
+                    notice.className = 'photo-retry';
+                    notice.setAttribute('role', 'alert');
+                    notice.textContent = message + (photoIndex >= 0 ? ' 原照片已保留。' : '') + ' ';
+                    if (inputElement.isConnected) {
+                        const retry = document.createElement('button');
+                        retry.type = 'button';
+                        retry.textContent = '重新選擇';
+                        retry.onclick = () => inputElement.click();
+                        notice.append(retry);
+                    }
+                    currentCell.prepend(notice);
+                };
+
     
                 let exifInfoHTML = '';
                 try {
@@ -2592,6 +2691,10 @@ window.autoFitText = function(el) {
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
+                    loadingTip.textContent = '照片壓縮中…';
+                    requestAnimationFrame(() => setTimeout(compressPhoto, 0));
+                };
+                function compressPhoto() {
                     const MAX_WIDTH = 1280;
                     const MAX_HEIGHT = 1280;
                     let width = img.width;
@@ -2609,7 +2712,25 @@ window.autoFitText = function(el) {
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    let quality = 0.75;
+                    let compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                    const bytes = data => Math.floor((data.length - data.indexOf(',') - 1) * 3 / 4);
+                    for (let attempt = 0; bytes(compressedBase64) >= limit && attempt < 14; attempt++) {
+                        if (quality > 0.48) quality -= 0.08;
+                        else {
+                            const reduced = document.createElement('canvas');
+                            reduced.width = Math.max(1, Math.floor(canvas.width * 0.8));
+                            reduced.height = Math.max(1, Math.floor(canvas.height * 0.8));
+                            reduced.getContext('2d').drawImage(canvas, 0, 0, reduced.width, reduced.height);
+                            canvas.width = reduced.width; canvas.height = reduced.height;
+                            canvas.getContext('2d').drawImage(reduced, 0, 0);
+                        }
+                        compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                    }
+                    if (bytes(compressedBase64) >= limit) {
+                        reportFailure('照片壓縮後仍超過 3 MB，請選擇較小的圖片。');
+                        return;
+                    }
 
                     // ★ 修正：將結果寫入陣列
                     if (!uploadedPhotosDB[itemCode]) uploadedPhotosDB[itemCode] = [];
@@ -2629,9 +2750,11 @@ window.autoFitText = function(el) {
                     generatePhotoReport();
 
                     if(typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage();
-                };
+                }
+                img.onerror = () => { reportFailure('無法讀取此圖片，照片未加入。'); };
                 img.src = e.target.result; 
-            }; 
+            };
+            reader.onerror = () => { reportFailure('讀取照片失敗，照片未加入。'); };
             reader.readAsDataURL(file);
             }
         };
@@ -5196,7 +5319,7 @@ function appendMessage(role, text, isRawHtml = false) {
             const timeEl = document.getElementById('autosave-time');
             const barEl  = document.getElementById('autosave-bar');
             if (timeEl) timeEl.textContent = hh + ':' + mm;
-            if (barEl) { barEl.textContent = '✓ 已自動儲存 ' + hh + ':' + mm + '（此瀏覽器）'; barEl.dataset.state='success'; barEl.style.display='block'; }
+            if (barEl) { barEl.textContent = '✓ 文字與照片已自動儲存 ' + hh + ':' + mm + '（此瀏覽器）'; barEl.dataset.state='success'; barEl.style.display='block'; }
             
         } catch (e) {
             // 防呆：如果 localStorage 容量爆滿 (通常是 5MB)，放棄儲存照片，只保留文字紀錄
@@ -5205,6 +5328,7 @@ function appendMessage(role, text, isRawHtml = false) {
                 try {
                     const fallbackDraft = {...draft};
                     fallbackDraft.photos = {}; // 清空照片
+                    fallbackDraft.exifs = {}; // 照片的座標資料同樣不可誤稱已保存
                     localStorage.setItem('ema2_autosave_draft', JSON.stringify(fallbackDraft));
                     const bar = document.getElementById('autosave-bar');
                     if (bar) { bar.dataset.state='warning'; bar.textContent = '⚠️ 已儲存最新文字與勾選；照片未暫存，請匯出 XML 備份。'; bar.style.display = 'block'; }
@@ -5375,9 +5499,63 @@ const bar=document.getElementById('autosave-bar'); document.querySelector('.cont
 
 <script>
 (function setupRequiredFieldGuide(){
- let pending=[];
+ let pending=[]; let guided=true;
+ const guideToggle=document.createElement('button');
+ guideToggle.type='button'; guideToggle.id='guide-toggle'; guideToggle.hidden=true;
+ guideToggle.textContent='暫停自動跳轉'; document.body.append(guideToggle);
+ guideToggle.onclick=()=>{guided=!guided;guideToggle.textContent=guided?'暫停自動跳轉':'繼續紅框導引';if(guided&&pending.length)resolve(pending[0])?.scrollIntoView({behavior:'smooth',block:'center'});};
+ const guidePanel=document.createElement('aside');
+ guidePanel.id='guide-progress';
+ guidePanel.hidden=true;
+ guidePanel.setAttribute('data-html2canvas-ignore','true');
+ const guideStatus=document.createElement('div');
+ guideStatus.setAttribute('role','status');
+ const nextButton=document.createElement('button');
+ nextButton.type='button';
+ nextButton.textContent='完成並前往下一項';
+ guidePanel.append(guideStatus,nextButton);
+ document.body.append(guidePanel);
+ const textFields='.defect-desc-input,.sync-loc,.sync-pos,.labor-note-input';
+ let editingField=null;
+ let idleTimer=0;
+ let composing=false;
+ function cancelIdle(){clearTimeout(idleTimer);}
+ function goToNext(){
+   const next=resolve(pending[0]);
+   if(!next?.isConnected)return;
+   requestAnimationFrame(()=>{
+     if(next!==resolve(pending[0]) || !next.isConnected)return;
+     if(next.matches(textFields) && matchMedia('(hover: hover) and (pointer: fine)').matches){
+       next.focus({preventScroll:true});
+     }else if(document.activeElement?.matches(textFields)){
+       document.activeElement.blur();
+     }
+     next.scrollIntoView({behavior:'instant',block:'center',inline:'center'});
+   });
+ }
+ nextButton.onclick=()=>{
+   const field=editingField || resolve(pending[0]);
+   if(field && complete(field))finish(field,true);
+ };
+ document.addEventListener('focusin',event=>{
+   if(!pending.length || !event.target.matches(textFields))return;
+   if(pending.includes(event.target))editingField=event.target;
+   updateGuide();
+ });
+ function updateGuide(){
+   const field=pending.length ? editingField || resolve(pending[0]) : null;
+   guidePanel.hidden=!field;
+   if(!field)return;
+   const form=field.closest('.form-page');
+   const number=['一','二','三'][[...document.querySelectorAll('.form-page')].indexOf(form)];
+   const code=field.closest('tr')?.querySelector('.item-id-code')?.textContent.trim()
+     || (field.id.startsWith('photo-cell-') ? field.id.slice('photo-cell-'.length) : '');
+   guideStatus.textContent=[number && '表'+number,code,'尚有 '+pending.length+' 項待補'].filter(Boolean).join(' · ');
+   nextButton.hidden=!field.matches(textFields);
+   nextButton.disabled=!complete(field);
+ }
  const originalOpen=window.openSystemModal;
- const resolve=el=>el.id?.startsWith('photo-cell-')?document.getElementById(el.id)||el:el;
+ const resolve=el=>el?.id?.startsWith('photo-cell-')?document.getElementById(el.id)||el:el;
  const complete=el=>{
    el=resolve(el);
    if(!el?.isConnected)return false;
@@ -5386,19 +5564,25 @@ const bar=document.getElementById('autosave-bar'); document.querySelector('.cont
    if(el.id?.startsWith('photo-cell-')){const photos=uploadedPhotosDB[el.id.slice(11)];return Array.isArray(photos)?photos.some(Boolean):!!photos;}
    return !!el.textContent.trim();
  };
- function finish(el){
+ function finish(el,manual=false){
    let index=pending.findIndex(item=>item===el || (item.id && item.id===el?.id));
    if(index<0)return;
    const item=resolve(pending[index]);
    if(!complete(item))return;
    item.classList.remove('error-highlight');
    pending.splice(index,1);
-   if(index!==0 || !pending.length)return;
-   const next=resolve(pending[0]);
-   if(next?.isConnected)requestAnimationFrame(()=>next.scrollIntoView({behavior:'smooth',block:'center'}));
+   if(editingField===item || manual)editingField=null;
+   guideToggle.hidden=!pending.length;
+   updateGuide();
+   if(!pending.length || (!manual && (!guided || index!==0)))return;
+   goToNext();
  }
  window.openSystemModal=function(){
+   cancelIdle();
+   guided=true;
+   guideToggle.textContent='暫停自動跳轉';
    pending=[];
+   editingField=null;
    const result=originalOpen.apply(this,arguments);
    pending=[...document.querySelectorAll('.error-highlight')].filter(el=>el.matches('.sync-loc,.sync-pos,.sign-box,.defect-desc-input,.labor-note-input,[id^="photo-cell-"]'));
    const forms=[...document.querySelectorAll('.form-page')];
@@ -5415,23 +5599,36 @@ const bar=document.getElementById('autosave-bar'); document.querySelector('.cont
      return form*100000+99999;
    };
    pending.sort((a,b)=>key(a)-key(b));
+   guideToggle.hidden=!pending.length;
+   updateGuide();
    return result;
  };
  const oldCloseAlert=window.closeCustomAlert;
- window.closeCustomAlert=function(){const result=oldCloseAlert.apply(this,arguments);if(pending.length)requestAnimationFrame(()=>resolve(pending[0])?.scrollIntoView({behavior:'smooth',block:'center'}));return result;};
- let textTimer;
- document.addEventListener('input',e=>{
-   if(!e.target.matches('.sync-loc,.sync-pos,.defect-desc-input,.labor-note-input'))return;
-   clearTimeout(textTimer);
-   const field=e.target;
-   textTimer=setTimeout(()=>{if(complete(field))finish(field);},2500);
+ window.closeCustomAlert=function(){const result=oldCloseAlert.apply(this,arguments);if(guided&&pending.length)goToNext();return result;};
+ function scheduleAdvance(event){
+   const field=event.target;
+   if(!pending.includes(field) || !field.matches(textFields))return;
+   cancelIdle();
+   updateGuide();
+   if(!guided || composing || event.isComposing || !complete(field))return;
+   idleTimer=setTimeout(()=>{
+     if(guided && !composing && pending.includes(field) && complete(field))finish(field,true);
+   },2500);
+ }
+ document.addEventListener('input',scheduleAdvance);
+ document.addEventListener('compositionstart',()=>{composing=true;cancelIdle();});
+ document.addEventListener('compositionend',event=>{composing=false;scheduleAdvance(event);});
+ document.addEventListener('keydown',event=>{
+   if(event.target.matches(textFields))cancelIdle();
  });
- document.addEventListener('focusout',e=>{
-   if(!e.target.matches('.sync-loc,.sync-pos,.defect-desc-input,.labor-note-input'))return;
-   clearTimeout(textTimer);
-   finish(e.target);
+ document.addEventListener('keydown',event=>{
+   if(event.isComposing || event.key!=='Enter' || !(event.ctrlKey || event.metaKey))return;
+   if(pending.includes(event.target) && event.target.matches(textFields) && complete(event.target)){
+     event.preventDefault();
+     finish(event.target,true);
+   }
  });
-
+ 
  const oldOption=window.selectDefectOption;
  window.selectDefectOption=function(event,optionEl){
    const input=optionEl.closest('tr')?.querySelector('.defect-desc-input');
@@ -5465,6 +5662,27 @@ const bar=document.getElementById('autosave-bar'); document.querySelector('.cont
  // Remote signatures update the sign box without invoking the local save function.
  const signs=new MutationObserver(records=>records.forEach(r=>{const box=r.target.closest?.('.sign-box');if(box)finish(box);}));
  document.querySelectorAll('.sign-box').forEach(box=>signs.observe(box,{childList:true,subtree:true}));
+
+ // Keep the photo record's defect description in step with every manual or suggested edit.
+ function syncPhotoDefectDescription(input){
+   const code=input?.closest('tr')?.querySelector('.item-id-code')?.textContent.trim();
+   const photoCell=code&&document.getElementById('photo-cell-'+code);
+   const descCell=photoCell?.closest('tr')?.cells[1];
+   if(!descCell)return;
+   const description=input.textContent.trim();
+   descCell.textContent=description||'(未填寫說明)';
+   descCell.style.color=description?'':'#aaa';
+ }
+ const originalHandleDefectInput=window.handleDefectInput;
+ window.handleDefectInput=function(input){
+   const result=originalHandleDefectInput.apply(this,arguments);
+   syncPhotoDefectDescription(input);
+   updateGuide();
+   return result;
+ };
+ document.addEventListener('input',event=>{
+   if(event.target.matches('.defect-desc-input'))syncPhotoDefectDescription(event.target);
+ });
 })();
 </script>
 
@@ -5519,6 +5737,29 @@ const bar=document.getElementById('autosave-bar'); document.querySelector('.cont
 #autosave-bar[data-state="warning"],#autosave-bar[data-state="error"] { border-radius:12px!important; }
 @media(max-width:600px){#autosave-bar { top:8px!important; right:8px!important; font-size:12px!important; }}
 @media print {#autosave-bar {display:none!important;}}
+</style>
+
+<style>
+.photo-size-box { width:min(90vw,430px); padding:24px; background:#fff; border-radius:16px; box-shadow:0 18px 45px #263f5060; color:#2a414d; }
+.photo-size-box h2 { font-size:20px; color:#a24a35; margin:0 0 12px; }
+.photo-size-box p { line-height:1.65; }
+.photo-size-actions { display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:18px; }
+.photo-size-actions button { min-height:44px; padding:9px 14px; border:1px solid #c8dce6; border-radius:10px; background:#f2f8fa; color:#2e6174; font-weight:700; cursor:pointer; }
+.photo-size-actions button:last-child { background:#e7f3e9; border-color:#a9d0b4; color:#286543; }
+.photo-status-badge { display:inline-block; margin:0 0 8px; padding:4px 9px; border-radius:999px; background:#fff3e9; color:#975a36; font-size:12px; font-weight:700; }
+[data-photo-status="saved"] .photo-status-badge { background:#e9f5ec; color:#36704a; }
+:where(button,.custom-select-trigger,[contenteditable],.sign-box):focus-visible { outline:3px solid #287ea9!important; outline-offset:2px!important; }
+</style>
+<script>document.getElementById('autosave-bar')?.setAttribute('role','status');document.getElementById('autosave-bar')?.setAttribute('aria-live','polite');</script>
+<style>#system-modal .sys-btn-group { background:transparent; font-family:inherit; } #system-modal .sys-btn-group:focus-visible { outline:3px solid #267aab; outline-offset:2px; }</style>
+<style>#guide-toggle{position:fixed;left:12px;bottom:14px;z-index:9000;background:#eef7fa;color:#386577;border:1px solid #bad6e0;border-radius:999px;padding:9px 13px;font-family:inherit;font-size:12px;font-weight:600;line-height:1.2;box-shadow:0 3px 12px #34556828;cursor:pointer}#guide-toggle[hidden]{display:none!important}@media print{#guide-toggle{display:none!important}}</style>
+<style>
+#guide-progress { position:fixed; left:12px; bottom:55px; z-index:9000; max-width:calc(100vw - 24px); padding:10px 12px; border:1px solid #bad6e0; border-radius:12px; background:#f5fbfd; color:#31566a; box-shadow:0 3px 12px #34556828; font-size:13px; }
+#guide-progress button, .photo-retry button { margin-top:6px; padding:6px 10px; border:1px solid #bad6e0; border-radius:8px; color:#31566a; background:#e8f5fb; font:inherit; cursor:pointer; }
+#guide-progress button:disabled { opacity:.55; cursor:default; }
+.photo-file-size { color:#506675; font-size:12px; }
+.photo-retry { color:#973d40; background:#fff3f3; padding:8px; margin-bottom:8px; border-radius:8px; }
+@media print { #guide-progress { display:none!important; } }
 </style>
 </body>
     </html>    
