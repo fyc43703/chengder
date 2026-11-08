@@ -863,10 +863,8 @@
     function stationLanguageGroup(station) { const language = `${station.language || ''},${station.languagecodes || ''}`.toLocaleLowerCase(); if (/(chinese|mandarin|cantonese|taiwanese|中文|國語|华语|\bzh\b|zho)/.test(language)) return 'zh'; if (/(japanese|日本|\bjpn\b|\bja\b)/.test(language)) return 'ja'; return 'en'; }
     function isMusicStation(station) { return /(音樂|音乐|古典|交響|交响|演奏|樂曲|乐曲|純音樂|纯音乐|classical|symphony|orchestra|instrumental|music|jazz|piano|opera|philharmonic|concert)/i.test(`${station.name || ''} ${station.tags || ''} ${station.genre || ''}`); }
     function canValidateStation(station) { const codec = String(station.codec || '').toUpperCase(); return station.lastcheckok === 1 && station.hls === 0 && /MP3|AAC|OGG|VORBIS|OPUS/.test(codec) && /^https:/i.test(station.url_resolved || ''); }
-    function verifyStation(station) { return new Promise(resolve => { const probe = new Audio(); const finish = ok => { probe.oncanplay = probe.onerror = null; probe.removeAttribute('src'); probe.load(); resolve(ok ? station : null); }; const timer = setTimeout(() => finish(false), 6500); probe.preload = 'metadata'; probe.oncanplay = () => { clearTimeout(timer); finish(true); }; probe.onerror = () => { clearTimeout(timer); finish(false); }; probe.src = station.url_resolved; probe.load(); }); }
     function scheduleStationRender() { if (stationRenderTimer) return; stationRenderTimer = setTimeout(() => { stationRenderTimer = null; originalStationOrder = [...allStations]; updateAllLists(); refreshFmStationCatalog(); applyRadioSearch(); }, 150); }
-    function updateRadioValidationStatus() { const status = $('radioValidationStatus'); status.textContent = pendingStationChecks > 0 ? `已找到 ${allStations.length} 個可播放電台，背景仍在驗證 ${pendingStationChecks} 個候選台。` : (loadedValidatedStations ? `已使用記住的驗證結果：${allStations.length} 個可播放電台。` : `已完成驗證：${allStations.length} 個可播放電台。`); }
-    async function verifyStationsInBackground(stations, requestId) { let cursor = 0; const worker = async () => { while (cursor < stations.length && requestId === stationVerificationId) { const station = stations[cursor++]; const playable = await verifyStation(station); if (requestId !== stationVerificationId) return; pendingStationChecks -= 1; if (playable && !allStations.some(item => item.stationuuid === playable.stationuuid)) { allStations.push(playable); scheduleStationRender(); } updateRadioValidationStatus(); await new Promise(resolve => setTimeout(resolve, 0)); } }; await Promise.all(Array.from({ length: 4 }, worker)); }
+    function updateRadioValidationStatus() { const status = $('radioValidationStatus'); status.textContent = loadedValidatedStations ? `已載入 ${allStations.length} 個目錄電台；點選後才連線播放。` : `已找到 ${allStations.length} 個目錄電台；點選後才連線播放。`; }
     async function fetchStations() {
         const requestId = ++stationVerificationId; pendingStationChecks = 0; loadedValidatedStations = false; allStations = [...customStations]; if (allStations.length) updateAllLists(); else radioList.innerHTML = '<li class="list-spinner"><div class="spinner"></div><span>正在載入台灣、日本與英文電台…</span></li>'; updateRadioValidationStatus();
         const query = suffix => `https://all.api.radio-browser.info/json/stations/search?${suffix}&limit=500&order=clickcount&reverse=true&hidebroken=true&is_https=true`;
@@ -882,9 +880,10 @@
             const english = englishData.filter(canValidateStation).map(station => ({ ...station, languageGroup: 'en' }));
             const unique = stations => [...new Map(stations.map(station => [station.stationuuid, station])).values()];
             const queues = [unique(taiwan), unique(japanese).slice(0, 50), unique(english).slice(0, 50)];
-            pendingStationChecks = queues.reduce((total, stations) => total + stations.length, 0); updateRadioValidationStatus(); radioMainContainer.classList.remove('collapsed');
-            await Promise.all(queues.map(stations => verifyStationsInBackground(stations, requestId)));
-            if (requestId === stationVerificationId) { saveValidatedStations(); scheduleStationRender(); updateRadioValidationStatus(); }
+            if (requestId !== stationVerificationId) return;
+            allStations = [...new Map([...customStations, ...queues.flat()].map(station => [station.stationuuid, station])).values()];
+            pendingStationChecks = 0; radioMainContainer.classList.remove('collapsed');
+            saveValidatedStations(); scheduleStationRender(); updateRadioValidationStatus();
         } catch (error) {
             if (requestId !== stationVerificationId) return; console.error('Failed to fetch stations:', error); pendingStationChecks = 0; updateRadioValidationStatus(); radioList.innerHTML = `<li style="padding: 1rem; color: var(--muted); cursor: default;">目前找不到可播放的電台，請稍後按重新整理。</li>`;
         }
