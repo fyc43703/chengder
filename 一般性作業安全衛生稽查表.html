@@ -1046,14 +1046,11 @@ function safeImage(value) { return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0
                     if(day) syncDate('day', parseInt(day).toString());
     
                     const proj = getNodeText("工程名稱");
-                    if (proj && proj !== "未選擇") {
-                        document.querySelectorAll('.proj-sel').forEach(el => el.value = proj);
-                        updateProjectInfo(proj); 
-                    }
+                    if (proj && proj !== "未選擇") updateProjectInfo(proj);
     
                     const loc = getNodeText("檢查地點"); const pos = getNodeText("檢查位置"); const pm = getNodeText("專案管理廠商");
-                    if(loc && loc !== "未填寫") document.querySelectorAll('.sync-loc').forEach(el => el.textContent = loc);
-                    if(pos && pos !== "未填寫") document.querySelectorAll('.sync-pos').forEach(el => { el.textContent = pos; window.autoFitText(el); });
+                    document.querySelectorAll('.sync-loc').forEach(el => el.textContent = (loc && loc !== "未填寫") ? loc : '');
+                    document.querySelectorAll('.sync-pos').forEach(el => { el.textContent = (pos && pos !== "未填寫") ? pos : ''; window.autoFitText(el); });
                     if(pm && pm !== "未填寫") document.querySelectorAll('.sync-pm').forEach(el => el.textContent = pm);
     
                     document.querySelectorAll('.defect-desc-input').forEach(el => el.textContent = '');
@@ -1139,7 +1136,9 @@ function safeImage(value) { return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0
                         const code = node.getAttribute("代碼");
                         const indexAttr = node.getAttribute("索引");
                         const pIdx = indexAttr ? parseInt(indexAttr, 10) : 0; // ★ 抓取索引，舊版無索引預設為 0
-                        const exifHtml = safeText(node.getAttribute("EXIF") || ''); 
+                        // EXIF 欄位由本程式匯出為 HTML 片段並由 XML parser 解碼；
+                        // 不要再 escape 成文字，否則報告會顯示原始標籤。
+                        const exifHtml = node.getAttribute("EXIF") || '';
                         let base64Data = node.textContent;
                         if (base64Data) base64Data = base64Data.trim();
     
@@ -1151,8 +1150,29 @@ function safeImage(value) { return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0
                             photoExifDB[code][pIdx] = exifHtml; 
                         }
                     }
+
+                    // 更新既有照片的中繼文字，讓報告反映本次 XML 的工程與地點欄位。
+                    const importedProject = (proj && proj !== '未選擇') ? proj : '未填寫';
+                    const importedPlace = (loc && loc !== '未填寫') ? loc : '未填寫';
+                    Object.keys(photoExifDB).forEach(code => {
+                        const entries = Array.isArray(photoExifDB[code]) ? photoExifDB[code] : [photoExifDB[code]];
+                        photoExifDB[code] = entries.map(html => {
+                            const holder = document.createElement('div');
+                            holder.innerHTML = html || '';
+                            const labels = Array.from(holder.querySelectorAll('.photo-meta-label'));
+                            labels.forEach(label => {
+                                const title = label.textContent.replace(/\s/g, '');
+                                const value = label.parentElement?.querySelector('.photo-meta-value');
+                                if (!value) return;
+                                if (title.includes('工程名稱')) value.textContent = importedProject;
+                                if (title.includes('檢查地點')) value.textContent = importedPlace;
+                            });
+                            return holder.innerHTML;
+                        });
+                    });
     
                     if (xmlDoc.getElementsByTagName("檢查項目").length > 0 && items[0].textContent !== "") {
+                        // 報告需在欄位與照片中繼資料還原後重建，避免沿用舊 DOM。
                         generatePhotoReport();
                     } else {
                         document.getElementById('photo-report-section').style.display = 'none';
@@ -1382,7 +1402,7 @@ window.autoFitText = function(el) {
                     }
                 }
             }
-            calcFailCount(fIndex);
+            onInspectionStatusChange(fIndex);
         };
 
     
@@ -1498,6 +1518,15 @@ window.autoFitText = function(el) {
         window.checkAllPass = function(fIndex) { document.querySelectorAll(`.pass-radio-f${fIndex}`).forEach(radio => { if (!radio.disabled) radio.checked = true; }); calcFailCount(fIndex); if (!window.restoringDraft && window.saveToLocalStorage) saveToLocalStorage(); };
         window.uncheckAllPass = function(fIndex) { document.querySelectorAll(`.pass-radio-f${fIndex}, .fail-radio-f${fIndex}`).forEach(radio => { radio.checked = false; }); calcFailCount(fIndex); if (!window.restoringDraft && window.saveToLocalStorage) saveToLocalStorage(); };
         window.calcFailCount = function(fIndex) { document.getElementById(`fail_count_${fIndex}`).textContent = document.querySelectorAll(`.fail-radio-f${fIndex}:checked`).length; };
+        // 選取或取消不合格時即時同步照片紀錄；匯入還原期間由匯入流程統一重建。
+        window.onInspectionStatusChange = function(fIndex) {
+            calcFailCount(fIndex);
+            if (window.restoringDraft) return;
+            const section = document.getElementById('photo-report-section');
+            if (document.querySelector('.fail-radio:checked')) generatePhotoReport();
+            else if (section) section.style.display = 'none';
+            if (window.saveToLocalStorage) saveToLocalStorage();
+        };
     
 // ✅ 新增：點擊「無此作業項目」─ 僅將空白欄位填入「無此作業項目」，已有其他文字者跳過不覆蓋
 window.setAllNoTask = function(fIndex) {
@@ -2200,8 +2229,8 @@ document.querySelectorAll('.checklist-table tbody').forEach(tbody => {
                 htmlContent += `<tr class="${checklistRowIndex++ % 2 === 0 ? 'checklist-striped' : ''}">
                     ${iIndex === 0 ? `<td rowspan="${cat.items.length}" class="col-cat vertical-text">${verticalName}</td>` : ''}
                     <td class="col-desc"><strong class="item-id-code" style="color: #dc3545;">${item.id}</strong> ${item.desc}</td>
-                    <td class="radio-cell"><label><input type="radio" class="pass-radio pass-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})"><span class="custom-radio"></span></label></td>
-                    <td class="radio-cell"><label><input type="radio" class="fail-radio fail-radio-f${fIndex}" name="${uniqueName}" onchange="calcFailCount(${fIndex})"><span class="custom-radio"></span></label></td>
+                    <td class="radio-cell"><label><input type="radio" class="pass-radio pass-radio-f${fIndex}" name="${uniqueName}" onchange="onInspectionStatusChange(${fIndex})"><span class="custom-radio"></span></label></td>
+                    <td class="radio-cell"><label><input type="radio" class="fail-radio fail-radio-f${fIndex}" name="${uniqueName}" onchange="onInspectionStatusChange(${fIndex})"><span class="custom-radio"></span></label></td>
                     <td class="col-remark">
                         <div style="display:flex; align-items:flex-start; position: relative;">
                             <div contenteditable="true" class="defect-desc-input" style="flex:1; min-height:1.5em; outline:none;" oninput="handleDefectInput(this, ${fIndex})"></div>
