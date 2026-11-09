@@ -348,6 +348,7 @@ table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layou
             text-decoration: none;
         }
         .nav-btn:hover { background: #007AFF; color: #fff; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,122,255,0.3); }
+        .nav-btn.active { background: #007AFF !important; color: #fff !important; border-color: #007AFF !important; box-shadow: 0 4px 10px rgba(0,122,255,0.3); }
         
         @media print {
             .bottom-actions, .header-actions, #top-ai-btn-container, #groq-key-bar, #autosave-bar, #floating-nav, #chat-fab { display: none !important; }
@@ -480,6 +481,56 @@ table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layou
     <button class="nav-btn" onclick="document.querySelectorAll('.form-page')[2].scrollIntoView({behavior:'smooth'})">表三</button>
     <button class="nav-btn" onclick="scrollToPhotoSection()">照片</button>
 </div>
+<script>
+(function setupFloatingNavPosition(){
+ const nav=document.getElementById('floating-nav');
+ if(!nav)return;
+ const buttons=[...nav.querySelectorAll('.nav-btn')];
+ const getTargets=()=>[...document.querySelectorAll('.form-page'),document.getElementById('photo-report-section')];
+ const setActive=index=>buttons.forEach((button,i)=>{
+   const active=i===index;
+   button.classList.toggle('active',active);
+   if(active)button.setAttribute('aria-current','location');
+   else button.removeAttribute('aria-current');
+ });
+ let scheduled=false;
+ const update=()=>{
+   scheduled=false;
+   const targets=getTargets();
+   if(!targets.length)return;
+   // 使用視窗上方約三分之一處判定；內容較短、已捲到底部時也能正確進入照片區。
+   const marker=Math.max(120,Math.min(280,window.innerHeight*.35));
+   let active=0;
+   targets.forEach((target,index)=>{
+     if(!target||getComputedStyle(target).display==='none')return;
+     const rect=target.getBoundingClientRect();
+     const style=getComputedStyle(target);
+     // 照片區的分界線位於外距之前，將外距納入真正的區段邊界。
+     const boundaryTop=rect.top-(target.id==='photo-report-section' ? parseFloat(style.marginTop)||0 : 0);
+     if(boundaryTop<=marker)active=index;
+   });
+   // 短照片區可能受頁面底端限制而無法再往上捲；標題進入判定範圍即強制選取「照片」。
+   const photoSection=document.getElementById('photo-report-section');
+   const photoHeading=photoSection?.querySelector('h2');
+   if(photoSection&&photoHeading&&getComputedStyle(photoSection).display!=='none'){
+     const photoRect=photoSection.getBoundingClientRect();
+     const headingTop=photoHeading.getBoundingClientRect().top;
+     const atPageBottom=window.scrollY+window.innerHeight>=document.documentElement.scrollHeight-6;
+     if(headingTop<=marker || (atPageBottom&&photoRect.top<window.innerHeight&&photoRect.bottom>0)){
+       active=buttons.length-1;
+     }
+   }
+   setActive(active);
+ };
+ const queueUpdate=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(update);}};
+ window.addEventListener('scroll',queueUpdate,{passive:true});
+ window.addEventListener('resize',queueUpdate);
+ // 表單由後方程式動態建立，因此監看頁面並在建立完成後重新判定。
+ new MutationObserver(queueUpdate).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style']});
+ window.addEventListener('load',queueUpdate);
+ setTimeout(queueUpdate,0);
+})();
+</script>
 
 <div class="container">
 
@@ -1523,7 +1574,8 @@ window.autoFitText = function(el) {
             calcFailCount(fIndex);
             if (window.restoringDraft) return;
             const section = document.getElementById('photo-report-section');
-            if (document.querySelector('.fail-radio:checked')) generatePhotoReport();
+            // 更新照片表格但不因檢查狀態變更而自動捲動；僅保留使用者點擊照片區按鈕時的導覽。
+            if (document.querySelector('.fail-radio:checked')) generatePhotoReport(null, { preserveScroll: true });
             else if (section) section.style.display = 'none';
             if (window.saveToLocalStorage) saveToLocalStorage();
         };
@@ -2295,7 +2347,7 @@ function docPhotoSize(bytes) {
         : Math.max(1, Math.round(bytes / 1024)) + ' KB';
     return caption;
 }
-window.generatePhotoReport = function() {
+window.generatePhotoReport = function(event, options = {}) {
     const failRadios = document.querySelectorAll('.fail-radio:checked');
     const reportSection = document.getElementById('photo-report-section');
     const tbody = document.getElementById('photo-table-body');
@@ -2368,7 +2420,7 @@ window.generatePhotoReport = function() {
             img.after(caption);
         });
     }); 
-    if(!event || event.type !== 'click') return; 
+    if(options.preserveScroll || !event || event.type !== 'click') return; 
     reportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
     
@@ -5692,6 +5744,7 @@ new MutationObserver(placeBar).observe(app,{childList:true});
    cancelIdle();
    updateGuide();
    if(!guided || composing || event.isComposing || !complete(field))return;
+   if(field.matches('.defect-desc-input'))return;
    idleTimer=setTimeout(()=>{
      if(guided && !composing && pending.includes(field) && complete(field))finish(field,true);
    },2500);
@@ -5714,15 +5767,11 @@ new MutationObserver(placeBar).observe(app,{childList:true});
  window.selectDefectOption=function(event,optionEl){
    const input=optionEl.closest('tr')?.querySelector('.defect-desc-input');
    const result=oldOption.apply(this,arguments);
-   if(input)finish(input);
    return result;
  };
  const oldPolish=window.applyAIPolish;
  window.applyAIPolish=function(){
-   const before=pending.filter(el=>el.matches('.defect-desc-input'));
-   const result=oldPolish.apply(this,arguments);
-   before.forEach(el=>finish(el));
-   return result;
+   return oldPolish.apply(this,arguments);
  };
  const oldSave=window.saveSignature;
  window.saveSignature=function(){const box=document.querySelector('.sign-box.error-highlight');const result=oldSave.apply(this,arguments);if(box)finish(box);return result;};
