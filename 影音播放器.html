@@ -166,6 +166,8 @@
     @media (prefers-reduced-motion: reduce) { #recordingIndicator { animation:none; } }
     
     .ab-controls { display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 12px; }
+    #recordABBtn { width:auto; min-width:42px; padding:0 7px; border:1px solid #ff9f0a; color:#ffd08a; font-size:11px; font-weight:800; white-space:nowrap; }
+    #recordABBtn.recording { background:#a33b00; color:#fff; animation:recordingPulse 1s ease-in-out infinite; }
     .ab-separator { width: 1px; height: 16px; background: rgba(255,255,255,0.3); margin: 0 4px; }
 
     .volume-container { display: flex; align-items: center; gap:6px; }
@@ -572,6 +574,7 @@
                 <button class="control-btn" id="pipBtn" data-tooltip="子母畫面 (P)"><svg viewBox="0 0 24 24"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"></path></svg></button>
                 <button class="control-btn" id="snapshotBtn" data-tooltip="畫面快照 (C)"><svg viewBox="0 0 24 24"><path d="M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2z M12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5-5 5-2.24 5-5 5z"/></svg></button>
                 <button class="control-btn" id="recordBtn" data-tooltip="開始／停止錄製目前媒體" aria-label="開始／停止錄製目前媒體"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"></circle></svg></button>
+                <button class="control-btn" id="recordABBtn" type="button" data-tooltip="從 A 點播放並錄製至 B 點" aria-label="從 A 點錄製至 B 點">A→B</button>
                 <button class="control-btn" id="settingsBtn" data-tooltip="播放設定"><svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19-.15-.24-.42-.12-.64l2 3.46c.12-.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59-1.69-.98l2.49 1c.23-.09.49 0-.61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg></button>
                 <button class="control-btn" id="fullscreenBtn" data-tooltip="全螢幕 (F)"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg></button>
               </div>
@@ -658,7 +661,7 @@
     let particles = [], rings = [], rotation = 0, beatCooldown = 0;
 
     let hlsInstance;
-    let radioRecorder = null, radioRecordingChunks = [];
+    let radioRecorder = null, radioRecordingChunks = [], abRecordingActive = false;
     let currentObjectUrl = null;
     let allStations = [], originalStationOrder = [];
     let currentStation = null;
@@ -696,7 +699,7 @@
     const prevBtn = $('prevBtn'), nextBtn = $('nextBtn');
     const progressBar = $('progressBar'), timeDisplay = $('timeDisplay');
     const volumeSlider = $('volumeSlider'), muteBtn = $('muteBtn'), volumeHighIcon = $('volumeHighIcon'), volumeMuteIcon = $('volumeMuteIcon');
-    const fullscreenBtn = $('fullscreenBtn'), loopBtn = $('loopBtn'), shuffleBtn = $('shuffleBtn'), pipBtn = $('pipBtn'), snapshotBtn = $('snapshotBtn'), recordBtn = $('recordBtn'), settingsBtn = $('settingsBtn'), settingsPanel = $('settingsPanel');
+    const fullscreenBtn = $('fullscreenBtn'), loopBtn = $('loopBtn'), shuffleBtn = $('shuffleBtn'), pipBtn = $('pipBtn'), snapshotBtn = $('snapshotBtn'), recordBtn = $('recordBtn'), recordABBtn = $('recordABBtn'), settingsBtn = $('settingsBtn'), settingsPanel = $('settingsPanel');
     const toggleVisualizerBtn = $('toggleVisualizerBtn');
     const visualizerIconCircular = $('visualizerIconCircular'), visualizerIconBar = $('visualizerIconBar'), visualizerIconSphere = $('visualizerIconSphere'), visualizerIconStardust = $('visualizerIconStardust'), visualizerIconTunnel = $('visualizerIconTunnel'), visualizerIconPulsar = $('visualizerIconPulsar');
     const speedSlider = $('speedSlider'), speedValue = $('speedValue'), speedPresets = document.querySelectorAll('#speedView li');
@@ -886,6 +889,61 @@
     function stopLiveCaptions() { liveCaptionsEnabled = false; if (liveCaptionRecorder && liveCaptionRecorder.state !== 'inactive') liveCaptionRecorder.stop(); liveCaptionRecorder = null; liveCaptionOverlay.classList.remove('visible'); captionsBtn.classList.remove('active-green'); captionsBtn.dataset.tooltip = '開啟／關閉本機即時字幕'; captionsBtn.setAttribute('aria-label', '開啟／關閉本機即時字幕'); }
     async function transcribeCaption(blob) { if (liveCaptionBusy || !blob.size) return; liveCaptionBusy = true; try { const bytes = new Uint8Array(await blob.arrayBuffer()); let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte); const response = await fetch('http://127.0.0.1:8765/transcribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ audio: btoa(binary), mimeType: blob.type }) }); const result = await response.json(); if (!response.ok) throw new Error(result.error || '本機 Whisper 服務無回應'); if (result.text && liveCaptionsEnabled) { liveCaptionOverlay.querySelector('span').textContent = result.text; liveCaptionOverlay.classList.add('visible'); } } catch (error) { if (liveCaptionsEnabled) { liveCaptionOverlay.querySelector('span').textContent = `即時字幕無法使用：${error.message}`; liveCaptionOverlay.classList.add('visible'); } } finally { liveCaptionBusy = false; } }
     function toggleLiveCaptions() { if (liveCaptionsEnabled) { stopLiveCaptions(); return; } const capture = videoPlayer.captureStream || videoPlayer.mozCaptureStream; if (!capture || !window.MediaRecorder) return; try { const stream = capture.call(videoPlayer); const audioTracks = stream.getAudioTracks(); if (!audioTracks.length) throw new Error('目前媒體沒有可辨識的音訊軌。'); const mimeType = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm'].find(type => MediaRecorder.isTypeSupported(type)) || ''; liveCaptionRecorder = new MediaRecorder(new MediaStream(audioTracks), mimeType ? { mimeType } : undefined); liveCaptionRecorder.ondataavailable = event => transcribeCaption(event.data); liveCaptionRecorder.onstop = () => { if (!liveCaptionsEnabled) liveCaptionRecorder = null; }; liveCaptionRecorder.start(4000); liveCaptionsEnabled = true; captionsBtn.classList.add('active-green'); captionsBtn.dataset.tooltip = '關閉本機即時字幕'; captionsBtn.setAttribute('aria-label', '關閉本機即時字幕'); liveCaptionOverlay.querySelector('span').textContent = '正在連接本機 Whisper…'; liveCaptionOverlay.classList.add('visible'); } catch (error) { liveCaptionOverlay.querySelector('span').textContent = `無法啟動即時字幕：${error.message}`; liveCaptionOverlay.classList.add('visible'); } }
+    async function startABRecording() {
+      const duration = getFiniteMediaDuration();
+      if (currentMode !== 'file' || !currentFile || !Number.isFinite(duration)) { alert('請先載入時長可辨識的影片或音訊，再設定 A、B 點。'); return; }
+      if (abPointA === null || abPointB === null || abPointB <= abPointA || abPointB > duration) { alert('請設定有效的 A、B 點，且 B 點須晚於 A 點並位於媒體時長內。'); return; }
+      if (!window.MediaRecorder || !(videoPlayer.captureStream || videoPlayer.mozCaptureStream)) { alert('此瀏覽器不支援錄製目前媒體。'); return; }
+      if (radioRecorder?.state === 'recording') { alert('目前已有錄製進行中，請先停止紅色錄製。'); return; }
+      try {
+        pause();
+        videoPlayer.currentTime = abPointA;
+        if (videoPlayer.seeking) await new Promise(resolve => videoPlayer.addEventListener('seeked', resolve, { once: true }));
+        const stream = (videoPlayer.captureStream || videoPlayer.mozCaptureStream).call(videoPlayer);
+        const hasVideo = stream.getVideoTracks().length > 0;
+        if (!stream.getTracks().length) throw new Error('目前媒體沒有可錄製的影音軌。');
+        const candidates = hasVideo ? ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'] : ['audio/webm;codecs=opus','audio/ogg;codecs=opus','audio/webm'];
+        const mimeType = candidates.find(type => MediaRecorder.isTypeSupported(type)) || '';
+        radioRecordingChunks = [];
+        const recorder = new MediaRecorder(new MediaStream(stream.getTracks()), mimeType ? { mimeType } : undefined);
+        radioRecorder = recorder;
+        abRecordingActive = true;
+        recordingIndicator.hidden = false;
+        recordABBtn.classList.add('recording');
+        recordABBtn.textContent = '錄製中';
+        recorder.ondataavailable = event => { if (event.data.size) radioRecordingChunks.push(event.data); };
+        recorder.onstop = () => {
+          recordingIndicator.hidden = true;
+          const type = recorder.mimeType || (hasVideo ? 'video/webm' : 'audio/webm');
+          const extension = type.includes('ogg') ? 'ogg' : (hasVideo ? 'webm' : 'weba');
+          if (radioRecordingChunks.length) {
+            const blob = new Blob(radioRecordingChunks, { type });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const base = (currentFile?.name || 'media').replace(/\.[^/.]+$/, '').replace(/[\\/:*?"<>|]/g, '_');
+            link.href = url;
+            link.download = `${base}_A-${formatTime(abPointA).replace(':','-')}_B-${formatTime(abPointB).replace(':','-')}_${new Date().toISOString().replace(/[:.]/g,'-')}.${extension}`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          }
+          radioRecordingChunks = [];
+          if (radioRecorder === recorder) radioRecorder = null;
+          abRecordingActive = false;
+          recordABBtn.classList.remove('recording');
+          recordABBtn.textContent = 'A→B';
+        };
+        recorder.onerror = event => { abRecordingActive = false; recordingIndicator.hidden = true; recordABBtn.classList.remove('recording'); recordABBtn.textContent = 'A→B'; console.error('A→B 錄製失敗:', event.error); };
+        recorder.start(250);
+        await videoPlayer.play();
+      } catch (error) {
+        abRecordingActive = false;
+        if (radioRecorder?.state === 'recording') radioRecorder.stop();
+        recordingIndicator.hidden = true;
+        recordABBtn.classList.remove('recording');
+        recordABBtn.textContent = 'A→B';
+        alert(`無法開始 A→B 錄製：${error.message}`);
+      }
+    }
     function stopRadioRecording() { if (radioRecorder && radioRecorder.state !== 'inactive') radioRecorder.stop(); }
     function toggleRadioRecording() { if (radioRecorder?.state === 'recording') { stopRadioRecording(); return; } if (!currentStation && !currentFile) return; const capture = videoPlayer.captureStream || videoPlayer.mozCaptureStream; if (!capture || !window.MediaRecorder) { setOverlayMessage('⛔', '此瀏覽器不支援錄製。'); videoOverlay.style.display = 'flex'; return; } try { const recordingName = currentStation?.name || currentFile?.name || 'media'; const capturedStream = capture.call(videoPlayer); const tracks = capturedStream.getTracks(); const hasVideo = capturedStream.getVideoTracks().length > 0; if (!tracks.length) throw new Error('目前媒體未提供可錄製的影音軌。'); const recordingStream = new MediaStream(tracks); const mimeTypes = hasVideo ? ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'] : ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm']; const mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || ''; radioRecordingChunks = []; radioRecorder = new MediaRecorder(recordingStream, mimeType ? { mimeType } : undefined); radioRecorder.ondataavailable = event => { if (event.data.size) radioRecordingChunks.push(event.data); }; radioRecorder.onstart = () => { recordingIndicator.hidden = false; recordBtn.classList.add('recording'); recordBtn.dataset.tooltip = '停止並下載錄製檔'; recordBtn.setAttribute('aria-label', '停止並下載錄製檔'); }; radioRecorder.onstop = () => { recordingIndicator.hidden = true; const type = radioRecorder.mimeType || (hasVideo ? 'video/webm' : 'audio/webm'); const extension = type.includes('ogg') ? 'ogg' : (hasVideo ? 'webm' : 'weba'); if (radioRecordingChunks.length) { const blob = new Blob(radioRecordingChunks, { type }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); const safeName = recordingName.replace(/[\\/:*?"<>|]/g, '_'); link.href = url; link.download = `${safeName}_${new Date().toISOString().replace(/[:.]/g, '-')}.${extension}`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); } radioRecorder = null; radioRecordingChunks = []; recordBtn.classList.remove('recording'); recordBtn.dataset.tooltip = '開始／停止錄製目前媒體'; recordBtn.setAttribute('aria-label', '開始／停止錄製目前媒體'); updateControlsState(); }; radioRecorder.onerror = event => { recordingIndicator.hidden = true; recordBtn.classList.remove('recording'); console.error('錄製失敗:', event.error); }; radioRecorder.start(1000); } catch (error) { recordingIndicator.hidden = true; recordBtn.classList.remove('recording'); console.error('Media recording failed:', error); setOverlayMessage('⛔', `無法錄製目前媒體：${error.message}`); videoOverlay.style.display = 'flex'; } }
     function resetPlayer() { beginPlaybackRequest(); clearMediaSource(); clearSubtitle(); cancelAnimationFrame(visualizerFrameId); audioVisualizer.style.display = 'none'; videoPlayer.style.display = 'none'; setOverlayMessage('', '1. 請從左側「選擇影片或音訊檔案」圖示匯入檔案\n2. 點選「廣播電台」，聆聽即時節目（中文、日文、英文）'); videoOverlay.style.background = 'rgba(0,0,0,0.7)'; videoOverlay.style.display = 'flex'; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); allFiles = [...defaultRemoteMedia]; playQueue = []; clearAllMediaHandles(); currentFile = null; currentFileIndex = -1; audioBuffer = null; setPlaybackStatus('', false); $('file').value = ''; hasPlayedOnce = false; currentMode = 'file'; currentStation = null; visualizerMode = 'circular'; particles = []; rings = []; updateVisualizerButton(); resetAbLoop(); updateAllLists(); updateNowPlaying(); updateControlsState(); titlesH1.textContent = '影音播放器(含廣播電台)'; titlesH2.textContent = '本機影音播放、中文／日文／英文／音樂電台、FM 試播、搜尋收藏、錄製、睡眠計時與視覺化'; if (typeof updateMiniPlayer === 'function') updateMiniPlayer(); }
@@ -982,7 +1040,7 @@
     videoPlayer.onwaiting = () => { if (currentFile || currentStation) setPlaybackStatus('正在載入／緩衝…'); };
     videoPlayer.onplaying = () => { if (currentFile || currentStation) setPlaybackStatus(currentMode === 'radio' ? '電台播放中' : '播放中'); };
     videoPlayer.onloadedmetadata = () => { if(currentMode === 'file') { videoPlayer.onerror = null; clearTimeout(queueHighlightTimer); queueHighlightTimer = null; queueNextHighlighted = false; const savedPosition = currentFile && !isRemoteMedia(currentFile) ? resumePositions[mediaKey(currentFile)] || 0 : 0; const duration = getFiniteMediaDuration(); if (savedPosition > 3 && Number.isFinite(duration) && savedPosition < duration - 3) videoPlayer.currentTime = savedPosition; progressBar.max = Number.isFinite(duration) && duration > 0 ? duration : 1; updateProgressBar(); updateSpeedUI(1); videoPlayer.playbackRate = 1; updateAbMarkers(); updateNowPlaying(); updateFileLists(); if (!Number.isFinite(duration) && currentFile && !isRemoteMedia(currentFile) && /\.webm$/i.test(currentFile.name || '')) recoverWebmDuration(); play(); } };
-    videoPlayer.ontimeupdate = () => { if(currentMode === 'file') { updateProgressBar(); if (currentFile && !isRemoteMedia(currentFile) && Math.floor(videoPlayer.currentTime) % 5 === 0) { resumePositions[mediaKey(currentFile)] = videoPlayer.currentTime; savePlaybackMemory(); } if (isAbLooping && abPointA !== null && abPointB !== null && videoPlayer.currentTime >= abPointB) { videoPlayer.currentTime = abPointA; } } };
+    videoPlayer.ontimeupdate = () => { if(currentMode === 'file') { updateProgressBar(); if (abRecordingActive && abPointB !== null && videoPlayer.currentTime >= abPointB) { videoPlayer.pause(); stopRadioRecording(); return; } if (currentFile && !isRemoteMedia(currentFile) && Math.floor(videoPlayer.currentTime) % 5 === 0) { resumePositions[mediaKey(currentFile)] = videoPlayer.currentTime; savePlaybackMemory(); } if (isAbLooping && abPointA !== null && abPointB !== null && videoPlayer.currentTime >= abPointB) { videoPlayer.currentTime = abPointA; } } };
     progressBar.oninput = seek;
     volumeSlider.oninput = e => { videoPlayer.volume = e.target.value; videoPlayer.muted = e.target.value === '0'; };
     videoPlayer.onvolumechange = () => { volumeSlider.value = videoPlayer.volume; volumeHighIcon.style.display = (videoPlayer.muted || videoPlayer.volume === 0) ? 'none' : 'block'; volumeMuteIcon.style.display = (videoPlayer.muted || videoPlayer.volume === 0) ? 'block' : 'none'; };
@@ -993,6 +1051,7 @@
     pipBtn.onclick = async () => { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else await videoPlayer.requestPictureInPicture(); };
     snapshotBtn.onclick = takeSnapshot;
     recordBtn.onclick = toggleRadioRecording;
+    recordABBtn.onclick = startABRecording;
     toggleVisualizerBtn.onclick = () => { if (toggleVisualizerBtn.disabled) return; if (visualizerMode === 'stardust') particles = []; if (visualizerMode === 'tunnel') rings = []; if (visualizerMode === 'circular') { visualizerMode = 'bar'; } else if (visualizerMode === 'bar') { visualizerMode = 'sphere'; } else if (visualizerMode === 'sphere') { visualizerMode = 'stardust'; } else if (visualizerMode === 'stardust') { visualizerMode = 'tunnel'; } else if (visualizerMode === 'tunnel') { visualizerMode = 'pulsar'; } else if (visualizerMode === 'pulsar') { visualizerMode = 'off'; } else { visualizerMode = 'circular'; } if (visualizerMode === 'pulsar') rotation = 0; updateVisualizerButton(); if (currentMode !== 'file' || (currentFile && (currentFile.type === 'audio' || currentFile.type?.startsWith('audio/')))) { cancelAnimationFrame(visualizerFrameId); if (visualizerMode !== 'off' && analyser) { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; videoOverlay.style.display = 'none'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; if(currentMode === 'radio' && isPlaying && currentStation) { setOverlayMessage('📡', `正在播放 ${currentStation.name}`); videoOverlay.style.display = 'flex'; } else if (currentFile && (currentFile.type === 'audio' || currentFile.type?.startsWith('audio/'))) { setOverlayMessage('🎵', currentFile.name); videoOverlay.style.display = 'flex'; } videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } } };
     videoPlayer.onenterpictureinpicture = () => pipBtn.classList.add('active-green'); 
     videoPlayer.onleavepictureinpicture = () => pipBtn.classList.remove('active-green');
