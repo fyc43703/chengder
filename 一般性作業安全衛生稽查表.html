@@ -447,6 +447,30 @@ table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layou
 #system-modal .sys-btn-group:hover .sys-icon { transform:translateY(-2px) scale(1.04); transition:transform .18s ease; }
 @media (prefers-reduced-motion:reduce) { #system-modal .sys-btn-group:hover .sys-icon { transform:none; } }
 </style>
+<style>
+@media screen {
+ /* 欄位與操作元件的層次，保留表格線與列的原有辨識度。 */
+ .info-table td[contenteditable], .info-table .sync-text,
+ .labor-note-input, .proj-sel-trigger {
+   background:linear-gradient(180deg,#fafdff,#eef6fb);
+   box-shadow:inset 0 2px 5px rgba(37,83,114,.10),inset 0 0 0 1px rgba(138,180,204,.18);
+ }
+ .info-table [contenteditable]:focus, .labor-note-input:focus, .defect-desc-input:focus {
+   outline:2px solid #2d91d1!important; outline-offset:-2px;
+   box-shadow:inset 0 2px 5px rgba(37,83,114,.10),0 0 0 3px rgba(45,145,209,.14);
+ }
+ .custom-radio { background:linear-gradient(145deg,#fff,#edf3f7); box-shadow:inset 0 1px 2px #ffffff,0 2px 4px rgba(46,72,91,.18); }
+ .pass-radio:checked + .custom-radio { background:#fff; box-shadow:0 2px 7px rgba(0,123,255,.35); }
+ .fail-radio:checked + .custom-radio { background:#fff; box-shadow:0 2px 7px rgba(220,53,69,.35); }
+ .col-remark .defect-desc-input { min-height:2em; padding:5px 7px; border:1px solid #e4e2dc; border-radius:7px; background:linear-gradient(180deg,#fffefa,#faf8f2); box-shadow:inset 0 2px 5px rgba(89,79,56,.08); }
+ .mic-btn,.dropdown-btn,.ai-btn { border:1px solid rgba(60,85,105,.10); box-shadow:0 3px 0 rgba(53,81,100,.10),0 5px 9px rgba(53,81,100,.09),inset 0 1px 0 rgba(255,255,255,.8); }
+ .mic-btn:active,.dropdown-btn:active,.ai-btn:active { transform:translateY(2px); box-shadow:0 1px 2px rgba(53,81,100,.15); }
+ .sign-box { background:linear-gradient(180deg,#f9fcff,#eaf4fc); box-shadow:inset 0 2px 7px rgba(55,102,135,.12),0 2px 5px rgba(55,102,135,.08); }
+ .upload-btn-ui { box-shadow:0 3px 0 rgba(35,72,91,.20),0 6px 12px rgba(35,72,91,.14),inset 0 1px 0 rgba(255,255,255,.25); transition:transform .15s,box-shadow .15s; }
+ .upload-btn-ui:active { transform:translateY(2px); box-shadow:0 1px 2px rgba(35,72,91,.18); }
+ .bottom-actions .btn-3d { background-image:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,0)); }
+}
+</style>
     <style>
 /* 穩定初始標題列，避免表單編碼輸入框推擠主標 */
 .agency-brand { display:flex; justify-content:center; align-items:center; min-height:42px; margin:0 auto 12px; padding:2px 8px; }
@@ -1463,7 +1487,8 @@ window.autoFitText = function(el) {
 
         // 🌟 補齊遺漏的 async 關鍵字，解決語法錯誤
         window.startSpeechToText = async function(btn, fIndex) {
-            const targetDiv = btn.previousElementSibling;
+            const targetDiv = btn.closest('.col-remark')?.querySelector('.defect-desc-input');
+            if (!targetDiv) { showCustomAlert('找不到此項目的缺失輸入欄，請重新整理頁面。'); return; }
             
             // 狀態 1：如果正在錄音中，則停止錄音並送出給 AI 分析
             if (btn.classList.contains('recording')) {
@@ -1727,6 +1752,8 @@ window.openExportFormatModal = function() { document.getElementById('export-form
                 
                 const { jsPDF } = window.jspdf;
                 const target = document.querySelector('.container');
+                let exportBlocks = [];
+                let exportWidth = 0;
                 const canvas = await html2canvas(target, {
                     scale: 1.2, 
                     useCORS: true, 
@@ -1754,44 +1781,59 @@ window.openExportFormatModal = function() { document.getElementById('export-form
                         if (topAiBtn) topAiBtn.style.display = 'none'; 
                         const floatingNav = doc.getElementById('floating-nav');
                         if (floatingNav) floatingNav.style.display = 'none';
+                        // 記錄複製頁面的實際位置，供切頁時避開頁首及表格列。
+                        if (c) {
+                            const base = c.getBoundingClientRect();
+                            exportWidth = base.width;
+                            const blocks = [];
+                            doc.querySelectorAll('.form-page').forEach(page => {
+                                const firstTable = page.querySelector('table');
+                                const start = page.getBoundingClientRect().top - base.top;
+                                const end = firstTable ? firstTable.getBoundingClientRect().top - base.top : start;
+                                blocks.push([start, end]);
+                            });
+                            const photo = doc.getElementById('photo-report-section');
+                            if (photo && doc.defaultView.getComputedStyle(photo).display !== 'none') {
+                                const table = photo.querySelector('table');
+                                if (table) blocks.push([photo.getBoundingClientRect().top - base.top, table.getBoundingClientRect().top - base.top]);
+                            }
+                            c.querySelectorAll('.checklist-table tr, .photo-table tr, .info-table tr, .signatures').forEach(el => {
+                                const rect = el.getBoundingClientRect();
+                                if (rect.height && rect.width) blocks.push([rect.top - base.top, rect.bottom - base.top]);
+                            });
+                            exportBlocks = blocks;
+                        }
                     }
                 });
 
-                const imgData = canvas.toDataURL('image/jpeg', 0.75);
                 const pdfWidth = 210; 
                 const pdfHeight = 297; 
-                const margin = 12; // 設定上下邊界為 12mm
-                const maxPageHeight = pdfHeight - margin * 2; // 實際可放置圖片的單頁高度
-                const contentHeight = (canvas.height * pdfWidth) / canvas.width;
-                
-                let heightLeft = contentHeight; 
-                let imgPosition = 0; // 大圖的 Y 軸偏移量
+                const margin = 12;
+                const maxPageHeight = pdfHeight - margin * 2;
                 let pdf = new jsPDF('p', 'mm', 'a4');
-
-                // 第一頁處理
-                pdf.addImage(imgData, 'JPEG', 0, margin, pdfWidth, contentHeight);
-                heightLeft -= maxPageHeight;
-
-                // 後續頁面處理
-                while (heightLeft > 0) { 
-                    imgPosition -= maxPageHeight; // 將大圖往上推移一個有效頁面高度
-                    pdf.addPage(); 
-                    
-                    // 貼上圖片，並加上頂部邊界的位移
-                    pdf.addImage(imgData, 'JPEG', 0, imgPosition + margin, pdfWidth, contentHeight); 
-                    
-                    // 使用白色矩形遮罩，強制產生乾淨的上下邊界空白
-                    pdf.setFillColor(255, 255, 255);
-                    pdf.rect(0, 0, pdfWidth, margin, 'F'); // 遮蔽頂部超出範圍的圖片
-                    pdf.rect(0, pdfHeight - margin, pdfWidth, margin, 'F'); // 遮蔽底部超出範圍的圖片
-                    
-                    heightLeft -= maxPageHeight; 
+                const scale = exportWidth ? canvas.width / exportWidth : 1.2;
+                const pagePixels = Math.floor(maxPageHeight * canvas.width / pdfWidth);
+                const blocks = exportBlocks.map(([top,bottom]) => [Math.round(top*scale),Math.round(bottom*scale)]).filter(([top,bottom]) => bottom > top && bottom-top < pagePixels);
+                let start = 0, pageNumber = 0;
+                while (start < canvas.height) {
+                    let end = Math.min(canvas.height, start + pagePixels);
+                    if (end < canvas.height) {
+                        // 只考慮接近頁底的切點，避免重疊區塊將切點推到頁首。
+                        const limit=end;
+                        const candidates=[limit,...blocks.flatMap(([top,bottom])=>[top,bottom])]
+                            .filter(point=>point<=limit && point>=start+pagePixels*.5)
+                            .sort((a,b)=>b-a);
+                        const safe=candidates.find(point=>!blocks.some(([top,bottom])=>top+2<point && point<bottom-2));
+                        end=safe===undefined?limit:safe;
+                    }
+                    const slice = document.createElement('canvas');
+                    slice.width = canvas.width;
+                    slice.height = end - start;
+                    slice.getContext('2d').drawImage(canvas, 0, start, canvas.width, slice.height, 0, 0, canvas.width, slice.height);
+                    if (pageNumber++) pdf.addPage();
+                    pdf.addImage(slice.toDataURL('image/jpeg', 0.85), 'JPEG', 0, margin, pdfWidth, slice.height * pdfWidth / canvas.width);
+                    start = end;
                 }
-
-                // 回到第一頁，補上底部的白色遮罩
-                pdf.setPage(1);
-                pdf.setFillColor(255, 255, 255);
-                pdf.rect(0, pdfHeight - margin, pdfWidth, margin, 'F');
 
                 const filename = `稽查表_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.pdf`;
                 pdf.save(filename);
@@ -5925,3 +5967,35 @@ new MutationObserver(placeBar).observe(app,{childList:true});
 </style></body>
     </html>    
 <style>@media(min-width:701px){#photo-table{table-layout:fixed;width:100%}#photo-table th:nth-child(1),#photo-table td:nth-child(1){width:15%}#photo-table th:nth-child(2),#photo-table td:nth-child(2){width:32%}#photo-table th:nth-child(3),#photo-table td:nth-child(3){width:53%}}</style>
+<style>
+@media screen {
+ .col-remark .mic-btn,.col-remark .dropdown-btn,.col-remark .ai-btn { width:26px; height:26px; font-size:12px; border-radius:8px; margin:0 0 4px 4px; }
+ .col-remark .mic-btn svg,.col-remark .dropdown-btn svg,.col-remark .ai-btn svg { width:14px; height:14px; }
+}
+</style>
+<style>
+/* 螢幕版：以紙張、柔和陰影及藍色導覽呈現表單層次。 */
+@media screen {
+ body { background:linear-gradient(160deg,#eaf2f8,#e3ebf1 58%,#edf3f6); }
+ .container:has(.form-page) { background:transparent; }
+ .form-page { border:1px solid #d5e2ea; border-radius:12px; box-shadow:0 12px 30px rgba(42,73,95,.13),0 2px 6px rgba(42,73,95,.07); }
+ .form-header-row { padding:14px 12px; border-bottom:3px solid #c9e1f2; border-radius:10px 10px 0 0; background:linear-gradient(180deg,#f4faff,#fff); }
+ .form-title-group h1 { color:#173b5d; }
+ .info-table th,.checklist-table thead th { background:#f3f8fc; color:#284c66; }
+ .checklist-table tbody tr:has(.pass-radio:checked) > td:not(.col-cat) { background:#f0f7ff; }
+ .checklist-table tbody tr:has(.fail-radio:checked) > td:not(.col-cat) { background:#fff0f1; }
+ .pass-radio:checked + .custom-radio { box-shadow:0 2px 7px #007bff55; }
+ .fail-radio:checked + .custom-radio { box-shadow:0 2px 7px #dc354555; }
+ #floating-nav { background:rgba(255,255,255,.9); border:1px solid #d3e2ec; box-shadow:0 12px 32px rgba(40,75,101,.18),inset 0 1px 0 #fff; }
+ #floating-nav .nav-btn { box-shadow:0 2px 5px rgba(42,73,95,.1),inset 0 1px 0 #fff; }
+ #floating-nav .nav-btn.active { background:linear-gradient(145deg,#168dff,#0064d6)!important; color:#fff!important; box-shadow:0 5px 12px #0877dc66,inset 0 1px 0 #ffffff66; }
+ .sign-box { background:linear-gradient(180deg,#f7fbff,#eaf4fc); border-color:#bad5e7; box-shadow:inset 0 2px 5px rgba(55,102,135,.09),0 2px 6px rgba(55,102,135,.08); }
+ .bottom-actions .btn-3d { border:1px solid rgba(44,95,130,.16); box-shadow:0 4px 0 rgba(51,91,118,.17),0 8px 16px rgba(51,91,118,.12),inset 0 1px 0 rgba(255,255,255,.75); }
+ .bottom-actions .btn-3d:hover { box-shadow:0 6px 0 rgba(51,91,118,.15),0 10px 18px rgba(51,91,118,.17),inset 0 1px 0 #fff; }
+ .bottom-actions .btn-3d:active { transform:translateY(3px); box-shadow:0 1px 0 rgba(51,91,118,.18),0 3px 6px rgba(51,91,118,.1); }
+ #photo-report-section { background:#fff; border:1px solid #d5e2ea; border-top:3px solid #7fb4d6; border-radius:12px; padding:24px; box-shadow:0 12px 30px rgba(42,73,95,.13); }
+ .photo-entry { background:#fff!important; border-color:#dbe6ed!important; box-shadow:0 5px 16px rgba(42,73,95,.14)!important; }
+ .photo-status-badge { box-shadow:0 2px 5px rgba(127,85,43,.12); }
+ @media(max-width:700px){ .form-page { border-radius:8px; } #photo-report-section { padding:12px; } .form-header-row { padding:10px 6px; } }
+}
+</style>
