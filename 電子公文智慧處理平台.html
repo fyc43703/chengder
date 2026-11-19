@@ -975,6 +975,7 @@
   .boss-summary-box li { margin-bottom: 8px; font-weight: 600; }
   .mic-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #D70015; color: white; border: none; padding: 12px 24px; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(215, 0, 21, 0.3); }
   .mic-btn.recording { animation: pulseRed 1.5s infinite; background: #FF3B30; }
+  #draftVoiceButton.recording { animation: pulseRed 1.5s infinite; background: #FF3B30 !important; color: white !important; border-color: #D70015 !important; }
   @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 59, 48, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); } }
   .boss-dictation-box {
     width: 100%;
@@ -1624,7 +1625,10 @@
       </div>
       <div class="ai-split-view">
         <div class="ai-panel">
-          <h4 style="color: #6D28D9;">📝 案件情境與關鍵字描述</h4>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+            <h4 style="color: #6D28D9;">📝 案件情境與關鍵字描述</h4>
+            <button type="button" id="draftVoiceButton" onclick="toggleDraftVoice()" aria-pressed="false" title="點擊開始語音輸入" style="cursor:pointer; color:#6D28D9; background:#f5f0ff; border:1px solid #c4b5fd; border-radius:8px; padding:6px 10px; font-weight:600;">🎙️ 語音描述</button>
+          </div>
           <textarea class="ai-textarea" id="draftPromptInput">💡 請描述您的公文重點，例如：
 「收到本府消防局來函，要求本局派員參加「臺北市智慧災害應變雲端協作平臺」研習，請工管處推派兩人參加（林○○副工程司及張○○副工程司），並將參訓名單於115年○月○日前email回報消防局（或google表單報名）。」
 
@@ -5269,6 +5273,64 @@ function resetTransPlayUI() {
 // ==========================================
 let generatedDraftData = null;
 
+// AI 起稿專用語音輸入，獨立於其他語音功能。
+let draftVoiceRecognition = null;
+let draftVoiceActive = false;
+function toggleDraftVoice() {
+  if (draftVoiceActive) {
+    draftVoiceRecognition.stop();
+    return;
+  }
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    showToast('此瀏覽器不支援語音辨識，請使用支援語音辨識的瀏覽器。');
+    return;
+  }
+  const button = document.getElementById('draftVoiceButton');
+  const input = document.getElementById('draftPromptInput');
+  const voice = new Recognition();
+  draftVoiceRecognition = voice;
+  voice.lang = 'zh-TW';
+  voice.continuous = true;
+  voice.interimResults = false;
+  voice.onstart = function () {
+    draftVoiceActive = true;
+    button.classList.add('recording');
+    button.textContent = '🛑 正在聆聽...點擊停止';
+    button.setAttribute('aria-pressed', 'true');
+    button.title = '點擊停止語音輸入';
+  };
+  voice.onresult = function (event) {
+    let text = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) text += event.results[i][0].transcript;
+    }
+    if (!text) return;
+    if (input.value === input.defaultValue) input.value = '';
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    input.setRangeText(text, start, end, 'end');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  voice.onerror = function (event) {
+    const messages = { 'not-allowed': '無法使用麥克風，請確認瀏覽器的麥克風權限。', 'service-not-allowed': '語音辨識服務未獲允許。', 'audio-capture': '找不到可用的麥克風。', 'network': '語音辨識網路連線失敗。' };
+    if (event.error !== 'no-speech' && event.error !== 'aborted') showToast(messages[event.error] || ('語音辨識錯誤：' + event.error));
+  };
+  voice.onend = function () {
+    draftVoiceActive = false;
+    button.classList.remove('recording');
+    button.textContent = '🎙️ 語音描述';
+    button.setAttribute('aria-pressed', 'false');
+    button.title = '點擊開始語音輸入';
+    draftVoiceRecognition = null;
+  };
+  try { draftVoiceActive = true; voice.start(); } catch (error) {
+    draftVoiceActive = false;
+    draftVoiceRecognition = null;
+    showToast('無法啟動語音辨識，請確認麥克風與瀏覽器權限。');
+  }
+}
+
 function openDraftModal() {
   document.getElementById('draftResultBox').innerHTML = '<div style="text-align:center; padding-top:40%; opacity:0.5; font-weight:600;">輸入左側條件後，點擊上方按鈕生成草稿</div>';
   document.getElementById('btnApplyDraft').style.display = "none";
@@ -5281,6 +5343,7 @@ function openDraftModal() {
 }
 
 function closeDraftModal() {
+  if (draftVoiceRecognition) draftVoiceRecognition.stop();
   document.getElementById('draftModal').classList.remove('show');
 }
 
