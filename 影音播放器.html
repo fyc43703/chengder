@@ -64,6 +64,10 @@
         border-radius: var(--card-radius) var(--card-radius) 0 0;
     }
     #videoPlayer { width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
+    #youtubePanel { display: none; width: 100%; height: 100%; padding: 24px; color: #fff; text-align: center; align-items: center; justify-content: center; flex-direction: column; gap: 14px; background: #181818; }
+    #youtubePanel p { margin: 0; line-height: 1.6; }
+    #youtubePanel a { display: inline-block; padding: 12px 22px; border-radius: 8px; background: #e62117; color: #fff; font-weight: 700; text-decoration: none; }
+    #youtubePanel a:hover, #youtubePanel a:focus-visible { background: #c91c13; }
     
     #audioVisualizer {
         position: absolute;
@@ -258,12 +262,19 @@
     
     #videoList, #audioList, #radioList, #favoriteRadioList { list-style-type: none; padding-left: 0; margin: 0; display: flex; flex-direction: column; gap: 0; overflow-y: auto; overscroll-behavior: contain; transition: max-height 0.3s ease-out; }
     #videoList, #audioList { max-height: 120px; }
+    #youtubeList { list-style:none; margin:0; padding:0; max-height:120px; overflow-y:auto; background:var(--panel-bg); border-radius:6px; }
+    #youtubeList li { display:flex; align-items:center; gap:8px; min-height:26px; padding:2px 10px; cursor:pointer; border-radius:8px; font-size:14px; }
+    #youtubeList li:hover { background:var(--stroke); }
+    #youtubeList li.active { background:var(--blue); color:#fff; font-weight:600; }
+    #youtubeList li .youtube-badge { flex:none; color:#fff; background:#e62117; border-radius:6px; padding:2px 6px; font-size:10px; font-weight:700; }
+    #youtubeList li .youtube-name { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    #youtubeListContainer.collapsed #youtubeList { max-height:0; }
     #recentContainer { margin-top:0; padding-top:0; border-top:0; }
     #recentContainer .file-list-label { padding-top:4px; padding-bottom:4px; }
     /* 低彩度線飾，清楚區隔各清單區塊 */
-    #audioListContainer, #favoritesContainer, #recentContainer, #radioMainContainer { position: relative; border-top: 0; margin-top: 7px; padding-top: 7px; }
-    #audioListContainer::before, #favoritesContainer::before, #recentContainer::before, #radioMainContainer::before { content: ""; position: absolute; top: 0; left: 8px; right: 8px; height: 2px; background: linear-gradient(90deg, transparent 2%, rgba(170,112,126,.42) 18%, rgba(170,112,126,.72) 50%, rgba(170,112,126,.42) 82%, transparent 98%); }
-    #audioListContainer::after, #favoritesContainer::after, #recentContainer::after, #radioMainContainer::after { content: "✿"; position: absolute; top: -6px; left: 50%; transform: translateX(-50%); padding: 0 7px; color: #ad6f7d; background: transparent; font-size: 12px; line-height: 14px; }
+    #audioListContainer, #youtubeListContainer, #favoritesContainer, #recentContainer, #radioMainContainer { position: relative; border-top: 0; margin-top: 7px; padding-top: 7px; }
+    #audioListContainer::before, #youtubeListContainer::before, #favoritesContainer::before, #recentContainer::before, #radioMainContainer::before { content: ""; position: absolute; top: 0; left: 8px; right: 8px; height: 2px; background: linear-gradient(90deg, transparent 2%, rgba(170,112,126,.42) 18%, rgba(170,112,126,.72) 50%, rgba(170,112,126,.42) 82%, transparent 98%); }
+    #audioListContainer::after, #youtubeListContainer::after, #favoritesContainer::after, #recentContainer::after, #radioMainContainer::after { content: "✿"; position: absolute; top: -6px; left: 50%; transform: translateX(-50%); padding: 0 7px; color: #ad6f7d; background: transparent; font-size: 12px; line-height: 14px; }
     #recentList { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; max-height:74px; overflow-y:auto; }
     #recentContainer.collapsed #recentList, #recentContainer.collapsed #queueStatus { display:none; }
     #recentList { background:var(--panel-bg); box-shadow:var(--shadow); border-radius:0 0 12px 12px; }
@@ -599,6 +610,9 @@
                 <div class="file-list-container" id="audioListContainer">
                     <label class="file-list-label"><div class="label-text"><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"></path></svg><span>音訊列表 <span id="audioCount" class="item-count">(0)</span></span></div><button id="toggleAudioListBtn" class="label-btn chevron-btn" data-tooltip="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button></label><ol id="audioList"></ol>
                 </div>
+                <div class="file-list-container" id="youtubeListContainer">
+                    <label class="file-list-label"><div class="label-text"><span aria-hidden="true">▶</span><span>YouTube 影片列表 <span id="youtubeCount" class="item-count">(2)</span></span></div><button id="toggleYouTubeListBtn" class="label-btn chevron-btn" data-tooltip="收合/展開"><svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button></label><ol id="youtubeList"></ol>
+                </div>
                 <div class="file-list-container favorites-container" id="favoritesContainer">
                     <label class="file-list-label">
                         <div class="label-text"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg><span>我的最愛電台</span></div>
@@ -643,6 +657,7 @@
       <div class="panel glass player-panel">
         <div class="video-player-container" id="videoPlayerContainer">
           <video id="videoPlayer" style="display: none;"></video>
+          <div id="youtubePanel"><p>此 YouTube 影片無法在本機播放器內嵌入。</p><a id="youtubeOpenLink" target="_blank" rel="noopener noreferrer">前往 YouTube 播放 ↗</a></div>
           <span id="recordingIndicator" role="status" aria-label="錄製中" hidden></span>
           <div id="playbackStatus" role="status" aria-live="polite" hidden></div>
            <canvas id="audioVisualizer" role="button" tabindex="0" aria-label="播放或暫停"></canvas>
@@ -774,12 +789,17 @@
   <script>
     const AC = new (window.AudioContext || window.webkitAudioContext)();
     let audioBuffer = null, currentFile = null, allFiles = [], currentFileIndex = -1;
+    const youtubeVideos = [
+      { name: 'YouTube 影片 1｜Ptk_1Dc2iPY', youtubeId: 'Ptk_1Dc2iPY', url: 'https://www.youtube.com/watch?v=Ptk_1Dc2iPY&list=RDPtk_1Dc2iPY&start_radio=1' },
+      { name: 'YouTube 影片 2｜Fqd1dL2GnYE', youtubeId: 'Fqd1dL2GnYE', url: 'https://www.youtube.com/watch?v=Fqd1dL2GnYE&list=RDFqd1dL2GnYE&start_radio=1' }
+    ];
     const defaultRemoteMedia = [
       { name: '久石讓 in 武道館。龍貓.mp4', type: 'video', url: 'https://raw.githubusercontent.com/fyc43703/chengder/main/%E4%B9%85%E7%9F%B3%E8%AE%93%20in%20%E6%AD%A6%E9%81%93%E9%A4%A8%E3%80%82%E9%BE%8D%E8%B2%93.mp4' },
       { name: '《龍貓》主題曲〈さんぽ 散步）.mp4', type: 'video', url: 'https://raw.githubusercontent.com/fyc43703/chengder/main/%E3%80%8A%E9%BE%8D%E8%B2%93%E3%80%8B%E4%B8%BB%E9%A1%8C%E6%9B%B2%E3%80%88%E3%81%95%E3%82%93%E3%81%BD%20%E6%95%A3%E6%AD%A5%EF%BC%89.mp4' },
       { name: '千と千尋の神隠し - いつも何度でも.mp3', type: 'audio', url: 'https://raw.githubusercontent.com/fyc43703/chengder/main/%E5%8D%83%E3%81%A8%E5%8D%83%E5%B0%8B%E3%81%AE%E7%A5%9E%E9%9A%A0%E3%81%97%20-%20%E3%81%84%E3%81%A4%E3%82%82%E4%BD%95%E5%BA%A6%E3%81%A7%E3%82%82.mp3' }
     ];
     function isRemoteMedia(item) { return Boolean(item?.url); }
+    function isYouTubeMedia(item) { return Boolean(item?.youtubeId); }
     function findMediaItemBySource(source) { return allFiles.find(item => item.file === source || item === source); }
     let isPlaying = false, hasPlayedOnce = false, isShuffle = false;
     let isAbLooping = false, abPointA = null, abPointB = null;
@@ -805,6 +825,7 @@
     let isRadioListExpanded = true;
     let isVideoListExpanded = true;
     let isAudioListExpanded = true;
+    let isYouTubeListExpanded = true;
     let radioSortMode = 'clickcount';
     let radioLanguageFilter = 'all';
     let playQueue = [];
@@ -818,7 +839,7 @@
     let stationVerificationId = 0, pendingStationChecks = 0, stationRenderTimer = null;
 
     const $ = (id) => document.getElementById(id);
-    const videoPlayer = $('videoPlayer'), videoPlayerContainer = $('videoPlayerContainer'), videoOverlay = $('videoOverlay');
+    const videoPlayer = $('videoPlayer'), youtubePanel = $('youtubePanel'), youtubeOpenLink = $('youtubeOpenLink'), videoPlayerContainer = $('videoPlayerContainer'), videoOverlay = $('videoOverlay');
     const audioVisualizer = $('audioVisualizer');
     const playPauseBtn = $('playPauseBtn'), playIcon = $('playIcon'), pauseIcon = $('pauseIcon');
     const prevBtn = $('prevBtn'), nextBtn = $('nextBtn');
@@ -845,6 +866,7 @@
     const radioMainContainer = $('radioMainContainer'), toggleRadioListBtn = $('toggleRadioListBtn');
     const videoListContainer = $('videoListContainer'), toggleVideoListBtn = $('toggleVideoListBtn');
     const audioListContainer = $('audioListContainer'), toggleAudioListBtn = $('toggleAudioListBtn');
+    const youtubeList = $('youtubeList'), youtubeListContainer = $('youtubeListContainer'), toggleYouTubeListBtn = $('toggleYouTubeListBtn');
 
     // 新增元素
     const themeToggle = $('themeToggle'), sunIcon = $('sunIcon'), moonIcon = $('moonIcon');
@@ -868,7 +890,7 @@
     function isCurrentRequest(requestId) { return requestId === playbackRequestId; }
     function stopHls() { if (hlsInstance) { try { hlsInstance.stopLoad(); hlsInstance.detachMedia(); } catch (error) { console.warn('停止 HLS 串流時發生問題:', error); } hlsInstance.destroy(); hlsInstance = null; } }
     function releaseObjectUrl() { if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; } }
-    function clearMediaSource() { if (radioRecorder?.state === 'recording') stopRadioRecording(); clearInterval(programInfoTimer); programInfoTimer = null; programInfoCard.classList.remove('visible'); stopHls(); releaseObjectUrl(); videoPlayer.pause(); videoPlayer.removeAttribute('src'); videoPlayer.src = ''; videoPlayer.load(); currentStation = null; }
+    function clearMediaSource() { youtubePanel.style.display = 'none'; if (radioRecorder?.state === 'recording') stopRadioRecording(); clearInterval(programInfoTimer); programInfoTimer = null; programInfoCard.classList.remove('visible'); stopHls(); releaseObjectUrl(); videoPlayer.pause(); videoPlayer.removeAttribute('src'); videoPlayer.src = ''; videoPlayer.load(); currentStation = null; }
     function setOverlayMessage(icon, message) { videoOverlay.replaceChildren(); if (icon) { const iconElement = document.createElement('span'); iconElement.textContent = icon; videoOverlay.append(iconElement); } const text = document.createElement('span'); text.textContent = message; videoOverlay.append(text); }
     function setInitialOverlay() { videoOverlay.innerHTML = '<p>1. 請從左側 <span class="overlay-action"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg><svg viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"/></svg>選擇影片或音訊檔案</span> 圖示匯入影片或音訊檔案，匯入後即可在播放區進行播放、暫停、調整音量與其他播放控制。</p><p>2. 點選 <span class="overlay-action"><svg viewBox="0 0 24 24"><path d="M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8h-2v3h-2V8h-2v8h-2V8h-2v4h-2V8H4v12h16V6z"/></svg>廣播電台</span>，即可選擇中文、日文或英文電台，聆聽即時節目；選取電台後會直接連線播放。</p>'; }
     function updateAllLists() { updateFileLists(); populateFavoriteRadioList(); populateRadioList(); }
@@ -904,6 +926,20 @@
     function scheduleQueueHighlight() { clearTimeout(queueHighlightTimer); queueHighlightTimer = null; if (currentMode !== 'file' || !playQueue.length || queueNextHighlighted) return; const delay = Math.max(0, 5 - (videoPlayer.currentTime || 0)) * 1000; queueHighlightTimer = setTimeout(() => { queueHighlightTimer = null; if (currentMode === 'file' && isPlaying && playQueue.length) { queueNextHighlighted = true; updateFileLists(); } }, delay); }
     function enqueueNext(file) { if (!playQueue.includes(file)) playQueue.push(file); if (currentMode === 'file' && videoPlayer.currentTime >= 5) queueNextHighlighted = true; updateQueueStatus(); updateFileLists(); if (isPlaying) scheduleQueueHighlight(); }
 
+    function updateYouTubeList() {
+      youtubeList.replaceChildren();
+      $('youtubeCount').textContent = `(${youtubeVideos.length})`;
+      youtubeVideos.forEach(item => {
+        const li = document.createElement('li'); li.tabIndex = 0; li.setAttribute('role', 'button');
+        li.setAttribute('aria-label', `選擇 ${item.name}`); li.title = item.url;
+        const badge = document.createElement('span'); badge.className = 'youtube-badge'; badge.textContent = 'YouTube';
+        const name = document.createElement('span'); name.className = 'youtube-name'; name.textContent = item.name;
+        li.append(badge, name); li.classList.toggle('active', currentMode === 'youtube' && currentFile === item);
+        li.onclick = () => loadYouTubeMedia(item);
+        li.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); loadYouTubeMedia(item); } };
+        youtubeList.appendChild(li);
+      });
+    }
     function updateFileLists() {
       updateQueueStatus(); videoList.innerHTML = ''; audioList.innerHTML = '';
       allFiles.forEach((fileObj, index) => {
@@ -929,18 +965,22 @@
       });
       $('videoCount').textContent = `(${allFiles.filter(item => item.type === 'video').length})`;
       $('audioCount').textContent = `(${allFiles.filter(item => item.type === 'audio').length})`;
+      updateYouTubeList();
       if (currentMode === 'file') { const currentType = allFiles[currentFileIndex]?.type; const relevantCount = allFiles.filter(f => f.type === currentType).length; const canNavigate = relevantCount > 1; prevBtn.disabled = !canNavigate; nextBtn.disabled = !canNavigate; }
     }
     
     function updateControlsState() {
         const isRadio = currentMode === 'radio';
-        progressBar.disabled = isRadio;
+        const isYouTube = currentMode === 'youtube';
+        progressBar.disabled = isRadio || isYouTube;
+        playPauseBtn.disabled = isYouTube; volumeSlider.disabled = isYouTube; muteBtn.disabled = isYouTube;
         [prevBtn, nextBtn, loopBtn, shuffleBtn, pipBtn, snapshotBtn, setABtn, setBBtn, abLoopBtn, settingsBtn].forEach(btn => { btn.disabled = isRadio; });
         
         const isVideo = currentMode === 'file' && allFiles[currentFileIndex]?.type === 'video';
         toggleVisualizerBtn.disabled = isVideo || (isRadio && !radioVisualizerAvailable);
 
-        if (isRadio) {
+        if (isYouTube) { [loopBtn, shuffleBtn, pipBtn, snapshotBtn, settingsBtn, abLoopBtn, setABtn, setBBtn, recordABBtn, toggleVisualizerBtn, recordBtn].forEach(btn => btn.disabled = true); prevBtn.disabled = true; nextBtn.disabled = true; abPointAInput.disabled = true; abPointBInput.disabled = true; timeDisplay.textContent = 'YouTube';
+        } else if (isRadio) {
             timeDisplay.textContent = "LIVE";
             pipBtn.classList.remove('active-green'); loopBtn.classList.remove('active'); shuffleBtn.classList.remove('active'); resetAbLoop();
             abPointAInput.disabled = true; abPointBInput.disabled = true;
@@ -964,16 +1004,27 @@
     function getMediaType(file) { if (!file) return null; const name = file.name.toLowerCase(); if (file.type?.startsWith('audio/') || /\.(weba|mp3|m4a|ogg|aac|wav|flac|opus)$/i.test(name)) return 'audio'; if (file.type?.startsWith('video/') || /\.(mp4|webm|ogv)$/i.test(name)) return 'video'; return null; }
     function handleFiles(files) { if (!files || files.length === 0) return; let unsupported = 0; for (const file of files) { const type = getMediaType(file); if (!type) { unsupported += 1; continue; } if (!allFiles.some(f => f.file && f.file.name === file.name && f.file.size === file.size && f.file.lastModified === file.lastModified)) allFiles.push({ file, type, name: file.name }); } if (unsupported) alert(`已略過 ${unsupported} 個不支援的檔案。`); updateAllLists(); const pendingFile = pendingRecentFileKey && allFiles.find(item => item.file && (mediaKey(item.file) === pendingRecentFileKey || item.file.name === pendingRecentFileName)); pendingRecentFileKey = null; pendingRecentFileName = ''; if (pendingFile) loadFile(pendingFile.file); }
     function loadMediaItem(item) { if (isRemoteMedia(item)) { loadRemoteMedia(item); return; } loadFile(item.file, item); }
+    function loadYouTubeMedia(item) {
+      beginPlaybackRequest(); clearMediaSource(); clearSubtitle(); cancelAnimationFrame(visualizerFrameId);
+      currentMode = 'youtube'; currentFile = item; currentFileIndex = -1; currentStation = null; audioBuffer = null;
+      videoPlayer.style.display = 'none'; audioVisualizer.style.display = 'none'; videoOverlay.style.display = 'none';
+      waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); resetAbLoop();
+      youtubeOpenLink.href = item.url;
+      youtubePanel.style.display = 'flex';
+      titlesH1.textContent = item.name; titlesH2.textContent = '請前往 YouTube 播放';
+      setPlaybackStatus('', false);
+      updateAllLists(); updateControlsState(); updateNowPlaying();
+    }
     async function loadRemoteMedia(item) { const requestId = beginPlaybackRequest(); const continuePlayback = currentMode === 'radio' && Boolean(currentStation); clearMediaSource(); clearSubtitle(); videoPlayer.crossOrigin = 'anonymous'; videoPlayer.onerror = null; currentMode = 'file'; hasPlayedOnce = hasPlayedOnce || continuePlayback; currentFile = item; currentFileIndex = allFiles.indexOf(item); audioBuffer = null; updateControlsState(); cancelAnimationFrame(visualizerFrameId); showLoading(true, '正在連接雲端媒體…'); setPlaybackStatus(`正在連線：${item.name}`); try { if (AC.state === 'suspended') await AC.resume(); if (!isCurrentRequest(requestId)) return; setupVisualizer(); videoPlayer.src = item.url; videoPlayer.load(); updateAllLists(); resetAbLoop(); titlesH1.textContent = item.name; titlesH2.textContent = '雲端媒體播放'; const isAudio = item.type === 'audio'; videoPlayer.style.display = isAudio ? 'none' : 'block'; audioVisualizer.style.display = 'none'; videoOverlay.style.display = isAudio ? 'flex' : 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; if (isAudio) setOverlayMessage('🎵', item.name); waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); videoPlayer.onerror = () => { if (isCurrentRequest(requestId)) { showLoading(false); const message = `無法載入雲端媒體：${item.name}。請檢查網路或 GitHub 檔案是否公開可用。`; setPlaybackStatus(message); setOverlayMessage('❌', message); videoOverlay.style.display = 'flex'; } };  } catch (error) { if (isCurrentRequest(requestId)) { console.error('雲端媒體載入失敗:', error); setPlaybackStatus(`載入失敗：${error.message}`); setOverlayMessage('❌', `無法載入雲端媒體：${error.message}`); videoOverlay.style.display = 'flex'; } } finally { if (isCurrentRequest(requestId)) showLoading(false); } }
-    async function loadFile(file, fileItem = null) { const requestId = beginPlaybackRequest(); const continuePlayback = currentMode === 'radio' && Boolean(currentStation); clearMediaSource(); clearSubtitle(); videoPlayer.removeAttribute('crossorigin'); videoPlayer.onerror = null; currentMode = 'file'; hasPlayedOnce = hasPlayedOnce || continuePlayback; updateControlsState(); cancelAnimationFrame(visualizerFrameId); showLoading(true, "媒體檔案載入中..."); setPlaybackStatus(`正在載入：${file.name}`); document.querySelectorAll('#radioList li.active, #favoriteRadioList li.active').forEach(el => el.classList.remove('active')); try { currentFile = fileItem || allFiles.find(item => item.file === file) || file; currentFileIndex = allFiles.findIndex(item => item === currentFile || item.file === file); rememberPlayback({ key: mediaKey(file), kind: 'file', name: file.name, position: resumePositions[mediaKey(file)] || 0 }); updateNowPlaying(); if (AC.state === 'suspended') await AC.resume(); if (!isCurrentRequest(requestId)) return; setupVisualizer(); currentObjectUrl = URL.createObjectURL(file); videoPlayer.src = currentObjectUrl; videoPlayer.load(); updateAllLists(); resetAbLoop(); titlesH1.textContent = file.name; titlesH2.textContent = '本機檔案播放'; const mediaType = getMediaType(file); if (mediaType === 'audio') { videoPlayer.style.display = 'none'; setOverlayMessage('🎵', file.name); if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } videoOverlay.style.display = 'flex'; } else { videoPlayer.style.display = 'block'; audioVisualizer.style.display = 'none'; videoOverlay.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } videoPlayer.onerror = () => { if (isCurrentRequest(requestId)) { const message = `無法播放本機媒體：${file.name}。檔案可能損壞或編碼不受支援。`; setPlaybackStatus(message); setOverlayMessage('❌', message); videoOverlay.style.display = 'flex'; showLoading(false); } }; if (file.size > 80 * 1024 * 1024) { audioBuffer = null; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); return; } showLoading(true, "正在分析音訊..."); try { const arrayBuffer = await file.arrayBuffer(); if (!isCurrentRequest(requestId)) return; audioBuffer = await AC.decodeAudioData(arrayBuffer.slice(0)); if (!isCurrentRequest(requestId)) return; waveformDisplay.style.display = 'block'; videoPlayerContainer.classList.add('with-waveform'); } catch (e) { if (!isCurrentRequest(requestId)) return; console.warn("無法解析音訊或無音訊軌:", e.message); audioBuffer = null; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); } } catch (e) { if (isCurrentRequest(requestId)) { console.error("Error loading file:", e); const message = `檔案載入失敗：${e.message}`; setPlaybackStatus(message); alert(message); } } finally { if (isCurrentRequest(requestId)) showLoading(false); } }
+    async function loadFile(file, fileItem = null) { const requestId = beginPlaybackRequest(); const continuePlayback = currentMode === 'radio' && Boolean(currentStation); clearMediaSource(); clearSubtitle(); videoPlayer.removeAttribute('crossorigin'); videoPlayer.onerror = null; currentMode = 'file'; hasPlayedOnce = hasPlayedOnce || continuePlayback; updateControlsState(); cancelAnimationFrame(visualizerFrameId); showLoading(true, "媒體檔案載入中..."); setPlaybackStatus(`正在載入：${file.name}`); document.querySelectorAll('#radioList li.active, #favoriteRadioList li.active').forEach(el => el.classList.remove('active')); try { currentFile = fileItem || allFiles.find(item => item.file === file) || file; currentFileIndex = allFiles.findIndex(item => item === currentFile || item.file === file); updateControlsState(); rememberPlayback({ key: mediaKey(file), kind: 'file', name: file.name, position: resumePositions[mediaKey(file)] || 0 }); updateNowPlaying(); if (AC.state === 'suspended') await AC.resume(); if (!isCurrentRequest(requestId)) return; setupVisualizer(); currentObjectUrl = URL.createObjectURL(file); videoPlayer.src = currentObjectUrl; videoPlayer.load(); updateAllLists(); resetAbLoop(); titlesH1.textContent = file.name; titlesH2.textContent = '本機檔案播放'; const mediaType = getMediaType(file); if (mediaType === 'audio') { videoPlayer.style.display = 'none'; setOverlayMessage('🎵', file.name); if (visualizerMode !== 'off') { audioVisualizer.style.display = 'block'; videoOverlay.style.background = 'transparent'; drawVisualizer(); } else { audioVisualizer.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } videoOverlay.style.display = 'flex'; } else { videoPlayer.style.display = 'block'; audioVisualizer.style.display = 'none'; videoOverlay.style.display = 'none'; videoOverlay.style.background = 'rgba(0,0,0,0.7)'; } videoPlayer.onerror = () => { if (isCurrentRequest(requestId)) { const message = `無法播放本機媒體：${file.name}。檔案可能損壞或編碼不受支援。`; setPlaybackStatus(message); setOverlayMessage('❌', message); videoOverlay.style.display = 'flex'; showLoading(false); } }; if (file.size > 80 * 1024 * 1024) { audioBuffer = null; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); return; } showLoading(true, "正在分析音訊..."); try { const arrayBuffer = await file.arrayBuffer(); if (!isCurrentRequest(requestId)) return; audioBuffer = await AC.decodeAudioData(arrayBuffer.slice(0)); if (!isCurrentRequest(requestId)) return; waveformDisplay.style.display = 'block'; videoPlayerContainer.classList.add('with-waveform'); } catch (e) { if (!isCurrentRequest(requestId)) return; console.warn("無法解析音訊或無音訊軌:", e.message); audioBuffer = null; waveformDisplay.style.display = 'none'; videoPlayerContainer.classList.remove('with-waveform'); } } catch (e) { if (isCurrentRequest(requestId)) { console.error("Error loading file:", e); const message = `檔案載入失敗：${e.message}`; setPlaybackStatus(message); alert(message); } } finally { if (isCurrentRequest(requestId)) showLoading(false); } }
     function drawWaveform() { if (!audioBuffer || waveformCanvas.clientWidth === 0) return; const canvas = waveformCanvas; const ctx = waveformCtx; const dpr = window.devicePixelRatio || 1; canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; ctx.scale(dpr, dpr); const width = canvas.clientWidth; const height = canvas.clientHeight; const amp = height / 2; ctx.clearRect(0, 0, width, height); ctx.lineWidth = 2; const isDark = document.documentElement.classList.contains('dark-mode'); ctx.strokeStyle = isDark ? 'rgba(0, 113, 227, 0.8)' : 'rgba(0, 113, 227, 0.7)'; const data = audioBuffer.getChannelData(0); const step = Math.ceil(data.length / width); ctx.beginPath(); for (let i = 0; i < width; i++) { let min = 1.0; let max = -1.0; for (let j = 0; j < step; j++) { const datum = data[(i * step) + j]; if (datum < min) min = datum; if (datum > max) max = datum; } ctx.moveTo(i, amp + min * amp); ctx.lineTo(i, amp + max * amp); } ctx.stroke(); }
     const waveformResizeObserver = new ResizeObserver(entries => { for (const entry of entries) { if (entry.target.style.display !== 'none' && entry.contentRect.width > 0) { drawWaveform(); } } });
     waveformResizeObserver.observe(waveformDisplay);
     function updateWaveformPlayhead() { if (!audioBuffer) return; const duration = getFiniteMediaDuration(); const currentTime = videoPlayer.currentTime; if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(currentTime)) return; const percent = Math.max(0, Math.min(1, currentTime / duration)); waveformPlayhead.style.left = `${percent * 100}%`; }
     function showLoading(show, text = "媒體檔案載入中...") { $('loadingIndicator').style.display = show ? 'flex' : 'none'; $('loadingText').textContent = text; }
-    async function play() { if (!(currentStation || currentFile)) return; setPlaybackStatus('正在播放'); try { await ensureAudioOutput(); await videoPlayer.play(); hasPlayedOnce = true; } catch (error) { console.error('播放錯誤:', error); const message = `無法播放：${error.message}`; setPlaybackStatus(message); setOverlayMessage('🔇', message); videoOverlay.style.display = 'flex'; } }
+    async function play() { if (currentMode === 'youtube' || !(currentStation || currentFile)) return; setPlaybackStatus('正在播放'); try { await ensureAudioOutput(); await videoPlayer.play(); hasPlayedOnce = true; } catch (error) { console.error('播放錯誤:', error); const message = `無法播放：${error.message}`; setPlaybackStatus(message); setOverlayMessage('🔇', message); videoOverlay.style.display = 'flex'; } }
     function pause() { videoPlayer.pause(); if (currentFile || currentStation) setPlaybackStatus('已暫停'); }
-    function togglePlay() { if (currentStation || currentFile) { if (isPlaying) pause(); else play(); } }
+    function togglePlay() { if (currentMode === 'youtube') return; if (currentStation || currentFile) { if (isPlaying) pause(); else play(); } }
     function getFiniteMediaDuration() { if (Number.isFinite(videoPlayer.duration) && videoPlayer.duration >= 0) return videoPlayer.duration; try { const ranges = videoPlayer.seekable; if (ranges?.length) { const end = ranges.end(ranges.length - 1); if (Number.isFinite(end) && end > 0) return end; } } catch {} return NaN; }
     let webmDurationProbeActive = false;
     function recoverWebmDuration() {
@@ -1201,6 +1252,7 @@
 
     toggleVideoListBtn.onclick = () => { isVideoListExpanded = !isVideoListExpanded; videoListContainer.classList.toggle('collapsed', !isVideoListExpanded); };
     toggleAudioListBtn.onclick = () => { isAudioListExpanded = !isAudioListExpanded; audioListContainer.classList.toggle('collapsed', !isAudioListExpanded); };
+    toggleYouTubeListBtn.onclick = () => { isYouTubeListExpanded = !isYouTubeListExpanded; youtubeListContainer.classList.toggle('collapsed', !isYouTubeListExpanded); };
     toggleFavoritesBtn.onclick = () => {
         isFavoritesExpanded = !isFavoritesExpanded;
         favoritesContainer.classList.toggle('collapsed', !isFavoritesExpanded);
@@ -1313,6 +1365,7 @@
       recentContainer.classList.toggle('collapsed', !isRecentExpanded);
       videoListContainer.classList.toggle('collapsed', !isVideoListExpanded);
       audioListContainer.classList.toggle('collapsed', !isAudioListExpanded);
+      youtubeListContainer.classList.toggle('collapsed', !isYouTubeListExpanded);
     });
   </script>
 </body>
