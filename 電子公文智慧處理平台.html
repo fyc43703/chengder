@@ -1185,6 +1185,75 @@
     [contenteditable="true"]:empty::before { display: none; }
     @page { margin: 1.5cm; }
   }
+
+  /* Keep the AI actions centered and the right controls clear of them. */
+  .controls { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px 16px; }
+  .controls .control-left { grid-column: 1; grid-row: 1; min-width: 0; flex-wrap: wrap; }
+  .controls .control-center {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    justify-self: center;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+  .controls .control-right {
+    grid-column: 3;
+    grid-row: 1;
+    display: flex;
+    justify-self: end;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: nowrap;
+    width: auto;
+    gap: 8px 10px;
+  }
+  .controls .control-right > #btnPrint,
+  .controls .control-right > #btnExportDI,
+  .controls .control-right > #btnExport { grid-column: auto; grid-row: auto; }
+  @media (min-width: 1025px) and (max-width: 1450px) {
+    .controls .control-right { grid-column: 1 / -1; grid-row: 2; }
+  }
+  @media (max-width: 1024px) {
+    .controls .control-left, .controls .control-center, .controls .control-right {
+      grid-column: auto;
+      grid-row: auto;
+      justify-self: center;
+    }
+    .controls .control-center { flex-wrap: nowrap; }
+    .controls .control-right { width: 100%; justify-content: center; flex-wrap: wrap; }
+  }
+  @media (max-width: 600px) {
+    .controls .control-center { gap: 4px !important; }
+    .controls .control-center .btn { padding: 0 6px; font-size: 11px; gap: 3px; }
+    .controls .control-center .btn svg { width: 12px; height: 12px; }
+  }
+  .api-settings-dialog {
+    box-sizing: border-box;
+    width: min(92vw, 480px);
+    max-width: 480px;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    background: var(--doc-bg);
+    color: var(--text-main);
+    box-shadow: 0 18px 50px rgba(0,0,0,.25);
+  }
+  .api-settings-dialog::backdrop { background: rgba(0,0,0,.4); }
+  .api-settings-dialog form { display: grid; gap: 10px; }
+  .api-settings-dialog h2 { margin: 0 0 10px; font-size: 20px; }
+  .api-settings-dialog label { font-size: 14px; font-weight: 700; }
+  .api-settings-dialog input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--glass-bg);
+    color: var(--text-main);
+    font: inherit;
+  }
+  .api-settings-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -2161,17 +2230,10 @@
       </div>
 
       <div class="control-right">
-        <span class="home-api-keys">
-          <label>
-            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="font-size:12px;font-weight:700;color:var(--nature-green-main);white-space:nowrap;">Gemini API Key ↗</a>
-            <input id="geminiApiKeyInput" type="password" placeholder="貼上 Gemini API Key" autocomplete="off" style="width:150px;border:none;background:transparent;outline:none;font-size:12px;color:var(--text-main);font-family:inherit;">
-          </label>
-          <label>
-            <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" title="Gemini 忙碌時自動備援" style="font-size:12px;font-weight:700;color:var(--nature-gold);white-space:nowrap;">Groq 備援 Key ↗</a>
-            <input id="groqApiKeyInput" type="password" placeholder="貼上 Groq API Key" autocomplete="off" style="width:150px;border:none;background:transparent;outline:none;font-size:12px;color:var(--text-main);font-family:inherit;">
-          </label>
-          <button onclick="saveHomeApiKeys()" style="height:28px;padding:0 12px;border-radius:14px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:linear-gradient(to bottom,#D4AF37,#B8962E);color:#fff;">儲存</button>
-        </span>
+        <button type="button" class="btn btn-apple" id="btnApiSettings" onclick="openApiSettings()" title="設定 Gemini 與 Groq API Key">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 8-8h4m1 5h6m-3-3v6"></path></svg>
+          API Key 設定
+        </button>
         <span id="aiServiceStatus" role="status" style="font-size:12px;color:var(--text-main);"></span>
         <span id="parseStatus" role="status" style="white-space:normal;"></span>
         <button class="btn btn-apple" id="btnPrint" title="將目前畫面呈現的公文內容列印或存檔為 PDF 格式" style="display: none;">
@@ -2188,6 +2250,20 @@
         </button>
       </div>
     </div>
+
+    <dialog class="api-settings-dialog" id="apiSettingsDialog" aria-labelledby="apiSettingsTitle">
+      <form id="apiSettingsForm" onsubmit="event.preventDefault(); saveApiSettingsAndClose();">
+        <h2 id="apiSettingsTitle">API Key 設定</h2>
+        <label for="geminiApiKeyInput"><a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Gemini API Key ↗</a></label>
+        <input id="geminiApiKeyInput" type="password" placeholder="貼上 Gemini API Key" autocomplete="off">
+        <label for="groqApiKeyInput"><a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" title="Gemini 忙碌時自動備援">Groq 備援 Key ↗</a></label>
+        <input id="groqApiKeyInput" type="password" placeholder="貼上 Groq API Key" autocomplete="off">
+        <div class="api-settings-actions">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('apiSettingsDialog').close()">取消</button>
+          <button type="submit" class="btn btn-primary">儲存</button>
+        </div>
+      </form>
+    </dialog>
 
     <div class="preview-section" id="previewSection">
       <div id="errorBox" role="alert" style="background:#E63946; color:white; padding:15px; border-radius:12px; margin-bottom:30px; display:none; font-weight:600; box-shadow: 0 4px 15px rgba(230, 57, 70, 0.2);"></div>
@@ -2300,6 +2376,19 @@ function saveHomeApiKeys() {
     localStorage.removeItem('groqApiKey');
   }
   showToast('✅ Gemini 與 Groq 金鑰設定已儲存');
+  return true;
+}
+
+function openApiSettings() {
+  const dialog = document.getElementById('apiSettingsDialog');
+  document.getElementById('geminiApiKeyInput').value = localStorage.getItem('geminiApiKey') || '';
+  document.getElementById('groqApiKeyInput').value = localStorage.getItem('groqApiKey') || '';
+  dialog.showModal();
+  document.getElementById('geminiApiKeyInput').focus();
+}
+
+function saveApiSettingsAndClose() {
+  if (saveHomeApiKeys()) document.getElementById('apiSettingsDialog').close();
 }
 
 const AI_SETTINGS = {
@@ -2588,6 +2677,8 @@ function resetImportSelection() {
 
 function showDocumentPreview(status) {
   document.getElementById('shortVideoLink').style.display = 'none';
+  document.getElementById('btnApiSettings').style.display = 'none';
+  document.getElementById('apiSettingsDialog').close();
   errorBox.style.display = 'none';
   uploadArea.style.display = 'none';
   previewSection.classList.add('visible');
@@ -2600,6 +2691,7 @@ function showDocumentPreview(status) {
 
 btnDocumentHome.onclick = () => {
   document.getElementById('shortVideoLink').style.display = '';
+  document.getElementById('btnApiSettings').style.display = '';
   flushPendingHistorySave();
   resetImportSelection();
   lastParsedData = null;
